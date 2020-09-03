@@ -47,9 +47,9 @@ export default class User extends Vue {
     if (res.status === 200) {
       this.new_username_err = false;
       this.new_username_err_msg = "";
-      this.setUsername(this.new_username);
       const body = await res.json();
       this.setUserID(body.user_id);
+      this.setUsername(this.new_username);
     } else {
       this.new_username_err = true;
       this.new_username_err_msg = await res.text();
