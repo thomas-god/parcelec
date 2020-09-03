@@ -7,12 +7,12 @@ export interface UserState {
 
 // ------------------------ STATE -------------------------
 export const state: UserState = {
-  username: "blank_username",
+  username: "",
 };
 
 // ------------------------ ACTIONS -------------------------
 export const actions: ActionTree<UserState, RootState> = {
-  setUserName({ commit }, payload: string): void {
+  setUsername({ commit }, payload: string): void {
     commit("SET_USERNAME", payload);
   },
 };
