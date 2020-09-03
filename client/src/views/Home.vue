@@ -1,7 +1,6 @@
 <template>
   <div class="home">
-    <img alt="Vue logo" src="../assets/logo.png" />
-    <MyComponent msg="Welcome to Your Vue.js App" />
+    <MyComponent />
   </div>
 </template>
 
@@ -12,7 +11,7 @@ import MyComponent from "@/components/MyComponent.vue";
 export default {
   name: "Home",
   components: {
-    MyComponent
-  }
+    MyComponent,
+  },
 };
 </script>

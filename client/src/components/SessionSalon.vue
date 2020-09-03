@@ -124,8 +124,6 @@ export default class Messages extends Vue {
   margin: 1rem auto;
   max-width: 500px;
   height: 300px;
-  border: 1px solid black;
-  border-radius: 3px;
 }
 
 .message_msg {

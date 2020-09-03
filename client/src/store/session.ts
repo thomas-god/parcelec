@@ -42,6 +42,9 @@ export const getters: GetterTree<SessionState, RootState> = {
   session_id(state): string {
     return state.session.id;
   },
+  session_name(state): string {
+    return state.session.name;
+  },
 };
 
 // ------------------------ MODULE -------------------------

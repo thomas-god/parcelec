@@ -3,7 +3,7 @@
     <SessionSelect v-if="!session.id" />
     <UsernameSelect v-if="session.id && !username" />
     <div v-if="session.id && username">
-      <p>Hello {{ username }} !</p>
+      <p>Hello {{ username }}, bienvenu sur la session {{ session.name }} !</p>
       <SessionSalon />
     </div>
   </div>
