@@ -1,9 +1,10 @@
 <template>
   <div>
-    <user v-if="!username" />
-    <div v-else>
+    <SessionSelect v-if="!session.id" />
+    <UsernameSelect v-if="session.id && !username" />
+    <div v-if="session.id && username">
       <p>Hello {{ username }} !</p>
-      <messages />
+      <SessionSalon />
     </div>
   </div>
 </template>
@@ -11,17 +12,20 @@
 <script lang="ts">
 import { Component, Prop, Vue } from "vue-property-decorator";
 import { State, Action, Getter, namespace } from "vuex-class";
-import { UserState } from "../store/user";
-import User from "./User.vue";
+import { Session } from "../store/session";
+import SessionSelect from "./SessionSelect.vue";
+import UsernameSelect from "./UsernameSelect.vue";
+import SessionSalon from "./SessionSalon.vue";
 import Messages from "./Messages.vue";
 
 const userModule = namespace("user");
+const sessionModule = namespace("session");
 
 @Component({
-  components: { User, Messages },
+  components: { SessionSelect, UsernameSelect, SessionSalon },
 })
 export default class HelloWorld extends Vue {
-  @Prop() private msg!: string;
   @userModule.Getter username!: string;
+  @sessionModule.Getter session!: Session;
 }
 </script>

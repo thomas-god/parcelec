@@ -1,6 +1,7 @@
 import Vue from "vue";
 import Vuex, { StoreOptions } from "vuex";
 import { user } from "./user";
+import { session } from "./session";
 
 Vue.use(Vuex);
 
@@ -14,6 +15,7 @@ const store: StoreOptions<RootState> = {
   },
   modules: {
     user,
+    session,
   },
 };
 

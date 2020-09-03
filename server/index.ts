@@ -3,41 +3,19 @@ import ws from "ws";
 import cors from "cors";
 import morgan from "morgan";
 import user, { checkUsernameExists } from "./src/routes/user";
+import session, { onConnectionCallback } from "./src/routes/sessions";
 
 const app = express();
 const port = 3000;
-app.get("/", (req, res) => {
-  res.send("The sedulous hyena ate the antelope!");
-});
 
 app.use(cors());
 app.use(express.json());
 app.use(morgan("common"));
 app.use("/user", user);
-
-interface ClientMessage {
-  username: string;
-  message: string;
-  date: Date;
-}
-const messages: ClientMessage[] = [];
+app.use("/session", session);
 
 const wsServer = new ws.Server({ noServer: true, clientTracking: true });
-wsServer.on("connection", (socket: ws) => {
-  console.log("Web socket connection open");
-
-  socket.on("message", (message: string) => {
-    const msg = JSON.parse(message) as ClientMessage;
-    msg.date = new Date();
-
-    if (checkUsernameExists(msg.username)) {
-      messages.push(msg);
-      wsServer.clients.forEach((client) => {
-        client.send(JSON.stringify(msg));
-      });
-    }
-  });
-});
+wsServer.on("connection", onConnectionCallback);
 
 const server = app.listen(port, (err) => {
   if (err) {
