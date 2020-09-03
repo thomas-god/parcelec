@@ -1,5 +1,7 @@
 import { v4 as uuidv4 } from "uuid";
 import ws from "ws";
+import url from "url";
+import querystring from "querystring";
 import express from "express";
 const router = express.Router();
 
@@ -140,15 +142,22 @@ router.put("/register_user", (req, res) => {
 });
 
 // ---------------------- WebSocket onConnection callback
-export function onConnectionCallback(socket: ws): void {
+export function onConnectionCallback(socket: ws, request: Request): void {
+  const query_params = querystring.parse(url.parse(request.url).query);
+  const session = sessions.find((s) => s.id === query_params.session_id);
+  if (session) {
+    const user = session.users.find((u) => u.user_id === query_params.user_id);
+    if (user) {
+      user.websocket = socket;
+    }
+  }
+
   socket.on("message", (message: string) => {
     const msg = JSON.parse(message) as ClientMessage;
     msg.date = new Date();
 
     if (msg.reason === "message") {
       messageCallback(socket, msg);
-    } else if (msg.reason === "handshake") {
-      handshakeCallback(socket, msg);
     }
   });
 }
@@ -175,24 +184,6 @@ function isAllowed(socket: ws, msg: ClientMessage): boolean {
       "Error, the ID provided does not correspond to an existing user in the session"
     );
     return false;
-  }
-}
-
-/**
- * Handle the handshake between the client and the server
- * @param socket Current WebSocket
- * @param msg Incoming message
- */
-function handshakeCallback(socket: ws, msg: ClientMessage): void {
-  const session = sessions.find((s) => s.id === msg.credentials.session_id);
-  if (session) {
-    const user = session.users.find(
-      (u) => u.user_id === msg.credentials.user_id
-    );
-    if (user) {
-      console.log("doing handshake for ", msg.username);
-      user.websocket = socket;
-    }
   }
 }
 

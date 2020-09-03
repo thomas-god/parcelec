@@ -42,14 +42,13 @@ export default class Messages extends Vue {
   @userModule.Getter username!: string;
   @userModule.Getter user_id!: string;
   @sessionModule.Getter session_id!: string;
+  @sessionModule.Getter session_name!: string;
 
   openWebSocket(): void {
     // Create WebSocket connection.
-    this.socket = new WebSocket("ws://localhost:3000");
-
-    this.socket.addEventListener("open", () => {
-      this.socket.send(this.getPayload("handshake", ""));
-    });
+    this.socket = new WebSocket(
+      `ws://localhost:3000/session?session_id=${this.session_id}&user_id=${this.user_id}&username=${this.username}`
+    );
 
     this.socket.addEventListener("close", (event) => {
       console.log("closing", event.reason);
