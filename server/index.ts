@@ -24,16 +24,16 @@ const messages: ClientMessage[] = [];
 
 const wsServer = new ws.Server({ noServer: true, clientTracking: true });
 wsServer.on("connection", (socket: ws) => {
-  console.log("connection open");
+  console.log("Web socket connection open");
 
   socket.on("message", (message: string) => {
     const msg = JSON.parse(message) as ClientMessage;
-    console.log(msg);
+    msg.date = new Date();
 
     if (checkUsernameExists(msg.username)) {
       messages.push(msg);
       wsServer.clients.forEach((client) => {
-        client.send(message);
+        client.send(JSON.stringify(msg));
       });
     }
   });

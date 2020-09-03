@@ -8,7 +8,7 @@ router.get("/list", (req, res) => {
 });
 
 router.put("/new", (req, res) => {
-  console.log(req.body);
+  console.log(req);
   if (req.body.username) {
     if (!usernames.includes(req.body.username)) {
       usernames.push(req.body.username);
@@ -16,7 +16,7 @@ router.put("/new", (req, res) => {
     } else {
       res.status(400).end("Error, username already exist");
     }
-  }
+  } else res.status(400).end("Error, no username provided");
 });
 
 export function checkUsernameExists(username: string): boolean {
