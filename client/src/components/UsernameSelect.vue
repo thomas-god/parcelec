@@ -36,11 +36,11 @@ export default class User extends Vue {
   new_username_err_msg = "";
 
   async addUsername() {
-    const res = await fetch("http://localhost:3000/session/register_user", {
+    const res = await fetch("http://localhost:3000/auction/register_user", {
       method: "PUT",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
-        session: this.session,
+        auction_id: this.session.id,
         username: this.new_username,
       }),
     });

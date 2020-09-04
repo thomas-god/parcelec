@@ -47,7 +47,7 @@ export default class Messages extends Vue {
   openWebSocket(): void {
     // Create WebSocket connection.
     this.socket = new WebSocket(
-      `ws://localhost:3000/session?session_id=${this.session_id}&user_id=${this.user_id}&username=${this.username}`
+      `ws://localhost:3000/auction?auction_id=${this.session_id}&user_id=${this.user_id}&username=${this.username}`
     );
 
     this.socket.addEventListener("close", (event) => {
@@ -75,7 +75,7 @@ export default class Messages extends Vue {
       username: this.username,
       reason: reason,
       credentials: {
-        session_id: this.session_id,
+        auction_id: this.session_id,
         user_id: this.user_id,
       },
       data: data,

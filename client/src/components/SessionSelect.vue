@@ -44,7 +44,7 @@ export default class User extends Vue {
   // List of open sessions
   open_sessions: Session[] = [];
   async getOpenSessions(): Promise<void> {
-    const res = await fetch("http://localhost:3000/session/list_open", {
+    const res = await fetch("http://localhost:3000/auction/list_open", {
       method: "GET",
     });
     this.open_sessions = await res.json();
@@ -55,10 +55,10 @@ export default class User extends Vue {
   new_session_name_err = false;
   new_session_name_err_msg = "";
   async openSession() {
-    const res = await fetch("http://localhost:3000/session/open", {
+    const res = await fetch("http://localhost:3000/auction/open", {
       method: "PUT",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ session_name: this.new_session_name }),
+      body: JSON.stringify({ auction_name: this.new_session_name }),
     });
     if (res.status === 200) {
       this.new_session_name_err = false;
