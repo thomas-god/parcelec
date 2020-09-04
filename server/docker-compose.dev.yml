@@ -6,3 +6,6 @@ services:
         - NODE_ENV=development
     volumes:
       - .:/usr/src/app
+  db:
+    volumes:
+      - ./db/data:/var/lib/postgresql/data

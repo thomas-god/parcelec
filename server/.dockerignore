@@ -10,3 +10,4 @@ LICENSE
 .vscode
 .env
 /dist
+**/db/data
