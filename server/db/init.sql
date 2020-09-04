@@ -1,5 +1,30 @@
-CREATE TABLE test
+CREATE TABLE auctions
 (
-  client_id character varying(36) NOT NULL,
-  value character varying(255)
+  id UUID PRIMARY KEY,
+  name VARCHAR(50) UNIQUE,
+  status text
+);
+
+CREATE TABLE auctions_steps
+(
+  auction_id UUID REFERENCES auctions (id),
+  step_no INT,
+  clearing_price REAL DEFAULT 0,
+  PRIMARY KEY (auction_id, step_no)
+);
+
+CREATE TABLE users
+(
+  id UUID PRIMARY KEY,
+  name VARCHAR(50),
+  auction_id UUID REFERENCES auctions (id)
+);
+
+CREATE TABLE bids
+(
+  user_id UUID REFERENCES users (id),
+  auction_id UUID,
+  auction_step_no INT,
+  bid_value REAL,
+  FOREIGN KEY (auction_id, auction_step_no) REFERENCES auctions_steps (auction_id, step_no)
 );
