@@ -4,7 +4,6 @@ import url from "url";
 import querystring from "querystring";
 import express from "express";
 import db from "../db/index";
-const router = express.Router();
 
 export interface Auction {
   name: string;
@@ -42,18 +41,28 @@ const auctions: AuctionsRecord = {};
 
 /**
  * Get the list of auctions that are currently open.
+ * @param req HTTP request
+ * @param res HTTP response
  */
-router.get("/list_open", async (req, res) => {
+export async function getOpenAuctions(
+  req: express.Request,
+  res: express.Response
+): Promise<void> {
   const auctions = (
     await db.query("SELECT id, name FROM auctions WHERE status='Open'", [])
   ).rows;
   res.send(JSON.stringify(auctions));
-});
+}
 
 /**
  * Open a new auction with a user provided name. Name must be unique.
+ * @param req HTTP request
+ * @param res HTTP response
  */
-router.put("/open", async (req, res) => {
+export async function openNewAuction(
+  req: express.Request,
+  res: express.Response
+): Promise<void> {
   try {
     const auction_name: string = req.body.auction_name;
 
@@ -80,12 +89,17 @@ router.put("/open", async (req, res) => {
     res.status(400).end(error);
     return;
   }
-});
+}
 
 /**
  * Start a session (i.e. put its status to 'Running') provided its ID.
+ * @param req HTTP request
+ * @param res HTTP response
  */
-router.put("/start", async (req, res) => {
+export async function startExistingAuction(
+  req: express.Request,
+  res: express.Response
+): Promise<void> {
   try {
     // Checks
     if (!req.body.auction_id) throw "Error, no auction ID provided";
@@ -103,13 +117,18 @@ router.put("/start", async (req, res) => {
   } catch (error) {
     res.status(400).end(error);
   }
-});
+}
 
 /**
  * Add a user by its username to the list of user of an open session.
  * Username must be unique.
+ * @param req HTTP request
+ * @param res HTTP response
  */
-router.put("/register_user", async (req, res) => {
+export async function registerNewUser(
+  req: express.Request,
+  res: express.Response
+): Promise<void> {
   try {
     // Payload checks
     if (!req.body.auction_id) throw "Error, no auction ID provided";
@@ -135,13 +154,16 @@ router.put("/register_user", async (req, res) => {
     res.status(400).end(error);
     return;
   }
-});
+}
 
-// ---------------------- WebSocket onConnection callback
+/**
+ * Callback when connecting a new WebSocket to check client's credentials
+ * @param socket User WebSocket
+ * @param request HTTP request
+ */
 export function onConnectionCallback(socket: ws, request: Request): void {
   try {
     const query_params = querystring.parse(url.parse(request.url).query);
-    console.log(query_params);
     const auction_id = query_params.auction_id as string;
     const user_id = query_params.user_id as string;
 
@@ -170,6 +192,9 @@ export function onConnectionCallback(socket: ws, request: Request): void {
  */
 function messageCallback(socket: ws, msg: ClientMessage): void {
   try {
+    // TODO: currently we do a DB call (via getUser) each time a message arrives
+    // TODO: could we cache in some way the user info to avoid unnecessary DB calls ?
+    // TODO: For instance by caching this info (e.g. in redis)
     const user = getUser(msg.credentials.auction_id, msg.credentials.user_id);
     if (!user) throw "Error, user not allowed";
     Object.values(auctions[msg.credentials.auction_id]).forEach((wss) => {
@@ -243,5 +268,12 @@ async function checkUsername(
   ).rows;
   return users.length > 0;
 }
+
+const router = express.Router();
+
+router.get("/list_open", getOpenAuctions);
+router.put("/open", openNewAuction);
+router.put("/register_user", registerNewUser);
+router.put("/start", startExistingAuction);
 
 export default router;
