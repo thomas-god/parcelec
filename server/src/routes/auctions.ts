@@ -84,7 +84,7 @@ export async function openNewAuction(
       "INSERT INTO auctions (name, id, status) VALUES($1, $2, $3)",
       [auction_name, auction.id, "Open"]
     );
-    res.send(auction);
+    res.status(201).send(auction);
   } catch (error) {
     res.status(400).end(error);
     return;

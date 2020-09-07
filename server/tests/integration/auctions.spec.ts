@@ -56,6 +56,43 @@ describe("Auctions listing", () => {
   });
 });
 
+describe("Opening a new auction", () => {
+  beforeAll(async () => {
+    await prepareDB();
+  });
+
+  test("Should return a 400 error if no auction_name is provided in body", async () => {
+    try {
+      await superagent.put(`${url}/auction/open`);
+    } catch (err) {
+      expect(err.status).toEqual(400);
+      expect(err.response.text).toEqual(
+        "Error, please provide a valid session name"
+      );
+    }
+  });
+
+  test("It should return a 400 error if the name is already taken", async () => {
+    try {
+      await superagent
+        .put(`${url}/auction/open`)
+        .send({ auction_name: "Open auction" });
+    } catch (err) {
+      expect(err.status).toEqual(400);
+      expect(err.response.text).toEqual(
+        "Error, a session already exists with this name"
+      );
+    }
+  });
+
+  test("It should get back an auction object on success", async () => {
+    const res = await superagent
+      .put(`${url}/auction/open`)
+      .send({ auction_name: "My auction" });
+    const body = JSON.parse(res.text);
+    expect(res.status).toEqual(201);
+    expect(body.name).toEqual("My auction");
+    expect(body.status).toEqual("Open");
+    expect(body).toHaveProperty("id");
   });
 });
-
