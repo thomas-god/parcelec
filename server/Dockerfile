@@ -13,4 +13,6 @@ RUN echo $NODE_ENV
 
 COPY . .
 
+RUN npx tsc
+
 CMD npm run start:${NODE_ENV}
