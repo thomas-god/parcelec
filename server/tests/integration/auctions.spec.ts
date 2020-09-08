@@ -80,13 +80,13 @@ describe("Opening a new auction", () => {
     }
   });
 
-  test("It should return a 400 error if the name is already taken", async () => {
+  test("It should return a 409 error if the name is already taken", async () => {
     try {
       await superagent
         .put(`${url}${endpoint}`)
         .send({ auction_name: "Open auction" });
     } catch (err) {
-      expect(err.status).toEqual(400);
+      expect(err.status).toEqual(409);
       expect(err.response.text).toEqual(
         "Error, a session already exists with this name"
       );

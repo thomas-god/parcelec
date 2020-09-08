@@ -5,6 +5,17 @@ import querystring from "querystring";
 import express from "express";
 import db from "../db/index";
 
+class CustomError extends Error {
+  msg: string;
+  code: number;
+
+  constructor(msg: string, code?: number, ...params) {
+    super(...params);
+    this.msg = msg;
+    this.code = code || 400;
+  }
+}
+
 export interface Auction {
   name: string;
   id: string;
@@ -67,12 +78,16 @@ export async function openNewAuction(
     const auction_name: string = req.body.auction_name;
 
     // Checks
-    if (!auction_name) throw "Error, please provide a valid session name";
+    if (!auction_name)
+      throw new CustomError("Error, please provide a valid session name", 400);
     if (
       (await db.query("SELECT id FROM auctions WHERE name=$1", [auction_name]))
         .rows.length !== 0
     )
-      throw "Error, a session already exists with this name";
+      throw new CustomError(
+        "Error, a session already exists with this name",
+        409
+      );
 
     // Insertion
     const auction: Auction = {
@@ -86,7 +101,7 @@ export async function openNewAuction(
     );
     res.status(201).send(auction);
   } catch (error) {
-    res.status(400).end(error);
+    res.status(error.code).end(error.msg);
     return;
   }
 }
