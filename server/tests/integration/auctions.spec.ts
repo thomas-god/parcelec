@@ -194,3 +194,88 @@ describe("Registering a new user to an auction", () => {
     }
   });
 });
+
+/**
+ * PUT /auction/start
+ */
+describe("Starting an auction", () => {
+  const endpoint = "/auction/start";
+  beforeEach(async () => {
+    await prepareDB();
+  });
+
+  test("Should error if no auction_id is provided", async () => {
+    try {
+      await superagent.put(`${url}/auction/start`);
+    } catch (error) {
+      expect(error.status).toEqual(404);
+    }
+  });
+
+  test("should error if no auction is found", async () => {
+    try {
+      await superagent.put(`${url}/auction/${uuid()}/start`);
+    } catch (error) {
+      expect(error.status).toEqual(404);
+      expect(error.response.text).toEqual(
+        "Error, the auction ID does not match an existing auction"
+      );
+    }
+  });
+
+  test("Should error if the auction is already running", async () => {
+    try {
+      await superagent.put(`${url}/auction/${auctions[1].id}/start`);
+    } catch (error) {
+      expect(error.status).toEqual(400);
+      expect(error.response.text).toEqual(
+        "Error, the auction is already running"
+      );
+    }
+  });
+
+  test("should error if the auction is closed", async () => {
+    try {
+      await superagent.put(`${url}/auction/${auctions[2].id}/start`);
+    } catch (error) {
+      expect(error.status).toEqual(400);
+      expect(error.response.text).toEqual("Error, the auction is closed");
+    }
+  });
+
+  test("Should error if there is no users registered to the auction", async () => {
+    try {
+      await superagent.put(`${url}/auction/${auctions[0].id}/start`);
+    } catch (error) {
+      expect(error.status).toEqual(400);
+      expect(error.response.text).toEqual(
+        "Error, not enough users registered to start the session"
+      );
+    }
+  });
+
+  test("Should error if only 1 user is registered to the auction", async () => {
+    await superagent
+      .put(`${url}/auction/${auctions[0].id}/register_user`)
+      .send({ username: "User 1" });
+    try {
+      await superagent.put(`${url}/auction/${auctions[0].id}/start`);
+    } catch (error) {
+      expect(error.status).toEqual(400);
+      expect(error.response.text).toEqual(
+        "Error, not enough users registered to start the session"
+      );
+    }
+  });
+
+  test("Should return a 200 on success", async () => {
+    await superagent
+      .put(`${url}/auction/${auctions[0].id}/register_user`)
+      .send({ username: "User 1" });
+    await superagent
+      .put(`${url}/auction/${auctions[0].id}/register_user`)
+      .send({ username: "User 2" });
+    const res = await superagent.put(`${url}/auction/${auctions[0].id}/start`);
+    expect(res.status).toEqual(200);
+  });
+});

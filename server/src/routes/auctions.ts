@@ -117,20 +117,35 @@ export async function startExistingAuction(
 ): Promise<void> {
   try {
     // Checks
-    if (!req.body.auction_id) throw "Error, no auction ID provided";
-    const auction = await getAuction(req.body.auction_id);
+    if (!req.params.auction_id)
+      throw new CustomError("Error, no auction found with this ID");
+    const auction_id = req.params.auction_id;
+    const auction = await getAuction(auction_id);
     if (!auction)
-      throw "Error, the auction ID provided does not match an existing sessions";
+      throw new CustomError(
+        "Error, the auction ID does not match an existing auction",
+        404
+      );
     if (auction.status === "Running")
-      throw "Error, the session is already running";
-    if (auction.status === "Close") throw "Error, the session is closed";
+      throw new CustomError("Error, the auction is already running");
+    if (auction.status === "Close")
+      throw new CustomError("Error, the auction is closed");
+
+    const n_users = (
+      await db.query("SELECT 1 FROM users WHERE auction_id=$1", [auction_id])
+    ).rowCount;
+    if (n_users < 1)
+      throw new CustomError(
+        "Error, not enough users registered to start the session"
+      );
 
     // Update
-    await db.query("UPDATE auctions SET status=Running WHERE id=$1", [
-      req.body.auction_id,
+    await db.query("UPDATE auctions SET status='Running' WHERE id=$1", [
+      auction_id,
     ]);
+    res.end();
   } catch (error) {
-    res.status(400).end(error);
+    res.status(error.code).end(error.msg);
   }
 }
 
