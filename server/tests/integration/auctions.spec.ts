@@ -120,13 +120,15 @@ describe("Registering a new user to an auction", () => {
       await superagent.put(`${url}${endpoint}`);
     } catch (err) {
       expect(err.status).toEqual(400);
-      expect(err.response.text).toEqual("Error, no auction key provided");
+      expect(err.response.text).toEqual("Error, no auction_id provided");
     }
   });
 
   it("Should return error 404 when the auction_id does not correspond to an existing auction", async () => {
     try {
-      await superagent.put(`${url}${endpoint}`).send({ auction_id: "toto" });
+      await superagent
+        .put(`${url}${endpoint}`)
+        .send({ auction_id: uuid(), username: "User" });
     } catch (err) {
       expect(err.status).toEqual(404);
       expect(err.response.text).toEqual(
@@ -139,11 +141,11 @@ describe("Registering a new user to an auction", () => {
     try {
       await superagent
         .put(`${url}${endpoint}`)
-        .send({ auction_id: auctions[1].id });
+        .send({ auction_id: auctions[1].id, username: "User" });
     } catch (err) {
       expect(err.status).toEqual(403);
       expect(err.response.text).toEqual(
-        "Error, the auction_id corresponds to a running auction"
+        "Error, the auction is not open for registration"
       );
     }
   });
@@ -152,11 +154,11 @@ describe("Registering a new user to an auction", () => {
     try {
       await superagent
         .put(`${url}${endpoint}`)
-        .send({ auction_id: auctions[2].id });
+        .send({ auction_id: auctions[2].id, username: "User" });
     } catch (err) {
       expect(err.status).toEqual(403);
       expect(err.response.text).toEqual(
-        "Error, the auction_id corresponds to a closed auction"
+        "Error, the auction is not open for registration"
       );
     }
   });
