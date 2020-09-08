@@ -146,17 +146,25 @@ export async function registerNewUser(
 ): Promise<void> {
   try {
     // Payload checks
-    if (!req.body.auction_id) throw "Error, no auction ID provided";
-    if (!req.body.username) throw "Error, no username provided";
+    if (!req.body.auction_id)
+      throw new CustomError("Error, no auction_id provided", 400);
+    if (!req.body.username)
+      throw new CustomError("Error, no username provided", 400);
 
     // DB checks
     const auction = await getAuction(req.body.auction_id);
     if (!auction)
-      throw "Error, the auction ID provided does not match an existing sessions";
+      throw new CustomError(
+        "Error, the auction_id does not correspond to an existing auction",
+        404
+      );
     if (auction.status !== "Open")
-      throw "Error, the auction is not open for registration";
+      throw new CustomError(
+        "Error, the auction is not open for registration",
+        403
+      );
     if (!checkUsername(req.body.auction_id, req.body.username))
-      throw "Error, the username already exist";
+      throw new CustomError("Error, the username already exist", 409);
 
     // Insertion
     const user_id = uuidv4();
@@ -164,9 +172,9 @@ export async function registerNewUser(
       "INSERT INTO users (id, auction_id, name) VALUES ($1, $2, $3)",
       [user_id, req.body.auction_id, req.body.username]
     );
-    res.json({ user_id: user_id });
+    res.status(201).json({ user_id: user_id });
   } catch (error) {
-    res.status(400).end(error);
+    res.status(error.code).end(error.msg);
     return;
   }
 }
