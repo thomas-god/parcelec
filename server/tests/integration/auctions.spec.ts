@@ -1,6 +1,7 @@
 import db from "../../src/db/index";
 import { v4 as uuid, validate as uuidValidate } from "uuid";
 import superagent from "superagent";
+import { json } from "express";
 
 const url = process.env.API_URL;
 
@@ -15,6 +16,7 @@ function mapAuction(auction) {
 }
 
 async function clearDb() {
+  await db.query("DELETE FROM auctions_steps CASCADE", []);
   await db.query("DELETE FROM users CASCADE", []);
   await db.query("DELETE FROM auctions CASCADE", []);
 }
@@ -277,5 +279,48 @@ describe("Starting an auction", () => {
       .send({ username: "User 2" });
     const res = await superagent.put(`${url}/auction/${auctions[0].id}/start`);
     expect(res.status).toEqual(200);
+  });
+});
+
+/**
+ * GET /auction/:auction_id
+ */
+describe("Retrieving auction infos", () => {
+  beforeAll(async () => {
+    await prepareDB();
+  });
+
+  test("Should get a 404 error if no auction_id is provided", async () => {
+    try {
+      await superagent.get(`${url}/auction`);
+    } catch (error) {
+      expect(error.status).toEqual(404);
+    }
+  });
+
+  test("Should get basic infos for an open auction", async () => {
+    await superagent
+      .put(`${url}/auction/${auctions[0].id}/register_user`)
+      .send({ username: "User 1" });
+    const res = await superagent.get(`${url}/auction/${auctions[0].id}`);
+    const body = JSON.parse(res.text);
+    expect(body.id).toEqual(auctions[0].id);
+    expect(body.name).toEqual(auctions[0].name);
+    expect(body.status).toEqual(auctions[0].status);
+    expect(body.n_users).toEqual(1);
+  });
+
+  test("Should get basic infos for a running auction", async () => {
+    await superagent
+      .put(`${url}/auction/${auctions[0].id}/register_user`)
+      .send({ username: "User 2" });
+    await superagent.put(`${url}/auction/${auctions[0].id}/start`);
+    const res = await superagent.get(`${url}/auction/${auctions[0].id}`);
+    const body = JSON.parse(res.text);
+    expect(body.id).toEqual(auctions[0].id);
+    expect(body.name).toEqual(auctions[0].name);
+    expect(body.status).toEqual("Running");
+    expect(body.n_users).toEqual(2);
+    expect(body.step_no).toEqual(0);
   });
 });

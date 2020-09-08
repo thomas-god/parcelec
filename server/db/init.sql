@@ -9,7 +9,8 @@ CREATE TABLE auctions_steps
 (
   auction_id UUID REFERENCES auctions (id),
   step_no INT,
-  clearing_price REAL DEFAULT 0,
+  status VARCHAR(10) CHECK (status in ('open', 'close')),
+  clearing_price REAL DEFAULT null,
   PRIMARY KEY (auction_id, step_no)
 );
 

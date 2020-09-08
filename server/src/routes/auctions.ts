@@ -107,6 +107,48 @@ export async function openNewAuction(
 }
 
 /**
+ * Get informations for a specific auction (status, step_no)
+ * @param req HTTP request
+ * @param res HTTP response
+ */
+export async function getAuctionInfos(
+  req: express.Request,
+  res: express.Response
+): Promise<void> {
+  try {
+    // DB checks
+    const auction_id = req.params.auction_id;
+    const auction = await getAuction(auction_id);
+    if (!auction)
+      throw new CustomError(
+        "Error, the auction_id does not correspond to an existing auction",
+        404
+      );
+    let body: any = {
+      id: auction.id,
+      name: auction.name,
+      status: auction.status,
+    };
+    body.n_users = (
+      await db.query("SELECT 1 FROM users WHERE auction_id=$1", [auction_id])
+    ).rowCount;
+
+    if (auction.status === "Running") {
+      body.step_no = (
+        await db.query(
+          "SELECT step_no FROM auctions_steps WHERE auction_id=$1 AND status='open'",
+          [auction_id]
+        )
+      ).rows[0].step_no;
+    }
+    res.json(body);
+  } catch (error) {
+    res.status(error.code).end(error.msg);
+    return;
+  }
+}
+
+/**
  * Add a user by its username to the list of user of an open session.
  * Username must be unique.
  * @param req HTTP request
@@ -185,6 +227,10 @@ export async function startExistingAuction(
     await db.query("UPDATE auctions SET status='Running' WHERE id=$1", [
       auction_id,
     ]);
+    await db.query(
+      "INSERT INTO auctions_steps(auction_id, step_no, status) VALUES ($1, $2, $3)",
+      [auction_id, 0, "open"]
+    );
     res.end();
   } catch (error) {
     res.status(error.code).end(error.msg);
@@ -308,6 +354,7 @@ const router = express.Router();
 
 router.get("/list_open", getOpenAuctions);
 router.put("/open", openNewAuction);
+router.get("/:auction_id", getAuctionInfos);
 router.put("/:auction_id/register_user", registerNewUser);
 router.put("/:auction_id/start", startExistingAuction);
 
