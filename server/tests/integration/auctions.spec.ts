@@ -33,13 +33,17 @@ async function prepareDB() {
   await populateDb();
 }
 
-describe("Auctions listing", () => {
+/**
+ * Get /auction/list_open
+ */
+describe("Listing open auctions", () => {
+  const endpoint = "/auction/list_open";
   beforeAll(async () => {
     await prepareDB();
   });
 
   test("Should list the available auctions that are currently open", async () => {
-    const res = await superagent.get(`${url}/auction/list_open`);
+    const res = await superagent.get(`${url}${endpoint}`);
     const body = JSON.parse(res.text);
     expect(Array.isArray(body)).toBe(true);
     expect(body.length).toEqual(1);
@@ -49,21 +53,25 @@ describe("Auctions listing", () => {
 
   test("Should return an empty object if there are no open auctions", async () => {
     await clearDb();
-    const res = await superagent.get(`${url}/auction/list_open`);
+    const res = await superagent.get(`${url}${endpoint}`);
     const body = JSON.parse(res.text);
     expect(Array.isArray(body)).toBe(true);
     expect(body.length).toEqual(0);
   });
 });
 
+/**
+ * PUT /auction/open
+ */
 describe("Opening a new auction", () => {
+  const endpoint = "/auction/open";
   beforeAll(async () => {
     await prepareDB();
   });
 
   test("Should return a 400 error if no auction_name is provided in body", async () => {
     try {
-      await superagent.put(`${url}/auction/open`);
+      await superagent.put(`${url}${endpoint}`);
     } catch (err) {
       expect(err.status).toEqual(400);
       expect(err.response.text).toEqual(
@@ -75,7 +83,7 @@ describe("Opening a new auction", () => {
   test("It should return a 400 error if the name is already taken", async () => {
     try {
       await superagent
-        .put(`${url}/auction/open`)
+        .put(`${url}${endpoint}`)
         .send({ auction_name: "Open auction" });
     } catch (err) {
       expect(err.status).toEqual(400);
@@ -87,7 +95,7 @@ describe("Opening a new auction", () => {
 
   test("It should get back an auction object on success", async () => {
     const res = await superagent
-      .put(`${url}/auction/open`)
+      .put(`${url}${endpoint}`)
       .send({ auction_name: "My auction" });
     const body = JSON.parse(res.text);
     expect(res.status).toEqual(201);
