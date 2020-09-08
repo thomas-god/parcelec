@@ -107,6 +107,48 @@ export async function openNewAuction(
 }
 
 /**
+ * Add a user by its username to the list of user of an open session.
+ * Username must be unique.
+ * @param req HTTP request
+ * @param res HTTP response
+ */
+export async function registerNewUser(
+  req: express.Request,
+  res: express.Response
+): Promise<void> {
+  try {
+    // Payload checks
+    if (!req.params.auction_id)
+      throw new CustomError("Error, no auction_id provided");
+    if (!req.body.username)
+      throw new CustomError("Error, no username provided");
+
+    // DB checks
+    const auction = await getAuction(req.params.auction_id);
+    if (!auction)
+      throw new CustomError(
+        "Error, the auction_id does not correspond to an existing auction",
+        404
+      );
+    if (auction.status !== "Open")
+      throw new CustomError("Error, the auction is not open for registration");
+    if (!checkUsername(req.params.auction_id, req.body.username))
+      throw new CustomError("Error, the username already exist", 409);
+
+    // Insertion
+    const user_id = uuidv4();
+    await db.query(
+      "INSERT INTO users (id, auction_id, name) VALUES ($1, $2, $3)",
+      [user_id, req.params.auction_id, req.body.username]
+    );
+    res.status(201).json({ user_id: user_id });
+  } catch (error) {
+    res.status(error.code).end(error.msg);
+    return;
+  }
+}
+
+/**
  * Start a session (i.e. put its status to 'Running') provided its ID.
  * @param req HTTP request
  * @param res HTTP response
@@ -146,48 +188,6 @@ export async function startExistingAuction(
     res.end();
   } catch (error) {
     res.status(error.code).end(error.msg);
-  }
-}
-
-/**
- * Add a user by its username to the list of user of an open session.
- * Username must be unique.
- * @param req HTTP request
- * @param res HTTP response
- */
-export async function registerNewUser(
-  req: express.Request,
-  res: express.Response
-): Promise<void> {
-  try {
-    // Payload checks
-    if (!req.params.auction_id)
-      throw new CustomError("Error, no auction_id provided");
-    if (!req.body.username)
-      throw new CustomError("Error, no username provided");
-
-    // DB checks
-    const auction = await getAuction(req.params.auction_id);
-    if (!auction)
-      throw new CustomError(
-        "Error, the auction_id does not correspond to an existing auction",
-        404
-      );
-    if (auction.status !== "Open")
-      throw new CustomError("Error, the auction is not open for registration");
-    if (!checkUsername(req.params.auction_id, req.body.username))
-      throw new CustomError("Error, the username already exist", 409);
-
-    // Insertion
-    const user_id = uuidv4();
-    await db.query(
-      "INSERT INTO users (id, auction_id, name) VALUES ($1, $2, $3)",
-      [user_id, req.params.auction_id, req.body.username]
-    );
-    res.status(201).json({ user_id: user_id });
-  } catch (error) {
-    res.status(error.code).end(error.msg);
-    return;
   }
 }
 
