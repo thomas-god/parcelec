@@ -146,31 +146,28 @@ export async function registerNewUser(
 ): Promise<void> {
   try {
     // Payload checks
-    if (!req.body.auction_id)
-      throw new CustomError("Error, no auction_id provided", 400);
+    if (!req.params.auction_id)
+      throw new CustomError("Error, no auction_id provided");
     if (!req.body.username)
-      throw new CustomError("Error, no username provided", 400);
+      throw new CustomError("Error, no username provided");
 
     // DB checks
-    const auction = await getAuction(req.body.auction_id);
+    const auction = await getAuction(req.params.auction_id);
     if (!auction)
       throw new CustomError(
         "Error, the auction_id does not correspond to an existing auction",
         404
       );
     if (auction.status !== "Open")
-      throw new CustomError(
-        "Error, the auction is not open for registration",
-        403
-      );
-    if (!checkUsername(req.body.auction_id, req.body.username))
+      throw new CustomError("Error, the auction is not open for registration");
+    if (!checkUsername(req.params.auction_id, req.body.username))
       throw new CustomError("Error, the username already exist", 409);
 
     // Insertion
     const user_id = uuidv4();
     await db.query(
       "INSERT INTO users (id, auction_id, name) VALUES ($1, $2, $3)",
-      [user_id, req.body.auction_id, req.body.username]
+      [user_id, req.params.auction_id, req.body.username]
     );
     res.status(201).json({ user_id: user_id });
   } catch (error) {
@@ -296,7 +293,6 @@ const router = express.Router();
 
 router.get("/list_open", getOpenAuctions);
 router.put("/open", openNewAuction);
-router.put("/register_user", registerNewUser);
-router.put("/start", startExistingAuction);
+router.put("/:auction_id/register_user", registerNewUser);
 
 export default router;

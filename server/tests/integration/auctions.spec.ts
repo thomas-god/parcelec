@@ -107,7 +107,7 @@ describe("Opening a new auction", () => {
 });
 
 /**
- * PUT /auction/register_user
+ * PUT /auction/:auction_id/register_user
  */
 describe("Registering a new user to an auction", () => {
   const endpoint = "/auction/register_user";
@@ -115,20 +115,19 @@ describe("Registering a new user to an auction", () => {
     await prepareDB();
   });
 
-  it("Should return error 400 when no credentials are provided", async () => {
+  test("Should return error 404 when no credentials are provided", async () => {
     try {
-      await superagent.put(`${url}${endpoint}`);
+      await superagent.put(`${url}/auction/register_user`);
     } catch (err) {
-      expect(err.status).toEqual(400);
-      expect(err.response.text).toEqual("Error, no auction_id provided");
+      expect(err.status).toEqual(404);
     }
   });
 
-  it("Should return error 404 when the auction_id does not correspond to an existing auction", async () => {
+  test("Should error when the auction_id does not correspond to an existing auction", async () => {
     try {
       await superagent
-        .put(`${url}${endpoint}`)
-        .send({ auction_id: uuid(), username: "User" });
+        .put(`${url}/auction/${uuid()}/register_user`)
+        .send({ username: "User" });
     } catch (err) {
       expect(err.status).toEqual(404);
       expect(err.response.text).toEqual(
@@ -137,58 +136,56 @@ describe("Registering a new user to an auction", () => {
     }
   });
 
-  it("Should return error 403 when the auction_id correspond to a running auction", async () => {
+  test("Should error when the auction_id correspond to a running auction", async () => {
     try {
       await superagent
-        .put(`${url}${endpoint}`)
-        .send({ auction_id: auctions[1].id, username: "User" });
+        .put(`${url}/auction/${auctions[1].id}/register_user`)
+        .send({ username: "User" });
     } catch (err) {
-      expect(err.status).toEqual(403);
+      expect(err.status).toEqual(400);
       expect(err.response.text).toEqual(
         "Error, the auction is not open for registration"
       );
     }
   });
 
-  it("Should return error 403 when the auction_id correspond to a closed auction", async () => {
+  test("Should error when the auction_id correspond to a closed auction", async () => {
     try {
       await superagent
-        .put(`${url}${endpoint}`)
-        .send({ auction_id: auctions[2].id, username: "User" });
+        .put(`${url}/auction/${auctions[2].id}/register_user`)
+        .send({ username: "User" });
     } catch (err) {
-      expect(err.status).toEqual(403);
+      expect(err.status).toEqual(400);
       expect(err.response.text).toEqual(
         "Error, the auction is not open for registration"
       );
     }
   });
 
-  it("Should a return a 400 error when no username is provided", async () => {
+  test("Should error when no username is provided", async () => {
     try {
-      await superagent
-        .put(`${url}${endpoint}`)
-        .send({ auction_id: auctions[0].id, username: "User" });
+      await superagent.put(`${url}/auction/${auctions[0].id}/register_user`);
     } catch (err) {
       expect(err.status).toEqual(400);
       expect(err.response.text).toEqual("Error, no username provided");
     }
   });
 
-  it("Should a return a uuid_v4 user_id on successful registration", async () => {
+  test("Should return a uuid_v4 user_id on successful registration", async () => {
     const res = await superagent
-      .put(`${url}${endpoint}`)
-      .send({ auction_id: auctions[0].id, username: "User" });
+      .put(`${url}/auction/${auctions[0].id}/register_user`)
+      .send({ username: "User" });
     const body = JSON.parse(res.text);
     expect(res.status).toEqual(201);
     expect(body).toHaveProperty("user_id");
     expect(uuidValidate(body.user_id)).toBe(true);
   });
 
-  it("Should return error 409 when we try to a register a user whose name already exists", async () => {
+  test("Should error when we try to register a user whose name already exists", async () => {
     try {
       await superagent
-        .put(`${url}${endpoint}`)
-        .send({ auction_id: auctions[0].id, username: "User" });
+        .put(`${url}/auction/${auctions[0].id}/register_user`)
+        .send({ username: "User" });
     } catch (err) {
       expect(err.status).toEqual(409);
       expect(err.response.text).toEqual(
