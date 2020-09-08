@@ -309,5 +309,6 @@ const router = express.Router();
 router.get("/list_open", getOpenAuctions);
 router.put("/open", openNewAuction);
 router.put("/:auction_id/register_user", registerNewUser);
+router.put("/:auction_id/start", startExistingAuction);
 
 export default router;
