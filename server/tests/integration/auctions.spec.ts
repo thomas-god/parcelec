@@ -1,5 +1,5 @@
 import db from "../../src/db/index";
-import { v4 as uuid } from "uuid";
+import { v4 as uuid, validate as uuidValidate } from "uuid";
 import superagent from "superagent";
 
 const url = process.env.API_URL;
@@ -15,6 +15,7 @@ function mapAuction(auction) {
 }
 
 async function clearDb() {
+  await db.query("DELETE FROM users CASCADE", []);
   await db.query("DELETE FROM auctions CASCADE", []);
 }
 async function populateDb() {
@@ -102,5 +103,95 @@ describe("Opening a new auction", () => {
     expect(body.name).toEqual("My auction");
     expect(body.status).toEqual("Open");
     expect(body).toHaveProperty("id");
+  });
+});
+
+/**
+ * PUT /auction/register_user
+ */
+describe("Registering a new user to an auction", () => {
+  const endpoint = "/auction/register_user";
+  beforeAll(async () => {
+    await prepareDB();
+  });
+
+  it("Should return error 400 when no credentials are provided", async () => {
+    try {
+      await superagent.put(`${url}${endpoint}`);
+    } catch (err) {
+      expect(err.status).toEqual(400);
+      expect(err.response.text).toEqual("Error, no auction key provided");
+    }
+  });
+
+  it("Should return error 404 when the auction_id does not correspond to an existing auction", async () => {
+    try {
+      await superagent.put(`${url}${endpoint}`).send({ auction_id: "toto" });
+    } catch (err) {
+      expect(err.status).toEqual(404);
+      expect(err.response.text).toEqual(
+        "Error, the auction_id does not correspond to an existing auction"
+      );
+    }
+  });
+
+  it("Should return error 403 when the auction_id correspond to a running auction", async () => {
+    try {
+      await superagent
+        .put(`${url}${endpoint}`)
+        .send({ auction_id: auctions[1].id });
+    } catch (err) {
+      expect(err.status).toEqual(403);
+      expect(err.response.text).toEqual(
+        "Error, the auction_id corresponds to a running auction"
+      );
+    }
+  });
+
+  it("Should return error 403 when the auction_id correspond to a closed auction", async () => {
+    try {
+      await superagent
+        .put(`${url}${endpoint}`)
+        .send({ auction_id: auctions[2].id });
+    } catch (err) {
+      expect(err.status).toEqual(403);
+      expect(err.response.text).toEqual(
+        "Error, the auction_id corresponds to a closed auction"
+      );
+    }
+  });
+
+  it("Should a return a 400 error when no username is provided", async () => {
+    try {
+      await superagent
+        .put(`${url}${endpoint}`)
+        .send({ auction_id: auctions[0].id, username: "User" });
+    } catch (err) {
+      expect(err.status).toEqual(400);
+      expect(err.response.text).toEqual("Error, no username provided");
+    }
+  });
+
+  it("Should a return a uuid_v4 user_id on successful registration", async () => {
+    const res = await superagent
+      .put(`${url}${endpoint}`)
+      .send({ auction_id: auctions[0].id, username: "User" });
+    const body = JSON.parse(res.text);
+    expect(res.status).toEqual(201);
+    expect(body).toHaveProperty("user_id");
+    expect(uuidValidate(body.user_id)).toBe(true);
+  });
+
+  it("Should return error 409 when we try to a register a user whose name already exists", async () => {
+    try {
+      await superagent
+        .put(`${url}${endpoint}`)
+        .send({ auction_id: auctions[0].id, username: "User" });
+    } catch (err) {
+      expect(err.status).toEqual(409);
+      expect(err.response.text).toEqual(
+        "Error, a user with this username is already registered to the auction"
+      );
+    }
   });
 });
