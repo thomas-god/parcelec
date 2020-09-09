@@ -27,6 +27,13 @@ export interface User {
   user_id: string;
 }
 
+export interface Bid {
+  auction_id: string;
+  user_id: string;
+  auction_step_no: string;
+  bid_value: number;
+}
+
 export interface ClientMessage {
   username: string;
   date: Date;
@@ -348,6 +355,27 @@ async function checkUsername(
     ])
   ).rows;
   return users.length > 0;
+}
+
+async function getAuctionCurrentStep(auction_id: string): Promise<Number> {
+  const res = (
+    await db.query(
+      "SELECT step_no FROM auctions_steps WHERE auction_id=$1 AND status='open'",
+      [auction_id]
+    )
+  ).rows;
+  return res.length === 1 ? (res[0].step_no as Number) : null;
+}
+
+async function getBid(auction_id: string, user_id: string): Promise<Bid> {
+  const step_no = await getAuctionCurrentStep(auction_id);
+  const res = (
+    await db.query(
+      "SELECT * FROM bids WHERE auction_id=$1 AND user_id=$2 AND auction_step_no=$3",
+      [auction_id, user_id, step_no]
+    )
+  ).rows;
+  return res.length === 1 ? (res[0] as Bid) : null;
 }
 
 const router = express.Router();
