@@ -21,9 +21,10 @@ async function clearDb() {
   await db.query("DELETE FROM auctions CASCADE", []);
 }
 async function populateDb() {
+  // Insert auctions
   await Promise.all(
-    auctions.map((auction) => {
-      db.query(
+    auctions.map(async (auction) => {
+      await db.query(
         "INSERT INTO auctions (id, name, status) VALUES ($1, $2, $3)",
         mapAuction(auction)
       );
