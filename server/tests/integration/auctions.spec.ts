@@ -11,11 +11,17 @@ const auctions = [
   { id: uuid(), name: "Close auction", status: "Close" },
 ];
 
+const users = [
+  { auction_id: auctions[1].id, name: "User 1", id: uuid() },
+  { auction_id: auctions[1].id, name: "User 2", id: uuid() },
+];
+
 function mapAuction(auction) {
   return [auction.id, auction.name, auction.status];
 }
 
 async function clearDb() {
+  await db.query("DELETE FROM bids CASCADE", []);
   await db.query("DELETE FROM auctions_steps CASCADE", []);
   await db.query("DELETE FROM users CASCADE", []);
   await db.query("DELETE FROM auctions CASCADE", []);
@@ -29,6 +35,22 @@ async function populateDb() {
         mapAuction(auction)
       );
     })
+  );
+
+  // Insert Users
+  await Promise.all(
+    users.map(async (user) => {
+      await db.query(
+        "INSERT INTO users (id, name, auction_id) VALUES ($1, $2, $3)",
+        [user.id, user.name, user.auction_id]
+      );
+    })
+  );
+
+  // Insert one auction step for the running auction
+  await db.query(
+    "INSERT INTO auctions_steps (auction_id, step_no, status) VALUES ($1, $2, $3)",
+    [auctions[1].id, 0, "open"]
   );
 }
 
@@ -323,5 +345,103 @@ describe("Retrieving auction infos", () => {
     expect(body.status).toEqual("Running");
     expect(body.n_users).toEqual(2);
     expect(body.step_no).toEqual(0);
+  });
+});
+
+/**
+ * PUT /auction/:auction_id/bid
+ */
+describe("Submitting a bid to an open auction", () => {
+  beforeAll(async () => {
+    await prepareDB();
+  });
+
+  test("Should error if no auction id is provided", async () => {
+    try {
+      await superagent.put(`${url}/auction/bid`);
+    } catch (error) {
+      expect(error.status).toEqual(404);
+    }
+  });
+
+  test("Should error when no matching auction is found", async () => {
+    try {
+      await superagent.put(`${url}/auction/${uuid()}/bid`);
+    } catch (error) {
+      expect(error.status).toEqual(404);
+    }
+  });
+
+  test("Should error when trying to bid on an open auction", async () => {
+    try {
+      await superagent.put(`${url}/auction/${auctions[0].id}/bid`);
+    } catch (error) {
+      expect(error.status).toEqual(400);
+      expect(error.response.text).toEqual(
+        "Error, the auction is not running and bids cannot be received"
+      );
+    }
+  });
+
+  test("Should error when trying to bid on a closed auction", async () => {
+    try {
+      await superagent.put(`${url}/auction/${auctions[2].id}/bid`);
+    } catch (error) {
+      expect(error.status).toEqual(400);
+      expect(error.response.text).toEqual(
+        "Error, the auction is not running and bids cannot be received"
+      );
+    }
+  });
+
+  test("Should error when no user id is provided", async () => {
+    try {
+      await superagent.put(`${url}/auction/${auctions[1].id}/bid`);
+    } catch (error) {
+      expect(error.status).toEqual(400);
+      expect(error.response.text).toEqual("Error, no user_id specified");
+    }
+  });
+
+  test("Should error when a non registered user submit a bid", async () => {
+    try {
+      await superagent
+        .put(`${url}/auction/${auctions[1].id}/bid`)
+        .send({ user_id: uuid() });
+    } catch (error) {
+      expect(error.status).toEqual(400);
+      expect(error.response.text).toEqual(
+        "Error, no registered user found with this ID"
+      );
+    }
+  });
+
+  test("Should error when no bid value is provided", async () => {
+    try {
+      await superagent
+        .put(`${url}/auction/${auctions[1].id}/bid`)
+        .send({ user_id: users[0].id });
+    } catch (error) {
+      expect(error.status).toEqual(400);
+      expect(error.response.text).toEqual("Error, no bid value provided");
+    }
+  });
+
+  test("Should success when a registered user tries to bid", async () => {
+    const res = await superagent
+      .put(`${url}/auction/${auctions[1].id}/bid`)
+      .send({ user_id: users[0].id, bid: 10 });
+    expect(res.status).toEqual(201);
+  });
+
+  test("Should error when a registered user tries to bid again", async () => {
+    try {
+      await superagent
+        .put(`${url}/auction/${auctions[1].id}/bid`)
+        .send({ user_id: users[0].id, bid: 10 });
+    } catch (error) {
+      expect(error.status).toEqual(400);
+      expect(error.response.text).toEqual("Error, this user has already bid");
+    }
   });
 });
