@@ -235,10 +235,59 @@ export async function startExistingAuction(
       auction_id,
     ]);
     await db.query(
-      "INSERT INTO auctions_steps(auction_id, step_no, status) VALUES ($1, $2, $3)",
+      "INSERT INTO auctions_steps (auction_id, step_no, status) VALUES ($1, $2, $3)",
       [auction_id, 0, "open"]
     );
     res.end();
+  } catch (error) {
+    res.status(error.code).end(error.msg);
+  }
+}
+
+/**
+ * Submit a bid to an open auction's step
+ * @param req HTTP request
+ * @param res HTTP response
+ */
+export async function submitBid(
+  req: express.Request,
+  res: express.Response
+): Promise<void> {
+  try {
+    // Check auction
+    const auction_id = req.params.auction_id;
+    const auction = await getAuction(auction_id);
+    if (auction === null)
+      throw new CustomError(
+        "Error, the auction ID does not match an existing auction",
+        404
+      );
+    if (auction.status !== "Running")
+      throw new CustomError(
+        "Error, the auction is not running and bids cannot be received"
+      );
+
+    // Check user
+    if (!req.body.user_id) throw new CustomError("Error, no user_id specified");
+    const user_id = req.body.user_id;
+    const user = await getUser(auction_id, user_id);
+    if (user === null)
+      throw new CustomError("Error, no registered user found with this ID");
+
+    // Check bid value
+    if (!req.body.bid) throw new CustomError("Error, no bid value provided");
+
+    // Check if the user has already bid
+    const bid = await getBid(auction_id, user_id);
+    if (bid !== null) throw new CustomError("Error, this user has already bid");
+
+    // Insert bid
+    const step_no = await getAuctionCurrentStep(auction_id);
+    await db.query(
+      "INSERT INTO bids (user_id, auction_id ,auction_step_no, bid_value) VALUES ($1, $2, $3, $4)",
+      [user_id, auction_id, step_no, req.body.bid]
+    );
+    res.status(201).end();
   } catch (error) {
     res.status(error.code).end(error.msg);
   }
@@ -385,5 +434,6 @@ router.put("/open", openNewAuction);
 router.get("/:auction_id", getAuctionInfos);
 router.put("/:auction_id/register_user", registerNewUser);
 router.put("/:auction_id/start", startExistingAuction);
+router.put("/:auction_id/bid", submitBid);
 
 export default router;
