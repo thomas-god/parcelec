@@ -437,6 +437,34 @@ async function getBid(auction_id: string, user_id: string): Promise<Bid> {
   return res.length === 1 ? (res[0] as Bid) : null;
 }
 
+/**
+ * Return all the bids for the active step of an auction
+ * @param auction_id ID of the auction
+ */
+async function getAllBids(auction_id: string): Promise<Bid[]> {
+  const step_no = await getAuctionCurrentStep(auction_id);
+  const res = (
+    await db.query(
+      "SELECT * FROM bids WHERE auction_id=$1 AND auction_step_no=$2",
+      [auction_id, step_no]
+    )
+  ).rows as Bid[];
+  return res.length > 0 ? res : null;
+}
+
+/**
+ * Find the largest bid of an auction step
+ * @param bids Array of bids
+ */
+function findMaxBid(bids: Bid[]): Number {
+  if (bids.length === 0) return null;
+  let max = bids[0].bid_value;
+  for (let i = 0; i < bids.length; i++) {
+    if (bids[i].bid_value > max) max = bids[i].bid_value;
+  }
+  return max;
+}
+
 const router = express.Router();
 
 router.get("/list_open", getOpenAuctions);
