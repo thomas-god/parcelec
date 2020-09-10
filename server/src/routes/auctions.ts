@@ -294,6 +294,58 @@ export async function submitBid(
 }
 
 /**
+ * Do the clearing of the current auction step
+ * @param req HTTP request
+ * @param res HTTP response
+ */
+export async function clearAuctionStep(
+  req: express.Request,
+  res: express.Response
+): Promise<void> {
+  try {
+    // Check auction
+    const auction_id = req.params.auction_id;
+    const auction = await getAuction(auction_id);
+    if (auction === null)
+      throw new CustomError("Error, cannot find an auction with this ID", 404);
+    if (auction.status !== "Running")
+      throw new CustomError(
+        "Error, the auction is not running and cannot be cleared"
+      );
+
+    // Check bids
+    const step_no = await getAuctionCurrentStep(auction_id);
+    const bids = await getAllBids(auction_id);
+    if (bids === null)
+      throw new CustomError(
+        "Error, this auction step does not contain any bids"
+      );
+
+    // Clear the auction
+    const clearing_value = findMaxBid(bids);
+    await db.query(
+      "UPDATE auctions_steps SET status='close', clearing_price=$1 WHERE auction_id=$2 AND step_no=$3",
+      [clearing_value, auction_id, step_no]
+    );
+    await db.query(
+      "INSERT INTO auctions_steps (auction_id, step_no, status) VALUES ($1, $2, $3)",
+      [auction_id, step_no + 1, "close"]
+    );
+    res.json({
+      current_step_no: step_no,
+      clearing_value: clearing_value,
+      next_step_no: step_no + 1,
+    });
+  } catch (error) {
+    if (error instanceof CustomError) {
+      res.status(error.code).end(error.msg);
+    } else {
+      res.status(400).end(error.message);
+    }
+  }
+}
+
+/**
  * Callback when connecting a new WebSocket to check client's credentials
  * @param socket User WebSocket
  * @param request HTTP request
@@ -473,5 +525,6 @@ router.get("/:auction_id", getAuctionInfos);
 router.put("/:auction_id/register_user", registerNewUser);
 router.put("/:auction_id/start", startExistingAuction);
 router.put("/:auction_id/bid", submitBid);
+router.put("/:auction_id/clearing", clearAuctionStep);
 
 export default router;
