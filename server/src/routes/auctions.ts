@@ -410,14 +410,14 @@ async function checkUsername(
  * Get the number of the active step (i.e. with an 'open' status)
  * @param auction_id ID of the auction
  */
-async function getAuctionCurrentStep(auction_id: string): Promise<Number> {
+async function getAuctionCurrentStep(auction_id: string): Promise<number> {
   const res = (
     await db.query(
       "SELECT step_no FROM auctions_steps WHERE auction_id=$1 AND status='open'",
       [auction_id]
     )
   ).rows;
-  return res.length === 1 ? (res[0].step_no as Number) : null;
+  return res.length === 1 ? (res[0].step_no as number) : null;
 }
 
 /**
