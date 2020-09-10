@@ -406,6 +406,10 @@ async function checkUsername(
   return users.length > 0;
 }
 
+/**
+ * Get the number of the active step (i.e. with an 'open' status)
+ * @param auction_id ID of the auction
+ */
 async function getAuctionCurrentStep(auction_id: string): Promise<Number> {
   const res = (
     await db.query(
@@ -416,6 +420,12 @@ async function getAuctionCurrentStep(auction_id: string): Promise<Number> {
   return res.length === 1 ? (res[0].step_no as Number) : null;
 }
 
+/**
+ * Get a user's bid for the active step of an auction. Return null if the
+ * user has not bid yet.
+ * @param auction_id ID of the auction
+ * @param user_id ID of the user
+ */
 async function getBid(auction_id: string, user_id: string): Promise<Bid> {
   const step_no = await getAuctionCurrentStep(auction_id);
   const res = (
