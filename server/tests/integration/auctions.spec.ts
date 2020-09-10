@@ -445,3 +445,73 @@ describe("Submitting a bid to an open auction", () => {
     }
   });
 });
+
+/**
+ * PUT /auction/:auction_id/clearing
+ */
+describe("Clearing an auction step", () => {
+  beforeAll(async () => {
+    await prepareDB();
+  });
+
+  test("Should error when no auction_id is provided", async () => {
+    try {
+      await superagent.put(`${url}/auction/clearing`);
+    } catch (error) {
+      expect(error.status).toEqual(404);
+    }
+  });
+
+  test("Should error if no auction id found", async () => {
+    try {
+      await superagent.put(`${url}/auction/${uuid()}/clearing`);
+    } catch (error) {
+      expect(error.status).toEqual(404);
+    }
+  });
+
+  test("Should error when trying to clear an open auction", async () => {
+    try {
+      await superagent.put(`${url}/auction/${auctions[0].id}/clearing`);
+    } catch (error) {
+      expect(error.status).toEqual(400);
+      expect(error.response.text).toEqual(
+        "Error, the auction is not running and cannot be cleared"
+      );
+    }
+  });
+
+  test("Should error when trying to clear a closed auction", async () => {
+    try {
+      await superagent.put(`${url}/auction/${auctions[2].id}/clearing`);
+    } catch (error) {
+      expect(error.status).toEqual(400);
+      expect(error.response.text).toEqual(
+        "Error, the auction is not running and cannot be cleared"
+      );
+    }
+  });
+  test("Should error when the auction step has 0 bids", async () => {
+    try {
+      await superagent.put(`${url}/auction/${auctions[1].id}/clearing`);
+    } catch (error) {
+      expect(error.status).toEqual(400);
+      expect(error.response.text).toEqual(
+        "Error, this auction step does not contain any bids"
+      );
+    }
+  });
+
+  test("Should success when clearing a step with at least 2 bids", async () => {
+    await superagent
+      .put(`${url}/auction/${auctions[1].id}/bid`)
+      .send({ user_id: users[0].id, bid: 10 });
+    const res = await superagent.put(
+      `${url}/auction/${auctions[1].id}/clearing`
+    );
+    expect(res.status).toEqual(200);
+    expect(res.body.current_step_no).toEqual(0);
+    expect(res.body.clearing_value).toEqual(10);
+    expect(res.body.next_step_no).toEqual(1);
+  });
+});
