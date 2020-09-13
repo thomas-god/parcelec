@@ -14,11 +14,12 @@ export const state: UserState = {
 
 // ------------------------ ACTIONS -------------------------
 export const actions: ActionTree<UserState, RootState> = {
-  setUsername({ commit }, payload: string): void {
-    commit("SET_USERNAME", payload);
+  setUsername({ commit }, username: string): void {
+    commit("SET_USERNAME", username);
+    commit("auction/PUSH_NEW_USER", username, { root: true });
   },
-  setUserID({ commit, dispatch }, payload: string): void {
-    commit("SET_USER_ID", payload);
+  setUserID({ state, commit, dispatch }, user_id: string): void {
+    commit("SET_USER_ID", user_id);
     dispatch("webSocket/openWebSocket", null, { root: true });
   },
 };
