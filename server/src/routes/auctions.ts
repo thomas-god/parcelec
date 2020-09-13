@@ -10,6 +10,7 @@ import {
   getBid,
   getAllBids,
   getAuctionCurrentStep,
+  getAuctionUsers,
 } from "./utils";
 
 class CustomError extends Error {
@@ -124,8 +125,8 @@ export async function getAuctionInfos(
 }
 
 /**
- * Add a user by its username to the list of user of an open session.
- * Username must be unique.
+ * Register a new user by its username to an open session.
+ * Username must be unique within the auction.
  * @param req HTTP request
  * @param res HTTP response
  */
@@ -135,24 +136,21 @@ export async function registerNewUser(
 ): Promise<void> {
   try {
     // Payload checks
-    if (!req.params.auction_id)
-      throw new CustomError("Error, no auction_id provided");
-    if (!req.body.username)
+    if (req.body.username === null)
       throw new CustomError("Error, no username provided");
+    const username = req.body.username;
 
     // DB checks
-    const auction = await getAuction(req.params.auction_id);
-    if (!auction)
+    const auction_id = req.params.auction_id;
+    const auction = await getAuction(auction_id);
+    if (auction === null)
       throw new CustomError(
         "Error, the auction_id does not correspond to an existing auction",
         404
       );
     if (auction.status !== "Open")
       throw new CustomError("Error, the auction is not open for registration");
-    const canInsertUsername = await checkUsername(
-      req.params.auction_id,
-      req.body.username
-    );
+    const canInsertUsername = await checkUsername(auction_id, username);
     if (!canInsertUsername)
       throw new CustomError(
         "Error, a user with this username is already registered to the auction",
@@ -163,9 +161,14 @@ export async function registerNewUser(
     const user_id = uuidv4();
     await db.query(
       "INSERT INTO users (id, auction_id, name) VALUES ($1, $2, $3)",
-      [user_id, req.params.auction_id, req.body.username]
+      [user_id, auction_id, username]
     );
     res.status(201).json({ user_id: user_id });
+    // Notify all users that a new user has joined
+    sendUpdateToAuctionUsers(auction_id, "new_user", {
+      username: username,
+      nb_users: (await getAuctionUsers(auction_id)).length,
+    });
   } catch (error) {
     res.status(error.code).end(error.msg);
     return;
