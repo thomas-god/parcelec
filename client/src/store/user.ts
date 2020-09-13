@@ -17,8 +17,9 @@ export const actions: ActionTree<UserState, RootState> = {
   setUsername({ commit }, payload: string): void {
     commit("SET_USERNAME", payload);
   },
-  setUserID({ commit }, payload: string): void {
+  setUserID({ commit, dispatch }, payload: string): void {
     commit("SET_USER_ID", payload);
+    dispatch("webSocket/openWebSocket", null, { root: true });
   },
 };
 
