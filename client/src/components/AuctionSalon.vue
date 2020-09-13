@@ -1,7 +1,7 @@
 <template>
   <div>
     <ul class="message_messages">
-      <li v-for="msg in msgs" :key="msg.date" class="message_msg">
+      <li v-for="msg in messages" :key="msg.date" class="message_msg">
         <span class="message_msg_user">{{ msg.username }} :</span>
         <span class="message_msg_text">{{ msg.data }} </span>
         <span class="message_msg_hour">{{ getHourFromDate(msg.date) }} </span>
@@ -14,10 +14,10 @@
           type="text"
           id="message_add_msg_input"
           v-model="new_msg"
-          v-on:keyup.enter="sendMsg()"
+          v-on:keyup.enter="postMsg()"
           autofocus
         />
-        <button @click="sendMsg()">Send</button>
+        <button @click="postMsg()">Send</button>
       </div>
     </div>
   </div>
@@ -26,82 +26,30 @@
 <script lang="ts">
 import { Component, Prop, Vue } from "vue-property-decorator";
 import { State, Action, Getter, namespace } from "vuex-class";
+import { ClientMessage } from "../store/webSocket";
 
-const userModule = namespace("user");
-const auctionModule = namespace("auction");
-
-interface ClientMessage {
-  username: string;
-  data: string;
-  date: string;
-}
+const webSocketModule = namespace("webSocket");
 
 @Component
 export default class Messages extends Vue {
   private socket!: WebSocket;
-  @userModule.Getter username!: string;
-  @userModule.Getter user_id!: string;
-  @auctionModule.Getter auction_id!: string;
-  @auctionModule.Getter auction_name!: string;
+  @webSocketModule.Action sendMsg!: (payload: string) => void;
+  @webSocketModule.State messages!: ClientMessage[];
 
-  openWebSocket(): void {
-    // Create WebSocket connection.
-    this.socket = new WebSocket(
-      `ws://localhost:3000/auction?auction_id=${this.auction_id}&user_id=${this.user_id}&username=${this.username}`
-    );
-
-    this.socket.addEventListener("close", event => {
-      console.log("closing", event.reason);
-    });
-
-    // Listen for messages
-    this.socket.addEventListener("message", event => {
-      try {
-        const message = JSON.parse(event.data);
-        if (message.reason === "message") {
-          this.addMsg(message);
-        }
-      } catch (error) {
-        console.log(error);
-      }
-    });
-  }
-
-  /**
-   * Helper function to get the correct payload for WebSocket exchanges
-   */
-  getPayload(reason: string, data: any) {
-    return JSON.stringify({
-      username: this.username,
-      reason: reason,
-      credentials: {
-        auction_id: this.auction_id,
-        user_id: this.user_id
-      },
-      data: data
-    });
-  }
-
-  created(): void {
-    this.openWebSocket();
-  }
-
-  // Messages from chatroom
-  msgs: ClientMessage[] = [];
-  addMsg(msg: ClientMessage): void {
-    const new_msg = { username: msg.username, date: msg.date, data: msg.data };
-    this.msgs.push(new_msg);
-  }
-
-  // Post new message
   new_msg = "";
-  sendMsg(): void {
+  /**
+   * Post a new message via websocket
+   */
+  postMsg(): void {
     if (this.new_msg) {
-      this.socket.send(this.getPayload("message", this.new_msg));
+      this.sendMsg(this.new_msg);
       this.new_msg = "";
     }
   }
 
+  /**
+   * Format the date
+   */
   getHourFromDate(date_string: string): string {
     const date = new Date(date_string);
     return `${String(date.getHours()).padStart(2, "0")}:${String(
