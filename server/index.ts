@@ -3,7 +3,8 @@ import ws from "ws";
 import cors from "cors";
 import morgan from "morgan";
 import user from "./src/routes/user";
-import auction, { onConnectionCallback } from "./src/routes/auctions";
+import auction from "./src/routes/auctions";
+import { onConnectionCallback } from "./src/routes/websocket";
 
 const app = express();
 const port = 3000;
