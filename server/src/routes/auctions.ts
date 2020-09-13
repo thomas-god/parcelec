@@ -136,9 +136,9 @@ export async function getAuctionInfos(
       name: auction.name,
       status: auction.status,
     };
-    body.n_users = (
-      await db.query("SELECT 1 FROM users WHERE auction_id=$1", [auction_id])
-    ).rowCount;
+    body.users = (
+      await db.query("SELECT name FROM users WHERE auction_id=$1", [auction_id])
+    ).rows.map((user) => user.name);
 
     if (auction.status === "Running") {
       body.step_no = (
