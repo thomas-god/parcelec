@@ -2,7 +2,11 @@
   <div>
     <p>Choisissez une enchère à rejoindre :</p>
     <ul class="auctions_list">
-      <li v-for="a in open_auctions" :key="a.name" @click="setAuction(a)">
+      <li
+        v-for="a in open_auctions"
+        :key="a.name"
+        @click="setAuction({ ...a, status: 'Open' })"
+      >
         <span>{{ a.name }}</span>
       </li>
       <li v-if="open_auctions.length === 0">
@@ -63,7 +67,8 @@ export default class User extends Vue {
     if (res.status === 200) {
       this.new_auction_name_err = false;
       this.new_auction_name_err_msg = "";
-      this.setAuction(await res.json());
+      const body = await res.json();
+      this.setAuction({ ...body, status: "Open" });
     } else {
       this.new_auction_name_err = true;
       this.new_auction_name_err_msg = await res.text();

@@ -26,7 +26,9 @@ export const actions: ActionTree<AuctionState, RootState> = {
 // ------------------------ MUTATIONS -------------------------
 export const mutations: MutationTree<AuctionState> = {
   SET_AUCTION(state, payload: Auction): void {
-    state = payload;
+    state.id = payload.id;
+    state.name = payload.name;
+    state.status = payload.status;
   },
 };
 
