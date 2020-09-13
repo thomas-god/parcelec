@@ -28,7 +28,7 @@ import { Component, Prop, Vue } from "vue-property-decorator";
 import { State, Action, Getter, namespace } from "vuex-class";
 
 const userModule = namespace("user");
-const sessionModule = namespace("session");
+const auctionModule = namespace("auction");
 
 interface ClientMessage {
   username: string;
@@ -41,21 +41,21 @@ export default class Messages extends Vue {
   private socket!: WebSocket;
   @userModule.Getter username!: string;
   @userModule.Getter user_id!: string;
-  @sessionModule.Getter session_id!: string;
-  @sessionModule.Getter session_name!: string;
+  @auctionModule.Getter auction_id!: string;
+  @auctionModule.Getter auction_name!: string;
 
   openWebSocket(): void {
     // Create WebSocket connection.
     this.socket = new WebSocket(
-      `ws://localhost:3000/auction?auction_id=${this.session_id}&user_id=${this.user_id}&username=${this.username}`
+      `ws://localhost:3000/auction?auction_id=${this.auction_id}&user_id=${this.user_id}&username=${this.username}`
     );
 
-    this.socket.addEventListener("close", (event) => {
+    this.socket.addEventListener("close", event => {
       console.log("closing", event.reason);
     });
 
     // Listen for messages
-    this.socket.addEventListener("message", (event) => {
+    this.socket.addEventListener("message", event => {
       try {
         const message = JSON.parse(event.data);
         if (message.reason === "message") {
@@ -75,10 +75,10 @@ export default class Messages extends Vue {
       username: this.username,
       reason: reason,
       credentials: {
-        auction_id: this.session_id,
-        user_id: this.user_id,
+        auction_id: this.auction_id,
+        user_id: this.user_id
       },
-      data: data,
+      data: data
     });
   }
 

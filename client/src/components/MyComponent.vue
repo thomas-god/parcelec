@@ -1,10 +1,10 @@
 <template>
   <div>
-    <SessionSelect v-if="!session.id" />
-    <UsernameSelect v-if="session.id && !username" />
-    <div v-if="session.id && username">
-      <p>Hello {{ username }}, bienvenu sur la session {{ session.name }} !</p>
-      <SessionSalon />
+    <AuctionSelect v-if="!auction.id" />
+    <UsernameSelect v-if="auction.id && !username" />
+    <div v-if="auction.id && username">
+      <p>Hello {{ username }}, bienvenu sur l'enchère {{ auction.name }} !</p>
+      <AuctionSalon />
     </div>
   </div>
 </template>
@@ -12,20 +12,20 @@
 <script lang="ts">
 import { Component, Prop, Vue } from "vue-property-decorator";
 import { State, Action, Getter, namespace } from "vuex-class";
-import { Session } from "../store/session";
-import SessionSelect from "./SessionSelect.vue";
+import { Auction } from "../store/auction";
+import AuctionSelect from "./AuctionSelect.vue";
 import UsernameSelect from "./UsernameSelect.vue";
-import SessionSalon from "./SessionSalon.vue";
+import AuctionSalon from "./AuctionSalon.vue";
 import Messages from "./Messages.vue";
 
 const userModule = namespace("user");
-const sessionModule = namespace("session");
+const auctionModule = namespace("auction");
 
 @Component({
-  components: { SessionSelect, UsernameSelect, SessionSalon },
+  components: { AuctionSelect, UsernameSelect, AuctionSalon }
 })
 export default class HelloWorld extends Vue {
   @userModule.Getter username!: string;
-  @sessionModule.Getter session!: Session;
+  @auctionModule.Getter auction!: Auction;
 }
 </script>

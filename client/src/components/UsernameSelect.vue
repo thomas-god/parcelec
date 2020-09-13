@@ -21,23 +21,23 @@
 <script lang="ts">
 import { Component, Prop, Vue } from "vue-property-decorator";
 import { State, Action, Getter, namespace } from "vuex-class";
-import { Session } from "../store/session";
+import { Auction } from "../store/auction";
 
 const userModule = namespace("user");
-const sessionModule = namespace("session");
+const auctionModule = namespace("auction");
 
 @Component
 export default class User extends Vue {
   @userModule.Action setUsername!: (payload: string) => void;
   @userModule.Action setUserID!: (payload: string) => void;
-  @sessionModule.Getter session!: Session;
+  @auctionModule.Getter auction!: Auction;
   new_username = "";
   new_username_err = false;
   new_username_err_msg = "";
 
   async addUsername() {
     const res = await fetch(
-      `http://localhost:3000/auction/${this.session.id}/register_user`,
+      `http://localhost:3000/auction/${this.auction.id}/register_user`,
       {
         method: "PUT",
         headers: { "content-type": "application/json" },
