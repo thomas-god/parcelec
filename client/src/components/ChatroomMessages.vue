@@ -1,9 +1,10 @@
 <template>
   <div>
+    <h3>Messages</h3>
     <ul class="message_messages">
-      <li v-for="msg in msgs" :key="msg.date" class="message_msg">
+      <li v-for="msg in messages" :key="msg.date" class="message_msg">
         <span class="message_msg_user">{{ msg.username }} :</span>
-        <span class="message_msg_text">{{ msg.msg }} </span>
+        <span class="message_msg_text">{{ msg.data }} </span>
         <span class="message_msg_hour">{{ getHourFromDate(msg.date) }} </span>
       </li>
     </ul>
@@ -14,9 +15,10 @@
           type="text"
           id="message_add_msg_input"
           v-model="new_msg"
-          v-on:keyup.enter="sendMsg()"
+          v-on:keyup.enter="postMsg()"
+          autofocus
         />
-        <button @click="sendMsg()">Send</button>
+        <button @click="postMsg()">Send</button>
       </div>
     </div>
   </div>
@@ -25,47 +27,29 @@
 <script lang="ts">
 import { Component, Prop, Vue } from "vue-property-decorator";
 import { State, Action, Getter, namespace } from "vuex-class";
+import { ClientMessage } from "../store/webSocket";
 
-const userModule = namespace("user");
-
-interface ClientMessage {
-  username: string;
-  message: string;
-  date: Date;
-}
+const webSocketModule = namespace("webSocket");
 
 @Component
 export default class Messages extends Vue {
-  private socket!: WebSocket;
+  @webSocketModule.Action sendMsg!: (payload: string) => void;
+  @webSocketModule.State messages!: ClientMessage[];
 
-  async created(): Promise<void> {
-    // Create WebSocket connection.
-    this.socket = new WebSocket("ws://localhost:3000");
-
-    // Listen for messages
-    this.socket.addEventListener("message", (event) => {
-      this.addMsg(event.data);
-    });
-  }
-
-  // Messages from chatroom
-  msgs: ClientMessage[] = [];
-  addMsg(msg: string): void {
-    this.msgs.push(JSON.parse(msg) as ClientMessage);
-  }
-
-  // Post new message
-  @userModule.Getter username!: string;
   new_msg = "";
-  sendMsg(): void {
+  /**
+   * Post a new message via websocket
+   */
+  postMsg(): void {
     if (this.new_msg) {
-      this.socket.send(
-        JSON.stringify({ username: this.username, msg: this.new_msg })
-      );
+      this.sendMsg(this.new_msg);
       this.new_msg = "";
     }
   }
 
+  /**
+   * Format the date
+   */
   getHourFromDate(date_string: string): string {
     const date = new Date(date_string);
     return `${String(date.getHours()).padStart(2, "0")}:${String(
@@ -85,8 +69,9 @@ export default class Messages extends Vue {
 
 .message_messages {
   padding: 0;
-  margin: auto;
+  margin: 1rem auto;
   max-width: 500px;
+  height: 300px;
 }
 
 .message_msg {
