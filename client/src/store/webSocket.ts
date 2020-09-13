@@ -4,6 +4,7 @@ import Vuex, {
   MutationTree,
   ActionTree,
   Commit,
+  ActionContext,
 } from "vuex";
 import { RootState } from "./index";
 
@@ -28,24 +29,24 @@ export const state: WebSocketState = {
 
 // ------------------------ ACTIONS -------------------------
 export const actions: ActionTree<WebSocketState, RootState> = {
-  async openWebSocket({ commit, rootState }): Promise<void> {
+  async openWebSocket(context): Promise<void> {
     // Close existing WebSocket connection
     if (state.ws?.OPEN) state.ws.close();
 
     // Open new WebSocket connection
-    const session_id = rootState.auction.id;
-    const user_id = rootState.user.user_id;
-    const username = rootState.user.username;
+    const session_id = context.rootState.auction.id;
+    const user_id = context.rootState.user.user_id;
+    const username = context.rootState.user.username;
     const socket = new WebSocket(
       `ws://localhost:3000/auction?auction_id=${session_id}&user_id=${user_id}&username=${username}`
     );
 
-    socket.addEventListener("close", () => onCloseCallback(commit));
+    socket.addEventListener("close", () => onCloseCallback(context.commit));
     socket.addEventListener("message", (event) =>
-      onMessageCallback(commit, event)
+      onMessageCallback(context, event)
     );
 
-    commit("SET_WEBSOCKET", socket);
+    context.commit("SET_WEBSOCKET", socket);
   },
   sendMsg(context, payload: string): void {
     console.log(payload);
@@ -95,11 +96,26 @@ function onCloseCallback(commit: Commit): void {
   commit("SET_WEBSOCKET", null);
 }
 
-function onMessageCallback(commit: Commit, event: any): void {
+function onMessageCallback(
+  context: ActionContext<WebSocketState, RootState>,
+  event: any
+): void {
   try {
     const message = JSON.parse(event.data);
     if (message.reason === "message") {
-      commit("ADD_MESSAGE", message);
+      context.commit("ADD_MESSAGE", message);
+    } else if (message.reason === "new_user" && message.username === "SERVER") {
+      if (
+        context.rootState.auction.users.length !==
+        message.data.nb_users - 1
+      ) {
+        // Need to refresh the whole users list as some seem to be missing
+        context.dispatch("auction/updateUsersList", null, { root: true });
+      } else {
+        context.commit("auction/PUSH_NEW_USER", message.data.username, {
+          root: true,
+        });
+      }
     }
   } catch (error) {
     console.log(error);
