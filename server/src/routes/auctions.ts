@@ -181,8 +181,15 @@ export async function registerNewUser(
       );
     if (auction.status !== "Open")
       throw new CustomError("Error, the auction is not open for registration");
-    if (!checkUsername(req.params.auction_id, req.body.username))
-      throw new CustomError("Error, the username already exist", 409);
+    const canInsertUsername = await checkUsername(
+      req.params.auction_id,
+      req.body.username
+    );
+    if (!canInsertUsername)
+      throw new CustomError(
+        "Error, a user with this username is already registered to the auction",
+        409
+      );
 
     // Insertion
     const user_id = uuidv4();
@@ -441,7 +448,8 @@ async function getUser(auction_id: string, user_id: string): Promise<User> {
 
 /**
  * Check if a given username can be registered to an auction (i.e. is
- * not already registered)
+ * not already registered). Return `true` if the user can be inserted
+ * with this username.
  * @param auction_id Auction UUID
  * @param username Username to be registered
  */
@@ -455,7 +463,7 @@ async function checkUsername(
       auction_id,
     ])
   ).rows;
-  return users.length > 0;
+  return users.length === 0;
 }
 
 /**
