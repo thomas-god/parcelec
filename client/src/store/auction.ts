@@ -1,11 +1,16 @@
 import Vuex, { Module, GetterTree, MutationTree, ActionTree } from "vuex";
 import { RootState } from "./index";
 
+export interface User {
+  name: string;
+  ready: boolean;
+}
+
 export interface Auction {
   name: string;
   id: string;
   status: "Open" | "Running" | "Close";
-  users: string[];
+  users: User[];
 }
 
 export interface AuctionState extends Auction {}
@@ -38,10 +43,10 @@ export const mutations: MutationTree<AuctionState> = {
     state.status = auction.status;
     state.users = auction.users;
   },
-  SET_USERS(state, users: string[]): void {
+  SET_USERS(state, users: User[]): void {
     state.users = users;
   },
-  PUSH_NEW_USER(state, new_user: string): void {
+  PUSH_NEW_USER(state, new_user: User): void {
     state.users.push(new_user);
   },
 };
@@ -69,13 +74,13 @@ export const auction: Module<AuctionState, RootState> = {
 };
 
 // ------------------------ Helper functions ---------------
-async function getUsersList(auction_id: string): Promise<string[]> {
+async function getUsersList(auction_id: string): Promise<User[]> {
   const res = await fetch(`http://localhost:3000/auction/${auction_id}`, {
     method: "GET",
   });
   if (res.status === 200) {
     const body = await res.json();
-    return body.users as string[];
+    return body.users as User[];
   } else {
     return [];
   }

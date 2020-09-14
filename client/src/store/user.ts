@@ -16,7 +16,11 @@ export const state: UserState = {
 export const actions: ActionTree<UserState, RootState> = {
   setUsername({ commit }, username: string): void {
     commit("SET_USERNAME", username);
-    commit("auction/PUSH_NEW_USER", username, { root: true });
+    commit(
+      "auction/PUSH_NEW_USER",
+      { name: username, ready: false },
+      { root: true }
+    );
   },
   setUserID({ state, commit, dispatch }, user_id: string): void {
     commit("SET_USER_ID", user_id);

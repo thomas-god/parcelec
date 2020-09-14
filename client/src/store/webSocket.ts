@@ -104,18 +104,13 @@ function onMessageCallback(
     const message = JSON.parse(event.data);
     if (message.reason === "message") {
       context.commit("ADD_MESSAGE", message);
-    } else if (message.reason === "new_user" && message.username === "SERVER") {
-      if (
-        context.rootState.auction.users.length !==
-        message.data.nb_users - 1
-      ) {
-        // Need to refresh the whole users list as some seem to be missing
-        context.dispatch("auction/updateUsersList", null, { root: true });
-      } else {
-        context.commit("auction/PUSH_NEW_USER", message.data.username, {
-          root: true,
-        });
-      }
+    } else if (
+      message.reason === "users_list_update" &&
+      message.username === "SERVER"
+    ) {
+      context.commit("auction/SET_USERS", message.data, {
+        root: true,
+      });
     }
   } catch (error) {
     console.log(error);
