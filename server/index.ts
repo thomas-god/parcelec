@@ -2,7 +2,6 @@ import express from "express";
 import ws from "ws";
 import cors from "cors";
 import morgan from "morgan";
-import user from "./src/routes/user";
 import auction from "./src/routes/auctions";
 import { onConnectionCallback } from "./src/routes/websocket";
 
@@ -12,7 +11,6 @@ const port = 3000;
 app.use(cors());
 app.use(express.json());
 app.use(morgan("common"));
-app.use("/user", user);
 app.use("/auction", auction);
 
 const wsServer = new ws.Server({ noServer: true, clientTracking: true });
