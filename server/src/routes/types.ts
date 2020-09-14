@@ -22,7 +22,7 @@ export interface Auction {
 }
 
 export interface User {
-  username: string;
+  name: string;
   user_id: string;
   ready: boolean;
 }

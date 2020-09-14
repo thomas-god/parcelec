@@ -100,14 +100,14 @@ export async function getAuctionInfos(
         "Error, the auction_id does not correspond to an existing auction",
         404
       );
-    let body: any = {
+    const body: any = {
       id: auction.id,
       name: auction.name,
       status: auction.status,
     };
-    body.users = (
-      await db.query("SELECT name FROM users WHERE auction_id=$1", [auction_id])
-    ).rows.map((user) => user.name);
+    body.users = (await getAuctionUsers(auction_id))
+      .map((user) => user.name)
+      .sort();
 
     if (auction.status === "Running") {
       body.step_no = (
@@ -119,9 +119,13 @@ export async function getAuctionInfos(
     }
     res.json(body);
   } catch (error) {
+    if (error instanceof CustomError) {
     res.status(error.code).end(error.msg);
-    return;
+    } else {
+      res.status(400).end();
+      throw error;
   }
+}
 }
 
 /**
