@@ -82,14 +82,16 @@ export function sendUpdateToAuctionUsers(
   reason: string,
   payload: any
 ): void {
-  Object.values(auctions[auction_id]).forEach((wss) => {
-    wss.send(
-      JSON.stringify({
-        username: "SERVER",
-        date: new Date(),
-        reason: reason,
-        data: payload,
-      })
-    );
-  });
+  if (Object.keys(auctions).includes(auction_id)) {
+    Object.values(auctions[auction_id]).forEach((wss) => {
+      wss.send(
+        JSON.stringify({
+          username: "SERVER",
+          date: new Date(),
+          reason: reason,
+          data: payload,
+        })
+      );
+    });
+  }
 }

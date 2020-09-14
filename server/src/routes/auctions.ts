@@ -120,12 +120,12 @@ export async function getAuctionInfos(
     res.json(body);
   } catch (error) {
     if (error instanceof CustomError) {
-    res.status(error.code).end(error.msg);
+      res.status(error.code).end(error.msg);
     } else {
       res.status(400).end();
       throw error;
+    }
   }
-}
 }
 
 /**
@@ -373,12 +373,12 @@ export async function clearAuctionStep(
     // Clear the auction
     const clearing_value = findMaxBid(bids);
     await db.query(
-      "UPDATE auctions_steps SET status='close', clearing_price=$1 WHERE auction_id=$2 AND step_no=$3",
+      "UPDATE auctions_steps SET status='closed', clearing_price=$1 WHERE auction_id=$2 AND step_no=$3",
       [clearing_value, auction_id, step_no]
     );
     await db.query(
       "INSERT INTO auctions_steps (auction_id, step_no, status) VALUES ($1, $2, $3)",
-      [auction_id, step_no + 1, "close"]
+      [auction_id, step_no + 1, "closed"]
     );
     res.json({
       current_step_no: step_no,
@@ -400,7 +400,7 @@ export async function clearAuctionStep(
  * Find the largest bid of an auction step
  * @param bids Array of bids
  */
-function findMaxBid(bids: Bid[]): Number {
+function findMaxBid(bids: Bid[]): number {
   if (bids.length === 0) return null;
   let max = bids[0].bid_value;
   for (let i = 0; i < bids.length; i++) {

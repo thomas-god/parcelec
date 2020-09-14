@@ -12,8 +12,10 @@ const auctions = [
 ];
 
 const users = [
-  { auction_id: auctions[1].id, name: "User 1", id: uuid() },
-  { auction_id: auctions[1].id, name: "User 2", id: uuid() },
+  { auction_id: auctions[1].id, name: "User 1", id: uuid(), ready: true },
+  { auction_id: auctions[1].id, name: "User 2", id: uuid(), ready: true },
+  { auction_id: auctions[2].id, name: "User 1", id: uuid(), ready: true },
+  { auction_id: auctions[2].id, name: "User 2", id: uuid(), ready: true },
 ];
 
 function mapAuction(auction) {
@@ -441,25 +443,19 @@ describe("Retrieving auction infos", () => {
       .put(`${url}/auction/${auctions[0].id}/register_user`)
       .send({ username: "User 1" });
     const res = await superagent.get(`${url}/auction/${auctions[0].id}`);
-    const body = JSON.parse(res.text);
-    expect(body.id).toEqual(auctions[0].id);
-    expect(body.name).toEqual(auctions[0].name);
-    expect(body.status).toEqual(auctions[0].status);
-    expect(body.users).toEqual(["User 1"]);
+    expect(res.body.id).toEqual(auctions[0].id);
+    expect(res.body.name).toEqual(auctions[0].name);
+    expect(res.body.status).toEqual(auctions[0].status);
+    expect(res.body.users).toEqual(["User 1"]);
   });
 
   test("Should get basic infos for a running auction", async () => {
-    await superagent
-      .put(`${url}/auction/${auctions[0].id}/register_user`)
-      .send({ username: "User 2" });
-    await superagent.put(`${url}/auction/${auctions[0].id}/start`);
-    const res = await superagent.get(`${url}/auction/${auctions[0].id}`);
-    const body = JSON.parse(res.text);
-    expect(body.id).toEqual(auctions[0].id);
-    expect(body.name).toEqual(auctions[0].name);
-    expect(body.status).toEqual("Running");
-    expect(body.users).toEqual(["User 1", "User 2"]);
-    expect(body.step_no).toEqual(0);
+    const res = await superagent.get(`${url}/auction/${auctions[1].id}`);
+    expect(res.body.id).toEqual(auctions[1].id);
+    expect(res.body.name).toEqual(auctions[1].name);
+    expect(res.body.status).toEqual("Running");
+    expect(res.body.users).toEqual(["User 1", "User 2"]);
+    expect(res.body.step_no).toEqual(0);
   });
 });
 
