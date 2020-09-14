@@ -180,6 +180,71 @@ export async function registerNewUser(
 }
 
 /**
+ * Mark a user as ready
+ * @param req HTTP request
+ * @param res HTTP response
+ */
+export async function setUserReady(
+  req: express.Request,
+  res: express.Response
+): Promise<void> {
+  try {
+    // Payload checks
+    if (!req.body.user_id) throw new CustomError("Error, no user ID provided");
+    const user_id = req.body.user_id;
+
+    // DB checks
+    const auction_id = req.params.auction_id;
+    const auction = await getAuction(auction_id);
+    if (auction === null)
+      throw new CustomError("Error, no auction found with this ID", 404);
+    if (auction.status === "Running")
+      throw new CustomError("Error, the auction is running");
+    if (auction.status === "Close")
+      throw new CustomError("Error, the auction is closed");
+
+    const user = await getUser(auction_id, user_id);
+    if (user === null)
+      throw new CustomError("Error, no user found with this ID");
+
+    // Set user status to ready
+    await db.query(
+      "UPDATE users SET ready=TRUE WHERE auction_id=$1 AND id=$2",
+      [auction_id, user_id]
+    );
+    res.status(201).end();
+
+    // Notify all users that a user is ready
+    sendUpdateToAuctionUsers(auction_id, "user_ready", {
+      nb_users_ready: (await getAuctionUsers(auction_id)).filter((u) => u.ready)
+        .length,
+    });
+
+    // Check if the auction can be started (i.e. set to status running)
+    const users = await getAuctionUsers(auction_id);
+    if (
+      users.length >= 2 &&
+      users.filter((u) => u.ready).length === users.length
+    ) {
+      await db.query("UPDATE auctions SET status='Running' WHERE id=$1", [
+        auction_id,
+      ]);
+      await db.query(
+        "INSERT INTO auctions_steps (auction_id, step_no, status) VALUES  ($1, $2, $3)",
+        [auction_id, 0, "open"]
+      );
+      sendUpdateToAuctionUsers(auction_id, "auction_started", {});
+    }
+  } catch (error) {
+    if (error instanceof CustomError) {
+      res.status(error.code).end(error.msg);
+    } else {
+      res.status(400).end(error.message);
+    }
+  }
+}
+
+/**
  * Start a session (i.e. put its status to 'Running') provided its ID.
  * @param req HTTP request
  * @param res HTTP response
@@ -348,6 +413,7 @@ router.get("/list_open", getOpenAuctions);
 router.put("/open", openNewAuction);
 router.get("/:auction_id", getAuctionInfos);
 router.put("/:auction_id/register_user", registerNewUser);
+router.put("/:auction_id/user_ready", setUserReady);
 router.put("/:auction_id/start", startExistingAuction);
 router.put("/:auction_id/bid", submitBid);
 router.put("/:auction_id/clearing", clearAuctionStep);

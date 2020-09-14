@@ -41,8 +41,8 @@ async function populateDb() {
   await Promise.all(
     users.map(async (user) => {
       await db.query(
-        "INSERT INTO users (id, name, auction_id) VALUES ($1, $2, $3)",
-        [user.id, user.name, user.auction_id]
+        "INSERT INTO users (id, name, auction_id, ready) VALUES ($1, $2, $3, $4)",
+        [user.id, user.name, user.auction_id, user.ready]
       );
     })
   );
@@ -217,6 +217,90 @@ describe("Registering a new user to an auction", () => {
         "Error, a user with this username is already registered to the auction"
       );
     }
+  });
+});
+
+/**
+ * PUT /auction/:auction_id/user_ready
+ */
+describe("Marking an user as ready for an auction to start", () => {
+  beforeAll(async () => {
+    await prepareDB();
+  });
+
+  test("Should error if no auction_id is provided", async () => {
+    try {
+      await superagent.put(`${url}/auction/user_ready`);
+    } catch (error) {
+      expect(error.status).toEqual(404);
+    }
+  });
+
+  test("Should error if the auction does not exist", async () => {
+    try {
+      await superagent
+        .put(`${url}/auction/${uuid()}/user_ready`)
+        .send({ user_id: uuid() });
+    } catch (error) {
+      expect(error.status).toEqual(404);
+      expect(error.response.text).toEqual(
+        "Error, no auction found with this ID"
+      );
+    }
+  });
+
+  test("Should error if no user_id is provided", async () => {
+    try {
+      await superagent.put(`${url}/auction/${auctions[0].id}/user_ready`);
+    } catch (error) {
+      expect(error.status).toEqual(400);
+      expect(error.response.text).toEqual("Error, no user ID provided");
+    }
+  });
+
+  test("Should error if the user is not registered to the auction", async () => {
+    try {
+      await superagent
+        .put(`${url}/auction/${auctions[0].id}/user_ready`)
+        .send({ user_id: uuid() });
+    } catch (error) {
+      expect(error.status).toEqual(400);
+      expect(error.response.text).toEqual("Error, no user found with this ID");
+    }
+  });
+
+  test("Should error if the auction is running", async () => {
+    try {
+      await superagent
+        .put(`${url}/auction/${auctions[1].id}/user_ready`)
+        .send({ user_id: users[0].id });
+    } catch (error) {
+      expect(error.status).toEqual(400);
+      expect(error.response.text).toEqual("Error, the auction is running");
+    }
+  });
+
+  test("Should error if the auction is closed", async () => {
+    try {
+      await superagent
+        .put(`${url}/auction/${auctions[2].id}/user_ready`)
+        .send({ user_id: users[2].id });
+    } catch (error) {
+      expect(error.status).toEqual(400);
+      expect(error.response.text).toEqual("Error, the auction is closed");
+    }
+  });
+
+  test("Should success with a registered user on an open auction", async () => {
+    const user_id = (
+      await superagent
+        .put(`${url}/auction/${auctions[0].id}/register_user`)
+        .send({ username: "User" })
+    ).body.user_id;
+    const res = await superagent
+      .put(`${url}/auction/${auctions[0].id}/user_ready`)
+      .send({ user_id: user_id });
+    expect(res.status).toEqual(201);
   });
 });
 
