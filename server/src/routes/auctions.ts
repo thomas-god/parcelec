@@ -179,6 +179,38 @@ export async function registerNewUser(
 }
 
 /**
+ * Get information about a given user
+ * @param req HTTP request
+ * @param res HTTP response
+ */
+export async function getUserInfos(
+  req: express.Request,
+  res: express.Response
+): Promise<void> {
+  try {
+    // DB checks
+    const auction_id = req.params.auction_id;
+    const user_id = req.params.user_id;
+    console.log(auction_id, user_id);
+    const user = await getUser(auction_id, user_id);
+
+    if (user === null)
+      throw new CustomError("Error, cannot find an user with these IDs", 404);
+
+    res
+      .status(200)
+      .json({ auction_id: auction_id, name: user.name, ready: user.ready });
+  } catch (error) {
+    if (error instanceof CustomError) {
+      res.status(error.code).end(error.msg);
+    } else {
+      res.status(400).end();
+      throw error;
+    }
+  }
+}
+
+/**
  * Mark a user as ready
  * @param req HTTP request
  * @param res HTTP response
@@ -428,6 +460,7 @@ router.get("/list_open", getOpenAuctions);
 router.put("/open", openNewAuction);
 router.get("/:auction_id", getAuctionInfos);
 router.put("/:auction_id/register_user", registerNewUser);
+router.get("/:auction_id/user/:user_id", getUserInfos);
 router.put("/:auction_id/user_ready", setUserReady);
 router.put("/:auction_id/start", startExistingAuction);
 router.put("/:auction_id/bid", submitBid);

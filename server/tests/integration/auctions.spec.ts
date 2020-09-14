@@ -629,3 +629,43 @@ describe("Clearing an auction step", () => {
     expect(res.body.next_step_no).toEqual(1);
   });
 });
+
+/**
+ * GET /auction/:auction_id/user/:user_id
+ */
+describe("Get informations about a given user", () => {
+  beforeAll(async () => {
+    await prepareDB();
+  });
+
+  test("Should error if auction does not exist", async () => {
+    try {
+      await superagent.get(`${url}/auction/${uuid()}/user/${uuid()}`);
+    } catch (error) {
+      expect(error.status).toEqual(404);
+      expect(error.response.text).toEqual(
+        "Error, cannot find an user with these IDs"
+      );
+    }
+  });
+
+  test("Should error if the user does not exist on the auction", async () => {
+    try {
+      await superagent.get(`${url}/auction/${auctions[0].id}/user/${uuid()}`);
+    } catch (error) {
+      expect(error.status).toEqual(404);
+      expect(error.response.text).toEqual(
+        "Error, cannot find an user with these IDs"
+      );
+    }
+  });
+
+  test("Should get user infos", async () => {
+    const res = await superagent.get(
+      `${url}/auction/${users[0].auction_id}/user/${users[0].id}`
+    );
+    expect(res.body.auction_id).toEqual(users[0].auction_id);
+    expect(res.body.name).toEqual(users[0].name);
+    expect(res.body.ready).toEqual(users[0].ready);
+  });
+});
