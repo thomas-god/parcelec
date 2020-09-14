@@ -8,6 +8,7 @@ Vue.use(Vuex);
 
 export interface RootState {
   version: string;
+  api_url: string;
   user: UserState;
   auction: AuctionState;
   ws: WebSocketState;
@@ -15,6 +16,7 @@ export interface RootState {
 
 const state: RootState = {
   version: "0.1.0",
+  api_url: process.env.VUE_APP_API_URL,
 } as RootState;
 
 const store: StoreOptions<RootState> = {

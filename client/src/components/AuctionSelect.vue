@@ -45,11 +45,12 @@ export default class User extends Vue {
   @Prop({ default: false }) allow_new_auction!: boolean;
   @auctionModule.Getter auction!: Auction;
   @auctionModule.Action setAuction!: (payload: Auction) => void;
+  @State("api_url") api_url!: string;
 
   // List of open auctions
   open_auctions: Auction[] = [];
   async getOpenAuctions(): Promise<void> {
-    const res = await fetch("http://localhost:3000/auction/list_open", {
+    const res = await fetch(`${this.api_url}/auction/list_open`, {
       method: "GET",
     });
     this.open_auctions = await res.json();
@@ -60,7 +61,7 @@ export default class User extends Vue {
   new_auction_name_err = false;
   new_auction_name_err_msg = "";
   async openAuction() {
-    const res = await fetch("http://localhost:3000/auction/open", {
+    const res = await fetch(`${this.api_url}/auction/open`, {
       method: "PUT",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ auction_name: this.new_auction_name }),

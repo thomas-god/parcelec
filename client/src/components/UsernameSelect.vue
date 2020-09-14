@@ -31,6 +31,7 @@ export default class User extends Vue {
   @userModule.Action setUsername!: (payload: string) => void;
   @userModule.Action setUserID!: (payload: string) => void;
   @auctionModule.Getter auction!: Auction;
+  @State("api_url") api_url!: string;
   new_username = "";
   new_username_err = false;
   new_username_err_msg = "";
@@ -38,7 +39,7 @@ export default class User extends Vue {
   async addUsername() {
     if (this.new_username !== "") {
       const res = await fetch(
-        `http://localhost:3000/auction/${this.auction.id}/register_user`,
+        `${this.api_url}/auction/${this.auction.id}/register_user`,
         {
           method: "PUT",
           headers: { "content-type": "application/json" },

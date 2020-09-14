@@ -2,7 +2,9 @@
   <div class="bid__box">
     <h2>Votre enchère</h2>
     <input type="number" :disabled="!can_bid" v-model="bid_value" />
-    <button @click="submitBid" :disabled="!can_bid">Soumettre</button>
+    <button @click="submitBid" :disabled="!can_bid">
+      {{ can_bid ? "Soumettre" : "Offre envoyée" }}
+    </button>
     <span v-if="bid_value_err" style="color: red">{{ bid_value_err_msg }}</span>
   </div>
 </template>
@@ -21,6 +23,7 @@ export default class Bid extends Vue {
   @auctionModule.Getter can_bid!: boolean;
   @auctionModule.Action updateBidAbility!: (bid_ability: boolean) => void;
   @userModule.Getter user_id!: string;
+  @State("api_url") api_url!: string;
 
   private bid_value = 0;
   private bid_value_err = false;
@@ -28,14 +31,11 @@ export default class Bid extends Vue {
 
   async submitBid(): Promise<void> {
     console.log(this.bid_value);
-    const res = await fetch(
-      `http://localhost:3000/auction/${this.auction.id}/bid`,
-      {
-        method: "PUT",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ user_id: this.user_id, bid: this.bid_value }),
-      }
-    );
+    const res = await fetch(`${this.api_url}/${this.auction.id}/bid`, {
+      method: "PUT",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ user_id: this.user_id, bid: this.bid_value }),
+    });
     if (res.status === 201) {
       this.bid_value_err = false;
       this.bid_value_err_msg = "";

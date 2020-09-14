@@ -33,10 +33,11 @@ export default class UserList extends Vue {
   @userModule.Getter user_id!: string;
   @userModule.Getter user_ready!: boolean;
   @userModule.Action setReadyStatus!: () => void;
+  @State("api_url") api_url!: string;
 
   async setStatusReady(): Promise<void> {
     const res = await fetch(
-      `http://localhost:3000/auction/${this.auction_id}/user_ready`,
+      `${this.api_url}/auction/${this.auction_id}/user_ready`,
       {
         method: "PUT",
         headers: { "content-type": "application/json" },
