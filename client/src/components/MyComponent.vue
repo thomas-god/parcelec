@@ -1,23 +1,29 @@
 <template>
-  <div v-if="!(auction.id && username)" class="app_full">
+  <div v-if="!(auction.id && username)" class="app__full">
     <h1>Bienvenue sur Parcélec ! ⚡️</h1>
     <AuctionSelect v-if="!auction.id" />
     <UsernameSelect v-if="auction.id && !username" />
   </div>
-  <div v-else class="app_full">
-    <div class="app__grid_main">
-      <!-- <Bid v-if="auction.id && username" /> -->
+  <div v-else>
+    <div v-if="auction_status === 'Open'" class="app__full">
+      <h1>
+        Bonjour {{ username }}, vous avez rejoint la partie
+        <em>{{ auction.name }}</em> !
+      </h1>
+      <h3>
+        Vous pouvez discuter avec les autres joueurs connectés, et quand vous
+        serez prêt·e à démarrer la partie, cliquez sur le bouton
+        <em>"Je suis prêt·e!"</em>
+      </h3>
+      <Chatroom class="chatroom__full" :display_ready="true" />
     </div>
-    <h1 class="app_full">
-      Bonjour {{ username }}, vous avez rejoint la partie
-      <em>{{ auction.name }}</em> !
-    </h1>
-    <h3 class="app_full">
-      Vous pouvez discuter avec les autres joueurs connectés, et quand vous
-      serez prêt à démarrer la partie, cliquez sur le bouton
-      <em>"Je suis prêt!"</em>
-    </h3>
-    <Chatroom class="chatroom" v-if="auction.id && username" />
+    <div v-if="auction_status === 'Running'" class="app__grid">
+      <h1 class="app__grid_head">Enchère en cours...</h1>
+      <div class="app__grid_main">
+        <Bid v-if="auction.id && username" />
+      </div>
+      <Chatroom class="chatroom__grid" display_direction="column" />
+    </div>
   </div>
 </template>
 
@@ -29,16 +35,18 @@ import AuctionSelect from "./AuctionSelect.vue";
 import UsernameSelect from "./UsernameSelect.vue";
 import Chatroom from "./Chatroom.vue";
 import Messages from "./Messages.vue";
+import Bid from "./AuctionBid.vue";
 
 const userModule = namespace("user");
 const auctionModule = namespace("auction");
 
 @Component({
-  components: { AuctionSelect, UsernameSelect, Chatroom },
+  components: { AuctionSelect, UsernameSelect, Chatroom, Bid },
 })
-export default class HelloWorld extends Vue {
+export default class Main extends Vue {
   @userModule.Getter username!: string;
   @auctionModule.Getter auction!: Auction;
+  @auctionModule.Getter auction_status!: string;
 }
 </script>
 
@@ -61,17 +69,20 @@ export default class HelloWorld extends Vue {
 
 .app__grid_main {
   grid-area: main;
-  margin: auto;
 }
 
-.app_full h3 {
+.app__full h3 {
   max-width: 650px;
   margin: auto;
   margin-bottom: 2rem;
 }
 
-.chatroom {
+.chatroom__full {
   width: 85vw;
   margin: auto;
+}
+
+.chatroom__grid {
+  grid-area: message;
 }
 </style>

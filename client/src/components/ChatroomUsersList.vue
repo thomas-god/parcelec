@@ -12,7 +12,7 @@
       :disabled="user_ready"
       @click="setStatusReady"
     >
-      Je suis pret!
+      Je suis prêt·e!
     </button>
   </div>
 </template>

@@ -1,9 +1,9 @@
 <template>
-  <div class="chatroom__container">
+  <div :style="containerStyle">
     <ChatroomMessages class="chatroom__box chatroom__messages" />
     <ChatroomUsersList
       class="chatroom__box chatroom__users_list"
-      :display_ready_status="true"
+      :display_ready_status="display_ready"
     />
   </div>
 </template>
@@ -14,15 +14,20 @@ import ChatroomMessages from "./ChatroomMessages.vue";
 import ChatroomUsersList from "./ChatroomUsersList.vue";
 
 @Component({ components: { ChatroomMessages, ChatroomUsersList } })
-export default class Chatroom extends Vue {}
+export default class Chatroom extends Vue {
+  @Prop({ default: false }) display_ready!: boolean;
+  @Prop({ default: "row" }) display_direction!: "row" | "column";
+
+  get containerStyle(): string {
+    return `
+      display: flex;
+      flex-direction: ${this.display_direction};
+    `;
+  }
+}
 </script>
 
 <style scoped>
-.chatroom__container {
-  display: flex;
-  flex-direction: row;
-}
-
 .chatroom__box {
   border: 1px solid black;
   margin: 1rem;
