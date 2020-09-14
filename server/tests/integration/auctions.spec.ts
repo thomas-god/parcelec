@@ -358,7 +358,7 @@ describe("Starting an auction", () => {
     } catch (error) {
       expect(error.status).toEqual(400);
       expect(error.response.text).toEqual(
-        "Error, not enough users registered to start the session"
+        "Error, not enough users registered to start the auction"
       );
     }
   });
@@ -372,20 +372,51 @@ describe("Starting an auction", () => {
     } catch (error) {
       expect(error.status).toEqual(400);
       expect(error.response.text).toEqual(
-        "Error, not enough users registered to start the session"
+        "Error, not enough users registered to start the auction"
       );
     }
   });
 
-  test("Should return a 200 on success", async () => {
+  test("Should error if not all users are ready", async () => {
     await superagent
       .put(`${url}/auction/${auctions[0].id}/register_user`)
       .send({ username: "User 1" });
     await superagent
       .put(`${url}/auction/${auctions[0].id}/register_user`)
       .send({ username: "User 2" });
-    const res = await superagent.put(`${url}/auction/${auctions[0].id}/start`);
-    expect(res.status).toEqual(200);
+    try {
+      await superagent.put(`${url}/auction/${auctions[0].id}/start`);
+    } catch (error) {
+      expect(error.status).toEqual(400);
+      expect(error.response.text).toEqual(
+        "Error, not all users are ready to start the auction"
+      );
+    }
+  });
+
+  test("Should return a 200 on success", async () => {
+    const user1_id = (
+      await superagent
+        .put(`${url}/auction/${auctions[0].id}/register_user`)
+        .send({ username: "User 1" })
+    ).body.user_id;
+    const user2_id = (
+      await superagent
+        .put(`${url}/auction/${auctions[0].id}/register_user`)
+        .send({ username: "User 2" })
+    ).body.user_id;
+    await superagent
+      .put(`${url}/auction/${auctions[0].id}/user_ready`)
+      .send({ user_id: user1_id });
+    await superagent
+      .put(`${url}/auction/${auctions[0].id}/user_ready`)
+      .send({ user_id: user2_id });
+
+    // At that point the auction should auto-start as all the users are ready
+    // Wait a small delay to make sure the actions have been dispatched server side
+    await new Promise((r) => setTimeout(r, 150));
+    const res = await superagent.get(`${url}/auction/${auctions[0].id}`);
+    expect(res.body.status).toEqual("Running");
   });
 });
 

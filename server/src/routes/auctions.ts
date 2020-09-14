@@ -269,12 +269,14 @@ export async function startExistingAuction(
     if (auction.status === "Close")
       throw new CustomError("Error, the auction is closed");
 
-    const n_users = (
-      await db.query("SELECT 1 FROM users WHERE auction_id=$1", [auction_id])
-    ).rowCount;
-    if (n_users < 1)
+    const users = await getAuctionUsers(auction_id);
+    if (users.length < 2)
       throw new CustomError(
-        "Error, not enough users registered to start the session"
+        "Error, not enough users registered to start the auction"
+      );
+    if (users.filter((u) => u.ready).length !== users.length)
+      throw new CustomError(
+        "Error, not all users are ready to start the auction"
       );
 
     // Update
