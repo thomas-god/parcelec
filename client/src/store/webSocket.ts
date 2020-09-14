@@ -111,6 +111,11 @@ function onMessageCallback(
       context.commit("auction/SET_USERS", message.data, {
         root: true,
       });
+    } else if (
+      message.reason === "auction_started" &&
+      message.username === "SERVER"
+    ) {
+      context.dispatch("auction/setStatus", "Running", { root: true });
     }
   } catch (error) {
     console.log(error);
