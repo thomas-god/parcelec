@@ -313,14 +313,16 @@ export async function submitBid(
       );
 
     // Check user
-    if (!req.body.user_id) throw new CustomError("Error, no user_id specified");
+    if (req.body.user_id === undefined)
+      throw new CustomError("Error, no user_id specified");
     const user_id = req.body.user_id;
     const user = await getUser(auction_id, user_id);
     if (user === null)
       throw new CustomError("Error, no registered user found with this ID");
 
     // Check bid value
-    if (!req.body.bid) throw new CustomError("Error, no bid value provided");
+    if (req.body.bid === undefined)
+      throw new CustomError("Error, no bid value provided");
 
     // Check if the user has already bid
     const bid = await getBid(auction_id, user_id);
