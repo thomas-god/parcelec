@@ -106,8 +106,10 @@ export async function getAuctionInfos(
       status: auction.status,
     };
     body.users = (await getAuctionUsers(auction_id))
-      .map((user) => user.name)
-      .sort();
+      .map((user) => {
+        return { name: user.name, ready: user.ready };
+      })
+      .sort((a, b) => (a.name > b.name ? 1 : -1));
 
     if (auction.status === "Running") {
       body.step_no = (

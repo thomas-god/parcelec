@@ -446,7 +446,7 @@ describe("Retrieving auction infos", () => {
     expect(res.body.id).toEqual(auctions[0].id);
     expect(res.body.name).toEqual(auctions[0].name);
     expect(res.body.status).toEqual(auctions[0].status);
-    expect(res.body.users).toEqual(["User 1"]);
+    expect(res.body.users).toEqual([{ name: "User 1", ready: false }]);
   });
 
   test("Should get basic infos for a running auction", async () => {
@@ -454,7 +454,10 @@ describe("Retrieving auction infos", () => {
     expect(res.body.id).toEqual(auctions[1].id);
     expect(res.body.name).toEqual(auctions[1].name);
     expect(res.body.status).toEqual("Running");
-    expect(res.body.users).toEqual(["User 1", "User 2"]);
+    expect(res.body.users).toEqual([
+      { name: "User 1", ready: true },
+      { name: "User 2", ready: true },
+    ]);
     expect(res.body.step_no).toEqual(0);
   });
 });
