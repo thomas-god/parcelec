@@ -1,15 +1,15 @@
 CREATE TABLE auctions
 (
   id UUID PRIMARY KEY,
-  name VARCHAR(50) UNIQUE,
-  status text
+  name TEXT UNIQUE,
+  status TEXT
 );
 
 CREATE TABLE auctions_steps
 (
   auction_id UUID REFERENCES auctions (id),
   step_no INT,
-  status VARCHAR(10) CHECK (status in ('open', 'close')),
+  status TEXT CHECK (status in ('open', 'closed')),
   clearing_price REAL DEFAULT null,
   PRIMARY KEY (auction_id, step_no)
 );
@@ -17,7 +17,8 @@ CREATE TABLE auctions_steps
 CREATE TABLE users
 (
   id UUID PRIMARY KEY,
-  name VARCHAR(50),
+  name TEXT,
+  ready BOOLEAN DEFAULT FALSE,
   auction_id UUID REFERENCES auctions (id)
 );
 

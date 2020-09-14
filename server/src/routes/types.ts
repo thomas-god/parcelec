@@ -24,6 +24,7 @@ export interface Auction {
 export interface User {
   username: string;
   user_id: string;
+  ready: boolean;
 }
 
 export interface Bid {
