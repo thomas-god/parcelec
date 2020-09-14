@@ -171,10 +171,7 @@ export async function registerNewUser(
     );
     res.status(201).json({ user_id: user_id });
     // Notify all users that a new user has joined
-    sendUpdateToAuctionUsers(auction_id, "new_user", {
-      username: username,
-      nb_users: (await getAuctionUsers(auction_id)).length,
-    });
+    notifyUsersListUpdate(auction_id);
   } catch (error) {
     res.status(error.code).end(error.msg);
     return;
@@ -217,10 +214,7 @@ export async function setUserReady(
     res.status(201).end();
 
     // Notify all users that a user is ready
-    sendUpdateToAuctionUsers(auction_id, "user_ready", {
-      nb_users_ready: (await getAuctionUsers(auction_id)).filter((u) => u.ready)
-        .length,
-    });
+    notifyUsersListUpdate(auction_id);
 
     // Check if the auction can be started (i.e. set to status running)
     const users = await getAuctionUsers(auction_id);
@@ -409,6 +403,21 @@ function findMaxBid(bids: Bid[]): number {
     if (bids[i].bid_value > max) max = bids[i].bid_value;
   }
   return max;
+}
+
+/**
+ * Send the updated users list to connected users.
+ * @param auction_id ID of the auction
+ */
+async function notifyUsersListUpdate(auction_id: string): Promise<void> {
+  const users = await getAuctionUsers(auction_id);
+  sendUpdateToAuctionUsers(
+    auction_id,
+    "users_list_update",
+    users.map((u) => {
+      return { name: u.name, ready: u.ready };
+    })
+  );
 }
 
 const router = express.Router();
