@@ -1,8 +1,8 @@
 <template>
-  <div>
-    <h3>Utilisateurs</h3>
+  <div class="container">
+    <h3>Joueurs connectés</h3>
     <ul>
-      <li v-for="user in users" :key="user">
+      <li v-for="user in users" :key="user.name">
         {{ user.name }}
         <span v-if="display_ready_status && user.ready">✅</span>
       </li>
@@ -40,7 +40,7 @@ export default class UserList extends Vue {
       {
         method: "PUT",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ user_id: this.user_id })
+        body: JSON.stringify({ user_id: this.user_id }),
       }
     );
     if (res.status === 201) this.setReadyStatus();
@@ -58,5 +58,15 @@ ul {
 }
 li {
   text-align: start !important;
+  font-size: 1.1rem;
+}
+
+.container {
+  display: grid;
+  grid-template-rows: 30px 1fr 40px;
+}
+
+button {
+  font-size: 1.1rem;
 }
 </style>

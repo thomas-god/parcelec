@@ -1,25 +1,23 @@
 <template>
   <div>
     <h3>Messages</h3>
-    <ul class="message_messages">
-      <li v-for="msg in messages" :key="msg.date" class="message_msg">
-        <span class="message_msg_user">{{ msg.username }} :</span>
-        <span class="message_msg_text">{{ msg.data }} </span>
-        <span class="message_msg_hour">{{ getHourFromDate(msg.date) }} </span>
+    <ul class="message__messages">
+      <li v-for="msg in messages" :key="msg.date" class="message__msg">
+        <span class="message__msg_user">{{ msg.username }} :</span>
+        <span class="message__msg_text">{{ msg.data }} </span>
+        <span class="message__msg_hour">{{ getHourFromDate(msg.date) }} </span>
       </li>
     </ul>
-    <div class="message_input">
-      <label for="message_add_msg_input">Entrez votre message</label>
-      <div>
-        <input
-          type="text"
-          id="message_add_msg_input"
-          v-model="new_msg"
-          v-on:keyup.enter="postMsg()"
-          autofocus
-        />
-        <button @click="postMsg()">Send</button>
-      </div>
+    <div class="message__input">
+      <!-- <label for="message_add_msg_input">Entrez votre message</label> -->
+      <input
+        type="text"
+        id="message_add_msg_input"
+        v-model="new_msg"
+        v-on:keyup.enter="postMsg()"
+        autofocus
+      />
+      <button @click="postMsg()">▶️</button>
     </div>
   </div>
 </template>
@@ -60,21 +58,43 @@ export default class Messages extends Vue {
 </script>
 
 <style scoped>
-.message_input {
-  max-width: 300px;
+h3 {
+  margin: 0;
+}
+.message__input {
+  width: 90%;
   margin: auto;
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
+  align-items: center;
 }
 
-.message_messages {
-  padding: 0;
+.message__input input {
+  font-size: 1rem;
+  width: 90%;
+}
+
+.message__input button {
+  text-decoration: none;
+  border: none;
+  background-color: white;
+  font-size: 1.5rem;
+  padding-left: 1rem;
+  color: grey;
+}
+.message__input button:hover {
+  color: green;
+}
+
+.message__messages {
+  padding: 5px;
   margin: 1rem auto;
-  max-width: 500px;
   height: 300px;
+  border: 1px solid rgba(128, 128, 128, 0.596);
+  overflow-y: scroll;
 }
 
-.message_msg {
+.message__msg {
   display: flex;
   flex-direction: row;
   flex-wrap: nowrap;
@@ -83,7 +103,7 @@ export default class Messages extends Vue {
   align-content: stretch;
 }
 
-.message_msg .message_msg_user {
+.message__msg .message__msg_user {
   font-weight: bold;
   flex-grow: 0;
   flex-shrink: 0;
@@ -91,11 +111,11 @@ export default class Messages extends Vue {
   text-align: end;
   padding-right: 10px;
 }
-.message_msg .message_msg_text {
+.message__msg .message__msg_text {
   flex-grow: 1;
   text-align: start;
 }
-.message_msg .message_msg_hour {
+.message__msg .message__msg_hour {
   padding-left: 10px;
   flex-grow: 0;
   flex-shrink: 0;

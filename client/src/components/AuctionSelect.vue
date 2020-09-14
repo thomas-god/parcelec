@@ -1,6 +1,6 @@
 <template>
   <div>
-    <p>Choisissez une enchère à rejoindre :</p>
+    <h2>Choisissez une partie à rejoindre</h2>
     <ul class="auctions_list">
       <li
         v-for="a in open_auctions"
@@ -10,12 +10,12 @@
         <span>{{ a.name }}</span>
       </li>
       <li v-if="open_auctions.length === 0">
-        Il n'y a pas d'enchères à rejoindre
+        Il n'y a pas de partie à rejoindre
       </li>
     </ul>
-    <div class="auction_open">
+    <div v-if="allow_new_auction" class="auction_open">
       <label for="auction_open_input">
-        Ou bien entrez le nom d'une nouvelle enchère :
+        Ou bien entrez le nom d'une nouvelle partie :
       </label>
       <div>
         <input
@@ -26,9 +26,9 @@
         />
         <button @click="openAuction()">Open</button>
       </div>
-      <span v-if="new_auction_name_err" style="color: red"
-        >Une erreur s'est produite : {{ new_auction_name_err_msg }}</span
-      >
+      <span v-if="new_auction_name_err" style="color: red">{{
+        new_auction_name_err_msg
+      }}</span>
     </div>
   </div>
 </template>
@@ -42,6 +42,7 @@ const auctionModule = namespace("auction");
 
 @Component
 export default class User extends Vue {
+  @Prop({ default: false }) allow_new_auction!: boolean;
   @auctionModule.Getter auction!: Auction;
   @auctionModule.Action setAuction!: (payload: Auction) => void;
 
@@ -49,7 +50,7 @@ export default class User extends Vue {
   open_auctions: Auction[] = [];
   async getOpenAuctions(): Promise<void> {
     const res = await fetch("http://localhost:3000/auction/list_open", {
-      method: "GET"
+      method: "GET",
     });
     this.open_auctions = await res.json();
   }
@@ -62,13 +63,11 @@ export default class User extends Vue {
     const res = await fetch("http://localhost:3000/auction/open", {
       method: "PUT",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ auction_name: this.new_auction_name })
+      body: JSON.stringify({ auction_name: this.new_auction_name }),
     });
     if (res.status === 200) {
       this.new_auction_name_err = false;
       this.new_auction_name_err_msg = "";
-      const body = await res.json();
-      this.setAuction({ ...body, status: "Open" });
     } else {
       this.new_auction_name_err = true;
       this.new_auction_name_err_msg = await res.text();

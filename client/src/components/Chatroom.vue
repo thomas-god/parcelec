@@ -1,7 +1,10 @@
 <template>
   <div class="chatroom__container">
-    <ChatroomMessages class="chatroom__box" />
-    <ChatroomUsersList class="chatroom__box" :display_ready_status="true" />
+    <ChatroomMessages class="chatroom__box chatroom__messages" />
+    <ChatroomUsersList
+      class="chatroom__box chatroom__users_list"
+      :display_ready_status="true"
+    />
   </div>
 </template>
 
@@ -17,13 +20,20 @@ export default class Chatroom extends Vue {}
 <style scoped>
 .chatroom__container {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
 }
 
 .chatroom__box {
   border: 1px solid black;
   margin: 1rem;
   padding: 1rem;
-  max-width: 450px;
+}
+
+.chatroom__messages {
+  flex-grow: 4;
+}
+
+.chatroom__users_list {
+  flex-grow: 1;
 }
 </style>
