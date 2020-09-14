@@ -98,9 +98,12 @@ export const auction: Module<AuctionState, RootState> = {
 
 // ------------------------ Helper functions ---------------
 async function getUsersList(auction_id: string): Promise<User[]> {
-  const res = await fetch(`http://localhost:3000/auction/${auction_id}`, {
-    method: "GET",
-  });
+  const res = await fetch(
+    `${process.env.VUE_APP_API_URL}/auction/${auction_id}`,
+    {
+      method: "GET",
+    }
+  );
   if (res.status === 200) {
     const body = await res.json();
     return body.users as User[];
