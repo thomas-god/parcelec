@@ -1,7 +1,7 @@
 <template>
   <div class="chatroom__container">
-    <ChatroomUsersList class="chatroom__box" />
     <ChatroomMessages class="chatroom__box" />
+    <ChatroomUsersList class="chatroom__box" :display_ready_status="true" />
   </div>
 </template>
 
