@@ -11,6 +11,7 @@ export interface Auction {
   id: string;
   status: "Open" | "Running" | "Close";
   users: User[];
+  can_bid: boolean;
 }
 
 export interface AuctionState extends Auction {}
@@ -19,8 +20,9 @@ export interface AuctionState extends Auction {}
 export const state: AuctionState = {
   name: "",
   id: "",
-  status: "Close",
+  status: "Open",
   users: [],
+  can_bid: false,
 };
 
 // ------------------------ ACTIONS -------------------------
@@ -32,6 +34,15 @@ export const actions: ActionTree<AuctionState, RootState> = {
   async updateUsersList({ state, commit }): Promise<void> {
     const users = await getUsersList(state.id);
     commit("SET_USERS", users);
+  },
+  setStatus({ state, commit }, status: Auction["status"]): void {
+    if (state.status === "Open" && status === "Running") {
+      commit("UPDATE_CAN_BID", true);
+    }
+    commit("UPDATE_STATUS", status);
+  },
+  updateBidAbility({ commit }, bid_ability: boolean): void {
+    commit("UPDATE_CAN_BID", bid_ability);
   },
 };
 
@@ -49,6 +60,12 @@ export const mutations: MutationTree<AuctionState> = {
   PUSH_NEW_USER(state, new_user: User): void {
     state.users.push(new_user);
   },
+  UPDATE_STATUS(state, status: Auction["status"]): void {
+    state.status = status;
+  },
+  UPDATE_CAN_BID(state, can_bid: boolean): void {
+    state.can_bid = can_bid;
+  },
 };
 
 // ------------------------ GETTERS -------------------------
@@ -61,6 +78,12 @@ export const getters: GetterTree<AuctionState, RootState> = {
   },
   auction_name(state): string {
     return state.name;
+  },
+  auction_status(state): string {
+    return state.status;
+  },
+  can_bid(state): boolean {
+    return state.can_bid;
   },
 };
 
