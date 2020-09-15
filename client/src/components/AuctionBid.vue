@@ -31,10 +31,10 @@ export default class Bid extends Vue {
 
   async submitBid(): Promise<void> {
     console.log(this.bid_value);
-    const res = await fetch(`${this.api_url}/${this.auction.id}/bid`, {
+    const res = await fetch(`${this.api_url}/auction/${this.auction.id}/bid`, {
       method: "PUT",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ user_id: this.user_id, bid: this.bid_value }),
+      body: JSON.stringify({ user_id: this.user_id, bid: this.bid_value })
     });
     if (res.status === 201) {
       this.bid_value_err = false;
