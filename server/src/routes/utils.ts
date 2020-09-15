@@ -50,7 +50,7 @@ export async function getUser(
 export async function checkUsername(
   auction_id: string,
   username: string
-): Promise<Boolean> {
+): Promise<boolean> {
   const users = (
     await db.query("SELECT * FROM users WHERE name=$1 AND auction_id=$2", [
       username,
