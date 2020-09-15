@@ -1,60 +1,62 @@
 import db from "../db/index";
-import { Auction, User, Bid } from "./types";
+import { Session, User, Bid } from "./types";
 
 /**
- * Get an auction from the DB by its UUID
- * @param auction_id Auction UUID
+ * Get a session from the DB by its UUID. Returns `null` if no
+ * session is found.
+ * @param session_id Session UUID
  */
-export async function getAuction(auction_id: string): Promise<Auction> {
-  const auction = (
-    await db.query("SELECT * FROM auctions WHERE id=$1", [auction_id])
+export async function getSession(session_id: string): Promise<Session> {
+  const session: Session[] = (
+    await db.query("SELECT * FROM sessions WHERE id=$1", [session_id])
   ).rows;
-  return auction.length === 1 ? auction[0] : null;
+  return session.length === 1 ? session[0] : null;
 }
 
 /**
- * Get the list of registered users to an auction from its UUID
- * @param auction_id Auction UUID
+ * Get the list of registered users to a session. Returns an empty list if
+ * no users are found.
+ * @param session_id Session UUID
  */
-export async function getAuctionUsers(auction_id: string): Promise<User[]> {
+export async function getSessionUsers(session_id: string): Promise<User[]> {
   return (
-    await db.query("SELECT * FROM users WHERE auction_id=$1", [auction_id])
+    await db.query("SELECT * FROM users WHERE session_id=$1", [session_id])
   ).rows;
 }
 
 /**
- * Get a specific user registered to a specific auction
- * @param auction_id Auction UUID
+ * Get a user Object. Returns `null` if it's not found.
+ * @param session_id Session UUID
  * @param user_id User UUID
  */
 export async function getUser(
-  auction_id: string,
+  session_id: string,
   user_id: string
 ): Promise<User> {
   const user = (
-    await db.query("SELECT * FROM users WHERE id=$1 AND auction_id=$2", [
+    await db.query("SELECT * FROM users WHERE id=$1 AND session_id=$2", [
       user_id,
-      auction_id,
+      session_id,
     ])
   ).rows;
   return user.length === 1 ? user[0] : null;
 }
 
 /**
- * Check if a given username can be registered to an auction (i.e. is
+ * Check if a given username can be registered to an session (i.e. is
  * not already registered). Return `true` if the user can be inserted
  * with this username.
- * @param auction_id Auction UUID
+ * @param session_id Session UUID
  * @param username Username to be registered
  */
 export async function checkUsername(
-  auction_id: string,
+  session_id: string,
   username: string
 ): Promise<boolean> {
   const users = (
-    await db.query("SELECT * FROM users WHERE name=$1 AND auction_id=$2", [
+    await db.query("SELECT * FROM users WHERE name=$1 AND session_id=$2", [
       username,
-      auction_id,
+      session_id,
     ])
   ).rows;
   return users.length === 0;
@@ -124,8 +126,8 @@ export async function checkUserCanBid(
   const user = await getUser(auction_id, user_id);
   if (user === null) return false;
 
-  const auction = await getAuction(auction_id);
-  if (auction.status !== "Running") return false;
+  const auction = await getSession(auction_id);
+  if (auction.status !== "running") return false;
 
   const bid = await getBid(auction_id, user_id);
   return bid === null ? true : false;
