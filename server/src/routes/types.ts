@@ -26,6 +26,11 @@ export interface PowerPlant {
   price_eur_per_mwh: number;
 }
 
+export type PowerPlantTemplate = Omit<
+  PowerPlant,
+  "session_id" | "user_id" | "id"
+>;
+
 export interface GamePhase {
   session_id: string;
   phase_no: number;
