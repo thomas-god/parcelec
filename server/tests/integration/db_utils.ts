@@ -4,8 +4,15 @@
  */
 
 import db from "../../src/db/index";
+import { v4 as uuid } from "uuid";
+import {
+  PowerPlant,
+  PowerPlantTemplate,
+  Session,
+  User,
+} from "../../src/routes/types";
 
-export const sessions = [
+export const sessions: Session[] = [
   {
     id: "188ad7b8-c994-4313-a77f-70a055591bf5",
     name: "Open session",
@@ -23,32 +30,74 @@ export const sessions = [
   },
 ];
 
-export const users = [
+export const users: User[] = [
   {
     session_id: sessions[1].id,
     name: "User 1",
     id: "623884df-4548-4080-9fb2-96fa6f81a691",
-    ready: true,
+    game_ready: true,
   },
   {
     session_id: sessions[1].id,
     name: "User 2",
     id: "d8226301-82a2-4dcc-b191-91af33378c29",
-    ready: true,
+    game_ready: true,
   },
   {
     session_id: sessions[2].id,
     name: "User 1",
     id: "8ada2c5f-1def-4959-8cef-2cafb6487b69",
-    ready: true,
+    game_ready: true,
   },
   {
     session_id: sessions[2].id,
     name: "User 2",
     id: "e227d4d5-bf2e-45c6-b064-ffe6fd432e78",
-    ready: true,
+    game_ready: true,
   },
 ];
+
+const power_plants_base: PowerPlantTemplate[] = [
+  {
+    type: "nuc",
+    p_min_mw: 400,
+    p_max_mw: 1300,
+    stock_max_mwh: -1,
+    price_eur_per_mwh: 17,
+  },
+  {
+    type: "therm",
+    p_min_mw: 150,
+    p_max_mw: 600,
+    stock_max_mwh: -1,
+    price_eur_per_mwh: 65,
+  },
+  {
+    type: "hydro",
+    p_min_mw: 50,
+    p_max_mw: 500,
+    stock_max_mwh: 5000,
+    price_eur_per_mwh: 0,
+  },
+];
+
+function givePowerPlantsToUser(
+  power_plants: PowerPlantTemplate[],
+  user: User
+): PowerPlant[] {
+  return power_plants.map((pp) => {
+    return {
+      ...pp,
+      session_id: user.session_id,
+      user_id: user.id,
+      id: uuid(),
+    };
+  });
+}
+
+export const power_plants: PowerPlant[] = [].concat(
+  ...users.map((u) => givePowerPlantsToUser(power_plants_base, u))
+);
 
 export async function clearDB(): Promise<void> {
   await db.query("DELETE FROM results CASCADE", []);
@@ -78,7 +127,28 @@ async function populateDB() {
     users.map(async (user) => {
       await db.query(
         "INSERT INTO users (id, name, session_id, game_ready) VALUES ($1, $2, $3, $4)",
-        [user.id, user.name, user.session_id, user.ready]
+        [user.id, user.name, user.session_id, user.game_ready]
+      );
+    })
+  );
+
+  // Insert power plants
+  await Promise.all(
+    power_plants.map(async (pp) => {
+      await db.query(
+        `INSERT INTO power_plants 
+          (id, session_id, user_id, type, p_min_mw, p_max_mw, stock_max_mwh, price_eur_per_mwh)
+          VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+        [
+          pp.id,
+          pp.session_id,
+          pp.user_id,
+          pp.type,
+          pp.p_min_mw,
+          pp.p_max_mw,
+          pp.stock_max_mwh,
+          pp.price_eur_per_mwh,
+        ]
       );
     })
   );
