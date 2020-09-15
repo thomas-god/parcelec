@@ -4,19 +4,50 @@
  */
 
 import db from "../../src/db/index";
-import { v4 as uuid } from "uuid";
 
 export const sessions = [
-  { id: uuid(), name: "Open session", status: "open" },
-  { id: uuid(), name: "Running session", status: "running" },
-  { id: uuid(), name: "Close session", status: "closed" },
+  {
+    id: "188ad7b8-c994-4313-a77f-70a055591bf5",
+    name: "Open session",
+    status: "open",
+  },
+  {
+    id: "e2ff5d6e-095c-41ca-ae18-c19b6ab1b874",
+    name: "Running session",
+    status: "running",
+  },
+  {
+    id: "ab574505-aad4-4686-947b-07439c28404c",
+    name: "Close session",
+    status: "closed",
+  },
 ];
 
 export const users = [
-  { session_id: sessions[1].id, name: "User 1", id: uuid(), ready: true },
-  { session_id: sessions[1].id, name: "User 2", id: uuid(), ready: true },
-  { session_id: sessions[2].id, name: "User 1", id: uuid(), ready: true },
-  { session_id: sessions[2].id, name: "User 2", id: uuid(), ready: true },
+  {
+    session_id: sessions[1].id,
+    name: "User 1",
+    id: "623884df-4548-4080-9fb2-96fa6f81a691",
+    ready: true,
+  },
+  {
+    session_id: sessions[1].id,
+    name: "User 2",
+    id: "d8226301-82a2-4dcc-b191-91af33378c29",
+    ready: true,
+  },
+  {
+    session_id: sessions[2].id,
+    name: "User 1",
+    id: "8ada2c5f-1def-4959-8cef-2cafb6487b69",
+    ready: true,
+  },
+  {
+    session_id: sessions[2].id,
+    name: "User 2",
+    id: "e227d4d5-bf2e-45c6-b064-ffe6fd432e78",
+    ready: true,
+  },
 ];
 
 export async function clearDB(): Promise<void> {
