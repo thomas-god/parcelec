@@ -34,11 +34,11 @@ export const actions: ActionTree<WebSocketState, RootState> = {
     if (state.ws?.OPEN) state.ws.close();
 
     // Open new WebSocket connection
-    const session_id = context.rootState.auction.id;
+    const auction_id = context.rootState.auction.id;
     const user_id = context.rootState.user.user_id;
     const username = context.rootState.user.username;
     const socket = new WebSocket(
-      `ws://localhost:3000/auction?auction_id=${session_id}&user_id=${user_id}&username=${username}`
+      `ws://localhost:3000/auction?auction_id=${auction_id}&user_id=${user_id}&username=${username}`
     );
 
     socket.addEventListener("close", () => onCloseCallback(context.commit));
