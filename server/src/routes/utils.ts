@@ -110,3 +110,23 @@ export async function getAllBids(auction_id: string): Promise<Bid[]> {
   ).rows as Bid[];
   return res.length > 0 ? res : null;
 }
+
+/**
+ * Return true if the user can bid and false if it can't (auction not running
+ * or has already bid).
+ * @param auction_id Auction ID
+ * @param user_id User ID
+ */
+export async function checkUserCanBid(
+  auction_id: string,
+  user_id: string
+): Promise<boolean> {
+  const user = await getUser(auction_id, user_id);
+  if (user === null) return false;
+
+  const auction = await getAuction(auction_id);
+  if (auction.status !== "Running") return false;
+
+  const bid = await getBid(auction_id, user_id);
+  return bid === null ? true : false;
+}

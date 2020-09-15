@@ -11,6 +11,7 @@ import {
   getAllBids,
   getAuctionCurrentStep,
   getAuctionUsers,
+  checkUserCanBid,
 } from "./utils";
 
 class CustomError extends Error {
@@ -191,15 +192,17 @@ export async function getUserInfos(
     // DB checks
     const auction_id = req.params.auction_id;
     const user_id = req.params.user_id;
-    console.log(auction_id, user_id);
     const user = await getUser(auction_id, user_id);
 
     if (user === null)
       throw new CustomError("Error, cannot find an user with these IDs", 404);
-
-    res
-      .status(200)
-      .json({ auction_id: auction_id, name: user.name, ready: user.ready });
+    const can_bid = await checkUserCanBid(auction_id, user_id);
+    res.status(200).json({
+      auction_id: auction_id,
+      name: user.name,
+      ready: user.ready,
+      can_bid: can_bid,
+    });
   } catch (error) {
     if (error instanceof CustomError) {
       res.status(error.code).end(error.msg);
