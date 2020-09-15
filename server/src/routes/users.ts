@@ -10,6 +10,7 @@ import {
   uuid_regex,
   setDefaultPortfolio,
   insertNewUser,
+  checkUserCanBid,
 } from "./utils";
 
 class CustomError extends Error {
@@ -87,12 +88,12 @@ export async function getUserInfos(
 
     if (user === null)
       throw new CustomError("Error, cannot find an user with these IDs", 404);
-    //const can_bid = await checkUserCanBid(session_id, user_id);
+    const can_bid = await checkUserCanBid(session_id, user_id);
     res.status(200).json({
       session_id: session_id,
       name: user.name,
       ready: user.game_ready,
-      //can_bid: can_bid,
+      can_bid: can_bid,
     });
   } catch (error) {
     if (error instanceof CustomError) {

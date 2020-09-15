@@ -85,19 +85,17 @@ export async function checkUsername(
 }
 
 /**
- * Get the number of the active step (i.e. with an 'open' status)
- * @param auction_id ID of the auction
+ * Return the number of the active phase (with status 'open').
+ * @param session_id ID of the auction
  */
-export async function getAuctionCurrentStep(
-  auction_id: string
-): Promise<number> {
+export async function getCurrentPhaseNo(session_id: string): Promise<number> {
   const res = (
     await db.query(
-      "SELECT step_no FROM auctions_steps WHERE auction_id=$1 AND status='open'",
-      [auction_id]
+      "SELECT phase_no FROM phases WHERE session_id=$1 AND status='open'",
+      [session_id]
     )
   ).rows;
-  return res.length === 1 ? (res[0].step_no as number) : null;
+  return res.length === 1 ? (res[0].phase_no as number) : null;
 }
 
 const power_plants_base: PowerPlantTemplate[] = [
@@ -189,11 +187,11 @@ export async function getBid(
   auction_id: string,
   user_id: string
 ): Promise<Bid> {
-  const step_no = await getAuctionCurrentStep(auction_id);
+  const phase_no = await getCurrentPhaseNo(auction_id);
   const res = (
     await db.query(
-      "SELECT * FROM bids WHERE auction_id=$1 AND user_id=$2 AND auction_step_no=$3",
-      [auction_id, user_id, step_no]
+      "SELECT * FROM bids WHERE auction_id=$1 AND user_id=$2 AND phase_no=$3",
+      [auction_id, user_id, phase_no]
     )
   ).rows;
   return res.length === 1 ? (res[0] as Bid) : null;
@@ -204,12 +202,12 @@ export async function getBid(
  * @param auction_id ID of the auction
  */
 export async function getAllBids(auction_id: string): Promise<Bid[]> {
-  const step_no = await getAuctionCurrentStep(auction_id);
+  const phase_no = await getCurrentPhaseNo(auction_id);
   const res = (
-    await db.query(
-      "SELECT * FROM bids WHERE auction_id=$1 AND auction_step_no=$2",
-      [auction_id, step_no]
-    )
+    await db.query("SELECT * FROM bids WHERE auction_id=$1 AND phase_no=$2", [
+      auction_id,
+      phase_no,
+    ])
   ).rows as Bid[];
   return res.length > 0 ? res : null;
 }
