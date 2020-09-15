@@ -35,6 +35,7 @@ CREATE TABLE phases
   start_time TIMESTAMPTZ,
   clearing_time TIMESTAMPTZ,
   planning_time TIMESTAMPTZ,
+  status TEXT CHECK (status IN ('open', 'closed')),
   PRIMARY KEY (session_id, phase_no)
 );
 
