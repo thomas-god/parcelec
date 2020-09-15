@@ -29,6 +29,24 @@ export async function getSessionUsers(session_id: string): Promise<User[]> {
 }
 
 /**
+ * Insert a new user to the DB and return the inserted user_id.
+ * Does not check if the user can be inserted or not.
+ * @param session_id Session ID
+ * @param username Username
+ */
+export async function insertNewUser(
+  session_id: string,
+  username: string
+): Promise<string> {
+  const user_id = uuid();
+  await db.query(
+    "INSERT INTO users (id, session_id, name) VALUES ($1, $2, $3)",
+    [user_id, session_id, username]
+  );
+  return user_id;
+}
+
+/**
  * Get a user Object. Returns `null` if it's not found.
  * @param session_id Session UUID
  * @param user_id User UUID

@@ -1,3 +1,7 @@
+/**
+ * Defines the routes for the various game phases.
+ */
+
 import express from "express";
 import { getSession, getUser, getPortfolio, uuid_regex } from "./utils";
 

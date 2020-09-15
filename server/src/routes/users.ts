@@ -9,6 +9,7 @@ import {
   getSessionUsers,
   uuid_regex,
   setDefaultPortfolio,
+  insertNewUser,
 } from "./utils";
 
 class CustomError extends Error {
@@ -58,11 +59,7 @@ export async function registerNewUser(
       );
 
     // Insertion
-    const user_id = uuidv4();
-    await db.query(
-      "INSERT INTO users (id, session_id, name) VALUES ($1, $2, $3)",
-      [user_id, session_id, username]
-    );
+    const user_id = await insertNewUser(session_id, username);
     res.status(201).json({ user_id: user_id });
     await setDefaultPortfolio(session_id, user_id);
     // Notify all users that a new user has joined
