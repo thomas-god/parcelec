@@ -8,11 +8,11 @@ export interface UsersWebSocket {
   [index: string]: ws;
 }
 
-export interface AuctionsRecord {
+export interface SessionsRecord {
   [index: string]: UsersWebSocket;
 }
 
-const auctions: AuctionsRecord = {};
+const sessions: SessionsRecord = {};
 
 /**
  * Callback when connecting a new WebSocket to check client's credentials
@@ -30,8 +30,8 @@ export async function onConnectionCallback(
 
     const user = await getUser(auction_id, user_id);
     if (user === null) throw "Error, connection not allowed";
-    if (!auctions.hasOwnProperty(auction_id)) auctions[auction_id] = {};
-    auctions[auction_id][user_id] = socket;
+    if (!sessions.hasOwnProperty(auction_id)) sessions[auction_id] = {};
+    sessions[auction_id][user_id] = socket;
   } catch (error) {
     socket.terminate();
   }
@@ -56,9 +56,9 @@ function messageCallback(socket: ws, msg: ClientMessage): void {
     // TODO: currently we do a DB call (via getUser) each time a message arrives
     // TODO: could we cache in some way the user info to avoid unnecessary DB calls ?
     // TODO: For instance by caching this info (e.g. in redis)
-    const user = getUser(msg.credentials.auction_id, msg.credentials.user_id);
+    const user = getUser(msg.credentials.session_id, msg.credentials.user_id);
     if (!user) throw "Error, user not allowed";
-    Object.values(auctions[msg.credentials.auction_id]).forEach((wss) => {
+    Object.values(sessions[msg.credentials.session_id]).forEach((wss) => {
       wss.send(
         JSON.stringify({
           username: msg.username,
@@ -76,17 +76,17 @@ function messageCallback(socket: ws, msg: ClientMessage): void {
 /**
  * Send an update/message to all connected users of an auction, authored
  * as the SERVER.
- * @param auction_id ID of the auction
+ * @param session_id ID of the auction
  * @param reason Reason of the message
  * @param payload Content of the message
  */
-export function sendUpdateToAuctionUsers(
-  auction_id: string,
+export function sendUpdateToUsers(
+  session_id: string,
   reason: string,
   payload: any
 ): void {
-  if (Object.keys(auctions).includes(auction_id)) {
-    Object.values(auctions[auction_id]).forEach((wss) => {
+  if (Object.keys(sessions).includes(session_id)) {
+    Object.values(sessions[session_id]).forEach((wss) => {
       wss.send(
         JSON.stringify({
           username: "SERVER",
