@@ -77,4 +77,17 @@ describe("Getting a user portfolio", () => {
         .sort((a, b) => (a.id < b.id ? 1 : -1))
     );
   });
+
+  test("Should get a portfolio for a newly created user", async () => {
+    const user_id = (
+      await superagent
+        .put(`${url}/session/${sessions[0].id}/register_user`)
+        .send({ username: "User" })
+    ).body.user_id;
+    const res = await superagent.get(
+      `${url}/session/${sessions[0].id}/user/${user_id}/portfolio`
+    );
+    expect(res.status).toEqual(200);
+    expect(Array.isArray(res.body)).toEqual(true);
+  });
 });

@@ -1,5 +1,6 @@
 import db from "../db/index";
-import { Session, User, Bid, PowerPlant } from "./types";
+import { v4 as uuid } from "uuid";
+import { Session, User, Bid, PowerPlant, PowerPlantTemplate } from "./types";
 
 export const uuid_regex =
   "[A-F0-9]{8}-[A-F0-9]{4}-4[A-F0-9]{3}-[89AB][A-F0-9]{3}-[A-F0-9]{12}";
@@ -79,6 +80,75 @@ export async function getAuctionCurrentStep(
     )
   ).rows;
   return res.length === 1 ? (res[0].step_no as number) : null;
+}
+
+const power_plants_base: PowerPlantTemplate[] = [
+  {
+    type: "nuc",
+    p_min_mw: 400,
+    p_max_mw: 1300,
+    stock_max_mwh: -1,
+    price_eur_per_mwh: 17,
+  },
+  {
+    type: "therm",
+    p_min_mw: 150,
+    p_max_mw: 600,
+    stock_max_mwh: -1,
+    price_eur_per_mwh: 65,
+  },
+  {
+    type: "hydro",
+    p_min_mw: 50,
+    p_max_mw: 500,
+    stock_max_mwh: 5000,
+    price_eur_per_mwh: 0,
+  },
+];
+
+function givePowerPlantsToUser(
+  power_plants: PowerPlantTemplate[],
+  session_id: string,
+  user_id: string
+): PowerPlant[] {
+  return power_plants.map((pp) => {
+    return {
+      ...pp,
+      session_id: session_id,
+      user_id: user_id,
+      id: uuid(),
+    };
+  });
+}
+
+/**
+ * Generate and insert into the DB a default portfolio for the user.
+ * @param user_id User ID
+ */
+export async function setDefaultPortfolio(
+  session_id: string,
+  user_id: string
+): Promise<void> {
+  const pps = givePowerPlantsToUser(power_plants_base, session_id, user_id);
+  await Promise.all(
+    pps.map(async (pp) => {
+      await db.query(
+        `INSERT INTO power_plants 
+          (id, session_id, user_id, type, p_min_mw, p_max_mw, stock_max_mwh, price_eur_per_mwh)
+          VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+        [
+          pp.id,
+          pp.session_id,
+          pp.user_id,
+          pp.type,
+          pp.p_min_mw,
+          pp.p_max_mw,
+          pp.stock_max_mwh,
+          pp.price_eur_per_mwh,
+        ]
+      );
+    })
+  );
 }
 
 /**

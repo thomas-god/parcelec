@@ -8,7 +8,7 @@ import {
   checkUsername,
   getSessionUsers,
   uuid_regex,
-  checkUserCanBid,
+  setDefaultPortfolio,
 } from "./utils";
 
 class CustomError extends Error {
@@ -64,6 +64,7 @@ export async function registerNewUser(
       [user_id, session_id, username]
     );
     res.status(201).json({ user_id: user_id });
+    await setDefaultPortfolio(session_id, user_id);
     // Notify all users that a new user has joined
     notifyUsersListUpdate(session_id);
   } catch (error) {
