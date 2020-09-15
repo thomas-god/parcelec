@@ -86,7 +86,7 @@ export async function checkUsername(
 
 /**
  * Return the number of the active phase (with status 'open').
- * @param session_id ID of the auction
+ * @param session_id ID of the session
  */
 export async function getCurrentPhaseNo(session_id: string): Promise<number> {
   const res = (
@@ -178,34 +178,34 @@ export async function getPortfolio(user_id: string): Promise<PowerPlant[]> {
 }
 
 /**
- * Get a user's bid for the active step of an auction. Return null if the
+ * Get a user's bid for the active step of an session. Return null if the
  * user has not bid yet.
- * @param auction_id ID of the auction
+ * @param session_id ID of the session
  * @param user_id ID of the user
  */
 export async function getBid(
-  auction_id: string,
+  session_id: string,
   user_id: string
 ): Promise<Bid> {
-  const phase_no = await getCurrentPhaseNo(auction_id);
+  const phase_no = await getCurrentPhaseNo(session_id);
   const res = (
     await db.query(
-      "SELECT * FROM bids WHERE auction_id=$1 AND user_id=$2 AND phase_no=$3",
-      [auction_id, user_id, phase_no]
+      "SELECT * FROM bids WHERE session_id=$1 AND user_id=$2 AND phase_no=$3",
+      [session_id, user_id, phase_no]
     )
   ).rows;
   return res.length === 1 ? (res[0] as Bid) : null;
 }
 
 /**
- * Return all the bids for the active step of an auction
- * @param auction_id ID of the auction
+ * Return all the bids for the active step of an sessions
+ * @param sessions_id ID of the sessions
  */
-export async function getAllBids(auction_id: string): Promise<Bid[]> {
-  const phase_no = await getCurrentPhaseNo(auction_id);
+export async function getAllBids(sessions_id: string): Promise<Bid[]> {
+  const phase_no = await getCurrentPhaseNo(sessions_id);
   const res = (
-    await db.query("SELECT * FROM bids WHERE auction_id=$1 AND phase_no=$2", [
-      auction_id,
+    await db.query("SELECT * FROM bids WHERE sessions_id=$1 AND phase_no=$2", [
+      sessions_id,
       phase_no,
     ])
   ).rows as Bid[];
@@ -213,21 +213,21 @@ export async function getAllBids(auction_id: string): Promise<Bid[]> {
 }
 
 /**
- * Return true if the user can bid and false if it can't (auction not running
+ * Return true if the user can bid and false if it can't (session not running
  * or has already bid).
- * @param auction_id Auction ID
+ * @param session_id Session ID
  * @param user_id User ID
  */
 export async function checkUserCanBid(
-  auction_id: string,
+  session_id: string,
   user_id: string
 ): Promise<boolean> {
-  const user = await getUser(auction_id, user_id);
+  const user = await getUser(session_id, user_id);
   if (user === null) return false;
 
-  const auction = await getSession(auction_id);
-  if (auction.status !== "running") return false;
+  const session = await getSession(session_id);
+  if (session.status !== "running") return false;
 
-  const bid = await getBid(auction_id, user_id);
+  const bid = await getBid(session_id, user_id);
   return bid === null ? true : false;
 }
