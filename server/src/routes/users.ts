@@ -7,6 +7,7 @@ import {
   getUser,
   checkUsername,
   getSessionUsers,
+  uuid_regex,
   checkUserCanBid,
 } from "./utils";
 
@@ -183,8 +184,17 @@ async function notifyUsersListUpdate(session_id: string): Promise<void> {
 
 const router = express.Router();
 
-router.put("/session/:session_id/register_user", registerNewUser);
-router.get("/session/:session_id/user/:user_id", getUserInfos);
-router.put("/session/:session_id/user/:user_id/ready", setUserReady);
+router.put(
+  `/session/:session_id(${uuid_regex})/register_user`,
+  registerNewUser
+);
+router.get(
+  `/session/:session_id(${uuid_regex})/user/:user_id(${uuid_regex})`,
+  getUserInfos
+);
+router.put(
+  `/session/:session_id(${uuid_regex})/user/:user_id(${uuid_regex})/ready`,
+  setUserReady
+);
 
 export default router;

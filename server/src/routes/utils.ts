@@ -1,6 +1,8 @@
 import db from "../db/index";
 import { Session, User, Bid } from "./types";
 
+export const uuid_regex = /^[A-F\d]{8}-[A-F\d]{4}-4[A-F\d]{3}-[89AB][A-F\d]{3}-[A-F\d]{12}$/i;
+
 /**
  * Get a session from the DB by its UUID. Returns `null` if no
  * session is found.

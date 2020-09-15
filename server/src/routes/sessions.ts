@@ -2,7 +2,7 @@ import { v4 as uuidv4 } from "uuid";
 import express from "express";
 import db from "../db/index";
 import { Session } from "./types";
-import { getSession, getSessionUsers } from "./utils";
+import { getSession, getSessionUsers, uuid_regex } from "./utils";
 import { serialize } from "v8";
 
 class CustomError extends Error {
@@ -121,6 +121,6 @@ const router = express.Router();
 
 router.get("/sessions/open", getOpenSessions);
 router.put("/session/", openNewSession);
-router.get("/session/:session_id", getSessionInfos);
+router.get(`/session/:session_id(${uuid_regex})`, getSessionInfos);
 
 export default router;
