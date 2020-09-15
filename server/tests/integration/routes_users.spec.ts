@@ -160,8 +160,7 @@ describe("Marking an user as ready for a game session to start", () => {
     try {
       await superagent.put(`${url}/session/${sessions[0].id}/user/ready`);
     } catch (error) {
-      expect(error.status).toEqual(400);
-      expect(error.response.text).toEqual("Error, no user ID provided");
+      expect(error.status).toEqual(404);
     }
   });
 

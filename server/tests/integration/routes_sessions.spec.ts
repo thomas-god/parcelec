@@ -76,12 +76,11 @@ describe("Opening a new auction", () => {
     const res = await superagent
       .put(`${url}${endpoint}`)
       .send({ session_name: "My auction" });
-    const body = JSON.parse(res.text);
     expect(res.status).toEqual(201);
-    expect(body.name).toEqual("My auction");
-    expect(body.status).toEqual("Open");
-    expect(body).toHaveProperty("id");
-    expect(uuidValidate(body.id)).toEqual(true);
+    expect(res.body.name).toEqual("My auction");
+    expect(res.body.status).toEqual("open");
+    expect(res.body).toHaveProperty("id");
+    expect(uuidValidate(res.body.id)).toEqual(true);
   });
 });
 
@@ -95,32 +94,31 @@ describe("Retrieving session public infos", () => {
 
   test("Should get a 404 error if no session_id is provided", async () => {
     try {
-      await superagent.get(`${url}/auction`);
+      await superagent.get(`${url}/session`);
     } catch (error) {
       expect(error.status).toEqual(404);
     }
   });
 
-  test("Should get basic infos for an open auction", async () => {
+  test("Should get basic infos for an open session", async () => {
     await superagent
-      .put(`${url}/auction/${sessions[0].id}/register_user`)
+      .put(`${url}/session/${sessions[0].id}/register_user`)
       .send({ username: "User 1" });
-    const res = await superagent.get(`${url}/auction/${sessions[0].id}`);
+    const res = await superagent.get(`${url}/session/${sessions[0].id}`);
     expect(res.body.id).toEqual(sessions[0].id);
     expect(res.body.name).toEqual(sessions[0].name);
     expect(res.body.status).toEqual(sessions[0].status);
     expect(res.body.users).toEqual([{ name: "User 1", ready: false }]);
   });
 
-  test("Should get basic infos for a running auction", async () => {
-    const res = await superagent.get(`${url}/auction/${sessions[1].id}`);
+  test("Should get basic infos for a running session", async () => {
+    const res = await superagent.get(`${url}/session/${sessions[1].id}`);
     expect(res.body.id).toEqual(sessions[1].id);
     expect(res.body.name).toEqual(sessions[1].name);
-    expect(res.body.status).toEqual("Running");
+    expect(res.body.status).toEqual(sessions[1].status);
     expect(res.body.users).toEqual([
       { name: "User 1", ready: true },
       { name: "User 2", ready: true },
     ]);
-    expect(res.body.step_no).toEqual(0);
   });
 });
