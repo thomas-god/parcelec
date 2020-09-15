@@ -1,5 +1,5 @@
 import db from "../db/index";
-import { Session, User, Bid } from "./types";
+import { Session, User, Bid, PowerPlant } from "./types";
 
 export const uuid_regex =
   "[A-F0-9]{8}-[A-F0-9]{4}-4[A-F0-9]{3}-[89AB][A-F0-9]{3}-[A-F0-9]{12}";
@@ -79,6 +79,16 @@ export async function getAuctionCurrentStep(
     )
   ).rows;
   return res.length === 1 ? (res[0].step_no as number) : null;
+}
+
+/**
+ * Get the user's portfolio, i.e. the list of power plants owned by the user.
+ * @param user_id User ID
+ */
+export async function getPortfolio(user_id: string): Promise<PowerPlant[]> {
+  return (
+    await db.query("SELECT * FROM power_plants WHERE user_id=$1", [user_id])
+  ).rows;
 }
 
 /**
