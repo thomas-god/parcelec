@@ -8,6 +8,7 @@
     "serve": "sudo docker-compose -f docker-compose.yml -f docker-compose.dev.yml up --build",
     "start:development": "nodemon index.ts",
     "start:production": "node dist/index.js",
+    "lint": "eslint . --ext .ts",
     "test:unit": "npx jest -c jest.unit.config.js",
     "test:integration": "sudo docker-compose -f docker-compose.yml -f docker-compose.test.yml up --build --abort-on-container-exit"
   },
@@ -38,6 +39,10 @@
     "ws": "^7.3.1"
   },
   "devDependencies": {
+    "@typescript-eslint/eslint-plugin": "^4.1.0",
+    "@typescript-eslint/parser": "^4.1.0",
+    "eslint": "^7.9.0",
+    "eslint-plugin-security": "^1.4.0",
     "jest": "^26.4.2",
     "nodemon": "^2.0.4",
     "superagent": "^6.1.0",
