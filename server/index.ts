@@ -4,6 +4,7 @@ import cors from "cors";
 import morgan from "morgan";
 import sessions from "./src/routes/sessions";
 import users from "./src/routes/users";
+import game_phases from "./src/routes/game_phases";
 import { onConnectionCallback } from "./src/routes/websocket";
 
 const app = express();
@@ -14,6 +15,7 @@ app.use(express.json());
 app.use(morgan("common"));
 app.use("/", sessions);
 app.use("/", users);
+app.use("/", game_phases);
 
 const wsServer = new ws.Server({ noServer: true, clientTracking: true });
 wsServer.on("connection", onConnectionCallback);
