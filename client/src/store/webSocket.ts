@@ -116,6 +116,11 @@ function onMessageCallback(
       message.username === "SERVER"
     ) {
       context.dispatch("auction/setStatus", "Running", { root: true });
+    } else if (
+      message.reason === "auction_cleared" &&
+      message.username === "SERVER"
+    ) {
+      context.dispatch("auction/updateBidAbility", true, { root: true });
     }
   } catch (error) {
     console.log(error);

@@ -370,6 +370,8 @@ export async function submitBid(
       [user_id, auction_id, step_no, req.body.bid]
     );
     res.status(201).end();
+    // Check if the auction must be cleared
+    clearBids(auction_id);
   } catch (error) {
     res.status(error.code).end(error.msg);
   }
@@ -455,6 +457,33 @@ async function notifyUsersListUpdate(auction_id: string): Promise<void> {
       return { name: u.name, ready: u.ready };
     })
   );
+}
+
+/**
+ * Check if the auction can be cleared (all users have bid)
+ * and then clear the auction (compute clearing price and add
+ * a new auction step) and notify the users.
+ * @param auction_id Auction ID
+ */
+async function clearBids(auction_id: string): Promise<void> {
+  const bids = await getAllBids(auction_id);
+  const users = await getAuctionUsers(auction_id);
+  if (bids.length === users.length) {
+    // Can clear the auction
+    const step_no = await getAuctionCurrentStep(auction_id);
+    const clearing_price = findMaxBid(bids);
+    await db.query(
+      "UPDATE auctions_steps SET status='closed', clearing_price=$1 WHERE auction_id=$2 AND step_no=$3",
+      [clearing_price, auction_id, step_no]
+    );
+    await db.query(
+      "INSERT INTO auctions_steps (auction_id, step_no, status) VALUES ($1, $2, $3)",
+      [auction_id, step_no + 1, "open"]
+    );
+    sendUpdateToAuctionUsers(auction_id, "auction_cleared", {
+      clearing_price: clearing_price,
+    });
+  }
 }
 
 const router = express.Router();
