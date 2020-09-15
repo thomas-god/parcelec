@@ -136,7 +136,7 @@ describe("Get informations about a given user", () => {
     );
     expect(res.body.session_id).toEqual(users[0].session_id);
     expect(res.body.name).toEqual(users[0].name);
-    expect(res.body.ready).toEqual(users[0].ready);
+    expect(res.body.ready).toEqual(users[0].game_ready);
   });
 });
 
