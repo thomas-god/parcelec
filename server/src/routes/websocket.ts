@@ -19,14 +19,17 @@ const auctions: AuctionsRecord = {};
  * @param socket User WebSocket
  * @param request HTTP request
  */
-export function onConnectionCallback(socket: ws, request: Request): void {
+export async function onConnectionCallback(
+  socket: ws,
+  request: Request
+): Promise<void> {
   try {
     const query_params = querystring.parse(url.parse(request.url).query);
     const auction_id = query_params.auction_id as string;
     const user_id = query_params.user_id as string;
 
-    const user = getUser(auction_id, user_id);
-    if (!user) throw "Error, connection not allowed";
+    const user = await getUser(auction_id, user_id);
+    if (user === null) throw "Error, connection not allowed";
     if (!auctions.hasOwnProperty(auction_id)) auctions[auction_id] = {};
     auctions[auction_id][user_id] = socket;
   } catch (error) {
