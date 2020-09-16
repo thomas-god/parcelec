@@ -101,7 +101,10 @@ export async function insertPlanning(
       await db.query(
         `INSERT INTO production_plannings 
           (user_id, session_id, phase_no, plant_id, p_mw, stock_start_mwh, stock_end_mwh)
-          VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+          VALUES ($1, $2, $3, $4, $5, $6, $7)
+        ON CONFLICT (plant_id, phase_no) 
+          DO UPDATE SET (p_mw, stock_start_mwh, stock_end_mwh)
+          = (excluded.p_mw, excluded.stock_start_mwh, excluded.stock_end_mwh)`,
         [
           dispatch.user_id,
           dispatch.session_id,

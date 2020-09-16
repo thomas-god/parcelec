@@ -224,6 +224,42 @@ describe("Should post a complete production planning", () => {
         .put(`${url}/session/${sessions[0].id}/user/${users_id[0]}/planning`)
         .send(planning);
       expect(res.status).toEqual(201);
+      await superagent
+        .put(`${url}/session/${sessions[0].id}/user/${users_id[0]}/planning`)
+        .send(planning);
+
+      // Check the planning via GET planning
+      const res_get = await superagent.get(
+        `${url}/session/${sessions[0].id}/user/${users_id[0]}/planning`
+      );
+      expect(res_get.status).toEqual(200);
+      expect(Array.isArray(res_get.body)).toEqual(true);
+      expect(res_get.body.length).toEqual(planning.length);
+      expect(
+        res_get.body.sort((a, b) => (a.plant_id < b.plant_id ? 1 : -1))
+      ).toEqual(planning.sort((a, b) => (a.plant_id < b.plant_id ? 1 : -1)));
+    } catch (error) {
+      fail(error);
+    }
+  });
+
+  test("Should modify an existing planning", async () => {
+    try {
+      // Start session and get default planning
+      const users_id = await startSession(url, sessions[0].id);
+      const planning = await getProductionPlanning(sessions[0].id, users_id[0]);
+
+      // Put the planning and check response status
+      await superagent
+        .put(`${url}/session/${sessions[0].id}/user/${users_id[0]}/planning`)
+        .send(planning);
+
+      // Put a new version of the planning
+      planning[0].p_mw = planning[0].p_mw + 10;
+      const res = await superagent
+        .put(`${url}/session/${sessions[0].id}/user/${users_id[0]}/planning`)
+        .send(planning);
+      expect(res.status).toEqual(201);
 
       // Check the planning via GET planning
       const res_get = await superagent.get(
