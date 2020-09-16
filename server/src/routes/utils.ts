@@ -276,23 +276,3 @@ export async function getAllBids(sessions_id: string): Promise<Bid[]> {
   ).rows as Bid[];
   return res.length > 0 ? res : null;
 }
-
-/**
- * Return true if the user can bid and false if it can't (session not running
- * or has already bid).
- * @param session_id Session ID
- * @param user_id User ID
- */
-export async function checkUserCanBid(
-  session_id: string,
-  user_id: string
-): Promise<boolean> {
-  const user = await getUser(session_id, user_id);
-  if (user === null) return false;
-
-  const session = await getSession(session_id);
-  if (session.status !== "running") return false;
-
-  const bid = await getBid(session_id, user_id);
-  return bid === null ? true : false;
-}
