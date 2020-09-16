@@ -1,6 +1,13 @@
 import db from "../db/index";
 import { v4 as uuid } from "uuid";
-import { Session, User, Bid, PowerPlant, PowerPlantTemplate } from "./types";
+import {
+  Session,
+  User,
+  Bid,
+  PowerPlant,
+  PowerPlantTemplate,
+  ConsoForecast,
+} from "./types";
 
 export const uuid_regex =
   "[A-F0-9]{8}-[A-F0-9]{4}-4[A-F0-9]{3}-[89AB][A-F0-9]{3}-[A-F0-9]{12}";
@@ -175,6 +182,25 @@ export async function getPortfolio(user_id: string): Promise<PowerPlant[]> {
   return (
     await db.query("SELECT * FROM power_plants WHERE user_id=$1", [user_id])
   ).rows;
+}
+
+/**
+ * Get the current conso forecast for a given user.
+ * @param session_id Session ID
+ * @param user_id User ID
+ */
+export async function getConsoForecast(
+  session_id: string,
+  user_id: string
+): Promise<ConsoForecast> {
+  const phase_no = await getCurrentPhaseNo(session_id);
+  const rows: ConsoForecast[] = (
+    await db.query("SELECT * FROM conso WHERE phase_no=$1 AND user_id=$2", [
+      phase_no,
+      user_id,
+    ])
+  ).rows;
+  return rows.length === 1 ? rows[0] : null;
 }
 
 /**

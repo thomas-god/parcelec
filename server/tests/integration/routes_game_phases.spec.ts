@@ -91,3 +91,76 @@ describe("Getting a user portfolio", () => {
     expect(Array.isArray(res.body)).toEqual(true);
   });
 });
+
+describe("Getting conso info for a running auction", () => {
+  /**
+   * Clean the DB and properly start a session by adding 2 users
+   * and set them to ready
+   */
+  beforeEach(async () => {
+    await prepareDB();
+  });
+
+  async function startSession(session_id: string): Promise<string[]> {
+    const user1_id = (
+      await superagent
+        .put(`${url}/session/${session_id}/register_user`)
+        .send({ username: "User 1" })
+    ).body.user_id;
+    await superagent.put(`${url}/session/${session_id}/user/${user1_id}/ready`);
+    const user2_id = (
+      await superagent
+        .put(`${url}/session/${session_id}/register_user`)
+        .send({ username: "User 2" })
+    ).body.user_id;
+    await superagent.put(`${url}/session/${session_id}/user/${user2_id}/ready`);
+    await new Promise((r) => setTimeout(r, 50));
+    return [user1_id, user2_id];
+  }
+
+  test("Should error when the session does not exist", async () => {
+    try {
+      await superagent.get(`${url}/session/${uuid()}/user/${uuid()}/conso`);
+    } catch (error) {
+      expect(error.status).toEqual(404);
+      expect(error.response.text).toEqual(
+        "Error, no session found with this ID"
+      );
+    }
+  });
+
+  test("Should error when the user does not exist", async () => {
+    try {
+      await superagent.get(
+        `${url}/session/${sessions[1].id}/user/${uuid()}/conso`
+      );
+    } catch (error) {
+      expect(error.status).toEqual(404);
+      expect(error.response.text).toEqual("Error, no user found with this ID");
+    }
+  });
+
+  test("Should error when the session is not running", async () => {
+    try {
+      const user_id = (
+        await superagent
+          .put(`${url}/session/${sessions[0].id}/register_user`)
+          .send({ username: "User" })
+      ).body.user_id;
+      await superagent.get(
+        `${url}/session/${sessions[0].id}/user/${user_id}/conso`
+      );
+    } catch (error) {
+      expect(error.status).toEqual(400);
+      expect(error.response.text).toEqual("Error, the session is not running");
+    }
+  });
+
+  test("Should get conso infos", async () => {
+    const users_id = await startSession(sessions[0].id);
+    const res = await superagent.get(
+      `${url}/session/${sessions[0].id}/user/${users_id[0]}/conso`
+    );
+    expect(res.body).toHaveProperty("conso_mw");
+  });
+});
