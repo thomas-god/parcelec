@@ -108,19 +108,19 @@ function onMessageCallback(
       message.reason === "users_list_update" &&
       message.username === "SERVER"
     ) {
-      context.commit("auction/SET_USERS", message.data, {
+      context.commit("session/SET_USERS", message.data, {
         root: true,
       });
     } else if (
-      message.reason === "auction_started" &&
+      message.reason === "session_started" &&
       message.username === "SERVER"
     ) {
-      context.dispatch("auction/setStatus", "Running", { root: true });
+      context.dispatch("session/setStatus", "Running", { root: true });
     } else if (
-      message.reason === "auction_cleared" &&
+      message.reason === "session_cleared" &&
       message.username === "SERVER"
     ) {
-      context.dispatch("auction/updateBidAbility", true, { root: true });
+      context.dispatch("session/updateBidAbility", true, { root: true });
     }
   } catch (error) {
     console.log(error);
