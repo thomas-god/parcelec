@@ -22,14 +22,14 @@ import { Component, Prop, Vue } from "vue-property-decorator";
 import { State, Action, Getter, namespace } from "vuex-class";
 import { User } from "../store/session";
 
-const auctionModule = namespace("auction");
+const sessionModule = namespace("session");
 const userModule = namespace("user");
 
 @Component
 export default class UserList extends Vue {
   @Prop({ default: false }) readonly display_ready_status!: boolean;
-  @auctionModule.State users!: User[];
-  @auctionModule.Getter auction_id!: string;
+  @sessionModule.State users!: User[];
+  @sessionModule.Getter auction_id!: string;
   @userModule.Getter user_id!: string;
   @userModule.Getter user_ready!: boolean;
   @userModule.Action setReadyStatus!: () => void;

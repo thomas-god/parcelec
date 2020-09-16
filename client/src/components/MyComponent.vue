@@ -38,15 +38,15 @@ import Messages from "./Messages.vue";
 import Bid from "./AuctionBid.vue";
 
 const userModule = namespace("user");
-const auctionModule = namespace("auction");
+const sessionModule = namespace("session");
 
 @Component({
   components: { AuctionSelect, UsernameSelect, Chatroom, Bid }
 })
 export default class Main extends Vue {
   @userModule.Getter username!: string;
-  @auctionModule.Getter auction!: Session;
-  @auctionModule.Getter auction_status!: string;
+  @sessionModule.Getter auction!: Session;
+  @sessionModule.Getter auction_status!: string;
 }
 </script>
 

@@ -24,13 +24,13 @@ import { State, Action, Getter, namespace } from "vuex-class";
 import { Session } from "../store/session";
 
 const userModule = namespace("user");
-const auctionModule = namespace("auction");
+const sessionModule = namespace("session");
 
 @Component
 export default class User extends Vue {
   @userModule.Action setUsername!: (payload: string) => void;
   @userModule.Action setUserID!: (payload: string) => void;
-  @auctionModule.Getter auction!: Session;
+  @sessionModule.Getter auction!: Session;
   @State("api_url") api_url!: string;
   new_username = "";
   new_username_err = false;

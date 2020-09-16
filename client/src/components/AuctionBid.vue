@@ -14,14 +14,14 @@ import { Component, Prop, Vue } from "vue-property-decorator";
 import { State, Action, Getter, namespace } from "vuex-class";
 import { Session } from "../store/session";
 
-const auctionModule = namespace("auction");
+const sessionModule = namespace("session");
 const userModule = namespace("user");
 
 @Component
 export default class Bid extends Vue {
-  @auctionModule.Getter auction!: Session;
-  @auctionModule.Getter can_bid!: boolean;
-  @auctionModule.Action updateBidAbility!: (bid_ability: boolean) => void;
+  @sessionModule.Getter auction!: Session;
+  @sessionModule.Getter can_bid!: boolean;
+  @sessionModule.Action updateBidAbility!: (bid_ability: boolean) => void;
   @userModule.Getter user_id!: string;
   @State("api_url") api_url!: string;
 

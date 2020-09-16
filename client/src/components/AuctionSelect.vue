@@ -38,13 +38,13 @@ import { Component, Prop, Vue } from "vue-property-decorator";
 import { State, Action, Getter, namespace } from "vuex-class";
 import { Session } from "../store/session";
 
-const auctionModule = namespace("auction");
+const sessionModule = namespace("session");
 
 @Component
 export default class User extends Vue {
   @Prop({ default: false }) allow_new_auction!: boolean;
-  @auctionModule.Getter auction!: Session;
-  @auctionModule.Action setAuction!: (payload: Session) => void;
+  @sessionModule.Getter auction!: Session;
+  @sessionModule.Action setAuction!: (payload: Session) => void;
   @State("api_url") api_url!: string;
 
   // List of open auctions
