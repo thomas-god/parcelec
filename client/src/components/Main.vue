@@ -20,7 +20,8 @@
     <div v-if="session_status === 'running'" class="app__grid">
       <h1 class="app__grid_head">Enchère en cours...</h1>
       <div class="app__grid_main">
-        <Bid v-if="session.id && username" />
+        <!-- <Bid v-if="session.id && username" /> -->
+        <PowerPlantsList v-if="session.id && username" />
       </div>
       <Chatroom class="chatroom__grid" display_direction="column" />
     </div>
@@ -36,12 +37,13 @@ import UsernameSelect from "./UsernameSelect.vue";
 import Chatroom from "./Chatroom.vue";
 import Messages from "./Messages.vue";
 import Bid from "./SessionBid.vue";
+import PowerPlantsList from "./PowerPlantsList.vue";
 
 const userModule = namespace("user");
 const sessionModule = namespace("session");
 
 @Component({
-  components: { SessionSelect, UsernameSelect, Chatroom, Bid }
+  components: { SessionSelect, UsernameSelect, Chatroom, Bid, PowerPlantsList }
 })
 export default class Main extends Vue {
   @userModule.Getter username!: string;
