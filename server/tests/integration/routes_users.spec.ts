@@ -9,7 +9,7 @@
  */
 import { v4 as uuid, validate as uuidValidate } from "uuid";
 import superagent from "superagent";
-import { clearDB, prepareDB, sessions, users } from "./db_utils";
+import { prepareDB, sessions, users } from "./db_utils";
 
 const url = process.env.API_URL;
 

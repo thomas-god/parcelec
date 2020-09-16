@@ -53,7 +53,6 @@ export async function startGamePhase(session_id: string): Promise<void> {
     const t_start = Date.now() / 1000; // ms -> s for PSQL
     const t_clearing = t_start + 60 * 3;
     const t_end = t_clearing + 60 * 3;
-    console.log(t_end);
     try {
       await db.query(
         `UPDATE phases 

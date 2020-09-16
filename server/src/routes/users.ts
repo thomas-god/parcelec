@@ -1,4 +1,3 @@
-import { v4 as uuidv4 } from "uuid";
 import express from "express";
 import db from "../db/index";
 import { sendUpdateToUsers } from "./websocket";
