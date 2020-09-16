@@ -37,11 +37,9 @@ export default class UserList extends Vue {
 
   async setStatusReady(): Promise<void> {
     const res = await fetch(
-      `${this.api_url}/session/${this.session_id}/user_ready`,
+      `${this.api_url}/session/${this.session_id}/user/${this.user_id}/ready`,
       {
-        method: "PUT",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ user_id: this.user_id })
+        method: "PUT"
       }
     );
     if (res.status === 201) this.setReadyStatus();
