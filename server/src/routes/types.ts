@@ -72,7 +72,7 @@ export interface EnergyExchange {
   price_eur_per_mwh: number;
 }
 
-export interface ProductionPlanning {
+export interface PowerPlantDispatch {
   user_id: string;
   session_id: string;
   phase_no: number;
@@ -81,6 +81,8 @@ export interface ProductionPlanning {
   stock_start_mwh: number;
   stock_end_mwh: number;
 }
+
+export type ProductionPlanning = PowerPlantDispatch[];
 
 export interface PhaseResults {
   user_id: string;

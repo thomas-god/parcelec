@@ -7,6 +7,7 @@ import {
   PowerPlant,
   PowerPlantTemplate,
   ConsoForecast,
+  ProductionPlanning,
 } from "./types";
 
 export const uuid_regex =
@@ -292,4 +293,22 @@ export async function getAllBids(sessions_id: string): Promise<Bid[]> {
     ])
   ).rows as Bid[];
   return res.length > 0 ? res : null;
+}
+
+/**
+ * Returns the production planning (list of power plants dispatch) of a user.
+ * @param session_id Session ID
+ * @param user_id User ID
+ */
+export async function getPlanning(
+  session_id: string,
+  user_id: string
+): Promise<ProductionPlanning> {
+  const phase_no = await getCurrentPhaseNo(session_id);
+  return (
+    await db.query(
+      "SELECT * FROM production_plannings WHERE session_id=$1 AND user_id=$2 AND phase_no=$3",
+      [session_id, user_id, phase_no]
+    )
+  ).rows as ProductionPlanning;
 }

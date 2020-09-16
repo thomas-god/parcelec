@@ -5,7 +5,6 @@
  *  GET /session/:session_id/user/:user_id/portfolio
  *  GET /session/:session_id/user/:user_id/conso
  *  PUT /session/:session_id/user/:user_id/planning
- *
  */
 import { v4 as uuid } from "uuid";
 import superagent from "superagent";
@@ -16,6 +15,7 @@ import {
   power_plants,
   startSession,
 } from "./db_utils";
+import { PowerPlant, PowerPlantDispatch } from "../../src/routes/types";
 
 const url = process.env.API_URL;
 
@@ -144,5 +144,99 @@ describe("Getting conso info for a running auction", () => {
       `${url}/session/${sessions[0].id}/user/${users_id[0]}/conso`
     );
     expect(res.body).toHaveProperty("conso_mw");
+  });
+});
+/**
+ * PUT /session/:session_id/user/:user_id/planning
+ */
+describe("Should post a complete production planning", () => {
+  beforeEach(async () => {
+    await prepareDB();
+  });
+
+  async function getProductionPlanning(
+    session_id: string,
+    user_id: string
+  ): Promise<
+    Omit<PowerPlantDispatch, "phase_no" | "stock_start_mwh" | "stock_end_mwh">[]
+  > {
+    const pps: PowerPlant[] = (
+      await superagent.get(
+        `${url}/session/${session_id}/user/${user_id}/portfolio`
+      )
+    ).body;
+    return pps.map((pp) => {
+      return {
+        user_id: pp.user_id,
+        session_id: pp.session_id,
+        plant_id: pp.id,
+        p_mw: pp.p_min_mw + (pp.p_max_mw - pp.p_min_mw) / 2,
+      };
+    });
+  }
+
+  test("Should error when the session does not exist", async () => {
+    try {
+      await superagent.put(`${url}/session/${uuid()}/user/${uuid()}/planning`);
+    } catch (error) {
+      expect(error.status).toEqual(404);
+      expect(error.response.text).toEqual(
+        "Error, no session found with this ID"
+      );
+    }
+  });
+
+  test("Should error when the user does not exist", async () => {
+    try {
+      await superagent.put(
+        `${url}/session/${sessions[1].id}/user/${uuid()}/planning`
+      );
+    } catch (error) {
+      expect(error.status).toEqual(404);
+      expect(error.response.text).toEqual("Error, no user found with this ID");
+    }
+  });
+
+  test("Should error when the session is not running", async () => {
+    try {
+      const user_id = (
+        await superagent
+          .put(`${url}/session/${sessions[0].id}/register_user`)
+          .send({ username: "User" })
+      ).body.user_id;
+      await superagent.put(
+        `${url}/session/${sessions[0].id}/user/${user_id}/planning`
+      );
+    } catch (error) {
+      expect(error.status).toEqual(400);
+      expect(error.response.text).toEqual("Error, the session is not running");
+    }
+  });
+
+  test("Should insert a planning", async () => {
+    try {
+      // Start session and get default planning
+      const users_id = await startSession(url, sessions[0].id);
+      const planning = await getProductionPlanning(sessions[0].id, users_id[0]);
+
+      // Put the planning and check response status
+      const res = await superagent
+        .put(`${url}/session/${sessions[0].id}/user/${users_id[0]}/planning`)
+        .send(planning);
+      expect(res.status).toEqual(201);
+
+      // Check the planning via GET planning
+      const res_get = await superagent.get(
+        `${url}/session/${sessions[0].id}/user/${users_id[0]}/planning`
+      );
+      expect(res_get.status).toEqual(200);
+      expect(Array.isArray(res_get.body)).toEqual(true);
+      expect(res_get.body.length).toEqual(planning.length);
+      expect(
+        res_get.body.sort((a, b) => (a.plant_id < b.plant_id ? 1 : -1))
+      ).toEqual(planning.sort((a, b) => (a.plant_id < b.plant_id ? 1 : -1)));
+    } catch (error) {
+      fail(error);
+    }
   });
 });
