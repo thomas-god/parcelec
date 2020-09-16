@@ -102,6 +102,7 @@ function onMessageCallback(
 ): void {
   try {
     const message = JSON.parse(event.data);
+    console.log(message.reason);
     if (message.reason === "message") {
       context.commit("ADD_MESSAGE", message);
     } else if (
@@ -112,15 +113,17 @@ function onMessageCallback(
         root: true,
       });
     } else if (
-      message.reason === "session_started" &&
+      message.reason === "new-game-phase" &&
       message.username === "SERVER"
     ) {
       context.dispatch("session/setStatus", "Running", { root: true });
+      context.dispatch("portfolio/setPowerPlants", {}, { root: true });
     } else if (
       message.reason === "session_cleared" &&
       message.username === "SERVER"
     ) {
       context.dispatch("session/updateBidAbility", true, { root: true });
+      context.dispatch("portfolio/setPowerPlants", {}, { root: true });
     }
   } catch (error) {
     console.log(error);
