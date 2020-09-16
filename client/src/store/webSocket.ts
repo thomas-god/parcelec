@@ -34,7 +34,7 @@ export const actions: ActionTree<WebSocketState, RootState> = {
     if (state.ws?.OPEN) state.ws.close();
 
     // Open new WebSocket connection
-    const auction_id = context.rootState.auction.id;
+    const auction_id = context.rootState.session.id;
     const user_id = context.rootState.user.user_id;
     const username = context.rootState.user.username;
     const socket = new WebSocket(
@@ -55,7 +55,7 @@ export const actions: ActionTree<WebSocketState, RootState> = {
         username: context.rootState.user.username,
         reason: "message",
         credentials: {
-          auction_id: context.rootState.auction.id,
+          auction_id: context.rootState.session.id,
           user_id: context.rootState.user.user_id,
         },
         data: payload,

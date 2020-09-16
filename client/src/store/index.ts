@@ -10,7 +10,7 @@ export interface RootState {
   version: string;
   api_url: string;
   user: UserState;
-  auction: SessionState;
+  session: SessionState;
   ws: WebSocketState;
 }
 
