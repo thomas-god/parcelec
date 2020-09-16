@@ -245,6 +245,24 @@ export async function getBid(
 }
 
 /**
+ * Returns a list of of all user's bids for the current phase.
+ * @param session_id Session ID
+ * @param user_id User ID
+ */
+export async function getUserBids(
+  session_id: string,
+  user_id: string
+): Promise<Bid[]> {
+  const phase_no = await getCurrentPhaseNo(session_id);
+  return (
+    await db.query(
+      "SELECT * FROM bids WHERE session_id=$1 AND user_id=$2 AND phase_no=$3",
+      [session_id, user_id, phase_no]
+    )
+  ).rows;
+}
+
+/**
  * Return all the bids for the active step of an sessions
  * @param sessions_id ID of the sessions
  */

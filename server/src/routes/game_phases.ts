@@ -12,6 +12,7 @@ import {
   uuid_regex,
   getConsoForecast,
   postBid,
+  getUserBids,
 } from "./utils";
 
 class CustomError extends Error {
@@ -116,9 +117,6 @@ export async function postUserBid(
       throw new CustomError("Error, no user found with this ID", 404);
 
     // Payload checks
-    console.log(req.body.bid);
-    console.log(Number(req.body.bid.volume));
-
     if (req.body.bid === undefined)
       throw new CustomError("Error, no bid payload provided");
     if (req.body.bid.type === undefined)
@@ -153,9 +151,43 @@ export async function postUserBid(
       volume_mwh: Number(req.body.bid.volume_mwh),
       price_eur_per_mwh: Number(req.body.bid.price_eur_per_mwh),
     };
-    console.log(bid);
     await postBid(bid);
     res.status(201).json({ bid_id: bid.id });
+  } catch (error) {
+    if (error instanceof CustomError) {
+      res.status(error.code).end(error.msg);
+    } else {
+      res.status(400).end();
+      throw error;
+    }
+  }
+}
+
+/**
+ * Return the list of a user's bids for the current phase.
+ * @param req HTTP request
+ * @param res HTTP response
+ */
+export async function getUserBidsRoute(
+  req: express.Request,
+  res: express.Response
+): Promise<void> {
+  try {
+    // DB checks
+    const session_id = req.params.session_id;
+    const user_id = req.params.user_id;
+    const session = await getSession(session_id);
+    if (session === null)
+      throw new CustomError("Error, no session found with this ID", 404);
+    if (session.status !== "running")
+      throw new CustomError("Error, the session is not running");
+    const user = await getUser(session_id, user_id);
+    if (user === null)
+      throw new CustomError("Error, no user found with this ID", 404);
+
+    // Getting the bids from the DB
+    const bids = await getUserBids(session_id, user_id);
+    res.status(200).json(bids);
   } catch (error) {
     if (error instanceof CustomError) {
       res.status(error.code).end(error.msg);
@@ -179,6 +211,10 @@ router.get(
 router.post(
   `/session/:session_id(${uuid_regex})/user/:user_id(${uuid_regex})/bid`,
   postUserBid
+);
+router.get(
+  `/session/:session_id(${uuid_regex})/user/:user_id(${uuid_regex})/bids`,
+  getUserBidsRoute
 );
 
 export default router;

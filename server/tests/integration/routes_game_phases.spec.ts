@@ -92,9 +92,9 @@ describe("Getting a user portfolio", () => {
   });
 });
 
-  /**
+/**
  * GET /session/:session_id/user/:user_id/conso
-   */
+ */
 describe("Getting conso info for a running auction", () => {
   beforeEach(async () => {
     await prepareDB();
@@ -210,6 +210,110 @@ describe("Posting a bid to a running session", () => {
   });
 });
 
+/**
+ * GET /session/:session_id/user/:user_id/bids
+ */
+describe("Getting a user's bids", () => {
+  beforeEach(async () => {
+    await prepareDB();
+  });
+
+  test("Should error when the session does not exist", async () => {
+    try {
+      await superagent.get(`${url}/session/${uuid()}/user/${uuid()}/bids`);
+    } catch (error) {
+      expect(error.status).toEqual(404);
+      expect(error.response.text).toEqual(
+        "Error, no session found with this ID"
+      );
+    }
+  });
+
+  test("Should error when the user does not exist", async () => {
+    try {
+      await superagent.get(
+        `${url}/session/${sessions[1].id}/user/${uuid()}/bids`
+      );
+    } catch (error) {
+      expect(error.status).toEqual(404);
+      expect(error.response.text).toEqual("Error, no user found with this ID");
+    }
+  });
+
+  test("Should error when the session is not running", async () => {
+    try {
+      const user_id = (
+        await superagent
+          .put(`${url}/session/${sessions[0].id}/register_user`)
+          .send({ username: "User" })
+      ).body.user_id;
+      await superagent.get(
+        `${url}/session/${sessions[0].id}/user/${user_id}/bids`
+      );
+    } catch (error) {
+      expect(error.status).toEqual(400);
+      expect(error.response.text).toEqual("Error, the session is not running");
+    }
+  });
+
+  test("should return empty list when no bids", async () => {
+    try {
+      const users_id = await startSession(sessions[0].id);
+      const res = await superagent.get(
+        `${url}/session/${sessions[0].id}/user/${users_id[0]}/bids`
+      );
+      expect(res.status).toEqual(200);
+      expect(Array.isArray(res.body)).toEqual(true);
+      expect(res.body.length).toEqual(0);
+    } catch (err) {
+      fail(err);
+    }
+  });
+
+  test("should return the correct bid content", async () => {
+    try {
+      const users_id = await startSession(sessions[0].id);
+      await superagent
+        .post(`${url}/session/${sessions[0].id}/user/${users_id[0]}/bid`)
+        .send({ bid: { type: "buy", volume_mwh: 10, price_eur_per_mwh: 50 } });
+      const res = await superagent.get(
+        `${url}/session/${sessions[0].id}/user/${users_id[0]}/bids`
+      );
+      expect(res.status).toEqual(200);
+      expect(Array.isArray(res.body)).toEqual(true);
+      expect(res.body.length).toEqual(1);
+      expect(res.body[0].type).toEqual("buy");
+      expect(res.body[0].volume_mwh).toEqual(10);
+      expect(res.body[0].price_eur_per_mwh).toEqual(50);
+      expect(uuidValidate(res.body[0].id)).toEqual(true);
+    } catch (err) {
+      fail(err);
+    }
+  });
+
+  test("should return the correct number of bids", async () => {
+    try {
+      const users_id = await startSession(sessions[0].id);
+      await superagent
+        .post(`${url}/session/${sessions[0].id}/user/${users_id[0]}/bid`)
+        .send({ bid: { type: "buy", volume_mwh: 10, price_eur_per_mwh: 50 } });
+      await superagent
+        .post(`${url}/session/${sessions[0].id}/user/${users_id[0]}/bid`)
+        .send({ bid: { type: "buy", volume_mwh: 10, price_eur_per_mwh: 50 } });
+      await superagent
+        .post(`${url}/session/${sessions[0].id}/user/${users_id[0]}/bid`)
+        .send({ bid: { type: "buy", volume_mwh: 10, price_eur_per_mwh: 50 } });
+      const res = await superagent.get(
+        `${url}/session/${sessions[0].id}/user/${users_id[0]}/bids`
+      );
+      expect(res.status).toEqual(200);
+      expect(Array.isArray(res.body)).toEqual(true);
+      expect(res.body.length).toEqual(3);
+    } catch (err) {
+      fail(err);
+    }
+  });
+});
 
 /**
  * Util function to start a session and trigger the server-side start logic.
