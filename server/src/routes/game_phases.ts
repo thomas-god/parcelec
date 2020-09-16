@@ -3,12 +3,15 @@
  */
 
 import express from "express";
+import { v4 as uuid } from "uuid";
+import { Bid } from "./types";
 import {
   getSession,
   getUser,
   getPortfolio,
   uuid_regex,
   getConsoForecast,
+  postBid,
 } from "./utils";
 
 class CustomError extends Error {
@@ -90,6 +93,73 @@ export async function getUserConso(
   }
 }
 
+/**
+ * Post a user bid to the current phase.
+ * @param req HTTP request
+ * @param res HTTP response
+ */
+export async function postUserBid(
+  req: express.Request,
+  res: express.Response
+): Promise<void> {
+  try {
+    // DB checks
+    const session_id = req.params.session_id;
+    const user_id = req.params.user_id;
+    const session = await getSession(session_id);
+    if (session === null)
+      throw new CustomError("Error, no session found with this ID", 404);
+    if (session.status !== "running")
+      throw new CustomError("Error, the session is not running");
+    const user = await getUser(session_id, user_id);
+    if (user === null)
+      throw new CustomError("Error, no user found with this ID", 404);
+
+    // Payload checks
+    console.log(req.body.bid);
+    console.log(Number(req.body.bid.volume));
+
+    if (req.body.bid === undefined)
+      throw new CustomError("Error, no bid payload provided");
+    if (req.body.bid.type === undefined)
+      throw new CustomError("Error, no bid type provided");
+    if (req.body.bid.type !== "buy" && req.body.bid.type !== "sell")
+      throw new CustomError("Error, no bid type must be `sell` or `buy`");
+    if (req.body.bid.volume === undefined)
+      throw new CustomError("Error, no bid volume provided");
+    if (req.body.bid.volume === "" || isNaN(Number(req.body.bid.volume)))
+      throw new CustomError(
+        "Error, please provide a numeric value for the bid volume"
+      );
+    if (req.body.bid.price === undefined)
+      throw new CustomError("Error, no bid price provided");
+    if (req.body.bid.price === "" || isNaN(Number(req.body.bid.price)))
+      throw new CustomError(
+        "Error, please provide a numeric value for the bid price"
+      );
+
+    // Bid insertion
+    const bid = {
+      user_id: user_id,
+      session_id: session_id,
+      id: uuid(),
+      type: req.body.bid.type,
+      volume_mwh: Number(req.body.bid.volume),
+      price_eur_per_mwh: Number(req.body.bid.price),
+    };
+    console.log(bid);
+    await postBid(bid);
+    res.status(201).json({ bid_id: bid.id });
+  } catch (error) {
+    if (error instanceof CustomError) {
+      res.status(error.code).end(error.msg);
+    } else {
+      res.status(400).end();
+      throw error;
+    }
+  }
+}
+
 const router = express.Router();
 
 router.get(
@@ -99,6 +169,10 @@ router.get(
 router.get(
   `/session/:session_id(${uuid_regex})/user/:user_id(${uuid_regex})/conso`,
   getUserConso
+);
+router.post(
+  `/session/:session_id(${uuid_regex})/user/:user_id(${uuid_regex})/bid`,
+  postUserBid
 );
 
 export default router;

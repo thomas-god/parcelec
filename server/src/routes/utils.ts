@@ -202,6 +202,27 @@ export async function getConsoForecast(
   ).rows;
   return rows.length === 1 ? rows[0] : null;
 }
+/**
+ * Post a user user bit to the current open phase.
+ * @param bid Bid object (without the phase_no)
+ */
+export async function postBid(bid: Omit<Bid, "phase_no">): Promise<void> {
+  const phase_no = await getCurrentPhaseNo(bid.session_id);
+  await db.query(
+    `INSERT INTO bids 
+      (id, user_id, session_id, phase_no, type, volume_mwh, price_eur_per_mwh) 
+      VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+    [
+      bid.id,
+      bid.user_id,
+      bid.session_id,
+      phase_no,
+      bid.type,
+      bid.volume_mwh,
+      bid.price_eur_per_mwh,
+    ]
+  );
+}
 
 /**
  * Get a user's bid for the active step of an session. Return null if the
