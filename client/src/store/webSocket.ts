@@ -116,7 +116,7 @@ function onMessageCallback(
       message.reason === "new-game-phase" &&
       message.username === "SERVER"
     ) {
-      context.dispatch("session/setStatus", "Running", { root: true });
+      context.dispatch("session/setStatus", "running", { root: true });
       context.dispatch("portfolio/setPowerPlants", {}, { root: true });
     } else if (
       message.reason === "session_cleared" &&
