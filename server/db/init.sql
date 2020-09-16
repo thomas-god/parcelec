@@ -90,7 +90,8 @@ CREATE TABLE production_plannings
   plant_id UUID REFERENCES power_plants (id),
   p_mw REAL NOT NULL,
   stock_start_mwh REAL NOT NULL,
-  stock_end_mwh REAL NOT NULL
+  stock_end_mwh REAL NOT NULL,
+  UNIQUE (plant_id, phase_no)
 );
 
 CREATE TABLE results

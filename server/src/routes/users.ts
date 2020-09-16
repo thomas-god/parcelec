@@ -1,4 +1,3 @@
-import { v4 as uuidv4 } from "uuid";
 import express from "express";
 import db from "../db/index";
 import { sendUpdateToUsers } from "./websocket";
@@ -10,8 +9,8 @@ import {
   uuid_regex,
   setDefaultPortfolio,
   insertNewUser,
-  checkUserCanBid,
 } from "./utils";
+import { startGamePhase } from "./plugins/start_game";
 
 class CustomError extends Error {
   msg: string;
@@ -88,12 +87,10 @@ export async function getUserInfos(
 
     if (user === null)
       throw new CustomError("Error, cannot find an user with these IDs", 404);
-    const can_bid = await checkUserCanBid(session_id, user_id);
     res.status(200).json({
       session_id: session_id,
       name: user.name,
       ready: user.game_ready,
-      can_bid: can_bid,
     });
   } catch (error) {
     if (error instanceof CustomError) {
@@ -140,21 +137,8 @@ export async function setUserReady(
     // Notify all users that a user is ready
     notifyUsersListUpdate(session_id);
 
-    /*  // Check if the sessions can be started (i.e. set to status running)
-    const users = await getSessionUsers(session_id);
-    if (
-      users.length >= 2 &&
-      users.filter((u) => u.game_ready).length === users.length
-    ) {
-      await db.query("UPDATE sessions SET status='Running' WHERE id=$1", [
-        session_id,
-      ]);
-      await db.query(
-        "INSERT INTO sessions_steps (sessions_id, step_no, status) VALUES  ($1, $2, $3)",
-        [session_id, 0, "open"]
-      );
-      sendUpdateToUsers(session_id, "sessions_started", {});
-    } */
+    // Check if the game can start
+    startGamePhase(session_id);
   } catch (error) {
     if (error instanceof CustomError) {
       res.status(error.code).end(error.msg);

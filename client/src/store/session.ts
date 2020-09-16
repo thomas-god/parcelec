@@ -6,37 +6,37 @@ export interface User {
   ready: boolean;
 }
 
-export interface Auction {
+export interface Session {
   name: string;
   id: string;
-  status: "Open" | "Running" | "Close";
+  status: "open" | "running" | "closed";
   users: User[];
   can_bid: boolean;
 }
 
-export interface AuctionState extends Auction {}
+export interface SessionState extends Session {}
 
 // ------------------------ STATE -------------------------
-export const state: AuctionState = {
+export const state: SessionState = {
   name: "",
   id: "",
-  status: "Open",
+  status: "open",
   users: [],
   can_bid: false,
 };
 
 // ------------------------ ACTIONS -------------------------
-export const actions: ActionTree<AuctionState, RootState> = {
-  async setAuction({ commit }, payload: Auction): Promise<void> {
+export const actions: ActionTree<SessionState, RootState> = {
+  async setSession({ commit }, payload: Session): Promise<void> {
     const users = await getUsersList(payload.id);
-    commit("SET_AUCTION", { ...payload, users });
+    commit("SET_SESSION", { ...payload, users });
   },
   async updateUsersList({ state, commit }): Promise<void> {
     const users = await getUsersList(state.id);
     commit("SET_USERS", users);
   },
-  setStatus({ state, commit }, status: Auction["status"]): void {
-    if (state.status === "Open" && status === "Running") {
+  setStatus({ state, commit }, status: Session["status"]): void {
+    if (state.status === "open" && status === "running") {
       commit("UPDATE_CAN_BID", true);
     }
     commit("UPDATE_STATUS", status);
@@ -47,12 +47,12 @@ export const actions: ActionTree<AuctionState, RootState> = {
 };
 
 // ------------------------ MUTATIONS -------------------------
-export const mutations: MutationTree<AuctionState> = {
-  SET_AUCTION(state, auction: Auction): void {
-    state.id = auction.id;
-    state.name = auction.name;
-    state.status = auction.status;
-    state.users = auction.users;
+export const mutations: MutationTree<SessionState> = {
+  SET_SESSION(state, session: Session): void {
+    state.id = session.id;
+    state.name = session.name;
+    state.status = session.status;
+    state.users = session.users;
   },
   SET_USERS(state, users: User[]): void {
     state.users = users;
@@ -60,7 +60,7 @@ export const mutations: MutationTree<AuctionState> = {
   PUSH_NEW_USER(state, new_user: User): void {
     state.users.push(new_user);
   },
-  UPDATE_STATUS(state, status: Auction["status"]): void {
+  UPDATE_STATUS(state, status: Session["status"]): void {
     state.status = status;
   },
   UPDATE_CAN_BID(state, can_bid: boolean): void {
@@ -69,17 +69,17 @@ export const mutations: MutationTree<AuctionState> = {
 };
 
 // ------------------------ GETTERS -------------------------
-export const getters: GetterTree<AuctionState, RootState> = {
-  auction(state): Auction {
+export const getters: GetterTree<SessionState, RootState> = {
+  session(state): Session {
     return state;
   },
-  auction_id(state): string {
+  session_id(state): string {
     return state.id;
   },
-  auction_name(state): string {
+  session_name(state): string {
     return state.name;
   },
-  auction_status(state): string {
+  session_status(state): string {
     return state.status;
   },
   can_bid(state): boolean {
@@ -88,7 +88,7 @@ export const getters: GetterTree<AuctionState, RootState> = {
 };
 
 // ------------------------ MODULE -------------------------
-export const auction: Module<AuctionState, RootState> = {
+export const session: Module<SessionState, RootState> = {
   namespaced: true,
   state,
   getters,
@@ -97,9 +97,9 @@ export const auction: Module<AuctionState, RootState> = {
 };
 
 // ------------------------ Helper functions ---------------
-async function getUsersList(auction_id: string): Promise<User[]> {
+async function getUsersList(session_id: string): Promise<User[]> {
   const res = await fetch(
-    `${process.env.VUE_APP_API_URL}/auction/${auction_id}`,
+    `${process.env.VUE_APP_API_URL}/session/${session_id}`,
     {
       method: "GET",
     }

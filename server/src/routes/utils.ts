@@ -1,6 +1,14 @@
 import db from "../db/index";
 import { v4 as uuid } from "uuid";
-import { Session, User, Bid, PowerPlant, PowerPlantTemplate } from "./types";
+import {
+  Session,
+  User,
+  Bid,
+  PowerPlant,
+  PowerPlantTemplate,
+  ConsoForecast,
+  ProductionPlanning,
+} from "./types";
 
 export const uuid_regex =
   "[A-F0-9]{8}-[A-F0-9]{4}-4[A-F0-9]{3}-[89AB][A-F0-9]{3}-[A-F0-9]{12}";
@@ -178,23 +186,98 @@ export async function getPortfolio(user_id: string): Promise<PowerPlant[]> {
 }
 
 /**
+ * Get the current conso forecast for a given user.
+ * @param session_id Session ID
+ * @param user_id User ID
+ */
+export async function getConsoForecast(
+  session_id: string,
+  user_id: string
+): Promise<ConsoForecast> {
+  const phase_no = await getCurrentPhaseNo(session_id);
+  const rows: ConsoForecast[] = (
+    await db.query("SELECT * FROM conso WHERE phase_no=$1 AND user_id=$2", [
+      phase_no,
+      user_id,
+    ])
+  ).rows;
+  return rows.length === 1 ? rows[0] : null;
+}
+/**
+ * Post a user user bit to the current open phase.
+ * @param bid Bid object (without the phase_no)
+ */
+export async function postBid(bid: Omit<Bid, "phase_no">): Promise<void> {
+  const phase_no = await getCurrentPhaseNo(bid.session_id);
+  await db.query(
+    `INSERT INTO bids 
+      (id, user_id, session_id, phase_no, type, volume_mwh, price_eur_per_mwh) 
+      VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+    [
+      bid.id,
+      bid.user_id,
+      bid.session_id,
+      phase_no,
+      bid.type,
+      bid.volume_mwh,
+      bid.price_eur_per_mwh,
+    ]
+  );
+}
+
+/**
  * Get a user's bid for the active step of an session. Return null if the
  * user has not bid yet.
  * @param session_id ID of the session
- * @param user_id ID of the user
+ * @param bid_id ID of the bid
  */
-export async function getBid(
+export async function getUserBid(
   session_id: string,
-  user_id: string
+  bid_id: string
 ): Promise<Bid> {
   const phase_no = await getCurrentPhaseNo(session_id);
   const res = (
+    await db.query(
+      "SELECT * FROM bids WHERE session_id=$1 AND id=$2 AND phase_no=$3",
+      [session_id, bid_id, phase_no]
+    )
+  ).rows;
+  return res.length === 1 ? (res[0] as Bid) : null;
+}
+
+/**
+ * Get a user's bid for the active step of an session. Return null if the
+ * user has not bid yet.
+ * @param session_id ID of the session
+ * @param bid_id ID of the bid
+ */
+export async function deleteUserBid(
+  session_id: string,
+  bid_id: string
+): Promise<void> {
+  const phase_no = await getCurrentPhaseNo(session_id);
+  await db.query(
+    "DELETE FROM bids WHERE session_id=$1 AND id=$2 AND phase_no=$3",
+    [session_id, bid_id, phase_no]
+  );
+}
+
+/**
+ * Returns a list of of all user's bids for the current phase.
+ * @param session_id Session ID
+ * @param user_id User ID
+ */
+export async function getUserBids(
+  session_id: string,
+  user_id: string
+): Promise<Bid[]> {
+  const phase_no = await getCurrentPhaseNo(session_id);
+  return (
     await db.query(
       "SELECT * FROM bids WHERE session_id=$1 AND user_id=$2 AND phase_no=$3",
       [session_id, user_id, phase_no]
     )
   ).rows;
-  return res.length === 1 ? (res[0] as Bid) : null;
 }
 
 /**
@@ -213,21 +296,19 @@ export async function getAllBids(sessions_id: string): Promise<Bid[]> {
 }
 
 /**
- * Return true if the user can bid and false if it can't (session not running
- * or has already bid).
+ * Returns the production planning (list of power plants dispatch) of a user.
  * @param session_id Session ID
  * @param user_id User ID
  */
-export async function checkUserCanBid(
+export async function getPlanning(
   session_id: string,
   user_id: string
-): Promise<boolean> {
-  const user = await getUser(session_id, user_id);
-  if (user === null) return false;
-
-  const session = await getSession(session_id);
-  if (session.status !== "running") return false;
-
-  const bid = await getBid(session_id, user_id);
-  return bid === null ? true : false;
+): Promise<ProductionPlanning> {
+  const phase_no = await getCurrentPhaseNo(session_id);
+  return (
+    await db.query(
+      "SELECT * FROM production_plannings WHERE session_id=$1 AND user_id=$2 AND phase_no=$3",
+      [session_id, user_id, phase_no]
+    )
+  ).rows as ProductionPlanning;
 }

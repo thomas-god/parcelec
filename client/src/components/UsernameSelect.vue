@@ -21,16 +21,16 @@
 <script lang="ts">
 import { Component, Prop, Vue } from "vue-property-decorator";
 import { State, Action, Getter, namespace } from "vuex-class";
-import { Auction } from "../store/auction";
+import { Session } from "../store/session";
 
 const userModule = namespace("user");
-const auctionModule = namespace("auction");
+const sessionModule = namespace("session");
 
 @Component
 export default class User extends Vue {
   @userModule.Action setUsername!: (payload: string) => void;
   @userModule.Action setUserID!: (payload: string) => void;
-  @auctionModule.Getter auction!: Auction;
+  @sessionModule.Getter session!: Session;
   @State("api_url") api_url!: string;
   new_username = "";
   new_username_err = false;
@@ -39,13 +39,13 @@ export default class User extends Vue {
   async addUsername() {
     if (this.new_username !== "") {
       const res = await fetch(
-        `${this.api_url}/auction/${this.auction.id}/register_user`,
+        `${this.api_url}/session/${this.session.id}/register_user`,
         {
           method: "PUT",
           headers: { "content-type": "application/json" },
           body: JSON.stringify({
-            username: this.new_username,
-          }),
+            username: this.new_username
+          })
         }
       );
       if (res.status === 201) {

@@ -1,7 +1,7 @@
 import Vue from "vue";
 import Vuex, { StoreOptions } from "vuex";
 import { user, UserState } from "./user";
-import { auction, AuctionState } from "./auction";
+import { session, SessionState } from "./session";
 import { webSocket, WebSocketState } from "./webSocket";
 
 Vue.use(Vuex);
@@ -10,7 +10,7 @@ export interface RootState {
   version: string;
   api_url: string;
   user: UserState;
-  auction: AuctionState;
+  session: SessionState;
   ws: WebSocketState;
 }
 
@@ -23,7 +23,7 @@ const store: StoreOptions<RootState> = {
   state: state,
   modules: {
     user,
-    auction,
+    session,
     webSocket,
   },
 };

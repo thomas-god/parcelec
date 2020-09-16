@@ -20,16 +20,16 @@
 <script lang="ts">
 import { Component, Prop, Vue } from "vue-property-decorator";
 import { State, Action, Getter, namespace } from "vuex-class";
-import { User } from "../store/auction";
+import { User } from "../store/session";
 
-const auctionModule = namespace("auction");
+const sessionModule = namespace("session");
 const userModule = namespace("user");
 
 @Component
 export default class UserList extends Vue {
   @Prop({ default: false }) readonly display_ready_status!: boolean;
-  @auctionModule.State users!: User[];
-  @auctionModule.Getter auction_id!: string;
+  @sessionModule.State users!: User[];
+  @sessionModule.Getter session_id!: string;
   @userModule.Getter user_id!: string;
   @userModule.Getter user_ready!: boolean;
   @userModule.Action setReadyStatus!: () => void;
@@ -37,11 +37,9 @@ export default class UserList extends Vue {
 
   async setStatusReady(): Promise<void> {
     const res = await fetch(
-      `${this.api_url}/auction/${this.auction_id}/user_ready`,
+      `${this.api_url}/session/${this.session_id}/user/${this.user_id}/ready`,
       {
-        method: "PUT",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ user_id: this.user_id }),
+        method: "PUT"
       }
     );
     if (res.status === 201) this.setReadyStatus();

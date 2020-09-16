@@ -9,7 +9,7 @@
  */
 import { v4 as uuid, validate as uuidValidate } from "uuid";
 import superagent from "superagent";
-import { clearDB, prepareDB, sessions, users } from "./db_utils";
+import { prepareDB, sessions, users } from "./db_utils";
 
 const url = process.env.API_URL;
 
@@ -218,5 +218,19 @@ describe("Marking an user as ready for a game session to start", () => {
       `${url}/session/${sessions[0].id}/user/${user_id}/ready`
     );
     expect(res.status).toEqual(201);
+  });
+
+  test("Should start the session when at least 2 users are ready", async () => {
+    const user_id = (
+      await superagent
+        .put(`${url}/session/${sessions[0].id}/register_user`)
+        .send({ username: "User 2" })
+    ).body.user_id;
+    await superagent.put(
+      `${url}/session/${sessions[0].id}/user/${user_id}/ready`
+    );
+    await new Promise((r) => setTimeout(r, 150));
+    const res = await superagent.get(`${url}/session/${sessions[0].id}`);
+    expect(res.body.status).toEqual("running");
   });
 });

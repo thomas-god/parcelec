@@ -16,14 +16,14 @@ export interface ClientMessage {
 
 export interface WebSocketState {
   ws: WebSocket | null;
-  auction_state: "NOT_REGISTERED" | "OPEN" | "RUNNING" | "CLOSE";
+  session_state: "NOT_REGISTERED" | "OPEN" | "RUNNING" | "CLOSE";
   messages: ClientMessage[];
 }
 
 // ------------------------ STATE -------------------------
 export const state: WebSocketState = {
   ws: null,
-  auction_state: "NOT_REGISTERED",
+  session_state: "NOT_REGISTERED",
   messages: [],
 };
 
@@ -34,11 +34,11 @@ export const actions: ActionTree<WebSocketState, RootState> = {
     if (state.ws?.OPEN) state.ws.close();
 
     // Open new WebSocket connection
-    const auction_id = context.rootState.auction.id;
+    const session_id = context.rootState.session.id;
     const user_id = context.rootState.user.user_id;
     const username = context.rootState.user.username;
     const socket = new WebSocket(
-      `ws://localhost:3000/auction?auction_id=${auction_id}&user_id=${user_id}&username=${username}`
+      `ws://localhost:3000/auction?auction_id=${session_id}&user_id=${user_id}&username=${username}`
     );
 
     socket.addEventListener("close", () => onCloseCallback(context.commit));
@@ -55,7 +55,7 @@ export const actions: ActionTree<WebSocketState, RootState> = {
         username: context.rootState.user.username,
         reason: "message",
         credentials: {
-          auction_id: context.rootState.auction.id,
+          session_id: context.rootState.session.id,
           user_id: context.rootState.user.user_id,
         },
         data: payload,
@@ -108,19 +108,19 @@ function onMessageCallback(
       message.reason === "users_list_update" &&
       message.username === "SERVER"
     ) {
-      context.commit("auction/SET_USERS", message.data, {
+      context.commit("session/SET_USERS", message.data, {
         root: true,
       });
     } else if (
-      message.reason === "auction_started" &&
+      message.reason === "session_started" &&
       message.username === "SERVER"
     ) {
-      context.dispatch("auction/setStatus", "Running", { root: true });
+      context.dispatch("session/setStatus", "Running", { root: true });
     } else if (
-      message.reason === "auction_cleared" &&
+      message.reason === "session_cleared" &&
       message.username === "SERVER"
     ) {
-      context.dispatch("auction/updateBidAbility", true, { root: true });
+      context.dispatch("session/updateBidAbility", true, { root: true });
     }
   } catch (error) {
     console.log(error);

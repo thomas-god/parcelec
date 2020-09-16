@@ -12,16 +12,16 @@
 <script lang="ts">
 import { Component, Prop, Vue } from "vue-property-decorator";
 import { State, Action, Getter, namespace } from "vuex-class";
-import { Auction } from "../store/auction";
+import { Session } from "../store/session";
 
-const auctionModule = namespace("auction");
+const sessionModule = namespace("session");
 const userModule = namespace("user");
 
 @Component
 export default class Bid extends Vue {
-  @auctionModule.Getter auction!: Auction;
-  @auctionModule.Getter can_bid!: boolean;
-  @auctionModule.Action updateBidAbility!: (bid_ability: boolean) => void;
+  @sessionModule.Getter session!: Session;
+  @sessionModule.Getter can_bid!: boolean;
+  @sessionModule.Action updateBidAbility!: (bid_ability: boolean) => void;
   @userModule.Getter user_id!: string;
   @State("api_url") api_url!: string;
 
@@ -31,7 +31,7 @@ export default class Bid extends Vue {
 
   async submitBid(): Promise<void> {
     console.log(this.bid_value);
-    const res = await fetch(`${this.api_url}/auction/${this.auction.id}/bid`, {
+    const res = await fetch(`${this.api_url}/session/${this.session.id}/bid`, {
       method: "PUT",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ user_id: this.user_id, bid: this.bid_value })

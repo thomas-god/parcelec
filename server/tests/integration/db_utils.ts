@@ -5,6 +5,7 @@
 
 import db from "../../src/db/index";
 import { v4 as uuid } from "uuid";
+import superagent from "superagent";
 import {
   PowerPlant,
   PowerPlantTemplate,
@@ -152,6 +153,31 @@ async function populateDB() {
       );
     })
   );
+}
+
+/**
+ * Util function to start a session and trigger the server-side start logic.
+ * @param url base route URL
+ * @param session_id Session ID
+ */
+export async function startSession(
+  url: string,
+  session_id: string
+): Promise<string[]> {
+  const user1_id = (
+    await superagent
+      .put(`${url}/session/${session_id}/register_user`)
+      .send({ username: "User 1" })
+  ).body.user_id;
+  await superagent.put(`${url}/session/${session_id}/user/${user1_id}/ready`);
+  const user2_id = (
+    await superagent
+      .put(`${url}/session/${session_id}/register_user`)
+      .send({ username: "User 2" })
+  ).body.user_id;
+  await superagent.put(`${url}/session/${session_id}/user/${user2_id}/ready`);
+  await new Promise((r) => setTimeout(r, 50));
+  return [user1_id, user2_id];
 }
 
 export async function prepareDB(): Promise<void> {

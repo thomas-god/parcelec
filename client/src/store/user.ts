@@ -19,7 +19,7 @@ export const actions: ActionTree<UserState, RootState> = {
   setUsername({ commit }, username: string): void {
     commit("SET_USERNAME", username);
     commit(
-      "auction/PUSH_NEW_USER",
+      "session/PUSH_NEW_USER",
       { name: username, ready: false },
       { root: true }
     );
