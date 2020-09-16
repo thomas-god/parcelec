@@ -12,6 +12,7 @@ import {
   insertNewUser,
   checkUserCanBid,
 } from "./utils";
+import { startGamePhase } from "./plugins/start_game";
 
 class CustomError extends Error {
   msg: string;
@@ -140,21 +141,8 @@ export async function setUserReady(
     // Notify all users that a user is ready
     notifyUsersListUpdate(session_id);
 
-    /*  // Check if the sessions can be started (i.e. set to status running)
-    const users = await getSessionUsers(session_id);
-    if (
-      users.length >= 2 &&
-      users.filter((u) => u.game_ready).length === users.length
-    ) {
-      await db.query("UPDATE sessions SET status='Running' WHERE id=$1", [
-        session_id,
-      ]);
-      await db.query(
-        "INSERT INTO sessions_steps (sessions_id, step_no, status) VALUES  ($1, $2, $3)",
-        [session_id, 0, "open"]
-      );
-      sendUpdateToUsers(session_id, "sessions_started", {});
-    } */
+    // Check if the game can start
+    startGamePhase(session_id);
   } catch (error) {
     if (error instanceof CustomError) {
       res.status(error.code).end(error.msg);
