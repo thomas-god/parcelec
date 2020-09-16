@@ -125,17 +125,23 @@ export async function postUserBid(
       throw new CustomError("Error, no bid type provided");
     if (req.body.bid.type !== "buy" && req.body.bid.type !== "sell")
       throw new CustomError("Error, no bid type must be `sell` or `buy`");
-    if (req.body.bid.volume === undefined)
-      throw new CustomError("Error, no bid volume provided");
-    if (req.body.bid.volume === "" || isNaN(Number(req.body.bid.volume)))
+    if (req.body.bid.volume_mwh === undefined)
+      throw new CustomError("Error, no bid volume_mwh provided");
+    if (
+      req.body.bid.volume_mwh === "" ||
+      isNaN(Number(req.body.bid.volume_mwh))
+    )
       throw new CustomError(
-        "Error, please provide a numeric value for the bid volume"
+        "Error, please provide a numeric value for the bid volume_mwh"
       );
-    if (req.body.bid.price === undefined)
-      throw new CustomError("Error, no bid price provided");
-    if (req.body.bid.price === "" || isNaN(Number(req.body.bid.price)))
+    if (req.body.bid.price_eur_per_mwh === undefined)
+      throw new CustomError("Error, no bid price_eur_per_mwh provided");
+    if (
+      req.body.bid.price_eur_per_mwh === "" ||
+      isNaN(Number(req.body.bid.price_eur_per_mwh))
+    )
       throw new CustomError(
-        "Error, please provide a numeric value for the bid price"
+        "Error, please provide a numeric value for the bid price_eur_per_mwh"
       );
 
     // Bid insertion
@@ -144,8 +150,8 @@ export async function postUserBid(
       session_id: session_id,
       id: uuid(),
       type: req.body.bid.type,
-      volume_mwh: Number(req.body.bid.volume),
-      price_eur_per_mwh: Number(req.body.bid.price),
+      volume_mwh: Number(req.body.bid.volume_mwh),
+      price_eur_per_mwh: Number(req.body.bid.price_eur_per_mwh),
     };
     console.log(bid);
     await postBid(bid);

@@ -159,7 +159,7 @@ describe("Posting a bid to a running session", () => {
     try {
       await superagent
         .post(`${url}/session/${uuid()}/user/${uuid()}/bid`)
-        .send({ bid: { type: "buy", volume: 10, price: 50 } });
+        .send({ bid: { type: "buy", volume_mwh: 10, price_eur_per_mwh: 50 } });
     } catch (error) {
       expect(error.status).toEqual(404);
       expect(error.response.text).toEqual(
@@ -172,7 +172,7 @@ describe("Posting a bid to a running session", () => {
     try {
       await superagent
         .post(`${url}/session/${sessions[1].id}/user/${uuid()}/bid`)
-        .send({ bid: { type: "buy", volume: 10, price: 50 } });
+        .send({ bid: { type: "buy", volume_mwh: 10, price_eur_per_mwh: 50 } });
     } catch (error) {
       expect(error.status).toEqual(404);
       expect(error.response.text).toEqual("Error, no user found with this ID");
@@ -188,7 +188,7 @@ describe("Posting a bid to a running session", () => {
       ).body.user_id;
       await superagent
         .post(`${url}/session/${sessions[0].id}/user/${user_id}/bid`)
-        .send({ bid: { type: "buy", volume: 10, price: 50 } });
+        .send({ bid: { type: "buy", volume_mwh: 10, price_eur_per_mwh: 50 } });
     } catch (error) {
       expect(error.status).toEqual(400);
       expect(error.response.text).toEqual("Error, the session is not running");
@@ -200,7 +200,7 @@ describe("Posting a bid to a running session", () => {
       const users_id = await startSession(sessions[0].id);
       const res = await superagent
         .post(`${url}/session/${sessions[0].id}/user/${users_id[0]}/bid`)
-        .send({ bid: { type: "buy", volume: 10, price: 50 } });
+        .send({ bid: { type: "buy", volume_mwh: 10, price_eur_per_mwh: 50 } });
       expect(res.status).toEqual(201);
       expect(res.body).toHaveProperty("bid_id");
       expect(uuidValidate(res.body.bid_id)).toEqual(true);
