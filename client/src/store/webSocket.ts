@@ -16,14 +16,14 @@ export interface ClientMessage {
 
 export interface WebSocketState {
   ws: WebSocket | null;
-  auction_state: "NOT_REGISTERED" | "OPEN" | "RUNNING" | "CLOSE";
+  session_state: "NOT_REGISTERED" | "OPEN" | "RUNNING" | "CLOSE";
   messages: ClientMessage[];
 }
 
 // ------------------------ STATE -------------------------
 export const state: WebSocketState = {
   ws: null,
-  auction_state: "NOT_REGISTERED",
+  session_state: "NOT_REGISTERED",
   messages: [],
 };
 
@@ -34,11 +34,11 @@ export const actions: ActionTree<WebSocketState, RootState> = {
     if (state.ws?.OPEN) state.ws.close();
 
     // Open new WebSocket connection
-    const auction_id = context.rootState.session.id;
+    const session_id = context.rootState.session.id;
     const user_id = context.rootState.user.user_id;
     const username = context.rootState.user.username;
     const socket = new WebSocket(
-      `ws://localhost:3000/auction?auction_id=${auction_id}&user_id=${user_id}&username=${username}`
+      `ws://localhost:3000/auction?auction_id=${session_id}&user_id=${user_id}&username=${username}`
     );
 
     socket.addEventListener("close", () => onCloseCallback(context.commit));
@@ -55,7 +55,7 @@ export const actions: ActionTree<WebSocketState, RootState> = {
         username: context.rootState.user.username,
         reason: "message",
         credentials: {
-          auction_id: context.rootState.session.id,
+          session_id: context.rootState.session.id,
           user_id: context.rootState.user.user_id,
         },
         data: payload,

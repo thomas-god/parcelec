@@ -29,7 +29,7 @@ const userModule = namespace("user");
 export default class UserList extends Vue {
   @Prop({ default: false }) readonly display_ready_status!: boolean;
   @sessionModule.State users!: User[];
-  @sessionModule.Getter auction_id!: string;
+  @sessionModule.Getter session_id!: string;
   @userModule.Getter user_id!: string;
   @userModule.Getter user_ready!: boolean;
   @userModule.Action setReadyStatus!: () => void;
@@ -37,7 +37,7 @@ export default class UserList extends Vue {
 
   async setStatusReady(): Promise<void> {
     const res = await fetch(
-      `${this.api_url}/auction/${this.auction_id}/user_ready`,
+      `${this.api_url}/session/${this.session_id}/user_ready`,
       {
         method: "PUT",
         headers: { "content-type": "application/json" },

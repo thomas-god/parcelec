@@ -30,7 +30,7 @@ const sessionModule = namespace("session");
 export default class User extends Vue {
   @userModule.Action setUsername!: (payload: string) => void;
   @userModule.Action setUserID!: (payload: string) => void;
-  @sessionModule.Getter auction!: Session;
+  @sessionModule.Getter session!: Session;
   @State("api_url") api_url!: string;
   new_username = "";
   new_username_err = false;
@@ -39,7 +39,7 @@ export default class User extends Vue {
   async addUsername() {
     if (this.new_username !== "") {
       const res = await fetch(
-        `${this.api_url}/auction/${this.auction.id}/register_user`,
+        `${this.api_url}/session/${this.session.id}/register_user`,
         {
           method: "PUT",
           headers: { "content-type": "application/json" },

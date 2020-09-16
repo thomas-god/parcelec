@@ -19,7 +19,7 @@ const userModule = namespace("user");
 
 @Component
 export default class Bid extends Vue {
-  @sessionModule.Getter auction!: Session;
+  @sessionModule.Getter session!: Session;
   @sessionModule.Getter can_bid!: boolean;
   @sessionModule.Action updateBidAbility!: (bid_ability: boolean) => void;
   @userModule.Getter user_id!: string;
@@ -31,7 +31,7 @@ export default class Bid extends Vue {
 
   async submitBid(): Promise<void> {
     console.log(this.bid_value);
-    const res = await fetch(`${this.api_url}/auction/${this.auction.id}/bid`, {
+    const res = await fetch(`${this.api_url}/session/${this.session.id}/bid`, {
       method: "PUT",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ user_id: this.user_id, bid: this.bid_value })

@@ -1,14 +1,14 @@
 <template>
-  <div v-if="!(auction.id && username)" class="app__full">
+  <div v-if="!(session.id && username)" class="app__full">
     <h1>Bienvenue sur Parcélec ! ⚡️</h1>
-    <AuctionSelect v-if="!auction.id" />
-    <UsernameSelect v-if="auction.id && !username" />
+    <SessionSelect v-if="!session.id" />
+    <UsernameSelect v-if="session.id && !username" />
   </div>
   <div v-else>
-    <div v-if="auction_status === 'Open'" class="app__full">
+    <div v-if="session_status === 'open'" class="app__full">
       <h1>
         Bonjour {{ username }}, vous avez rejoint la partie
-        <em>{{ auction.name }}</em> !
+        <em>{{ session.name }}</em> !
       </h1>
       <h3>
         Vous pouvez discuter avec les autres joueurs connectés, et quand vous
@@ -17,10 +17,10 @@
       </h3>
       <Chatroom class="chatroom__full" :display_ready="true" />
     </div>
-    <div v-if="auction_status === 'Running'" class="app__grid">
+    <div v-if="session_status === 'running'" class="app__grid">
       <h1 class="app__grid_head">Enchère en cours...</h1>
       <div class="app__grid_main">
-        <Bid v-if="auction.id && username" />
+        <Bid v-if="session.id && username" />
       </div>
       <Chatroom class="chatroom__grid" display_direction="column" />
     </div>
@@ -31,22 +31,22 @@
 import { Component, Prop, Vue } from "vue-property-decorator";
 import { State, Action, Getter, namespace } from "vuex-class";
 import { Session } from "../store/session";
-import AuctionSelect from "./AuctionSelect.vue";
+import SessionSelect from "./SessionSelect.vue";
 import UsernameSelect from "./UsernameSelect.vue";
 import Chatroom from "./Chatroom.vue";
 import Messages from "./Messages.vue";
-import Bid from "./AuctionBid.vue";
+import Bid from "./SessionBid.vue";
 
 const userModule = namespace("user");
 const sessionModule = namespace("session");
 
 @Component({
-  components: { AuctionSelect, UsernameSelect, Chatroom, Bid }
+  components: { SessionSelect, UsernameSelect, Chatroom, Bid }
 })
 export default class Main extends Vue {
   @userModule.Getter username!: string;
-  @sessionModule.Getter auction!: Session;
-  @sessionModule.Getter auction_status!: string;
+  @sessionModule.Getter session!: Session;
+  @sessionModule.Getter session_status!: string;
 }
 </script>
 

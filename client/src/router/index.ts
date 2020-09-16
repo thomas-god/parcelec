@@ -12,34 +12,34 @@ const routes: Array<RouteConfig> = [
     component: Home,
   },
   {
-    path: "/auction/:auction_id/user/:user_id",
+    path: "/session/:session_id/user/:user_id",
     beforeEnter: async (to, from, next) => {
-      const auction_id: string = to.params.auction_id;
+      const session_id: string = to.params.session_id;
       const user_id: string = to.params.user_id;
 
       const res_user = await fetch(
-        `${process.env.VUE_APP_API_URL}/auction/${auction_id}/user/${user_id}`,
+        `${process.env.VUE_APP_API_URL}/session/${session_id}/user/${user_id}`,
         {
           method: "GET",
         }
       );
-      const res_auction = await fetch(
-        `${process.env.VUE_APP_API_URL}/auction/${auction_id}`,
+      const res_session = await fetch(
+        `${process.env.VUE_APP_API_URL}/session/${session_id}`,
         {
           method: "GET",
         }
       );
-      if (res_user.status === 200 && res_auction.status === 200) {
+      if (res_user.status === 200 && res_session.status === 200) {
         const user = await res_user.json();
-        const auction = await res_auction.json();
+        const session = await res_session.json();
         await store.dispatch("user/setUsername", user.name, { root: true });
         await store.dispatch(
-          "auction/setAuction",
-          { id: auction_id, name: auction.name, status: auction.status },
+          "session/setsession",
+          { id: session_id, name: session.name, status: session.status },
           { root: true }
         );
         await store.dispatch("user/setUserID", String(user_id), { root: true });
-        await store.dispatch("auction/updateBidAbility", user.can_bid, {
+        await store.dispatch("session/updateBidAbility", user.can_bid, {
           root: true,
         });
       }
