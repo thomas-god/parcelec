@@ -316,6 +316,102 @@ describe("Getting a user's bids", () => {
 });
 
 /**
+ * DELETE /session/:session_id/user/:user_id/bid/:bid_id
+ */
+describe("Deleting a user's bid", () => {
+  beforeEach(async () => {
+    await prepareDB();
+  });
+
+  test("Should error when the session does not exist", async () => {
+    try {
+      await superagent.delete(
+        `${url}/session/${uuid()}/user/${uuid()}/bid/${uuid()}`
+      );
+    } catch (error) {
+      expect(error.status).toEqual(404);
+      expect(error.response.text).toEqual(
+        "Error, no session found with this ID"
+      );
+    }
+  });
+
+  test("Should error when the user does not exist", async () => {
+    try {
+      await superagent.delete(
+        `${url}/session/${sessions[1].id}/user/${uuid()}/bid/${uuid()}`
+      );
+    } catch (error) {
+      expect(error.status).toEqual(404);
+      expect(error.response.text).toEqual("Error, no user found with this ID");
+    }
+  });
+
+  test("Should error when the bid does not exist", async () => {
+    try {
+      await superagent.delete(
+        `${url}/session/${users[0].session_id}/user/${
+          users[0].id
+        }/bid/${uuid()}`
+      );
+    } catch (error) {
+      expect(error.status).toEqual(404);
+      expect(error.response.text).toEqual("Error, no bid found with this ID");
+    }
+  });
+
+  test("Should error when the session is not running", async () => {
+    try {
+      const user_id = (
+        await superagent
+          .put(`${url}/session/${sessions[0].id}/register_user`)
+          .send({ username: "User" })
+      ).body.user_id;
+      await superagent.delete(
+        `${url}/session/${sessions[0].id}/user/${user_id}/bid/${uuid()}`
+      );
+    } catch (error) {
+      expect(error.status).toEqual(400);
+      expect(error.response.text).toEqual("Error, the session is not running");
+    }
+  });
+
+  test("Should delete the bid", async () => {
+    try {
+      const users_id = await startSession(sessions[0].id);
+      // Add a bid
+      const bid_id = (
+        await superagent
+          .post(`${url}/session/${sessions[0].id}/user/${users_id[0]}/bid`)
+          .send({ bid: { type: "buy", volume_mwh: 10, price_eur_per_mwh: 50 } })
+      ).body.bid_id;
+
+      // Check the bid has been inserted
+      const res_bids_1 = await superagent.get(
+        `${url}/session/${sessions[0].id}/user/${users_id[0]}/bids`
+      );
+      expect(Array.isArray(res_bids_1.body)).toEqual(true);
+      expect(res_bids_1.body.length).toEqual(1);
+      expect(res_bids_1.body[0].id).toEqual(bid_id);
+
+      // Delete the bid
+      const res_delete = await superagent.delete(
+        `${url}/session/${sessions[0].id}/user/${users_id[0]}/bid/${bid_id}`
+      );
+      expect(res_delete.status).toEqual(200);
+
+      // Check there are no longer bids for that user
+      const res_bids_2 = await superagent.get(
+        `${url}/session/${sessions[0].id}/user/${users_id[0]}/bids`
+      );
+      expect(res_bids_2.body.length).toEqual(0);
+    } catch (err) {
+      fail(err);
+    }
+  });
+});
+
+/**
  * Util function to start a session and trigger the server-side start logic.
  * @param session_id Session ID
  */

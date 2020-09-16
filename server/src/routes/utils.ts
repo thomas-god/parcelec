@@ -228,20 +228,37 @@ export async function postBid(bid: Omit<Bid, "phase_no">): Promise<void> {
  * Get a user's bid for the active step of an session. Return null if the
  * user has not bid yet.
  * @param session_id ID of the session
- * @param user_id ID of the user
+ * @param bid_id ID of the bid
  */
-export async function getBid(
+export async function getUserBid(
   session_id: string,
-  user_id: string
+  bid_id: string
 ): Promise<Bid> {
   const phase_no = await getCurrentPhaseNo(session_id);
   const res = (
     await db.query(
-      "SELECT * FROM bids WHERE session_id=$1 AND user_id=$2 AND phase_no=$3",
-      [session_id, user_id, phase_no]
+      "SELECT * FROM bids WHERE session_id=$1 AND id=$2 AND phase_no=$3",
+      [session_id, bid_id, phase_no]
     )
   ).rows;
   return res.length === 1 ? (res[0] as Bid) : null;
+}
+
+/**
+ * Get a user's bid for the active step of an session. Return null if the
+ * user has not bid yet.
+ * @param session_id ID of the session
+ * @param bid_id ID of the bid
+ */
+export async function deleteUserBid(
+  session_id: string,
+  bid_id: string
+): Promise<void> {
+  const phase_no = await getCurrentPhaseNo(session_id);
+  await db.query(
+    "DELETE FROM bids WHERE session_id=$1 AND id=$2 AND phase_no=$3",
+    [session_id, bid_id, phase_no]
+  );
 }
 
 /**

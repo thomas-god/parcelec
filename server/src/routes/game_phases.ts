@@ -13,6 +13,8 @@ import {
   getConsoForecast,
   postBid,
   getUserBids,
+  getUserBid,
+  deleteUserBid,
 } from "./utils";
 
 class CustomError extends Error {
@@ -198,6 +200,45 @@ export async function getUserBidsRoute(
   }
 }
 
+/**
+ * Return the list of a user's bids for the current phase.
+ * @param req HTTP request
+ * @param res HTTP response
+ */
+export async function deleteUserBidRoute(
+  req: express.Request,
+  res: express.Response
+): Promise<void> {
+  try {
+    // DB checks
+    const session_id = req.params.session_id;
+    const user_id = req.params.user_id;
+    const bid_id = req.params.bid_id;
+    const session = await getSession(session_id);
+    if (session === null)
+      throw new CustomError("Error, no session found with this ID", 404);
+    if (session.status !== "running")
+      throw new CustomError("Error, the session is not running");
+    const user = await getUser(session_id, user_id);
+    if (user === null)
+      throw new CustomError("Error, no user found with this ID", 404);
+    const bid = await getUserBid(session_id, bid_id);
+    if (bid === null)
+      throw new CustomError("Error, no bid found with this ID", 404);
+
+    // Deleting the bids
+    await deleteUserBid(session_id, bid_id);
+    res.status(200).end();
+  } catch (error) {
+    if (error instanceof CustomError) {
+      res.status(error.code).end(error.msg);
+    } else {
+      res.status(400).end();
+      throw error;
+    }
+  }
+}
+
 const router = express.Router();
 
 router.get(
@@ -215,6 +256,10 @@ router.post(
 router.get(
   `/session/:session_id(${uuid_regex})/user/:user_id(${uuid_regex})/bids`,
   getUserBidsRoute
+);
+router.delete(
+  `/session/:session_id(${uuid_regex})/user/:user_id(${uuid_regex})/bid/:bid_id(${uuid_regex})`,
+  deleteUserBidRoute
 );
 
 export default router;
