@@ -36,22 +36,22 @@
 <script lang="ts">
 import { Component, Prop, Vue } from "vue-property-decorator";
 import { State, Action, Getter, namespace } from "vuex-class";
-import { Auction } from "../store/auction";
+import { Session } from "../store/session";
 
 const auctionModule = namespace("auction");
 
 @Component
 export default class User extends Vue {
   @Prop({ default: false }) allow_new_auction!: boolean;
-  @auctionModule.Getter auction!: Auction;
-  @auctionModule.Action setAuction!: (payload: Auction) => void;
+  @auctionModule.Getter auction!: Session;
+  @auctionModule.Action setAuction!: (payload: Session) => void;
   @State("api_url") api_url!: string;
 
   // List of open auctions
-  open_auctions: Auction[] = [];
+  open_auctions: Session[] = [];
   async getOpenAuctions(): Promise<void> {
-    const res = await fetch(`${this.api_url}/auction/list_open`, {
-      method: "GET",
+    const res = await fetch(`${this.api_url}/sessions/open`, {
+      method: "GET"
     });
     this.open_auctions = await res.json();
   }
@@ -64,7 +64,7 @@ export default class User extends Vue {
     const res = await fetch(`${this.api_url}/auction/open`, {
       method: "PUT",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ auction_name: this.new_auction_name }),
+      body: JSON.stringify({ auction_name: this.new_auction_name })
     });
     if (res.status === 200) {
       this.new_auction_name_err = false;

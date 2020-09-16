@@ -20,7 +20,7 @@
 <script lang="ts">
 import { Component, Prop, Vue } from "vue-property-decorator";
 import { State, Action, Getter, namespace } from "vuex-class";
-import { User } from "../store/auction";
+import { User } from "../store/session";
 
 const auctionModule = namespace("auction");
 const userModule = namespace("user");
@@ -41,7 +41,7 @@ export default class UserList extends Vue {
       {
         method: "PUT",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ user_id: this.user_id }),
+        body: JSON.stringify({ user_id: this.user_id })
       }
     );
     if (res.status === 201) this.setReadyStatus();

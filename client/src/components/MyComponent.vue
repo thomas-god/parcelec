@@ -30,7 +30,7 @@
 <script lang="ts">
 import { Component, Prop, Vue } from "vue-property-decorator";
 import { State, Action, Getter, namespace } from "vuex-class";
-import { Auction } from "../store/auction";
+import { Session } from "../store/session";
 import AuctionSelect from "./AuctionSelect.vue";
 import UsernameSelect from "./UsernameSelect.vue";
 import Chatroom from "./Chatroom.vue";
@@ -41,11 +41,11 @@ const userModule = namespace("user");
 const auctionModule = namespace("auction");
 
 @Component({
-  components: { AuctionSelect, UsernameSelect, Chatroom, Bid },
+  components: { AuctionSelect, UsernameSelect, Chatroom, Bid }
 })
 export default class Main extends Vue {
   @userModule.Getter username!: string;
-  @auctionModule.Getter auction!: Auction;
+  @auctionModule.Getter auction!: Session;
   @auctionModule.Getter auction_status!: string;
 }
 </script>
