@@ -37,7 +37,7 @@ const userModule = namespace("user");
 const bidsModule = namespace("bids");
 
 @Component
-export default class PowerPlantItem extends Vue {
+export default class BidItem extends Vue {
   @Prop() type!: "buy" | "sell";
   @Prop() edit!: boolean;
   @Prop() bid!: Bid;

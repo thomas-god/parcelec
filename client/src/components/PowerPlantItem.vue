@@ -3,10 +3,10 @@
     <div class="pp__logo">{{ logo }}</div>
     <div :style="pp__bare_style">
       <div :style="pp__bare__p_min" class="pp__bare__p_min">
-        <p>{{ power_plant.p_min_mw }}</p>
+        <p>{{ power_plant.p_min_mw }} MW</p>
       </div>
       <div class="pp__bare__p_max">
-        <p>{{ power_plant.p_max_mw }}</p>
+        <p>{{ power_plant.p_max_mw }} MW</p>
       </div>
     </div>
     <div class="pp__infos">
