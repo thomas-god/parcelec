@@ -29,6 +29,9 @@ export const state: WebSocketState = {
 
 // ------------------------ ACTIONS -------------------------
 export const actions: ActionTree<WebSocketState, RootState> = {
+  /**
+   * Open the WebSocket connection.
+   */
   async openWebSocket(context): Promise<void> {
     // Close existing WebSocket connection
     if (state.ws?.OPEN) state.ws.close();

@@ -24,7 +24,11 @@ export const state: PortfolioState = {
 
 // ------------------------ ACTIONS -------------------------
 export const actions: ActionTree<PortfolioState, RootState> = {
-  async setPowerPlants({ commit, rootState }): Promise<void> {
+  /**
+   * Load portfolio related data (power plants, conso forecast) into
+   * the store.
+   */
+  async loadPortfolioContent({ commit, rootState }): Promise<void> {
     const power_plants = await getPowerPlants(
       rootState.session.id,
       rootState.user.user_id

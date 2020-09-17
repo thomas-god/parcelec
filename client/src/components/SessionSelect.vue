@@ -2,11 +2,7 @@
   <div>
     <h2>Choisissez une partie à rejoindre</h2>
     <ul class="sessions_list">
-      <li
-        v-for="s in open_sessions"
-        :key="s.name"
-        @click="setSession({ ...s, status: 'open' })"
-      >
+      <li v-for="s in open_sessions" :key="s.name" @click="setSessionID(s.id)">
         <span>{{ s.name }}</span>
       </li>
       <li v-if="open_sessions.length === 0">
@@ -42,13 +38,16 @@ const sessionModule = namespace("session");
 
 @Component
 export default class User extends Vue {
+  // Store related stuff
   @Prop({ default: false }) allow_new_session!: boolean;
   @sessionModule.Getter session!: Session;
-  @sessionModule.Action setSession!: (payload: Session) => void;
+  @sessionModule.Action setSessionID!: (session_id: string) => void;
   @State("api_url") api_url!: string;
 
-  // List of open sessions
   open_sessions: Session[] = [];
+  /**
+   * Query the API to get the list of open game sessions.
+   */
   async getOpenSessions(): Promise<void> {
     const res = await fetch(`${this.api_url}/sessions/open`, {
       method: "GET"
@@ -56,10 +55,14 @@ export default class User extends Vue {
     this.open_sessions = await res.json();
   }
 
-  // Open a new session
+  // New session name stuff
   new_session_name = "";
   new_session_name_err = false;
   new_session_name_err_msg = "";
+  /**
+   * Open a new session and store its ID on the store on
+   * success.
+   */
   async openSession() {
     const res = await fetch(`${this.api_url}/session/open`, {
       method: "PUT",
@@ -69,6 +72,8 @@ export default class User extends Vue {
     if (res.status === 200) {
       this.new_session_name_err = false;
       this.new_session_name_err_msg = "";
+      const session_id = (await res.json()).id;
+      this.setSessionID(session_id);
     } else {
       this.new_session_name_err = true;
       this.new_session_name_err_msg = await res.text();

@@ -28,14 +28,22 @@ const sessionModule = namespace("session");
 
 @Component
 export default class User extends Vue {
-  @userModule.Action setUsername!: (payload: string) => void;
+  // Store related
   @userModule.Action setUserID!: (payload: string) => void;
   @sessionModule.Getter session!: Session;
+  @sessionModule.Action loadGameContent!: () => {};
   @State("api_url") api_url!: string;
+
+  // Username input stuff
   new_username = "";
   new_username_err = false;
   new_username_err_msg = "";
 
+  /**
+   * Tries to register a new user with the username
+   * from the input. If username insertion succeeds, trigger
+   * the loadGameContent action.
+   */
   async addUsername() {
     if (this.new_username !== "") {
       const res = await fetch(
@@ -53,7 +61,7 @@ export default class User extends Vue {
         this.new_username_err_msg = "";
         const body = await res.json();
         this.setUserID(body.user_id);
-        this.setUsername(this.new_username);
+        this.loadGameContent();
       } else {
         this.new_username_err = true;
         this.new_username_err_msg = await res.text();
