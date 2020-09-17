@@ -74,9 +74,9 @@ export default class Main extends Vue {
     if (this.phase_infos?.clearing_time) {
       const dt = this.phase_infos.clearing_time.valueOf() - this.now.valueOf();
       if (dt > 0)
-        return new Date(
+        return toTimeString(
           this.phase_infos.clearing_time.valueOf() - this.now.valueOf()
-        ).toLocaleTimeString();
+        );
       else return "Temps écoulé";
     } else {
       return null;
@@ -87,14 +87,21 @@ export default class Main extends Vue {
     if (this.phase_infos?.planning_time) {
       const dt = this.phase_infos.planning_time.valueOf() - this.now.valueOf();
       if (dt > 0)
-        return new Date(
+        return toTimeString(
           this.phase_infos.planning_time.valueOf() - this.now.valueOf()
-        ).toLocaleTimeString();
+        );
       else return "Temps écoulé";
     } else {
       return null;
     }
   }
+}
+
+function toTimeString(dt: number): string {
+  const dts = dt / 1000;
+  const min = Math.floor(dts / 60);
+  const sec = Math.floor(dts - min * 60);
+  return `${String(min).padStart(2, "0")}:${String(sec).padStart(2, "0")}`;
 }
 </script>
 
