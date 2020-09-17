@@ -34,14 +34,10 @@
         </h2>
         <h2 v-if="clearing_available">Résultats des enchères disponibles</h2>
         <h2 v-if="results_available">Résultats finaux disponibles</h2>
-        <div class="app__main">
-          <!-- <Bid v-if="session.id && username" /> -->
-          <PowerPlantsList
-            v-if="session.id && username"
-            class="app__main_item"
-          />
+        <div class="app__main" v-if="session.id && username">
+          <PowerPlantsList class="app__main_item" />
           <BidsList class="app__main_item" />
-          <div><button v-if="can_post_planning">Planning</button></div>
+          <Bilans class="app__main_item" />
         </div>
       </div>
       <Chatroom class="chatroom__grid" display_direction="column" />
@@ -60,6 +56,7 @@ import Messages from "./Messages.vue";
 import Bid from "./SessionBid.vue";
 import PowerPlantsList from "./PowerPlantsList.vue";
 import BidsList from "./BidsList.vue";
+import Bilans from "./Bilans.vue";
 
 const userModule = namespace("user");
 const sessionModule = namespace("session");
@@ -71,7 +68,8 @@ const sessionModule = namespace("session");
     Chatroom,
     Bid,
     PowerPlantsList,
-    BidsList
+    BidsList,
+    Bilans
   }
 })
 export default class Main extends Vue {
@@ -178,6 +176,8 @@ function toTimeString(dt: number): string {
 }
 
 .app__main_item {
+  border: 2px solid gray;
+  border-radius: 2px;
   min-width: 400px;
   margin: 2rem;
 }

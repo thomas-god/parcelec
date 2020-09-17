@@ -8,13 +8,32 @@ export interface Bid {
   id: string;
 }
 
+export interface EnergyExchange {
+  volume_mwh: number;
+  price_eur_per_mwh: number;
+}
+
 export interface BidsState {
   bids: Bid[];
+  energy_exchanges: {
+    buy: EnergyExchange;
+    sell: EnergyExchange;
+  };
 }
 
 // ------------------------ STATE -------------------------
 export const state: BidsState = {
   bids: [],
+  energy_exchanges: {
+    sell: {
+      volume_mwh: 0,
+      price_eur_per_mwh: 0,
+    },
+    buy: {
+      volume_mwh: 0,
+      price_eur_per_mwh: 0,
+    },
+  },
 };
 
 // ------------------------ ACTIONS -------------------------
