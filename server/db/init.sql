@@ -105,3 +105,21 @@ CREATE TABLE results
   costs_eur REAL NOT NULL,
   revenues_eur REAL NOT NULL
 );
+
+CREATE OR REPLACE FUNCTION get_url(session_name text, username text) 
+RETURNS text
+AS $$
+#print_strict_params on
+DECLARE
+url text;
+BEGIN
+    SELECT CONCAT('http://localhost:8080/session/', sessions.id, '/user/', users.id) 
+    INTO STRICT url
+    FROM users, sessions 
+    WHERE 
+      users.session_id=sessions.id 
+      AND users.name = get_url.username
+      AND sessions.name = get_url.session_name;
+    RETURN url;
+END
+$$ LANGUAGE plpgsql;
