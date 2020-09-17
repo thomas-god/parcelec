@@ -108,25 +108,18 @@ function onMessageCallback(
     console.log(message.reason);
     if (message.reason === "message") {
       context.commit("ADD_MESSAGE", message);
-    } else if (
-      message.reason === "users_list_update" &&
-      message.username === "SERVER"
-    ) {
-      context.commit("session/SET_USERS", message.data, {
-        root: true,
-      });
-    } else if (
-      message.reason === "new-game-phase" &&
-      message.username === "SERVER"
-    ) {
-      context.dispatch("session/setStatus", "running", { root: true });
-      context.dispatch("portfolio/setPowerPlants", {}, { root: true });
-    } else if (
-      message.reason === "session_cleared" &&
-      message.username === "SERVER"
-    ) {
-      context.dispatch("session/updateBidAbility", true, { root: true });
-      context.dispatch("portfolio/setPowerPlants", {}, { root: true });
+    } else if (message.username === "SERVER") {
+      if (message.reason === "users-list-update") {
+        context.commit("session/SET_USERS", message.data, {
+          root: true,
+        });
+      } else if (message.reason === "new-game-phase") {
+        context.dispatch("session/loadSessionContent", "running", {
+          root: true,
+        });
+      } else if (message.reason === "session_cleared") {
+        context.dispatch("session/updateBidAbility", true, { root: true });
+      }
     }
   } catch (error) {
     console.log(error);
