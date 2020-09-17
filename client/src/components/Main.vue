@@ -34,10 +34,13 @@
         </h2>
         <h2 v-if="clearing_available">Résultats des enchères disponibles</h2>
         <h2 v-if="results_available">Résultats finaux disponibles</h2>
-        <div>
+        <div class="app__main">
           <!-- <Bid v-if="session.id && username" /> -->
-          <PowerPlantsList v-if="session.id && username" />
-          <div><button v-if="can_bid">Bids</button></div>
+          <PowerPlantsList
+            v-if="session.id && username"
+            class="app__main_item"
+          />
+          <BidsList class="app__main_item" />
           <div><button v-if="can_post_planning">Planning</button></div>
         </div>
       </div>
@@ -56,12 +59,20 @@ import Chatroom from "./Chatroom.vue";
 import Messages from "./Messages.vue";
 import Bid from "./SessionBid.vue";
 import PowerPlantsList from "./PowerPlantsList.vue";
+import BidsList from "./BidsList.vue";
 
 const userModule = namespace("user");
 const sessionModule = namespace("session");
 
 @Component({
-  components: { SessionSelect, UsernameSelect, Chatroom, Bid, PowerPlantsList }
+  components: {
+    SessionSelect,
+    UsernameSelect,
+    Chatroom,
+    Bid,
+    PowerPlantsList,
+    BidsList
+  }
 })
 export default class Main extends Vue {
   @userModule.Getter username!: string;
@@ -155,5 +166,19 @@ function toTimeString(dt: number): string {
 
 .chatroom__grid {
   grid-area: message;
+}
+
+.app__main {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  flex-grow: 0;
+  align-items: stretch;
+  justify-content: center;
+}
+
+.app__main_item {
+  min-width: 400px;
+  margin: 2rem;
 }
 </style>
