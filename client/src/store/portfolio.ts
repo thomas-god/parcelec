@@ -1,4 +1,10 @@
-import Vuex, { Module, GetterTree, MutationTree, ActionTree } from "vuex";
+import Vuex, {
+  Module,
+  GetterTree,
+  MutationTree,
+  ActionTree,
+  Commit,
+} from "vuex";
 import Vue from "vue";
 import { RootState } from "./index";
 
@@ -13,6 +19,7 @@ export interface PowerPlant {
 
 export interface Portfolio {
   power_plants: PowerPlant[];
+  conso: number;
 }
 
 export interface PortfolioState extends Portfolio {}
@@ -20,6 +27,7 @@ export interface PortfolioState extends Portfolio {}
 // ------------------------ STATE -------------------------
 export const state: PortfolioState = {
   power_plants: [],
+  conso: 0,
 };
 
 // ------------------------ ACTIONS -------------------------
@@ -29,11 +37,8 @@ export const actions: ActionTree<PortfolioState, RootState> = {
    * the store.
    */
   async loadPortfolioContent({ commit, rootState }): Promise<void> {
-    const power_plants = await getPowerPlants(
-      rootState.session.id,
-      rootState.user.user_id
-    );
-    commit("SET_POWER_PLANTS", power_plants);
+    loadPowerPlants(commit, rootState.session.id, rootState.user.user_id);
+    loadConsoForecast(commit, rootState.session.id, rootState.user.user_id);
   },
 };
 
@@ -42,12 +47,18 @@ export const mutations: MutationTree<PortfolioState> = {
   SET_POWER_PLANTS(state, power_plants: PowerPlant[]): void {
     state.power_plants = power_plants;
   },
+  SET_CONSO(state, conso: number): void {
+    state.conso = conso;
+  },
 };
 
 // ------------------------ GETTERS -------------------------
 export const getters: GetterTree<PortfolioState, RootState> = {
   power_plants(state): PowerPlant[] {
     return state.power_plants;
+  },
+  conso(state): number {
+    return state.conso;
   },
 };
 
@@ -61,10 +72,12 @@ export const portfolio: Module<PortfolioState, RootState> = {
 };
 
 // ------------------------ Helper functions ---------------
-async function getPowerPlants(
+async function loadPowerPlants(
+  commit: Commit,
   session_id: string,
   user_id: string
-): Promise<PowerPlant[]> {
+): Promise<void> {
+  let power_plants = [];
   const res = await fetch(
     `${process.env.VUE_APP_API_URL}/session/${session_id}/user/${user_id}/portfolio`,
     {
@@ -72,9 +85,25 @@ async function getPowerPlants(
     }
   );
   if (res.status === 200) {
-    const body = await res.json();
-    return body as PowerPlant[];
-  } else {
-    return [];
+    power_plants = await res.json();
   }
+  commit("SET_POWER_PLANTS", power_plants);
+}
+
+async function loadConsoForecast(
+  commit: Commit,
+  session_id: string,
+  user_id: string
+): Promise<void> {
+  let conso = 0;
+  const res = await fetch(
+    `${process.env.VUE_APP_API_URL}/session/${session_id}/user/${user_id}/conso`,
+    {
+      method: "GET",
+    }
+  );
+  if (res.status === 200) {
+    conso = (await res.json()).conso_mw;
+  }
+  commit("SET_CONSO", conso);
 }
