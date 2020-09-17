@@ -40,7 +40,7 @@
           <Bilans class="app__main_item" />
         </div>
       </div>
-      <Chatroom class="chatroom__grid" display_direction="column" />
+      <!-- <Chatroom class="chatroom__grid" display_direction="column" /> -->
     </div>
   </div>
 </template>
@@ -131,7 +131,7 @@ function toTimeString(dt: number): string {
   height: 100%;
   grid-template-areas:
     "head head"
-    "main  message";
+    "main  main";
   grid-template-rows: auto 1fr;
   grid-template-columns: 2fr 1fr;
 }
