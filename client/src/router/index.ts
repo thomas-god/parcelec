@@ -14,6 +14,7 @@ const routes: Array<RouteConfig> = [
   },
   {
     path: "/session/:session_id/user/:user_id",
+    component: Home,
     beforeEnter: async (to, from, next) => {
       const session_id: string = to.params.session_id;
       const user_id: string = to.params.user_id;
@@ -37,7 +38,7 @@ const routes: Array<RouteConfig> = [
         await store.dispatch("user/setUserID", user_id, { root: true });
         store.dispatch("session/loadGameContent", {}, { root: true });
       }
-      next("/");
+      next();
     },
   },
 ];
