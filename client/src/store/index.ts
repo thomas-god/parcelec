@@ -4,6 +4,7 @@ import { user, UserState } from "./user";
 import { session, SessionState } from "./session";
 import { webSocket, WebSocketState } from "./webSocket";
 import { portfolio, PortfolioState } from "./portfolio";
+import { bids, BidsState } from "./bids";
 
 Vue.use(Vuex);
 
@@ -14,6 +15,7 @@ export interface RootState {
   session: SessionState;
   ws: WebSocketState;
   portfolio: PortfolioState;
+  bids: BidsState;
 }
 
 const state: RootState = {
@@ -28,6 +30,7 @@ const store: StoreOptions<RootState> = {
     session,
     webSocket,
     portfolio,
+    bids,
   },
 };
 
