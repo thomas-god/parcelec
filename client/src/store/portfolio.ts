@@ -38,7 +38,9 @@ export const actions: ActionTree<PortfolioState, RootState> = {
    */
   async loadPortfolioContent({ commit, rootState }): Promise<void> {
     loadPowerPlants(commit, rootState.session.id, rootState.user.user_id);
-    loadConsoForecast(commit, rootState.session.id, rootState.user.user_id);
+    if (rootState.session.status === "running") {
+      loadConsoForecast(commit, rootState.session.id, rootState.user.user_id);
+    }
   },
 };
 

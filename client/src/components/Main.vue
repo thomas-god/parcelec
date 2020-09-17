@@ -32,9 +32,13 @@
           >
           <span v-else>Fin des plannings dans {{ timeBeforePlanning }}</span>
         </h2>
+        <h2 v-if="clearing_available">Résultats des enchères disponibles</h2>
+        <h2 v-if="results_available">Résultats finaux disponibles</h2>
         <div>
           <!-- <Bid v-if="session.id && username" /> -->
           <PowerPlantsList v-if="session.id && username" />
+          <div><button v-if="can_bid">Bids</button></div>
+          <div><button v-if="can_post_planning">Planning</button></div>
         </div>
       </div>
       <Chatroom class="chatroom__grid" display_direction="column" />
@@ -64,6 +68,12 @@ export default class Main extends Vue {
   @sessionModule.Getter session!: Session;
   @sessionModule.Getter session_status!: string;
   @sessionModule.Getter phase_infos!: Session["phase_infos"];
+
+  // Abilities booleans
+  @sessionModule.Getter can_bid!: boolean;
+  @sessionModule.Getter can_post_planning!: boolean;
+  @sessionModule.Getter clearing_available!: boolean;
+  @sessionModule.Getter results_available!: boolean;
 
   now: Date = new Date();
   created() {

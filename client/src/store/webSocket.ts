@@ -5,6 +5,7 @@ import Vuex, {
   ActionTree,
   Commit,
   ActionContext,
+  Dispatch,
 } from "vuex";
 import { RootState } from "./index";
 
@@ -46,7 +47,7 @@ export const actions: ActionTree<WebSocketState, RootState> = {
 
     socket.addEventListener("close", () => onCloseCallback(context.commit));
     socket.addEventListener("message", (event) =>
-      onMessageCallback(context, event)
+      onMessageCallback(context.commit, context.dispatch, event)
     );
 
     context.commit("SET_WEBSOCKET", socket);
@@ -100,25 +101,36 @@ function onCloseCallback(commit: Commit): void {
 }
 
 function onMessageCallback(
-  context: ActionContext<WebSocketState, RootState>,
+  commit: Commit,
+  dispatch: Dispatch,
   event: any
 ): void {
   try {
     const message = JSON.parse(event.data);
     console.log(message.reason);
     if (message.reason === "message") {
-      context.commit("ADD_MESSAGE", message);
+      commit("ADD_MESSAGE", message);
     } else if (message.username === "SERVER") {
-      if (message.reason === "users-list-update") {
-        context.commit("session/SET_USERS", message.data, {
-          root: true,
-        });
-      } else if (message.reason === "new-game-phase") {
-        context.dispatch("session/loadSessionContent", "running", {
-          root: true,
-        });
-      } else if (message.reason === "session_cleared") {
-        context.dispatch("session/updateBidAbility", true, { root: true });
+      const opts = { root: true };
+      switch (message.reason) {
+        case "users-list-update":
+          commit("session/SET_USERS", message.data, opts);
+          break;
+        case "new-game-phase":
+          dispatch("session/loadSessionContent", "running", opts);
+          break;
+        case "clearing-started":
+          commit("session/SET_CAN_BID", false, opts);
+          break;
+        case "clearing-finished":
+          commit("session/SET_CLEARING_AVAILABLE", true, opts);
+          break;
+        case "plannings-closed":
+          commit("session/SET_CAN_POST_PLANNING", false, opts);
+          break;
+        case "results-available":
+          commit("session/SET_RESULTS_AVAILABLE", true, opts);
+          break;
       }
     }
   } catch (error) {

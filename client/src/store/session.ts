@@ -13,6 +13,9 @@ export interface Session {
   status: "open" | "running" | "closed";
   users: User[];
   can_bid: boolean;
+  can_post_planning: boolean;
+  clearing_available: boolean;
+  results_available: boolean;
   phase_infos?: {
     start_time: Date;
     clearing_time: Date;
@@ -29,6 +32,9 @@ export const state: SessionState = {
   status: "open",
   users: [],
   can_bid: false,
+  can_post_planning: false,
+  clearing_available: false,
+  results_available: false,
 };
 
 // ------------------------ ACTIONS -------------------------
@@ -66,6 +72,7 @@ export const actions: ActionTree<SessionState, RootState> = {
     commit("SET_NAME", session.name);
     commit("SET_STATUS", session.status);
     commit("SET_CAN_BID", session.can_bid);
+    commit("SET_CAN_POST_PLANNING", session.can_post_planning);
     commit("SET_USERS", session.users);
     if (session.phase_infos) {
       commit("SET_PHASE_INFOS", session.phase_infos);
@@ -93,6 +100,15 @@ export const mutations: MutationTree<SessionState> = {
   SET_CAN_BID(state, can_bid: boolean): void {
     state.can_bid = can_bid;
   },
+  SET_CAN_POST_PLANNING(state, can_post_planning: boolean): void {
+    state.can_post_planning = can_post_planning;
+  },
+  SET_CLEARING_AVAILABLE(state, clearing_available: boolean): void {
+    state.clearing_available = clearing_available;
+  },
+  SET_RESULTS_AVAILABLE(state, results_available: boolean): void {
+    state.results_available = results_available;
+  },
   SET_PHASE_INFOS(state, phase_infos): void {
     Vue.set(state, "phase_infos", {
       start_time: new Date(phase_infos.start_time),
@@ -118,6 +134,15 @@ export const getters: GetterTree<SessionState, RootState> = {
   },
   can_bid(state): boolean {
     return state.can_bid;
+  },
+  can_post_planning(state): boolean {
+    return state.can_post_planning;
+  },
+  clearing_available(state): boolean {
+    return state.clearing_available;
+  },
+  results_available(state): boolean {
+    return state.results_available;
   },
   phase_infos(state): Session["phase_infos"] {
     return state.phase_infos;
