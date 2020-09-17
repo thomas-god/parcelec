@@ -330,3 +330,34 @@ export async function getPhaseInfos(session_id: string): Promise<GamePhase> {
         )
       ).rows[0] as GamePhase);
 }
+/**
+ * Check if users can submit bids to the current phase.
+ * @param session_id Session ID
+ */
+export async function userCanBid(session_id: string): Promise<boolean> {
+  const phase_no = await getCurrentPhaseNo(session_id);
+  const rows = (
+    await db.query(
+      "SELECT bids_allowed FROM phases WHERE session_id=$1 AND phase_no=$2",
+      [session_id, phase_no]
+    )
+  ).rows;
+  return rows.length === 1 ? (rows[0].bids_allowed as boolean) : false;
+}
+
+/**
+ * Check if users can submit plannings for the current phase.
+ * @param session_id Session ID
+ */
+export async function userCanSubmitPlanning(
+  session_id: string
+): Promise<boolean> {
+  const phase_no = await getCurrentPhaseNo(session_id);
+  const rows = (
+    await db.query(
+      "SELECT plannings_allowed FROM phases WHERE session_id=$1 AND phase_no=$2",
+      [session_id, phase_no]
+    )
+  ).rows;
+  return rows.length === 1 ? (rows[0].plannings_allowed as boolean) : false;
+}
