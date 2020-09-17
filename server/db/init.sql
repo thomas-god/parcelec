@@ -9,7 +9,7 @@ CREATE TABLE users
 (
   id UUID PRIMARY KEY,
   name TEXT,
-  session_id UUID REFERENCES sessions (id),
+  session_id UUID REFERENCES sessions (id) ON DELETE CASCADE,
   game_ready BOOLEAN DEFAULT false,
   UNIQUE (name, session_id)
 );
@@ -17,8 +17,8 @@ CREATE TABLE users
 CREATE TABLE power_plants 
 (
   id UUID PRIMARY KEY,
-  session_id UUID REFERENCES sessions (id),
-  user_id UUID REFERENCES users (id),
+  session_id UUID REFERENCES sessions (id) ON DELETE CASCADE,
+  user_id UUID REFERENCES users (id) ON DELETE CASCADE,
   type TEXT NOT NULL CHECK (type IN ('nuc', 'therm', 'hydro', 'ren', 'storage')),
   p_min_mw REAL NOT NULL,
   p_max_mw REAL NOT NULL,
@@ -30,7 +30,7 @@ CREATE TABLE power_plants
 
 CREATE TABLE phases 
 (
-  session_id UUID REFERENCES sessions (id),
+  session_id UUID REFERENCES sessions (id) ON DELETE CASCADE,
   phase_no INT DEFAULT 0,
   start_time TIMESTAMPTZ,
   clearing_time TIMESTAMPTZ,
@@ -41,20 +41,20 @@ CREATE TABLE phases
 
 CREATE TABLE conso 
 (
-  user_id UUID REFERENCES users (id),
+  user_id UUID REFERENCES users (id) ON DELETE CASCADE,
   session_id UUID,
   phase_no INT,
   value_mw REAL NOT NULL CHECK (value_mw > 0),
-  FOREIGN KEY (session_id, phase_no) REFERENCES phases (session_id, phase_no)
+  FOREIGN KEY (session_id, phase_no) REFERENCES phases (session_id, phase_no) ON DELETE CASCADE
 );
 
 CREATE TABLE bids 
 (
   id UUID PRIMARY KEY,
-  user_id UUID REFERENCES users (id),
+  user_id UUID REFERENCES users (id) ON DELETE CASCADE,
   session_id UUID,
   phase_no INT,
-  FOREIGN KEY (session_id, phase_no) REFERENCES phases (session_id, phase_no),
+  FOREIGN KEY (session_id, phase_no) REFERENCES phases (session_id, phase_no) ON DELETE CASCADE,
   type TEXT CHECK (type IN ('buy', 'sell')),
   volume_mwh REAL NOT NULL CHECK (volume_mwh > 0),
   price_eur_per_mwh REAL NOT NULL
@@ -64,7 +64,7 @@ CREATE TABLE clearings
 (
   session_id UUID,
   phase_no INT,
-  FOREIGN KEY (session_id, phase_no) REFERENCES phases (session_id, phase_no),
+  FOREIGN KEY (session_id, phase_no) REFERENCES phases (session_id, phase_no) ON DELETE CASCADE,
   volume_mwh REAL NOT NULL CHECK (volume_mwh > 0),
   price_eur_per_mwh REAL NOT NULL,
   PRIMARY KEY (session_id, phase_no)
@@ -75,7 +75,7 @@ CREATE TABLE exchanges
   user_id UUID REFERENCES users (id),
   session_id UUID,
   phase_no INT,
-  FOREIGN KEY (session_id, phase_no) REFERENCES phases (session_id, phase_no),
+  FOREIGN KEY (session_id, phase_no) REFERENCES phases (session_id, phase_no) ON DELETE CASCADE,
   type TEXT CHECK (type IN ('buy', 'sell')),
   volume_mwh REAL NOT NULL CHECK (volume_mwh > 0),
   price_eur_per_mwh REAL NOT NULL
@@ -83,10 +83,10 @@ CREATE TABLE exchanges
 
 CREATE TABLE production_plannings 
 (
-  user_id UUID REFERENCES users (id),
+  user_id UUID REFERENCES users (id) ON DELETE CASCADE,
   session_id UUID,
   phase_no INT,
-  FOREIGN KEY (session_id, phase_no) REFERENCES phases (session_id, phase_no),
+  FOREIGN KEY (session_id, phase_no) REFERENCES phases (session_id, phase_no) ON DELETE CASCADE,
   plant_id UUID REFERENCES power_plants (id),
   p_mw REAL NOT NULL,
   stock_start_mwh REAL NOT NULL,
@@ -96,10 +96,10 @@ CREATE TABLE production_plannings
 
 CREATE TABLE results
 (
-  user_id UUID REFERENCES users (id),
+  user_id UUID REFERENCES users (id) ON DELETE CASCADE,
   session_id UUID,
   phase_no INT,
-  FOREIGN KEY (session_id, phase_no) REFERENCES phases (session_id, phase_no),
+  FOREIGN KEY (session_id, phase_no) REFERENCES phases (session_id, phase_no) ON DELETE CASCADE,
   net_conso REAL NOT NULL,
   net_prod REAL NOT NULL,
   costs_eur REAL NOT NULL,
