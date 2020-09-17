@@ -45,6 +45,7 @@ export default class PowerPlantItem extends Vue {
   get pp__bare_style(): string {
     return `
       position: relative;
+      box-sizing: border-box;
       grid-area: barre;
       border: 2px solid rgb(0, 195, 255);
       border-radius: 2px;
@@ -73,14 +74,8 @@ export default class PowerPlantItem extends Vue {
 .pp__logo {
   grid-area: logo;
   align-self: center;
-  text-align: center;
+  text-align: start;
   font-size: 2rem;
-}
-
-.pp__barre {
-  grid-area: barre;
-  border: 1px solid rgb(136, 184, 199);
-  border-radius: 2px;
 }
 
 .pp__bare__p_max {

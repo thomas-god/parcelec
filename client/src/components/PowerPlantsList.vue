@@ -22,7 +22,7 @@ const sessionModule = namespace("session");
 const portfolioModule = namespace("portfolio");
 
 @Component({ components: { PowerPlantItem } })
-export default class Main extends Vue {
+export default class PowerPlantsList extends Vue {
   @portfolioModule.Getter power_plants!: PowerPlant[];
 
   get power_plants_max_power_mw(): number {
