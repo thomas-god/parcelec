@@ -8,6 +8,7 @@ import {
   PowerPlantTemplate,
   ConsoForecast,
   ProductionPlanning,
+  GamePhase,
 } from "./types";
 
 export const uuid_regex =
@@ -311,4 +312,21 @@ export async function getPlanning(
       [session_id, user_id, phase_no]
     )
   ).rows as ProductionPlanning;
+}
+
+/**
+ * Returns the a GamePhase object for the current phase. Returns `null` if
+ * there is no active phase.
+ * @param session_id Session ID
+ */
+export async function getPhaseInfos(session_id: string): Promise<GamePhase> {
+  const phase_no = await getCurrentPhaseNo(session_id);
+  return phase_no === null
+    ? null
+    : ((
+        await db.query(
+          "SELECT * FROM phases WHERE session_id=$1 AND phase_no=$2",
+          [session_id, phase_no]
+        )
+      ).rows[0] as GamePhase);
 }

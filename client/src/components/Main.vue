@@ -18,10 +18,24 @@
       <Chatroom class="chatroom__full" :display_ready="true" />
     </div>
     <div v-if="session_status === 'running'" class="app__grid">
-      <h1 class="app__grid_head">Enchère en cours...</h1>
+      <h1 class="app__grid_head">Phase de jeu en cours...</h1>
       <div class="app__grid_main">
-        <!-- <Bid v-if="session.id && username" /> -->
-        <PowerPlantsList v-if="session.id && username" />
+        <h2 v-if="timeBeforeClearing">
+          <span v-if="timeBeforeClearing === 'Temps écoulé'" style="color: red;"
+            >Enchères clôturées</span
+          >
+          <span v-else>Fin des enchères dans {{ timeBeforeClearing }}</span>
+        </h2>
+        <h2 v-if="timeBeforePlanning">
+          <span v-if="timeBeforePlanning === 'Temps écoulé'" style="color: red;"
+            >Plannings clôturés</span
+          >
+          <span v-else>Fin des plannings dans {{ timeBeforePlanning }}</span>
+        </h2>
+        <div>
+          <!-- <Bid v-if="session.id && username" /> -->
+          <PowerPlantsList v-if="session.id && username" />
+        </div>
       </div>
       <Chatroom class="chatroom__grid" display_direction="column" />
     </div>
@@ -49,6 +63,38 @@ export default class Main extends Vue {
   @userModule.Getter username!: string;
   @sessionModule.Getter session!: Session;
   @sessionModule.Getter session_status!: string;
+  @sessionModule.Getter phase_infos!: Session["phase_infos"];
+
+  now: Date = new Date();
+  created() {
+    setInterval(() => (this.now = new Date()), 1000);
+  }
+
+  get timeBeforeClearing() {
+    if (this.phase_infos?.clearing_time) {
+      const dt = this.phase_infos.clearing_time.valueOf() - this.now.valueOf();
+      if (dt > 0)
+        return new Date(
+          this.phase_infos.clearing_time.valueOf() - this.now.valueOf()
+        ).toLocaleTimeString();
+      else return "Temps écoulé";
+    } else {
+      return null;
+    }
+  }
+
+  get timeBeforePlanning() {
+    if (this.phase_infos?.planning_time) {
+      const dt = this.phase_infos.planning_time.valueOf() - this.now.valueOf();
+      if (dt > 0)
+        return new Date(
+          this.phase_infos.planning_time.valueOf() - this.now.valueOf()
+        ).toLocaleTimeString();
+      else return "Temps écoulé";
+    } else {
+      return null;
+    }
+  }
 }
 </script>
 
@@ -71,6 +117,12 @@ export default class Main extends Vue {
 
 .app__grid_main {
   grid-area: main;
+  display: flex;
+  flex-direction: column;
+}
+
+.app__grid_main h2 {
+  margin: 10px;
 }
 
 .app__full h3 {

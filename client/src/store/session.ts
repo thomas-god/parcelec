@@ -1,3 +1,4 @@
+import Vue from "vue";
 import Vuex, { Module, GetterTree, MutationTree, ActionTree } from "vuex";
 import { RootState } from "./index";
 
@@ -12,6 +13,11 @@ export interface Session {
   status: "open" | "running" | "closed";
   users: User[];
   can_bid: boolean;
+  phase_infos?: {
+    start_time: Date;
+    clearing_time: Date;
+    planning_time: Date;
+  };
 }
 
 export interface SessionState extends Session {}
@@ -57,6 +63,13 @@ export const mutations: MutationTree<SessionState> = {
   SET_USERS(state, users: User[]): void {
     state.users = users;
   },
+  SET_PHASE_INFOS(state, phase_infos): void {
+    Vue.set(state, "phase_infos", {
+      start_time: new Date(phase_infos.start_time),
+      clearing_time: new Date(phase_infos.clearing_time),
+      planning_time: new Date(phase_infos.planning_time),
+    });
+  },
   PUSH_NEW_USER(state, new_user: User): void {
     state.users.push(new_user);
   },
@@ -84,6 +97,9 @@ export const getters: GetterTree<SessionState, RootState> = {
   },
   can_bid(state): boolean {
     return state.can_bid;
+  },
+  phase_infos(state): Session["phase_infos"] {
+    return state.phase_infos;
   },
 };
 

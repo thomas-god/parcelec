@@ -2,7 +2,12 @@ import { v4 as uuidv4 } from "uuid";
 import express from "express";
 import db from "../db/index";
 import { Session } from "./types";
-import { getSession, getSessionUsers, uuid_regex } from "./utils";
+import {
+  getPhaseInfos,
+  getSession,
+  getSessionUsers,
+  uuid_regex,
+} from "./utils";
 import { serialize } from "v8";
 
 class CustomError extends Error {
@@ -106,6 +111,16 @@ export async function getSessionInfos(
       })
       .sort((a, b) => (a.name > b.name ? 1 : -1));
 
+    if (session.status === "running") {
+      const phase = await getPhaseInfos(session_id);
+      if (phase !== null) {
+        body.phase_infos = {
+          start_time: phase.start_time,
+          clearing_time: phase.clearing_time,
+          planning_time: phase.planning_time,
+        };
+      }
+    }
     res.json(body);
   } catch (error) {
     if (error instanceof CustomError) {
