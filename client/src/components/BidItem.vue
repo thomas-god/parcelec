@@ -1,6 +1,6 @@
 <template>
   <div class="bid__box" :style="borderStyle">
-    <span class="bid__input" v-if="edit">
+    <span class="bid__input" v-if="edit && can_bid">
       <strong>{{ actionString }} : </strong>
       <input
         type="number"
@@ -15,12 +15,12 @@
         v-model="price_eur_per_mwh"
       />
       <span> €/MWh </span>
-      <button @click="postBid">➕</button>
+      <button @click="postBid" :disabled="!can_bid">➕</button>
     </span>
     <span v-else class="bids__list">
       <span class="bids__list-puce">📋</span>
       {{ `${bid.volume_mwh} MWh, à ${bid.price_eur_per_mwh} €/MWh` }}
-      <button @click="deleteBid">🗑</button>
+      <button @click="deleteBid" :disabled="!can_bid">🗑</button>
     </span>
     <span class="bid__error">{{ volume_mwh_err_msg }}</span>
   </div>
@@ -41,6 +41,7 @@ export default class BidItem extends Vue {
   @Prop() type!: "buy" | "sell";
   @Prop() edit!: boolean;
   @Prop() bid!: Bid;
+  @sessionModule.Getter can_bid!: boolean;
   volume_mwh = 0;
   volume_mwh_err_msg = "";
   price_eur_per_mwh = 0;
@@ -85,9 +86,9 @@ export default class BidItem extends Vue {
           bid: {
             type: this.type,
             volume_mwh: this.volume_mwh,
-            price_eur_per_mwh: this.price_eur_per_mwh
-          }
-        })
+            price_eur_per_mwh: this.price_eur_per_mwh,
+          },
+        }),
       }
     );
     if (res.status === 201) {
@@ -96,7 +97,7 @@ export default class BidItem extends Vue {
         type: this.type,
         volume_mwh: this.volume_mwh,
         price_eur_per_mwh: this.price_eur_per_mwh,
-        id: bid_id
+        id: bid_id,
       });
     } else {
       console.log(await res.text());
@@ -108,7 +109,7 @@ export default class BidItem extends Vue {
     const res = await fetch(
       `${this.api_url}/session/${this.session_id}/user/${this.user_id}/bid/${this.bid.id}`,
       {
-        method: "DELETE"
+        method: "DELETE",
       }
     );
     if (res.status === 200) {
@@ -164,7 +165,7 @@ button {
 .bid__number_input {
   border: none;
   border-bottom: 2px solid gray;
-  width: 30px;
+  width: 50px;
   font-size: 1rem;
   text-align: center;
 }
