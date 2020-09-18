@@ -54,9 +54,13 @@ export default class PlanningBilans extends Vue {
   }
 
   get prod_total_mwh(): number {
-    return this.power_plants
-      .map((pp) => Number(pp.planning_modif))
-      .reduce((a, b) => a + b);
+    let prod = 0;
+    if (this.power_plants.length > 0) {
+      prod = this.power_plants
+        .map((pp) => Number(pp.planning_modif))
+        .reduce((a, b) => a + b);
+    }
+    return prod;
   }
 }
 </script>
