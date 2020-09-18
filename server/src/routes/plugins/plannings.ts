@@ -3,7 +3,7 @@ import db from "../../db";
  * Set of functions to work with production plannings.
  */
 
-import { PowerPlantDispatch, ProductionPlanning } from "../types";
+import { PowerPlantDispatch, ProductionPlanning, User } from "../types";
 import { getCurrentPhaseNo, getPortfolio } from "../utils";
 
 type UserPlanning = Omit<
@@ -115,6 +115,49 @@ export async function insertPlanning(
           dispatch.stock_end_mwh,
         ]
       );
+    })
+  );
+}
+
+/**
+ * Generate an empty planning : i.e. with a dispatch power at 0 and
+ * carrying the end stock from the previous phase as the start stock.
+ * @param user User object
+ * @param phase_no Number of the phase to insert the planning into
+ */
+export async function generateEmptyPlanning(
+  user: User,
+  phase_no: number
+): Promise<ProductionPlanning> {
+  const portfolio = await getPortfolio(user.id);
+  return await Promise.all(
+    portfolio.map(async (pp) => {
+      let stock_start_mwh: number;
+      if (phase_no === 0) {
+        // First phase, stock_start is taken equal to stock_max
+        stock_start_mwh = (
+          await db.query("SELECT stock_max_mwh FROM power_plants WHERE id=$1", [
+            pp.id,
+          ])
+        ).rows[0].stock_max_mwh as number;
+      } else {
+        // Carry stock_end from previous phase
+        stock_start_mwh = (
+          await db.query(
+            "SELECT stock_end_mwh FROM production_plannings WHERE plant_id=$1 AND phase_no=$2",
+            [pp.id, phase_no - 1]
+          )
+        ).rows[0].stock_end_mwh as number;
+      }
+      return {
+        user_id: user.id,
+        session_id: user.session_id,
+        phase_no: phase_no,
+        plant_id: pp.id,
+        p_mw: 0,
+        stock_start_mwh: stock_start_mwh,
+        stock_end_mwh: stock_start_mwh,
+      };
     })
   );
 }

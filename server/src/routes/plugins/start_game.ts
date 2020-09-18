@@ -8,6 +8,7 @@ import db from "../../db";
 import { sendUpdateToUsers } from "../websocket";
 import { clearing } from "./clearing";
 import { endGame } from "./end_game";
+import { generateEmptyPlanning, insertPlanning } from "./plannings";
 
 export async function startGamePhase(session_id: string): Promise<void> {
   const session = await getSession(session_id);
@@ -41,6 +42,13 @@ export async function startGamePhase(session_id: string): Promise<void> {
           "INSERT INTO conso (user_id, session_id, phase_no, value_mw) VALUES ($1, $2, $3, $4)",
           [user.id, user.session_id, next_phase_no, conso_value]
         );
+      })
+    );
+
+    // Generate empty planning for each user
+    await Promise.all(
+      users.map(async (user) => {
+        await insertPlanning(await generateEmptyPlanning(user, next_phase_no));
       })
     );
 
