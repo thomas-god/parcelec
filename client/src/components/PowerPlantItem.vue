@@ -5,7 +5,7 @@
       <input
         type="range"
         class="pp__barre__slider"
-        v-model="value"
+        v-model="power_plant.planning_modif"
         min="0"
         :max="power_plant.p_max_mw"
         step="10"
@@ -19,7 +19,7 @@
         {{ power_plant.p_min_mw }} MW
       </div>
       <div class="pp__barre__legend__p" :style="style_legend_p">
-        {{ value }} MW
+        {{ power_plant.planning_modif }} MW
       </div>
       <div class="pp__barre__legend__pmax" :style="style_legend_pmax">
         {{ power_plant.p_max_mw }} MW
@@ -27,7 +27,7 @@
     </div>
     <div class="pp__infos">
       Coût : <strong>{{ power_plant.price_eur_per_mwh }}</strong> €/MWh, Stock :
-      <strong>{{ stock }}</strong> MWh
+      <strong>{{ stock }}</strong> {{ stock === "∞" ? "" : "MWh" }}
     </div>
   </div>
 </template>
@@ -41,7 +41,6 @@ import { PowerPlant } from "../store/portfolio";
 export default class PowerPlantItem extends Vue {
   @Prop() power_plant!: PowerPlant;
   @Prop() power_max_mw!: number;
-  value = 0;
 
   get stock(): string {
     return this.power_plant.stock_max_mwh === -1
@@ -70,7 +69,7 @@ export default class PowerPlantItem extends Vue {
     return (this.power_plant.p_min_mw / this.power_plant.p_max_mw) * 100;
   }
   get p_value_ratio(): number {
-    return (this.value / this.power_plant.p_max_mw) * 100;
+    return (this.power_plant.planning_modif / this.power_plant.p_max_mw) * 100;
   }
 
   get pp__barre_style(): string {
@@ -126,10 +125,10 @@ export default class PowerPlantItem extends Vue {
     `;
   }
 
-  @Watch("value")
+  @Watch("power_plant.planning_modif")
   onValueUpdate(new_val: number, old_val: number): void {
     if (new_val < this.power_plant.p_min_mw) {
-      this.value = 0;
+      this.power_plant.planning_modif = 0;
     }
   }
 }
