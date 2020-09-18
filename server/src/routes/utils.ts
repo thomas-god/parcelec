@@ -9,6 +9,7 @@ import {
   ConsoForecast,
   ProductionPlanning,
   GamePhase,
+  PowerPlantWithPlanning,
 } from "./types";
 
 export const uuid_regex =
@@ -184,6 +185,27 @@ export async function getPortfolio(user_id: string): Promise<PowerPlant[]> {
   return (
     await db.query("SELECT * FROM power_plants WHERE user_id=$1", [user_id])
   ).rows;
+}
+/**
+ * Add power plants dispatch information to a user's portfolio from its
+ * production planning.
+ * @param portfolio User portfolio
+ */
+export async function addPlanningToPortfolio(
+  portfolio: PowerPlant[]
+): Promise<PowerPlantWithPlanning[]> {
+  if (portfolio.length > 0) {
+    const session_id = portfolio[0].session_id;
+    const user_id = portfolio[0].user_id;
+    const planning = await getPlanning(session_id, user_id);
+    return portfolio.map((pp) => {
+      const p = planning.find((p) => p.plant_id === pp.id);
+      return {
+        ...pp,
+        planning: p === undefined ? 0 : p.p_mw,
+      };
+    });
+  }
 }
 
 /**
