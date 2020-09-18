@@ -72,8 +72,10 @@ export const actions: ActionTree<SessionState, RootState> = {
     ).json();
     commit("SET_NAME", session.name);
     commit("SET_STATUS", session.status);
-    commit("SET_CAN_BID", session.can_bid);
-    commit("SET_CAN_POST_PLANNING", session.can_post_planning);
+    commit("SET_CAN_BID", session.bids_allowed);
+    commit("SET_CAN_POST_PLANNING", session.plannings_allowed);
+    commit("SET_CLEARING_AVAILABLE", session.clearing_available);
+    commit("SET_RESULTS_AVAILABLE", session.results_available);
     commit("SET_USERS", session.users);
     if (session.phase_infos) {
       commit("SET_PHASE_INFOS", session.phase_infos);

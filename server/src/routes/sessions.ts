@@ -5,9 +5,8 @@ import { Session } from "./types";
 import {
   getPhaseInfos,
   getSession,
+  getSessionBooleans,
   getSessionUsers,
-  userCanBid,
-  userCanSubmitPlanning,
   uuid_regex,
 } from "./utils";
 
@@ -103,13 +102,15 @@ export async function getSessionInfos(
       );
 
     // Base infos
-    const body: any = {
+    let body: any = {
       id: session.id,
       name: session.name,
       status: session.status,
-      can_bid: await userCanBid(session_id),
-      can_post_planning: await userCanSubmitPlanning(session_id),
     };
+
+    // Session booleans
+    const bools = await getSessionBooleans(session_id);
+    body = { ...body, ...bools };
 
     // List of users
     body.users = (await getSessionUsers(session_id))
