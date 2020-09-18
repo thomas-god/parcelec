@@ -36,8 +36,8 @@
         <h2 v-if="results_available">Résultats finaux disponibles</h2>
         <div class="app__main" v-if="session.id && username">
           <PowerPlantsList class="app__main_item" />
-          <BidsList class="app__main_item" />
           <Bilans class="app__main_item" />
+          <BidsList class="app__main_item" />
         </div>
       </div>
       <!-- <Chatroom class="chatroom__grid" display_direction="column" /> -->
@@ -69,8 +69,8 @@ const sessionModule = namespace("session");
     Bid,
     PowerPlantsList,
     BidsList,
-    Bilans
-  }
+    Bilans,
+  },
 })
 export default class Main extends Vue {
   @userModule.Getter username!: string;
