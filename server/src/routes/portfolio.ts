@@ -90,7 +90,7 @@ export async function getUserConso(
       throw new CustomError("Error, no user found with this ID", 404);
 
     const conso = await getConsoForecast(session_id, user_id);
-    res.json({ conso_mw: conso.value_mw });
+    res.json({ conso_mw: conso });
   } catch (error) {
     if (error instanceof CustomError) {
       res.status(error.code).end(error.msg);

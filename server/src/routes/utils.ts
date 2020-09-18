@@ -216,7 +216,7 @@ export async function addPlanningToPortfolio(
 export async function getConsoForecast(
   session_id: string,
   user_id: string
-): Promise<ConsoForecast> {
+): Promise<number> {
   const phase_no = await getCurrentPhaseNo(session_id);
   const rows: ConsoForecast[] = (
     await db.query("SELECT * FROM conso WHERE phase_no=$1 AND user_id=$2", [
@@ -224,7 +224,7 @@ export async function getConsoForecast(
       user_id,
     ])
   ).rows;
-  return rows.length === 1 ? rows[0] : null;
+  return rows.length === 1 ? rows[0].value_mw : 0;
 }
 /**
  * Post a user user bit to the current open phase.
