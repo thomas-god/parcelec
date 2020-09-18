@@ -128,6 +128,7 @@ function onMessageCallback(
           break;
         case "plannings-closed":
           commit("session/SET_CAN_POST_PLANNING", false, opts);
+          dispatch("portfolio/resetPlanning", {}, { root: true });
           break;
         case "results-available":
           commit("session/SET_RESULTS_AVAILABLE", true, opts);

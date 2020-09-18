@@ -7,10 +7,15 @@
       :key="`pp-list-${pp.id}`"
       :power_plant="pp"
       :power_max_mw="power_plants_max_power_mw"
+      :editable="can_post_planning"
     />
     <div class="actions">
-      <button @click="updatePlanning">Envoyer</button>
-      <button @click="resetPlanning">Reset</button>
+      <button @click="updatePlanning" :disabled="!can_post_planning">
+        Envoyer
+      </button>
+      <button @click="resetPlanning" :disabled="!can_post_planning">
+        Reset
+      </button>
     </div>
   </div>
 </template>
@@ -33,6 +38,7 @@ export default class PowerPlantsList extends Vue {
   @State api_url!: string;
   @userModule.State user_id!: string;
   @sessionModule.Getter session_id!: string;
+  @sessionModule.Getter can_post_planning!: boolean;
 
   get pp_sorted(): PowerPlant[] {
     return this.power_plants

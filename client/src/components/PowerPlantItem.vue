@@ -9,7 +9,7 @@
         min="0"
         :max="power_plant.p_max_mw"
         step="10"
-        :disabled="false"
+        :disabled="!editable"
       />
       <div class="pp__barre__p_min" :style="style_barre_width_pmin"></div>
       <div class="pp__barre__p_max"></div>
@@ -41,6 +41,7 @@ import { PowerPlant } from "../store/portfolio";
 export default class PowerPlantItem extends Vue {
   @Prop() power_plant!: PowerPlant;
   @Prop() power_max_mw!: number;
+  @Prop() editable!: boolean;
 
   get stock(): string {
     return this.power_plant.stock_max_mwh === -1
