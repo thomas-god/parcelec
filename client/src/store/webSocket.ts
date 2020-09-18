@@ -118,6 +118,7 @@ function onMessageCallback(
           break;
         case "new-game-phase":
           dispatch("session/loadSessionContent", "running", opts);
+          dispatch("portfolio/loadPortfolioContent", "running", opts);
           break;
         case "clearing-started":
           commit("session/SET_CAN_BID", false, opts);
