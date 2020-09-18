@@ -61,7 +61,10 @@ export async function registerNewUser(
     // Insertion
     const user_id = await insertNewUser(session_id, username);
     res.status(201).json({ user_id: user_id });
+
+    // Generate and attribute default portfolio
     await setDefaultPortfolio(session_id, user_id);
+
     // Notify all users that a new user has joined
     notifyUsersListUpdate(session_id);
   } catch (error) {
@@ -158,7 +161,7 @@ async function notifyUsersListUpdate(session_id: string): Promise<void> {
   const users = await getSessionUsers(session_id);
   sendUpdateToUsers(
     session_id,
-    "users_list_update",
+    "users-list-update",
     users.map((u) => {
       return { name: u.name, ready: u.game_ready };
     })

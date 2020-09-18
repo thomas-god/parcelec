@@ -2,6 +2,7 @@ import Vue from "vue";
 import VueRouter, { RouteConfig } from "vue-router";
 import Home from "../views/Home.vue";
 import store from "../store/";
+import { Session } from "@/store/session";
 
 Vue.use(VueRouter);
 
@@ -13,6 +14,7 @@ const routes: Array<RouteConfig> = [
   },
   {
     path: "/session/:session_id/user/:user_id",
+    component: Home,
     beforeEnter: async (to, from, next) => {
       const session_id: string = to.params.session_id;
       const user_id: string = to.params.user_id;
@@ -30,20 +32,13 @@ const routes: Array<RouteConfig> = [
         }
       );
       if (res_user.status === 200 && res_session.status === 200) {
-        const user = await res_user.json();
-        const session = await res_session.json();
-        await store.dispatch("user/setUsername", user.name, { root: true });
-        await store.dispatch(
-          "session/setsession",
-          { id: session_id, name: session.name, status: session.status },
-          { root: true }
-        );
-        await store.dispatch("user/setUserID", String(user_id), { root: true });
-        await store.dispatch("session/updateBidAbility", user.can_bid, {
+        await store.dispatch("session/setSessionID", session_id, {
           root: true,
         });
+        await store.dispatch("user/setUserID", user_id, { root: true });
+        store.dispatch("session/loadGameContent", {}, { root: true });
       }
-      next("/");
+      next();
     },
   },
 ];

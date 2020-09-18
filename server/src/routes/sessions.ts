@@ -2,8 +2,14 @@ import { v4 as uuidv4 } from "uuid";
 import express from "express";
 import db from "../db/index";
 import { Session } from "./types";
-import { getSession, getSessionUsers, uuid_regex } from "./utils";
-import { serialize } from "v8";
+import {
+  getPhaseInfos,
+  getSession,
+  getSessionUsers,
+  userCanBid,
+  userCanSubmitPlanning,
+  uuid_regex,
+} from "./utils";
 
 class CustomError extends Error {
   msg: string;
@@ -70,7 +76,7 @@ export async function openNewSession(
       "INSERT INTO sessions (name, id, status) VALUES($1, $2, $3)",
       [session_name, session.id, session.status]
     );
-    res.status(201).send(session);
+    res.status(201).json(session);
   } catch (error) {
     res.status(error.code).end(error.msg);
     return;
@@ -95,16 +101,32 @@ export async function getSessionInfos(
         "Error, the session_id does not correspond to an existing session",
         404
       );
+
+    // Base infos
     const body: any = {
       id: session.id,
       name: session.name,
       status: session.status,
+      can_bid: await userCanBid(session_id),
+      can_post_planning: await userCanSubmitPlanning(session_id),
     };
+
+    // List of users
     body.users = (await getSessionUsers(session_id))
       .map((user) => {
         return { name: user.name, ready: user.game_ready };
       })
       .sort((a, b) => (a.name > b.name ? 1 : -1));
+
+    // Timing infos
+    const phase_infos = await getPhaseInfos(session_id);
+    if (phase_infos !== null) {
+      body.phase_infos = {
+        start_time: phase_infos.start_time,
+        clearing_time: phase_infos.clearing_time,
+        planning_time: phase_infos.planning_time,
+      };
+    }
 
     res.json(body);
   } catch (error) {

@@ -16,33 +16,33 @@ export const state: UserState = {
 
 // ------------------------ ACTIONS -------------------------
 export const actions: ActionTree<UserState, RootState> = {
-  setUsername({ commit }, username: string): void {
-    commit("SET_USERNAME", username);
-    commit(
-      "session/PUSH_NEW_USER",
-      { name: username, ready: false },
-      { root: true }
-    );
-  },
-  setUserID({ state, commit, dispatch }, user_id: string): void {
+  setUserID({ commit }, user_id: string): void {
     commit("SET_USER_ID", user_id);
-    dispatch("webSocket/openWebSocket", null, { root: true });
   },
-  setReadyStatus({ commit }): void {
-    commit("SET_READY");
+  async loadUserContent({ commit, rootState }): Promise<void> {
+    const api_url = rootState.api_url;
+    const session_id = rootState.session.id;
+    const user_id = rootState.user.user_id;
+    const user = await (
+      await fetch(`${api_url}/session/${session_id}/user/${user_id}`, {
+        method: "GET",
+      })
+    ).json();
+    commit("SET_USERNAME", user.name);
+    commit("SET_GAME_READY", user.ready);
   },
 };
 
 // ------------------------ MUTATIONS -------------------------
 export const mutations: MutationTree<UserState> = {
-  SET_USERNAME(state, payload: string): void {
-    state.username = payload;
+  SET_USERNAME(state, username: string): void {
+    state.username = username;
   },
-  SET_USER_ID(state, payload: string): void {
-    state.user_id = payload;
+  SET_USER_ID(state, user_id: string): void {
+    state.user_id = user_id;
   },
-  SET_READY(state): void {
-    state.ready = true;
+  SET_GAME_READY(state, game_ready: boolean): void {
+    state.ready = game_ready;
   },
 };
 

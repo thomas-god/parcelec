@@ -5,6 +5,7 @@ import Vuex, {
   ActionTree,
   Commit,
   ActionContext,
+  Dispatch,
 } from "vuex";
 import { RootState } from "./index";
 
@@ -29,6 +30,9 @@ export const state: WebSocketState = {
 
 // ------------------------ ACTIONS -------------------------
 export const actions: ActionTree<WebSocketState, RootState> = {
+  /**
+   * Open the WebSocket connection.
+   */
   async openWebSocket(context): Promise<void> {
     // Close existing WebSocket connection
     if (state.ws?.OPEN) state.ws.close();
@@ -43,7 +47,7 @@ export const actions: ActionTree<WebSocketState, RootState> = {
 
     socket.addEventListener("close", () => onCloseCallback(context.commit));
     socket.addEventListener("message", (event) =>
-      onMessageCallback(context, event)
+      onMessageCallback(context.commit, context.dispatch, event)
     );
 
     context.commit("SET_WEBSOCKET", socket);
@@ -97,30 +101,37 @@ function onCloseCallback(commit: Commit): void {
 }
 
 function onMessageCallback(
-  context: ActionContext<WebSocketState, RootState>,
+  commit: Commit,
+  dispatch: Dispatch,
   event: any
 ): void {
   try {
     const message = JSON.parse(event.data);
+    console.log(message.reason);
     if (message.reason === "message") {
-      context.commit("ADD_MESSAGE", message);
-    } else if (
-      message.reason === "users_list_update" &&
-      message.username === "SERVER"
-    ) {
-      context.commit("session/SET_USERS", message.data, {
-        root: true,
-      });
-    } else if (
-      message.reason === "session_started" &&
-      message.username === "SERVER"
-    ) {
-      context.dispatch("session/setStatus", "Running", { root: true });
-    } else if (
-      message.reason === "session_cleared" &&
-      message.username === "SERVER"
-    ) {
-      context.dispatch("session/updateBidAbility", true, { root: true });
+      commit("ADD_MESSAGE", message);
+    } else if (message.username === "SERVER") {
+      const opts = { root: true };
+      switch (message.reason) {
+        case "users-list-update":
+          commit("session/SET_USERS", message.data, opts);
+          break;
+        case "new-game-phase":
+          dispatch("session/loadSessionContent", "running", opts);
+          break;
+        case "clearing-started":
+          commit("session/SET_CAN_BID", false, opts);
+          break;
+        case "clearing-finished":
+          commit("session/SET_CLEARING_AVAILABLE", true, opts);
+          break;
+        case "plannings-closed":
+          commit("session/SET_CAN_POST_PLANNING", false, opts);
+          break;
+        case "results-available":
+          commit("session/SET_RESULTS_AVAILABLE", true, opts);
+          break;
+      }
     }
   } catch (error) {
     console.log(error);

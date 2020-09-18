@@ -1,3 +1,4 @@
+import Vue from "vue";
 import Vuex, { Module, GetterTree, MutationTree, ActionTree } from "vuex";
 import { RootState } from "./index";
 
@@ -12,6 +13,14 @@ export interface Session {
   status: "open" | "running" | "closed";
   users: User[];
   can_bid: boolean;
+  can_post_planning: boolean;
+  clearing_available: boolean;
+  results_available: boolean;
+  phase_infos?: {
+    start_time: Date;
+    clearing_time: Date;
+    planning_time: Date;
+  };
 }
 
 export interface SessionState extends Session {}
@@ -23,36 +32,65 @@ export const state: SessionState = {
   status: "open",
   users: [],
   can_bid: false,
+  can_post_planning: false,
+  clearing_available: false,
+  results_available: false,
 };
 
 // ------------------------ ACTIONS -------------------------
 export const actions: ActionTree<SessionState, RootState> = {
-  async setSession({ commit }, payload: Session): Promise<void> {
-    const users = await getUsersList(payload.id);
-    commit("SET_SESSION", { ...payload, users });
+  setSessionID({ commit }, session_id: string): void {
+    commit("SET_SESSION_ID", session_id);
   },
-  async updateUsersList({ state, commit }): Promise<void> {
-    const users = await getUsersList(state.id);
-    commit("SET_USERS", users);
-  },
-  setStatus({ state, commit }, status: Session["status"]): void {
-    if (state.status === "open" && status === "running") {
-      commit("UPDATE_CAN_BID", true);
+  /**
+   * Master entry-point to load all game related informations,
+   * user, session, portfolio, etc. and open the WebSocket
+   * connection. User ID and session ID must be set in their
+   * respective stores before proceeding.
+   */
+  async loadGameContent(context): Promise<void> {
+    // Cannot load if we don't have session ID and user ID
+    if (context.rootState.user.user_id && context.rootState.session.id) {
+      context.dispatch("user/loadUserContent", {}, { root: true });
+      context.dispatch("session/loadSessionContent", {}, { root: true });
+      context.dispatch("portfolio/loadPortfolioContent", {}, { root: true });
+      context.dispatch("bids/loadBidsContent", {}, { root: true });
+      context.dispatch("webSocket/openWebSocket", {}, { root: true });
     }
-    commit("UPDATE_STATUS", status);
   },
-  updateBidAbility({ commit }, bid_ability: boolean): void {
-    commit("UPDATE_CAN_BID", bid_ability);
+  /**
+   * Load all session related informations from the server into
+   * the session store.
+   */
+  async loadSessionContent({ commit, rootState }) {
+    const api_url = rootState.api_url;
+    const session_id = rootState.session.id;
+    const session = await (
+      await fetch(`${api_url}/session/${session_id}`, {
+        method: "GET",
+      })
+    ).json();
+    commit("SET_NAME", session.name);
+    commit("SET_STATUS", session.status);
+    commit("SET_CAN_BID", session.can_bid);
+    commit("SET_CAN_POST_PLANNING", session.can_post_planning);
+    commit("SET_USERS", session.users);
+    if (session.phase_infos) {
+      commit("SET_PHASE_INFOS", session.phase_infos);
+    }
   },
 };
 
 // ------------------------ MUTATIONS -------------------------
 export const mutations: MutationTree<SessionState> = {
-  SET_SESSION(state, session: Session): void {
-    state.id = session.id;
-    state.name = session.name;
-    state.status = session.status;
-    state.users = session.users;
+  SET_NAME(state, name: string): void {
+    state.name = name;
+  },
+  SET_SESSION_ID(state, session_id: string): void {
+    state.id = session_id;
+  },
+  SET_STATUS(state, status: Session["status"]): void {
+    state.status = status;
   },
   SET_USERS(state, users: User[]): void {
     state.users = users;
@@ -60,11 +98,24 @@ export const mutations: MutationTree<SessionState> = {
   PUSH_NEW_USER(state, new_user: User): void {
     state.users.push(new_user);
   },
-  UPDATE_STATUS(state, status: Session["status"]): void {
-    state.status = status;
-  },
-  UPDATE_CAN_BID(state, can_bid: boolean): void {
+  SET_CAN_BID(state, can_bid: boolean): void {
     state.can_bid = can_bid;
+  },
+  SET_CAN_POST_PLANNING(state, can_post_planning: boolean): void {
+    state.can_post_planning = can_post_planning;
+  },
+  SET_CLEARING_AVAILABLE(state, clearing_available: boolean): void {
+    state.clearing_available = clearing_available;
+  },
+  SET_RESULTS_AVAILABLE(state, results_available: boolean): void {
+    state.results_available = results_available;
+  },
+  SET_PHASE_INFOS(state, phase_infos): void {
+    Vue.set(state, "phase_infos", {
+      start_time: new Date(phase_infos.start_time),
+      clearing_time: new Date(phase_infos.clearing_time),
+      planning_time: new Date(phase_infos.planning_time),
+    });
   },
 };
 
@@ -85,6 +136,18 @@ export const getters: GetterTree<SessionState, RootState> = {
   can_bid(state): boolean {
     return state.can_bid;
   },
+  can_post_planning(state): boolean {
+    return state.can_post_planning;
+  },
+  clearing_available(state): boolean {
+    return state.clearing_available;
+  },
+  results_available(state): boolean {
+    return state.results_available;
+  },
+  phase_infos(state): Session["phase_infos"] {
+    return state.phase_infos;
+  },
 };
 
 // ------------------------ MODULE -------------------------
@@ -95,19 +158,3 @@ export const session: Module<SessionState, RootState> = {
   actions,
   mutations,
 };
-
-// ------------------------ Helper functions ---------------
-async function getUsersList(session_id: string): Promise<User[]> {
-  const res = await fetch(
-    `${process.env.VUE_APP_API_URL}/session/${session_id}`,
-    {
-      method: "GET",
-    }
-  );
-  if (res.status === 200) {
-    const body = await res.json();
-    return body.users as User[];
-  } else {
-    return [];
-  }
-}

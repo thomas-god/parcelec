@@ -32,7 +32,7 @@ export default class UserList extends Vue {
   @sessionModule.Getter session_id!: string;
   @userModule.Getter user_id!: string;
   @userModule.Getter user_ready!: boolean;
-  @userModule.Action setReadyStatus!: () => void;
+  @userModule.Mutation SET_GAME_READY!: (game_ready: boolean) => void;
   @State("api_url") api_url!: string;
 
   async setStatusReady(): Promise<void> {
@@ -42,7 +42,7 @@ export default class UserList extends Vue {
         method: "PUT"
       }
     );
-    if (res.status === 201) this.setReadyStatus();
+    if (res.status === 201) this.SET_GAME_READY(true);
   }
 }
 </script>
