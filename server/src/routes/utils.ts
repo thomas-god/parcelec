@@ -295,12 +295,16 @@ export async function getUserBids(
   user_id: string
 ): Promise<Bid[]> {
   const phase_no = await getCurrentPhaseNo(session_id);
-  return (
-    await db.query(
-      "SELECT * FROM bids WHERE session_id=$1 AND user_id=$2 AND phase_no=$3",
-      [session_id, user_id, phase_no]
-    )
-  ).rows;
+  let bids = [];
+  if (phase_no !== null) {
+    bids = (
+      await db.query(
+        "SELECT * FROM bids WHERE session_id=$1 AND user_id=$2 AND phase_no=$3",
+        [session_id, user_id, phase_no]
+      )
+    ).rows;
+  }
+  return bids;
 }
 
 /**

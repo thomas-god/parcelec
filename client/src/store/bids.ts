@@ -42,11 +42,18 @@ export const actions: ActionTree<BidsState, RootState> = {
     const api_url = rootState.api_url;
     const session_id = rootState.session.id;
     const user_id = rootState.user.user_id;
-    const bids = await (
-      await fetch(`${api_url}/session/${session_id}/user/${user_id}/bids`, {
+    let bids = [];
+    const res = await await fetch(
+      `${api_url}/session/${session_id}/user/${user_id}/bids`,
+      {
         method: "GET",
-      })
-    ).json();
+      }
+    );
+    if (res.status === 200) {
+      bids = await res.json();
+    } else {
+      console.log(await res.text());
+    }
     commit("SET_BIDS", bids);
   },
 };
