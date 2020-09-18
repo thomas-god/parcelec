@@ -110,6 +110,10 @@ export async function clearing(
   // Do the actual clearing, it may take some time
   await new Promise((r) => setTimeout(r, 10000));
 
-  // When clearing is done, notify the users
+  // When clearing is done, notify the users and mark clearing available as true
+  await db.query(
+    "UPDATE phases SET clearing_available=true WHERE session_id=$1 AND phase_no=$2",
+    [session_id, phase_no]
+  );
   sendUpdateToUsers(session_id, "clearing-finished", {});
 }
