@@ -51,12 +51,40 @@ export function sortBids(bids: Bid[]): Bid[][] {
     }
   });
 
-  // Sort sell in ascending order and buy in descending order
-  // TODO: merge the bids with equal prices
+  // Sort sell in ascending order and merge same prices
   bids_sell.sort((a, b) => a.price_eur_per_mwh - b.price_eur_per_mwh);
+  mergeSamePriceBids(bids_sell);
+
+  // Sort buy in ascending order, merge same prices, and finally sort
+  // in descending order
+  bids_buy.sort((a, b) => a.price_eur_per_mwh - b.price_eur_per_mwh);
+  mergeSamePriceBids(bids_buy);
   bids_buy.sort((a, b) => b.price_eur_per_mwh - a.price_eur_per_mwh);
 
   return [bids_sell, bids_buy];
+}
+
+/**
+ * Merge in place bids that are the same price into a single bid with the
+ * corresponding total volume.
+ * @param bids List of ordered bids
+ */
+function mergeSamePriceBids(bids: Bid[]): Bid[] {
+  let i_previous = 0;
+  let n_removal = 0;
+  for (let i = 1; i < bids.length; i++) {
+    if (
+      bids[i - n_removal].price_eur_per_mwh ===
+      bids[i_previous].price_eur_per_mwh
+    ) {
+      bids[i_previous].volume_mwh += bids[i - n_removal].volume_mwh;
+      bids.splice(i - n_removal, 1);
+      n_removal++;
+    } else {
+      i_previous = i - n_removal;
+    }
+  }
+  return bids;
 }
 
 export interface ClearingFunctionItem {
@@ -109,8 +137,6 @@ export function computeClearing(
     const nb = buy.length;
     if (sell[0].price <= buy[0].price) {
       // Can do the clearing
-      console.log("can do the clearing");
-
       if (sell[ns - 1].price <= buy[nb - 1].price) {
         // Demand curve is always above supply curve
         clearing.price = (sell[ns - 1].price + buy[nb - 1].price) / 2;

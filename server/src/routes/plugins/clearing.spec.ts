@@ -23,6 +23,29 @@ describe("Sorting the bids into sell and buy", () => {
     expect(sell).toEqual(bids_sell);
     expect(buy).toEqual(bids_buy);
   });
+
+  test("Should merge bids with the same price", () => {
+    const bids_sell = [
+      { type: "sell", volume_mwh: 3, price_eur_per_mwh: 1 },
+      { type: "sell", volume_mwh: 6, price_eur_per_mwh: 3 },
+      { type: "sell", volume_mwh: 5, price_eur_per_mwh: 3 },
+      { type: "sell", volume_mwh: 5, price_eur_per_mwh: 5 },
+    ];
+    const bids_buy = [
+      { type: "buy", volume_mwh: 1, price_eur_per_mwh: 7 },
+      { type: "buy", volume_mwh: 4, price_eur_per_mwh: 5 },
+      { type: "buy", volume_mwh: 2, price_eur_per_mwh: 4 },
+      { type: "buy", volume_mwh: 5, price_eur_per_mwh: 4 },
+      { type: "buy", volume_mwh: 4, price_eur_per_mwh: 2 },
+      { type: "buy", volume_mwh: 3, price_eur_per_mwh: 1 },
+    ];
+    const bids = shuffle([...bids_sell, ...bids_buy]);
+    const [sell, buy] = clearing.sortBids(bids);
+    expect(sell.length).toEqual(bids_sell.length - 1);
+    expect(sell.find((b) => b.price_eur_per_mwh === 3).volume_mwh).toEqual(11);
+    expect(buy.length).toEqual(bids_buy.length - 1);
+    expect(buy.find((b) => b.price_eur_per_mwh === 4).volume_mwh).toEqual(7);
+  });
 });
 
 describe("Computing the clearing function", () => {
