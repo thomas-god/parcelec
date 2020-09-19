@@ -350,15 +350,14 @@ export async function getPlanning(
  * @param session_id Session ID
  */
 export async function getPhaseInfos(session_id: string): Promise<GamePhase> {
-  const phase_no = await getCurrentPhaseNo(session_id);
-  return phase_no === null
-    ? null
-    : ((
-        await db.query(
-          "SELECT * FROM phases WHERE session_id=$1 AND phase_no=$2",
-          [session_id, phase_no]
-        )
-      ).rows[0] as GamePhase);
+  const rows = (
+    await db.query(
+      "SELECT * FROM phases WHERE session_id=$1 ORDER BY phase_no DESC",
+      [session_id]
+    )
+  ).rows as GamePhase[];
+  if (rows.length > 0) return rows[0];
+  else return null;
 }
 /**
  * Check if users can submit bids to the current phase.
@@ -412,23 +411,24 @@ interface PhaseBooleans {
 export async function getSessionBooleans(
   session_id: string
 ): Promise<PhaseBooleans> {
-  const phase_no = await getCurrentPhaseNo(session_id);
   let bools = {
     bids_allowed: false,
     clearing_available: false,
     plannings_allowed: false,
     results_available: false,
   };
-  if (phase_no !== null) {
-    const rows = (
-      await db.query(
-        "SELECT bids_allowed, clearing_available, plannings_allowed, results_available FROM phases WHERE session_id=$1 AND phase_no=$2",
-        [session_id, phase_no]
-      )
-    ).rows;
-    if (rows.length === 1) {
-      bools = rows[0] as PhaseBooleans;
-    }
+  const rows = (
+    await db.query(
+      `SELECT 
+        bids_allowed, clearing_available, plannings_allowed, results_available 
+        FROM phases 
+        WHERE session_id=$1 
+        ORDER BY phase_no DESC`,
+      [session_id]
+    )
+  ).rows;
+  if (rows.length > 0) {
+    bools = rows[0] as PhaseBooleans;
   }
   return bools;
 }
@@ -440,14 +440,17 @@ export async function getSessionBooleans(
 export async function getClearing(
   session_id: string
 ): Promise<{ volume_mwh: number; price_eur_per_mwh: number }> {
-  const phase_no = await getCurrentPhaseNo(session_id);
   const clearing = (
     await db.query(
-      "SELECT volume_mwh, price_eur_per_mwh FROM clearings WHERE session_id=$1 AND phase_no=$2",
-      [session_id, phase_no]
+      `SELECT 
+        volume_mwh, price_eur_per_mwh 
+        FROM clearings 
+        WHERE session_id=$1 
+        ORDER BY phase_no DESC`,
+      [session_id]
     )
   ).rows;
-  return clearing.length === 1
+  return clearing.length > 0
     ? (clearing[0] as { volume_mwh: number; price_eur_per_mwh: number })
     : null;
 }
@@ -466,18 +469,36 @@ export async function getUserEnergyExchanges(
     price_eur_per_mwh: number;
   }[]
 > {
-  const phase_no = await getCurrentPhaseNo(session_id);
-  const exchanges = (
+  const req_phase = (
     await db.query(
-      "SELECT type, volume_mwh, price_eur_per_mwh FROM exchanges WHERE session_id=$1 AND user_id=$2 AND phase_no=$3",
-      [session_id, user_id, phase_no]
+      `SELECT 
+      phase_no 
+      FROM phases 
+      WHERE session_id=$1 
+      ORDER BY phase_no DESC`,
+      [session_id]
     )
   ).rows;
-  return exchanges.length > 0
-    ? (exchanges as {
-        type: "buy" | "sell";
-        volume_mwh: number;
-        price_eur_per_mwh: number;
-      }[])
-    : null;
+  const phase_no = req_phase.length === 1 ? req_phase[0].phase_no : null;
+  if (phase_no !== null) {
+    const exchanges = (
+      await db.query(
+        `SELECT 
+          type, volume_mwh, price_eur_per_mwh 
+          FROM exchanges 
+          WHERE 
+            session_id=$1 AND user_id=$2 AND phase_no=$3`,
+        [session_id, user_id, phase_no]
+      )
+    ).rows;
+    return exchanges.length > 0
+      ? (exchanges as {
+          type: "buy" | "sell";
+          volume_mwh: number;
+          price_eur_per_mwh: number;
+        }[])
+      : null;
+  } else {
+    return [];
+  }
 }
