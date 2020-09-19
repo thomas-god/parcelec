@@ -96,10 +96,17 @@ export interface PhaseResults {
   user_id: string;
   session_id: string;
   phase_no: number;
-  net_conso: number;
-  net_prod: number;
-  costs_eur: number;
-  revenues_eur: number;
+  conso_mwh: number;
+  conso_eur: number;
+  prod_mwh: number;
+  prod_eur: number;
+  sell_mwh: number;
+  sell_eur: number;
+  buy_mwh: number;
+  buy_eur: number;
+  imbalance_mwh: number;
+  imbalance_costs_eur: number;
+  balance_eur: number;
 }
 
 export interface ClientMessage {
