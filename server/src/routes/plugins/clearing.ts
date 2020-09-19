@@ -5,7 +5,7 @@
 
 import db from "../../db";
 import { Bid } from "../types";
-import { getCurrentPhaseNo } from "../utils";
+import { getSessionUsers, getUserBids } from "../utils";
 import { sendUpdateToUsers } from "../websocket";
 
 // Gather all bids
@@ -181,6 +181,49 @@ export async function doClearingProcedure(
   return clearing_value;
 }
 
+export async function computeAndInsertEnergyExchanges(
+  session_id: string,
+  phase_no: number,
+  clearing_value: Clearing
+): Promise<void> {
+  // TODO: handle the case where several multiple bids (from different users or not)
+  // TODO: have the same price, especially if it is the clearing price as the volume
+  // TODO: should then be prorated.
+  const users = await getSessionUsers(session_id);
+  await Promise.all(
+    users.map(async (user) => {
+      const bids = await getUserBids(session_id, user.id, phase_no);
+      const [sell, buy] = sortBids(bids);
+      const sell_ok_vol = sell
+        .filter((bid) => bid.price_eur_per_mwh <= clearing_value.price)
+        .reduce((a, b) => a + b.volume_mwh, 0 as number);
+      if (sell_ok_vol > 0) {
+        await db.query(
+          `
+        INSERT INTO exchanges 
+          (user_id, session_id, phase_no, type, volume_mwh, price_eur_per_mwh)
+        VALUES
+         ($1, $2, $3, 'sell', $4, $5)`,
+          [user.id, session_id, phase_no, sell_ok_vol, clearing_value.price]
+        );
+      }
+      const buy_ok_vol = buy
+        .filter((bid) => bid.price_eur_per_mwh >= clearing_value.price)
+        .reduce((a, b) => a + b.volume_mwh, 0 as number);
+      if (buy_ok_vol > 0) {
+        await db.query(
+          `
+        INSERT INTO exchanges 
+          (user_id, session_id, phase_no, type, volume_mwh, price_eur_per_mwh)
+        VALUES
+         ($1, $2, $3, 'buy', $4, $5)`,
+          [user.id, session_id, phase_no, buy_ok_vol, clearing_value.price]
+        );
+      }
+    })
+  );
+}
+
 /**
  * Define the timeline of the clearing process.
  * @param session_id Session ID
@@ -210,6 +253,7 @@ export default async function clearing(
   );
 
   // After clearing, compute the energy exchanges for each user
+  await computeAndInsertEnergyExchanges(session_id, phase_no, clearing_value);
 
   // When clearing is done, notify the users and mark clearing available as true
   await db.query(
