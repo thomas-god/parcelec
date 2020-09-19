@@ -23,7 +23,7 @@
 <script lang="ts">
 import { Component, Prop, Vue } from "vue-property-decorator";
 import { State, Action, Getter, namespace } from "vuex-class";
-import { BidsState } from "../store/bids";
+import { BidsState, EnergyExchange } from "../store/bids";
 import { PowerPlant } from "../store/portfolio";
 
 const portfolioModule = namespace("portfolio");
@@ -33,23 +33,24 @@ const bidsModule = namespace("bids");
 export default class PlanningBilans extends Vue {
   @portfolioModule.State power_plants!: PowerPlant[];
   @portfolioModule.State conso!: number;
-  @bidsModule.State energy_exchanges!: BidsState["energy_exchanges"];
+  @bidsModule.State buy!: EnergyExchange;
+  @bidsModule.State sell!: EnergyExchange;
 
   get bilans() {
     return [
       { name: "Consommation", value: "-" + this.conso },
       { name: "Production", value: this.prod_total_mwh },
-      { name: "Ventes", value: "-" + this.energy_exchanges.sell.volume_mwh },
-      { name: "Achats", value: this.energy_exchanges.buy.volume_mwh },
+      { name: "Ventes", value: "-" + this.sell.volume_mwh },
+      { name: "Achats", value: this.buy.volume_mwh },
     ];
   }
 
   get deficit() {
     return (
-      this.energy_exchanges.buy.volume_mwh +
+      this.buy.volume_mwh +
       this.prod_total_mwh -
       this.conso -
-      this.energy_exchanges.sell.volume_mwh
+      this.sell.volume_mwh
     );
   }
 
