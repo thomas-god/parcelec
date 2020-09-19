@@ -71,7 +71,11 @@ describe("Computing the clearing value", () => {
     const [sell, buy] = clearing.sortBids(bids);
     const sell_fun = clearing.getBidFunction(sell);
     const buy_fun = clearing.getBidFunction(buy);
-    const clearing_value = clearing.computeClearing(sell_fun, buy_fun);
+    const [clearing_value, internal_infos] = clearing.computeClearing(
+      sell_fun,
+      buy_fun
+    );
+    console.log(internal_infos);
     expect(clearing_value).toHaveProperty("volume");
     expect(clearing_value).toHaveProperty("price");
     expect(clearing_value.volume).toEqual(7);

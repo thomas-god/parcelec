@@ -119,6 +119,13 @@ export interface Clearing {
   volume: number;
 }
 
+export interface ClearingInternalInfos {
+  buy_last_bid_price: number;
+  buy_last_bid_frac_volume: number;
+  sell_last_bid_price: number;
+  sell_last_bid_frac_volume: number;
+}
+
 /**
  * Compute the intersection between the offer and demand curves.
  * @param sell Offer curve
@@ -127,11 +134,18 @@ export interface Clearing {
 export function computeClearing(
   sell: ClearingFunction,
   buy: ClearingFunction
-): Clearing {
+): [Clearing, ClearingInternalInfos] {
   const clearing = {
     price: 0,
     volume: 0,
   };
+  const internal_infos = {
+    buy_last_bid_price: 0,
+    buy_last_bid_frac_volume: 0,
+    sell_last_bid_price: 0,
+    sell_last_bid_frac_volume: 0,
+  };
+
   if (sell.length !== 0 && buy.length !== 0) {
     const ns = sell.length;
     const nb = buy.length;
@@ -139,8 +153,15 @@ export function computeClearing(
       // Can do the clearing
       if (sell[ns - 1].price <= buy[nb - 1].price) {
         // Demand curve is always above supply curve
+        // Clearing is then trivial
         clearing.price = (sell[ns - 1].price + buy[nb - 1].price) / 2;
         clearing.volume = Math.min(sell[ns - 1].vol_end, buy[nb - 1].vol_end);
+        internal_infos.buy_last_bid_price = buy[nb - 1].price;
+        internal_infos.buy_last_bid_frac_volume =
+          clearing.volume / buy[nb - 1].vol_end;
+        internal_infos.sell_last_bid_frac_volume =
+          clearing.volume / sell[ns - 1].vol_end;
+        internal_infos.sell_last_bid_price = sell[ns - 1].price;
       } else {
         let is = 0;
         let ib = 0;
@@ -149,8 +170,15 @@ export function computeClearing(
             const vol = sell[is].vol_end;
             const price_b = findPrice(vol, buy);
             if (sell[is].price < price_b && price_b < sell[is + 1].price) {
+              // Clearing is found
               clearing.volume = vol;
               clearing.price = price_b;
+              internal_infos.buy_last_bid_price = price_b;
+              internal_infos.buy_last_bid_frac_volume =
+                (vol - buy[ib].vol_start) /
+                (buy[ib].vol_end - buy[ib].vol_start);
+              internal_infos.sell_last_bid_frac_volume = 1;
+              internal_infos.sell_last_bid_price = sell[is + 1].price;
               is = ns;
             }
             is++;
@@ -158,8 +186,15 @@ export function computeClearing(
             const vol = buy[ib].vol_end;
             const price_s = findPrice(vol, sell);
             if (buy[ib + 1].price < price_s && price_s < buy[ib].price) {
+              // Clearing is found
               clearing.volume = vol;
               clearing.price = price_s;
+              internal_infos.sell_last_bid_price = price_s;
+              internal_infos.sell_last_bid_frac_volume =
+                (vol - sell[is].vol_start) /
+                (sell[is].vol_end - sell[is].vol_start);
+              internal_infos.buy_last_bid_frac_volume = 1;
+              internal_infos.buy_last_bid_price = buy[ib].price;
               ib = nb;
             }
             ib++;
@@ -169,7 +204,7 @@ export function computeClearing(
     }
   }
 
-  return clearing;
+  return [clearing, internal_infos];
 }
 
 /**
@@ -198,19 +233,21 @@ export function findPrice(vol: number, fun: ClearingFunction): number {
 export async function doClearingProcedure(
   session_id: string,
   phase_no: number
-): Promise<Clearing> {
+): Promise<[Clearing, ClearingInternalInfos]> {
   const bids = await getAllBids(session_id, phase_no);
   const [sell, buy] = sortBids(bids);
   const sell_fun = getBidFunction(sell);
   const buy_fun = getBidFunction(buy);
-  const clearing_value = computeClearing(sell_fun, buy_fun);
-  return clearing_value;
+  const [clearing_value, internal_infos] = computeClearing(sell_fun, buy_fun);
+  console.log(internal_infos);
+  return [clearing_value, internal_infos];
 }
 
 export async function computeAndInsertEnergyExchanges(
   session_id: string,
   phase_no: number,
-  clearing_value: Clearing
+  clearing_value: Clearing,
+  clearing_infos: ClearingInternalInfos
 ): Promise<void> {
   // TODO: handle the case where several multiple bids (from different users or not)
   // TODO: have the same price, especially if it is the clearing price as the volume
@@ -220,9 +257,21 @@ export async function computeAndInsertEnergyExchanges(
     users.map(async (user) => {
       const bids = await getUserBids(session_id, user.id, phase_no);
       const [sell, buy] = sortBids(bids);
+
+      // Sell exchange
       const sell_ok_vol = sell
-        .filter((bid) => bid.price_eur_per_mwh <= clearing_value.price)
-        .reduce((a, b) => a + b.volume_mwh, 0 as number);
+        .map((bid) => {
+          if (bid.price_eur_per_mwh < clearing_infos.sell_last_bid_price) {
+            return bid.volume_mwh;
+          } else if (
+            bid.price_eur_per_mwh === clearing_infos.sell_last_bid_price
+          ) {
+            return bid.volume_mwh * clearing_infos.sell_last_bid_frac_volume;
+          } else {
+            return 0;
+          }
+        })
+        .reduce((a, b) => a + b, 0);
       if (sell_ok_vol > 0) {
         await db.query(
           `
@@ -233,9 +282,21 @@ export async function computeAndInsertEnergyExchanges(
           [user.id, session_id, phase_no, sell_ok_vol, clearing_value.price]
         );
       }
+
+      // Buy exchange
       const buy_ok_vol = buy
-        .filter((bid) => bid.price_eur_per_mwh >= clearing_value.price)
-        .reduce((a, b) => a + b.volume_mwh, 0 as number);
+        .map((bid) => {
+          if (bid.price_eur_per_mwh > clearing_infos.buy_last_bid_price) {
+            return bid.volume_mwh;
+          } else if (
+            bid.price_eur_per_mwh === clearing_infos.buy_last_bid_price
+          ) {
+            return bid.volume_mwh * clearing_infos.buy_last_bid_frac_volume;
+          } else {
+            return 0;
+          }
+        })
+        .reduce((a, b) => a + b, 0);
       if (buy_ok_vol > 0) {
         await db.query(
           `
@@ -269,17 +330,43 @@ export default async function clearing(
   );
 
   // Do the actual clearing
-  const clearing_value = await doClearingProcedure(session_id, phase_no);
+  const [clearing_value, internal_infos] = await doClearingProcedure(
+    session_id,
+    phase_no
+  );
   await db.query(
     `INSERT INTO clearings 
-      (session_id, phase_no, volume_mwh, price_eur_per_mwh) 
-      VALUES ($1, $2, $3, $4)
+      (
+        session_id, 
+        phase_no, 
+        volume_mwh, 
+        price_eur_per_mwh, 
+        internal_buy_last_bid_price,
+        internal_buy_last_bid_frac_volume,
+        internal_sell_last_bid_price,
+        internal_sell_last_bid_frac_volume
+      ) 
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
     `,
-    [session_id, phase_no, clearing_value.volume, clearing_value.price]
+    [
+      session_id,
+      phase_no,
+      clearing_value.volume,
+      clearing_value.price,
+      internal_infos.buy_last_bid_price,
+      internal_infos.buy_last_bid_frac_volume,
+      internal_infos.sell_last_bid_price,
+      internal_infos.sell_last_bid_frac_volume,
+    ]
   );
 
   // After clearing, compute the energy exchanges for each user
-  await computeAndInsertEnergyExchanges(session_id, phase_no, clearing_value);
+  await computeAndInsertEnergyExchanges(
+    session_id,
+    phase_no,
+    clearing_value,
+    internal_infos
+  );
 
   // When clearing is done, notify the users and mark clearing available as true
   await db.query(
