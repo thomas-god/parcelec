@@ -31,6 +31,8 @@ const routes: Array<RouteConfig> = [
         await store.dispatch("session/setSessionID", session_id, {
           root: true,
         });
+      } else {
+        next("/");
       }
       next();
     },
@@ -60,6 +62,8 @@ const routes: Array<RouteConfig> = [
         });
         await store.dispatch("user/setUserID", user_id, { root: true });
         store.dispatch("session/loadGameContent", {}, { root: true });
+      } else {
+        next("/");
       }
       next();
     },
