@@ -10,6 +10,7 @@ import {
   ProductionPlanning,
   GamePhase,
   PowerPlantWithPlanning,
+  PhaseResults,
 } from "./types";
 
 export const uuid_regex =
@@ -103,6 +104,26 @@ export async function getCurrentPhaseNo(session_id: string): Promise<number> {
   const res = (
     await db.query(
       "SELECT phase_no FROM phases WHERE session_id=$1 AND status='open'",
+      [session_id]
+    )
+  ).rows;
+  return res.length === 1 ? (res[0].phase_no as number) : null;
+}
+
+/**
+ * Return the number of the last phase, regardless of its active state
+ * or not.
+ * @param session_id Session ID
+ */
+export async function getLastPhaseNo(session_id: string): Promise<number> {
+  const res = (
+    await db.query(
+      `
+      SELECT phase_no 
+      FROM phases
+      WHERE session_id=$1
+      ORDER BY phase_no DESC
+      LIMIT 1`,
       [session_id]
     )
   ).rows;
@@ -230,6 +251,43 @@ export async function getConsoForecast(
   ).rows;
   return rows.length === 1 ? rows[0].value_mw : 0;
 }
+
+/**
+ * Get the current conso forecast for a given user.
+ * @param session_id Session ID
+ * @param user_id User ID
+ */
+export async function getUserResults(
+  session_id: string,
+  user_id: string,
+  phase_no?: number
+): Promise<PhaseResults> {
+  if (phase_no === undefined) {
+    phase_no = await getLastPhaseNo(session_id);
+  }
+  const rows: PhaseResults[] = (
+    await db.query(
+      `
+    SELECT
+      conso_mwh,
+      conso_eur,
+      prod_mwh,
+      prod_eur,
+      sell_mwh,
+      sell_eur,
+      buy_mwh,
+      buy_eur,
+      imbalance_mwh,
+      imbalance_costs_eur,
+      balance_eur
+    FROM results 
+    WHERE phase_no=$1 AND user_id=$2`,
+      [phase_no, user_id]
+    )
+  ).rows;
+  return rows.length === 1 ? rows[0] : null;
+}
+
 /**
  * Post a user user bit to the current open phase.
  * @param bid Bid object (without the phase_no)
@@ -338,7 +396,7 @@ export async function getPlanning(
   session_id: string,
   user_id: string
 ): Promise<ProductionPlanning> {
-  const phase_no = await getCurrentPhaseNo(session_id);
+  const phase_no = await getLastPhaseNo(session_id);
   return (
     await db.query(
       "SELECT * FROM production_plannings WHERE session_id=$1 AND user_id=$2 AND phase_no=$3",
