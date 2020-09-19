@@ -432,3 +432,52 @@ export async function getSessionBooleans(
   }
   return bools;
 }
+
+/**
+ * Return the clearing information.
+ * @param session_id Session ID
+ */
+export async function getClearing(
+  session_id: string
+): Promise<{ volume_mwh: number; price_eur_per_mwh: number }> {
+  const phase_no = await getCurrentPhaseNo(session_id);
+  const clearing = (
+    await db.query(
+      "SELECT volume_mwh, price_eur_per_mwh FROM clearings WHERE session_id=$1 AND phase_no=$2",
+      [session_id, phase_no]
+    )
+  ).rows;
+  return clearing.length === 1
+    ? (clearing[0] as { volume_mwh: number; price_eur_per_mwh: number })
+    : null;
+}
+
+/**
+ * Return the user's energy exchanges following bids clearing.
+ * @param session_id Session ID
+ */
+export async function getUserEnergyExchanges(
+  session_id: string,
+  user_id: string
+): Promise<
+  {
+    type: "buy" | "sell";
+    volume_mwh: number;
+    price_eur_per_mwh: number;
+  }[]
+> {
+  const phase_no = await getCurrentPhaseNo(session_id);
+  const exchanges = (
+    await db.query(
+      "SELECT type, volume_mwh, price_eur_per_mwh FROM exchanges WHERE session_id=$1 AND user_id=$2 AND phase_no=$3",
+      [session_id, user_id, phase_no]
+    )
+  ).rows;
+  return exchanges.length > 0
+    ? (exchanges as {
+        type: "buy" | "sell";
+        volume_mwh: number;
+        price_eur_per_mwh: number;
+      }[])
+    : null;
+}
