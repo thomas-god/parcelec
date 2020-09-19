@@ -186,5 +186,6 @@ function toTimeString(dt: number): string {
   border-radius: 2px;
   min-width: 400px;
   margin: 2rem;
+  box-shadow: 12px 12px 2px 1px rgba(28, 28, 56, 0.26);
 }
 </style>
