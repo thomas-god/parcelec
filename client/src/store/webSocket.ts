@@ -133,6 +133,8 @@ function onMessageCallback(
           break;
         case "results-available":
           commit("session/SET_RESULTS_AVAILABLE", true, opts);
+          dispatch("results/loadResultsContent", {}, { root: true });
+
           break;
       }
     }
