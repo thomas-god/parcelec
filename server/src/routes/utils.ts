@@ -293,9 +293,12 @@ export async function deleteUserBid(
  */
 export async function getUserBids(
   session_id: string,
-  user_id: string
+  user_id: string,
+  phase_no?: number
 ): Promise<Bid[]> {
-  const phase_no = await getCurrentPhaseNo(session_id);
+  if (phase_no === undefined) {
+    phase_no = await getCurrentPhaseNo(session_id);
+  }
   let bids = [];
   if (phase_no !== null) {
     bids = (
