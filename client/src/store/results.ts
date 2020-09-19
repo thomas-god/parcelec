@@ -46,7 +46,6 @@ export const actions: ActionTree<ResultsState, RootState> = {
     );
     if (res.status === 200) {
       results = await res.json();
-      console.log(results);
     } else {
       console.log(await res.text());
     }
