@@ -103,7 +103,7 @@ async function computeResults(
         results.buy_mwh -
         results.conso_mwh -
         results.sell_mwh;
-      results.imbalance_costs_eur = results.imbalance_mwh * 40;
+      results.imbalance_costs_eur = results.imbalance_mwh * 45;
 
       // Total financial balance
       results.balance_eur =
