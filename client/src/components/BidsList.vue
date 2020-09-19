@@ -52,9 +52,9 @@
       </p>
       <p
         v-if="sell.volume_mwh === 0 && buy.volume_mwh === 0"
-        style="font-size: 1.4rem;"
+        style="font-size: 1.2rem;"
       >
-        Vous n'avez pas d'enchères retenues sur le marché.
+        Vous n'avez pas d'enchères retenues
       </p>
     </div>
   </div>

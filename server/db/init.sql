@@ -69,7 +69,7 @@ CREATE TABLE clearings
   session_id UUID,
   phase_no INT,
   FOREIGN KEY (session_id, phase_no) REFERENCES phases (session_id, phase_no) ON DELETE CASCADE,
-  volume_mwh REAL NOT NULL CHECK (volume_mwh > 0),
+  volume_mwh REAL NOT NULL,
   price_eur_per_mwh REAL NOT NULL,
   internal_buy_last_bid_price REAL NOT NULL,
   internal_buy_last_bid_frac_volume REAL NOT NULL,

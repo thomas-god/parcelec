@@ -121,8 +121,6 @@ export async function setUserReady(
     const sessions = await getSession(session_id);
     if (sessions === null)
       throw new CustomError("Error, no session found with this ID", 404);
-    if (sessions.status === "running")
-      throw new CustomError("Error, the session is running");
     if (sessions.status === "closed")
       throw new CustomError("Error, the session is closed");
 

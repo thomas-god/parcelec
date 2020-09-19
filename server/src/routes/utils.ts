@@ -558,7 +558,7 @@ export async function getUserEnergyExchanges(
           volume_mwh: number;
           price_eur_per_mwh: number;
         }[])
-      : null;
+      : [];
   } else {
     return [];
   }

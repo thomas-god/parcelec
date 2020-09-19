@@ -1,5 +1,6 @@
 <template>
   <div>
+    <!-- Open session -->
     <div v-if="session_status === 'open'" class="app__full">
       <h1>
         Bonjour {{ username }}, vous avez rejoint la partie
@@ -12,13 +13,19 @@
       </h3>
       <Chatroom class="chatroom__full" :display_ready="true" />
     </div>
+
+    <!-- Running session -->
     <div v-if="session_status === 'running'" class="app__grid">
       <h1 class="app__grid_head" v-if="!results_available">
         Phase de jeu en cours...
       </h1>
       <h1 class="app__grid_head" v-if="results_available">
         Phase de jeu terminée
+        <button class="ready__btn" @click="setStatusReady" :disable="!ready">
+          Passer à la phase suivante
+        </button>
       </h1>
+
       <div class="app__grid_main">
         <h2 v-if="timeBeforeClearing && !results_available">
           <span v-if="timeBeforeClearing === 'Temps écoulé'" style="color: red;"
@@ -71,9 +78,14 @@ const sessionModule = namespace("session");
 })
 export default class Main extends Vue {
   @userModule.Getter username!: string;
+  @userModule.Getter user_id!: string;
+  @userModule.State ready!: boolean;
   @sessionModule.Getter session!: Session;
   @sessionModule.Getter session_status!: string;
   @sessionModule.Getter phase_infos!: Session["phase_infos"];
+  @sessionModule.Getter session_id!: string;
+  @State("api_url") api_url!: string;
+  @userModule.Mutation SET_GAME_READY!: (game_ready: boolean) => void;
 
   // Abilities booleans
   @sessionModule.Getter can_bid!: boolean;
@@ -111,6 +123,16 @@ export default class Main extends Vue {
       return null;
     }
   }
+
+  async setStatusReady(): Promise<void> {
+    const res = await fetch(
+      `${this.api_url}/session/${this.session_id}/user/${this.user_id}/ready`,
+      {
+        method: "PUT",
+      }
+    );
+    if (res.status === 201) this.SET_GAME_READY(true);
+  }
 }
 
 function toTimeString(dt: number): string {
@@ -129,13 +151,16 @@ function toTimeString(dt: number): string {
   grid-template-areas:
     "head head"
     "main  main";
-  grid-template-rows: auto 1fr;
+  grid-template-rows: 125px 1fr;
   grid-template-columns: 2fr 1fr;
 }
 
 .app__grid_head {
   grid-area: head;
   margin-bottom: 1rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 
 .app__grid_main {
@@ -178,5 +203,32 @@ function toTimeString(dt: number): string {
   min-width: 400px;
   margin: 2rem;
   box-shadow: 12px 12px 2px 1px rgba(28, 28, 56, 0.26);
+}
+
+.ready__btn {
+  border: none;
+  font-size: 1.2rem;
+  display: inline-block;
+  padding: 0.3em 1.2em;
+  margin: 1rem 0.3em 0.3em 0;
+  border-radius: 2em;
+  box-sizing: border-box;
+  text-decoration: none;
+  color: #ffffff;
+  background-color: #4eb5f1;
+  text-align: center;
+  transition: all 0.2s;
+}
+.ready__btn:hover {
+  background-color: #4095c6;
+}
+.ready__btn:active {
+  font-size: 1.1rem;
+}
+@media all and (max-width: 30em) {
+  .ready__btn {
+    display: block;
+    margin: 0.2em auto;
+  }
 }
 </style>
