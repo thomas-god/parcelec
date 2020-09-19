@@ -41,6 +41,10 @@ export interface GamePhase {
   start_time: Date;
   clearing_time: Date;
   planning_time: Date;
+  bids_allowed: boolean;
+  clearing_available: boolean;
+  plannings_allowed: boolean;
+  results_available: boolean;
 }
 
 export interface ConsoForecast {
