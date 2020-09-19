@@ -15,9 +15,12 @@ import { sendUpdateToUsers } from "../websocket";
 /**
  * Get the list of bids.
  * @param session_id Session ID
+ * @param phase_no Number of the game phase
  */
-export async function getAllBids(session_id: string): Promise<Bid[]> {
-  const phase_no = await getCurrentPhaseNo(session_id);
+export async function getAllBids(
+  session_id: string,
+  phase_no: number
+): Promise<Bid[]> {
   let bids = [];
   if (phase_no !== null) {
     bids = (
@@ -162,6 +165,23 @@ export function findPrice(vol: number, fun: ClearingFunction): number {
 }
 
 /**
+ * Do the chaining of the different utils functions for the clearing.
+ * @param session_id Session ID
+ * @param phase_no Phase number
+ */
+export async function doClearingProcedure(
+  session_id: string,
+  phase_no: number
+): Promise<Clearing> {
+  const bids = await getAllBids(session_id, phase_no);
+  const [sell, buy] = sortBids(bids);
+  const sell_fun = getBidFunction(sell);
+  const buy_fun = getBidFunction(buy);
+  const clearing_value = computeClearing(sell_fun, buy_fun);
+  return clearing_value;
+}
+
+/**
  * Define the timeline of the clearing process.
  * @param session_id Session ID
  * @param phase_no Number of the current phase
@@ -179,8 +199,17 @@ export default async function clearing(
     [session_id, phase_no]
   );
 
-  // Do the actual clearing, it may take some time
-  await new Promise((r) => setTimeout(r, 10000));
+  // Do the actual clearing
+  const clearing_value = await doClearingProcedure(session_id, phase_no);
+  await db.query(
+    `INSERT INTO clearings 
+      (session_id, phase_no, volume_mwh, price_eur_per_mwh) 
+      VALUES ($1, $2, $3, $4)
+    `,
+    [session_id, phase_no, clearing_value.volume, clearing_value.price]
+  );
+
+  // After clearing, compute the energy exchanges for each user
 
   // When clearing is done, notify the users and mark clearing available as true
   await db.query(
