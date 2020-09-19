@@ -1,10 +1,5 @@
 <template>
-  <div v-if="!(session.id && username)" class="app__full">
-    <h1>Bienvenue sur Parcélec ! ⚡️</h1>
-    <SessionSelect v-if="!session.id" />
-    <UsernameSelect v-if="session.id && !username" />
-  </div>
-  <div v-else>
+  <div>
     <div v-if="session_status === 'open'" class="app__full">
       <h1>
         Bonjour {{ username }}, vous avez rejoint la partie
@@ -18,22 +13,28 @@
       <Chatroom class="chatroom__full" :display_ready="true" />
     </div>
     <div v-if="session_status === 'running'" class="app__grid">
-      <h1 class="app__grid_head">Phase de jeu en cours...</h1>
+      <h1 class="app__grid_head" v-if="!results_available">
+        Phase de jeu en cours...
+      </h1>
+      <h1 class="app__grid_head" v-if="results_available">
+        Phase de jeu terminée
+      </h1>
       <div class="app__grid_main">
-        <h2 v-if="timeBeforeClearing">
+        <h2 v-if="timeBeforeClearing && !results_available">
           <span v-if="timeBeforeClearing === 'Temps écoulé'" style="color: red;"
             >Enchères clôturées</span
           >
           <span v-else>Fin des enchères dans {{ timeBeforeClearing }}</span>
         </h2>
-        <h2 v-if="timeBeforePlanning">
+        <h2 v-if="timeBeforePlanning && !results_available">
           <span v-if="timeBeforePlanning === 'Temps écoulé'" style="color: red;"
-            >Plannings clôturés</span
+            >Réception des plannings fermée</span
           >
-          <span v-else>Fin des plannings dans {{ timeBeforePlanning }}</span>
+          <span v-else
+            >Fermeture de la réception des plannings dans
+            {{ timeBeforePlanning }}</span
+          >
         </h2>
-        <h2 v-if="clearing_available">Résultats des enchères disponibles</h2>
-        <h2 v-if="results_available">Résultats finaux disponibles</h2>
         <div class="app__main" v-if="session.id && username">
           <PowerPlantsList class="app__main_item" />
           <Bilans class="app__main_item" />
@@ -49,8 +50,6 @@
 import { Component, Prop, Vue } from "vue-property-decorator";
 import { State, Action, Getter, namespace } from "vuex-class";
 import { Session } from "../store/session";
-import SessionSelect from "./SessionSelect.vue";
-import UsernameSelect from "./UsernameSelect.vue";
 import Chatroom from "./Chatroom.vue";
 import Messages from "./Messages.vue";
 import Bid from "./SessionBid.vue";
@@ -63,8 +62,6 @@ const sessionModule = namespace("session");
 
 @Component({
   components: {
-    SessionSelect,
-    UsernameSelect,
     Chatroom,
     Bid,
     PowerPlantsList,
@@ -180,5 +177,6 @@ function toTimeString(dt: number): string {
   border-radius: 2px;
   min-width: 400px;
   margin: 2rem;
+  box-shadow: 12px 12px 2px 1px rgba(28, 28, 56, 0.26);
 }
 </style>

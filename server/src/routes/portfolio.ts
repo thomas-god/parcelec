@@ -19,6 +19,7 @@ import {
   getConsoForecast,
   getPlanning,
   addPlanningToPortfolio,
+  getUserResults,
 } from "./utils";
 
 class CustomError extends Error {
@@ -179,6 +180,38 @@ export async function getUserPlanningRoute(
   }
 }
 
+/**
+ * Get the conso forecast for the current phase.
+ * @param req HTTP request
+ * @param res HTTP response
+ */
+export async function getUserResultsRoute(
+  req: express.Request,
+  res: express.Response
+): Promise<void> {
+  try {
+    // DB checks
+    const session_id = req.params.session_id;
+    const user_id = req.params.user_id;
+    const session = await getSession(session_id);
+    if (session === null)
+      throw new CustomError("Error, no session found with this ID", 404);
+    const user = await getUser(session_id, user_id);
+    if (user === null)
+      throw new CustomError("Error, no user found with this ID", 404);
+
+    const results = await getUserResults(session_id, user_id);
+    res.json(results);
+  } catch (error) {
+    if (error instanceof CustomError) {
+      res.status(error.code).end(error.msg);
+    } else {
+      res.status(400).end();
+      throw error;
+    }
+  }
+}
+
 const router = express.Router();
 
 router.get(
@@ -196,6 +229,10 @@ router.put(
 router.get(
   `/session/:session_id(${uuid_regex})/user/:user_id(${uuid_regex})/planning`,
   getUserPlanningRoute
+);
+router.get(
+  `/session/:session_id(${uuid_regex})/user/:user_id(${uuid_regex})/results`,
+  getUserResultsRoute
 );
 
 export default router;

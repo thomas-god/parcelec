@@ -1,31 +1,62 @@
 <template>
   <div class="bid__list">
-    <h2>Vos enchères</h2>
+    <h2>Bourse de l'électricité</h2>
 
-    <div class="bid__action" v-if="can_bid">
-      <BidItem :type="'buy'" :edit="true" />
-      <BidItem :type="'sell'" :edit="true" />
+    <div v-if="can_bid">
+      <div class="bid__action" v-if="can_bid">
+        <BidItem :type="'buy'" :edit="true" />
+        <BidItem :type="'sell'" :edit="true" />
+      </div>
+      <h3 v-if="bidsBuy.length > 0">Vos achats</h3>
+      <BidItem
+        :type="'buy'"
+        :edit="false"
+        v-for="bid in bidsBuy"
+        :key="bid.id"
+        :bid="bid"
+      />
+      <h3 v-if="bidsSell.length > 0">Vos ventes</h3>
+      <BidItem
+        :type="'sell'"
+        :edit="false"
+        v-for="bid in bidsSell"
+        :key="bid.id"
+        :bid="bid"
+      />
+
+      <h3 v-if="bidsBuy.length === 0 && bidsSell.length === 0">
+        Vous n'avez pas d'enchères
+      </h3>
     </div>
-    <h3 v-if="bidsBuy.length > 0">Vos achats</h3>
-    <BidItem
-      :type="'buy'"
-      :edit="false"
-      v-for="bid in bidsBuy"
-      :key="bid.id"
-      :bid="bid"
-    />
-    <h3 v-if="bidsSell.length > 0">Vos ventes</h3>
-    <BidItem
-      :type="'sell'"
-      :edit="false"
-      v-for="bid in bidsSell"
-      :key="bid.id"
-      :bid="bid"
-    />
 
-    <h3 v-if="bidsBuy.length === 0 && bidsSell.length === 0">
-      Vous n'avez pas d'enchères
-    </h3>
+    <div v-if="!can_bid && !clearing_available">
+      <h3>Clearing en cours ...</h3>
+    </div>
+
+    <div v-if="clearing_available">
+      <h3>Résultats des enchères</h3>
+      <p style="font-size: 1.2rem;">
+        Prix du marché : <strong>{{ clearing.price_eur_per_mwh }}</strong> €/MWh
+      </p>
+      <p style="font-size: 1.2rem;">
+        Volumes échangés : <strong>{{ clearing.volume_mwh }}</strong> MWh
+      </p>
+      <h3>Votre position sur le marché</h3>
+      <p v-if="sell.volume_mwh > 0" style="font-size: 1.2rem;">
+        Vous vendez <strong>{{ sell.volume_mwh }}</strong> MWh à
+        <strong>{{ sell.price_eur_per_mwh }}</strong> €/MWh
+      </p>
+      <p v-if="buy.volume_mwh > 0" style="font-size: 1.2rem;">
+        Vous achetez <strong>{{ buy.volume_mwh }}</strong> MWh à
+        <strong>{{ buy.price_eur_per_mwh }}</strong> €/MWh
+      </p>
+      <p
+        v-if="sell.volume_mwh === 0 && buy.volume_mwh === 0"
+        style="font-size: 1.4rem;"
+      >
+        Vous n'avez pas d'enchères retenues sur le marché.
+      </p>
+    </div>
   </div>
 </template>
 
@@ -42,6 +73,9 @@ const bidsModule = namespace("bids");
 @Component({ components: { BidItem } })
 export default class BidsList extends Vue {
   @bidsModule.Getter bids!: Bid[];
+  @bidsModule.State clearing!: any;
+  @bidsModule.State buy!: any;
+  @bidsModule.State sell!: any;
   @sessionModule.Getter can_bid!: boolean;
   @sessionModule.Getter clearing_available!: boolean;
 

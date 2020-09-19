@@ -10,6 +10,7 @@ import {
   ProductionPlanning,
   GamePhase,
   PowerPlantWithPlanning,
+  PhaseResults,
 } from "./types";
 
 export const uuid_regex =
@@ -103,6 +104,26 @@ export async function getCurrentPhaseNo(session_id: string): Promise<number> {
   const res = (
     await db.query(
       "SELECT phase_no FROM phases WHERE session_id=$1 AND status='open'",
+      [session_id]
+    )
+  ).rows;
+  return res.length === 1 ? (res[0].phase_no as number) : null;
+}
+
+/**
+ * Return the number of the last phase, regardless of its active state
+ * or not.
+ * @param session_id Session ID
+ */
+export async function getLastPhaseNo(session_id: string): Promise<number> {
+  const res = (
+    await db.query(
+      `
+      SELECT phase_no 
+      FROM phases
+      WHERE session_id=$1
+      ORDER BY phase_no DESC
+      LIMIT 1`,
       [session_id]
     )
   ).rows;
@@ -216,9 +237,12 @@ export async function addPlanningToPortfolio(
  */
 export async function getConsoForecast(
   session_id: string,
-  user_id: string
+  user_id: string,
+  phase_no?: number
 ): Promise<number> {
-  const phase_no = await getCurrentPhaseNo(session_id);
+  if (phase_no === undefined) {
+    phase_no = await getCurrentPhaseNo(session_id);
+  }
   const rows: ConsoForecast[] = (
     await db.query("SELECT * FROM conso WHERE phase_no=$1 AND user_id=$2", [
       phase_no,
@@ -227,6 +251,43 @@ export async function getConsoForecast(
   ).rows;
   return rows.length === 1 ? rows[0].value_mw : 0;
 }
+
+/**
+ * Get the current conso forecast for a given user.
+ * @param session_id Session ID
+ * @param user_id User ID
+ */
+export async function getUserResults(
+  session_id: string,
+  user_id: string,
+  phase_no?: number
+): Promise<PhaseResults> {
+  if (phase_no === undefined) {
+    phase_no = await getLastPhaseNo(session_id);
+  }
+  const rows: PhaseResults[] = (
+    await db.query(
+      `
+    SELECT
+      conso_mwh,
+      conso_eur,
+      prod_mwh,
+      prod_eur,
+      sell_mwh,
+      sell_eur,
+      buy_mwh,
+      buy_eur,
+      imbalance_mwh,
+      imbalance_costs_eur,
+      balance_eur
+    FROM results 
+    WHERE phase_no=$1 AND user_id=$2`,
+      [phase_no, user_id]
+    )
+  ).rows;
+  return rows.length === 1 ? rows[0] : null;
+}
+
 /**
  * Post a user user bit to the current open phase.
  * @param bid Bid object (without the phase_no)
@@ -293,9 +354,12 @@ export async function deleteUserBid(
  */
 export async function getUserBids(
   session_id: string,
-  user_id: string
+  user_id: string,
+  phase_no?: number
 ): Promise<Bid[]> {
-  const phase_no = await getCurrentPhaseNo(session_id);
+  if (phase_no === undefined) {
+    phase_no = await getCurrentPhaseNo(session_id);
+  }
   let bids = [];
   if (phase_no !== null) {
     bids = (
@@ -332,7 +396,7 @@ export async function getPlanning(
   session_id: string,
   user_id: string
 ): Promise<ProductionPlanning> {
-  const phase_no = await getCurrentPhaseNo(session_id);
+  const phase_no = await getLastPhaseNo(session_id);
   return (
     await db.query(
       "SELECT * FROM production_plannings WHERE session_id=$1 AND user_id=$2 AND phase_no=$3",
@@ -347,15 +411,14 @@ export async function getPlanning(
  * @param session_id Session ID
  */
 export async function getPhaseInfos(session_id: string): Promise<GamePhase> {
-  const phase_no = await getCurrentPhaseNo(session_id);
-  return phase_no === null
-    ? null
-    : ((
-        await db.query(
-          "SELECT * FROM phases WHERE session_id=$1 AND phase_no=$2",
-          [session_id, phase_no]
-        )
-      ).rows[0] as GamePhase);
+  const rows = (
+    await db.query(
+      "SELECT * FROM phases WHERE session_id=$1 ORDER BY phase_no DESC",
+      [session_id]
+    )
+  ).rows as GamePhase[];
+  if (rows.length > 0) return rows[0];
+  else return null;
 }
 /**
  * Check if users can submit bids to the current phase.
@@ -409,23 +472,94 @@ interface PhaseBooleans {
 export async function getSessionBooleans(
   session_id: string
 ): Promise<PhaseBooleans> {
-  const phase_no = await getCurrentPhaseNo(session_id);
   let bools = {
     bids_allowed: false,
     clearing_available: false,
     plannings_allowed: false,
     results_available: false,
   };
-  if (phase_no !== null) {
-    const rows = (
-      await db.query(
-        "SELECT bids_allowed, clearing_available, plannings_allowed, results_available FROM phases WHERE session_id=$1 AND phase_no=$2",
-        [session_id, phase_no]
-      )
-    ).rows;
-    if (rows.length === 1) {
-      bools = rows[0] as PhaseBooleans;
-    }
+  const rows = (
+    await db.query(
+      `SELECT 
+        bids_allowed, clearing_available, plannings_allowed, results_available 
+        FROM phases 
+        WHERE session_id=$1 
+        ORDER BY phase_no DESC`,
+      [session_id]
+    )
+  ).rows;
+  if (rows.length > 0) {
+    bools = rows[0] as PhaseBooleans;
   }
   return bools;
+}
+
+/**
+ * Return the clearing information.
+ * @param session_id Session ID
+ */
+export async function getClearing(
+  session_id: string
+): Promise<{ volume_mwh: number; price_eur_per_mwh: number }> {
+  const clearing = (
+    await db.query(
+      `SELECT 
+        volume_mwh, price_eur_per_mwh 
+        FROM clearings 
+        WHERE session_id=$1 
+        ORDER BY phase_no DESC`,
+      [session_id]
+    )
+  ).rows;
+  return clearing.length > 0
+    ? (clearing[0] as { volume_mwh: number; price_eur_per_mwh: number })
+    : null;
+}
+
+/**
+ * Return the user's energy exchanges following bids clearing.
+ * @param session_id Session ID
+ */
+export async function getUserEnergyExchanges(
+  session_id: string,
+  user_id: string
+): Promise<
+  {
+    type: "buy" | "sell";
+    volume_mwh: number;
+    price_eur_per_mwh: number;
+  }[]
+> {
+  const req_phase = (
+    await db.query(
+      `SELECT 
+      phase_no 
+      FROM phases 
+      WHERE session_id=$1 
+      ORDER BY phase_no DESC`,
+      [session_id]
+    )
+  ).rows;
+  const phase_no = req_phase.length === 1 ? req_phase[0].phase_no : null;
+  if (phase_no !== null) {
+    const exchanges = (
+      await db.query(
+        `SELECT 
+          type, volume_mwh, price_eur_per_mwh 
+          FROM exchanges 
+          WHERE 
+            session_id=$1 AND user_id=$2 AND phase_no=$3`,
+        [session_id, user_id, phase_no]
+      )
+    ).rows;
+    return exchanges.length > 0
+      ? (exchanges as {
+          type: "buy" | "sell";
+          volume_mwh: number;
+          price_eur_per_mwh: number;
+        }[])
+      : null;
+  } else {
+    return [];
+  }
 }

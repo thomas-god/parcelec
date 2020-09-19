@@ -71,6 +71,10 @@ CREATE TABLE clearings
   FOREIGN KEY (session_id, phase_no) REFERENCES phases (session_id, phase_no) ON DELETE CASCADE,
   volume_mwh REAL NOT NULL CHECK (volume_mwh > 0),
   price_eur_per_mwh REAL NOT NULL,
+  internal_buy_last_bid_price REAL NOT NULL,
+  internal_buy_last_bid_frac_volume REAL NOT NULL,
+  internal_sell_last_bid_price REAL NOT NULL,
+  internal_sell_last_bid_frac_volume REAL NOT NULL,
   PRIMARY KEY (session_id, phase_no)
 );
 
@@ -104,10 +108,17 @@ CREATE TABLE results
   session_id UUID,
   phase_no INT,
   FOREIGN KEY (session_id, phase_no) REFERENCES phases (session_id, phase_no) ON DELETE CASCADE,
-  net_conso REAL NOT NULL,
-  net_prod REAL NOT NULL,
-  costs_eur REAL NOT NULL,
-  revenues_eur REAL NOT NULL
+  conso_mwh REAL NOT NULL,
+  conso_eur REAL NOT NULL,
+  prod_mwh REAL NOT NULL,
+  prod_eur REAL NOT NULL,
+  sell_mwh REAL NOT NULL,
+  sell_eur REAL NOT NULL,
+  buy_mwh REAL NOT NULL,
+  buy_eur REAL NOT NULL,
+  imbalance_mwh REAL NOT NULL,
+  imbalance_costs_eur REAL NOT NULL,
+  balance_eur REAL NOT NULL
 );
 
 CREATE OR REPLACE FUNCTION get_url(session_name text, username text) 

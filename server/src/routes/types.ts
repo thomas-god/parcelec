@@ -41,6 +41,10 @@ export interface GamePhase {
   start_time: Date;
   clearing_time: Date;
   planning_time: Date;
+  bids_allowed: boolean;
+  clearing_available: boolean;
+  plannings_allowed: boolean;
+  results_available: boolean;
 }
 
 export interface ConsoForecast {
@@ -92,10 +96,17 @@ export interface PhaseResults {
   user_id: string;
   session_id: string;
   phase_no: number;
-  net_conso: number;
-  net_prod: number;
-  costs_eur: number;
-  revenues_eur: number;
+  conso_mwh: number;
+  conso_eur: number;
+  prod_mwh: number;
+  prod_eur: number;
+  sell_mwh: number;
+  sell_eur: number;
+  buy_mwh: number;
+  buy_eur: number;
+  imbalance_mwh: number;
+  imbalance_costs_eur: number;
+  balance_eur: number;
 }
 
 export interface ClientMessage {

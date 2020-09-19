@@ -6,7 +6,7 @@
 import { getCurrentPhaseNo, getSession, getSessionUsers } from "../utils";
 import db from "../../db";
 import { sendUpdateToUsers } from "../websocket";
-import { clearing } from "./clearing";
+import clearing from "./clearing";
 import { endGame } from "./end_game";
 import { generateEmptyPlanning, insertPlanning } from "./plannings";
 

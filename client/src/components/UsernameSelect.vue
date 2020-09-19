@@ -1,6 +1,7 @@
 <template>
   <div class="user_add_pseudo">
     <label for="user_add_pseudo_input">
+      <h1>Bienvenue sur Parcélec ! ⚡️</h1>
       <h2>Choisissez un pseudo</h2>
     </label>
 
@@ -31,7 +32,6 @@ export default class User extends Vue {
   // Store related
   @userModule.Action setUserID!: (payload: string) => void;
   @sessionModule.Getter session!: Session;
-  @sessionModule.Action loadGameContent!: () => {};
   @State("api_url") api_url!: string;
 
   // Username input stuff
@@ -52,8 +52,8 @@ export default class User extends Vue {
           method: "PUT",
           headers: { "content-type": "application/json" },
           body: JSON.stringify({
-            username: this.new_username
-          })
+            username: this.new_username,
+          }),
         }
       );
       if (res.status === 201) {
@@ -61,7 +61,7 @@ export default class User extends Vue {
         this.new_username_err_msg = "";
         const body = await res.json();
         this.setUserID(body.user_id);
-        this.loadGameContent();
+        this.$router.push(`/session/${this.session.id}/user/${body.user_id}`);
       } else {
         this.new_username_err = true;
         this.new_username_err_msg = await res.text();
