@@ -239,7 +239,6 @@ export async function doClearingProcedure(
   const sell_fun = getBidFunction(sell);
   const buy_fun = getBidFunction(buy);
   const [clearing_value, internal_infos] = computeClearing(sell_fun, buy_fun);
-  console.log(internal_infos);
   return [clearing_value, internal_infos];
 }
 

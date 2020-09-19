@@ -75,7 +75,6 @@ describe("Computing the clearing value", () => {
       sell_fun,
       buy_fun
     );
-    console.log(internal_infos);
     expect(clearing_value).toHaveProperty("volume");
     expect(clearing_value).toHaveProperty("price");
     expect(clearing_value.volume).toEqual(7);
