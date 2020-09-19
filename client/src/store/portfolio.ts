@@ -15,6 +15,8 @@ export interface PowerPlant {
   p_max_mw: number;
   stock_max_mwh: number;
   price_eur_per_mwh: number;
+  planning: number;
+  planning_modif: number;
 }
 
 export interface Portfolio {
@@ -38,16 +40,29 @@ export const actions: ActionTree<PortfolioState, RootState> = {
    */
   async loadPortfolioContent({ commit, rootState }): Promise<void> {
     loadPowerPlants(commit, rootState.session.id, rootState.user.user_id);
-    if (rootState.session.status === "running") {
-      loadConsoForecast(commit, rootState.session.id, rootState.user.user_id);
-    }
+    loadConsoForecast(commit, rootState.session.id, rootState.user.user_id);
+  },
+  resetPlanning({ state }): void {
+    state.power_plants.forEach((pp) => {
+      pp.planning_modif = pp.planning;
+    });
+  },
+  onSuccessfulPlanningUpdate(): void {
+    state.power_plants.forEach((pp) => {
+      pp.planning = pp.planning_modif;
+    });
   },
 };
 
 // ------------------------ MUTATIONS -------------------------
 export const mutations: MutationTree<PortfolioState> = {
   SET_POWER_PLANTS(state, power_plants: PowerPlant[]): void {
-    state.power_plants = power_plants;
+    state.power_plants = power_plants.map((pp) => {
+      return {
+        ...pp,
+        planning_modif: pp.planning,
+      };
+    });
   },
   SET_CONSO(state, conso: number): void {
     state.conso = conso;

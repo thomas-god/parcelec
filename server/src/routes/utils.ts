@@ -9,6 +9,7 @@ import {
   ConsoForecast,
   ProductionPlanning,
   GamePhase,
+  PowerPlantWithPlanning,
 } from "./types";
 
 export const uuid_regex =
@@ -94,7 +95,8 @@ export async function checkUsername(
 }
 
 /**
- * Return the number of the active phase (with status 'open').
+ * Return the number of the active phase (with status 'open'), and `null`
+ * if no phase is found.
  * @param session_id ID of the session
  */
 export async function getCurrentPhaseNo(session_id: string): Promise<number> {
@@ -185,6 +187,27 @@ export async function getPortfolio(user_id: string): Promise<PowerPlant[]> {
     await db.query("SELECT * FROM power_plants WHERE user_id=$1", [user_id])
   ).rows;
 }
+/**
+ * Add power plants dispatch information to a user's portfolio from its
+ * production planning.
+ * @param portfolio User portfolio
+ */
+export async function addPlanningToPortfolio(
+  portfolio: PowerPlant[]
+): Promise<PowerPlantWithPlanning[]> {
+  if (portfolio.length > 0) {
+    const session_id = portfolio[0].session_id;
+    const user_id = portfolio[0].user_id;
+    const planning = await getPlanning(session_id, user_id);
+    return portfolio.map((pp) => {
+      const p = planning.find((p) => p.plant_id === pp.id);
+      return {
+        ...pp,
+        planning: p === undefined ? 0 : p.p_mw,
+      };
+    });
+  }
+}
 
 /**
  * Get the current conso forecast for a given user.
@@ -194,7 +217,7 @@ export async function getPortfolio(user_id: string): Promise<PowerPlant[]> {
 export async function getConsoForecast(
   session_id: string,
   user_id: string
-): Promise<ConsoForecast> {
+): Promise<number> {
   const phase_no = await getCurrentPhaseNo(session_id);
   const rows: ConsoForecast[] = (
     await db.query("SELECT * FROM conso WHERE phase_no=$1 AND user_id=$2", [
@@ -202,7 +225,7 @@ export async function getConsoForecast(
       user_id,
     ])
   ).rows;
-  return rows.length === 1 ? rows[0] : null;
+  return rows.length === 1 ? rows[0].value_mw : 0;
 }
 /**
  * Post a user user bit to the current open phase.
@@ -273,12 +296,16 @@ export async function getUserBids(
   user_id: string
 ): Promise<Bid[]> {
   const phase_no = await getCurrentPhaseNo(session_id);
-  return (
-    await db.query(
-      "SELECT * FROM bids WHERE session_id=$1 AND user_id=$2 AND phase_no=$3",
-      [session_id, user_id, phase_no]
-    )
-  ).rows;
+  let bids = [];
+  if (phase_no !== null) {
+    bids = (
+      await db.query(
+        "SELECT * FROM bids WHERE session_id=$1 AND user_id=$2 AND phase_no=$3",
+        [session_id, user_id, phase_no]
+      )
+    ).rows;
+  }
+  return bids;
 }
 
 /**
@@ -336,13 +363,18 @@ export async function getPhaseInfos(session_id: string): Promise<GamePhase> {
  */
 export async function userCanBid(session_id: string): Promise<boolean> {
   const phase_no = await getCurrentPhaseNo(session_id);
-  const rows = (
-    await db.query(
-      "SELECT bids_allowed FROM phases WHERE session_id=$1 AND phase_no=$2",
-      [session_id, phase_no]
-    )
-  ).rows;
-  return rows.length === 1 ? (rows[0].bids_allowed as boolean) : false;
+  let bids_allowed = false;
+  if (phase_no !== null) {
+    const rows = (
+      await db.query(
+        "SELECT bids_allowed FROM phases WHERE session_id=$1 AND phase_no=$2",
+        [session_id, phase_no]
+      )
+    ).rows;
+    bids_allowed =
+      rows.length === 1 ? (rows[0].bids_allowed as boolean) : false;
+  }
+  return bids_allowed;
 }
 
 /**
@@ -353,11 +385,47 @@ export async function userCanSubmitPlanning(
   session_id: string
 ): Promise<boolean> {
   const phase_no = await getCurrentPhaseNo(session_id);
-  const rows = (
-    await db.query(
-      "SELECT plannings_allowed FROM phases WHERE session_id=$1 AND phase_no=$2",
-      [session_id, phase_no]
-    )
-  ).rows;
-  return rows.length === 1 ? (rows[0].plannings_allowed as boolean) : false;
+  let plannings_allowed = false;
+  if (phase_no !== null) {
+    const rows = (
+      await db.query(
+        "SELECT plannings_allowed FROM phases WHERE session_id=$1 AND phase_no=$2",
+        [session_id, phase_no]
+      )
+    ).rows;
+    plannings_allowed =
+      rows.length === 1 ? (rows[0].plannings_allowed as boolean) : false;
+  }
+  return plannings_allowed;
+}
+
+interface PhaseBooleans {
+  bids_allowed: boolean;
+  clearing_available: boolean;
+  plannings_allowed: boolean;
+  results_available: boolean;
+}
+
+export async function getSessionBooleans(
+  session_id: string
+): Promise<PhaseBooleans> {
+  const phase_no = await getCurrentPhaseNo(session_id);
+  let bools = {
+    bids_allowed: false,
+    clearing_available: false,
+    plannings_allowed: false,
+    results_available: false,
+  };
+  if (phase_no !== null) {
+    const rows = (
+      await db.query(
+        "SELECT bids_allowed, clearing_available, plannings_allowed, results_available FROM phases WHERE session_id=$1 AND phase_no=$2",
+        [session_id, phase_no]
+      )
+    ).rows;
+    if (rows.length === 1) {
+      bools = rows[0] as PhaseBooleans;
+    }
+  }
+  return bools;
 }

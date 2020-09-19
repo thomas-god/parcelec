@@ -18,6 +18,7 @@ import {
   uuid_regex,
   getConsoForecast,
   getPlanning,
+  addPlanningToPortfolio,
 } from "./utils";
 
 class CustomError extends Error {
@@ -54,7 +55,8 @@ export async function getUserPortfolio(
       throw new CustomError("Error, no user found with this ID", 404);
 
     const portfolio = await getPortfolio(user_id);
-    res.json(portfolio);
+    const portfolio_with_planning = await addPlanningToPortfolio(portfolio);
+    await res.json(portfolio_with_planning);
   } catch (error) {
     if (error instanceof CustomError) {
       res.status(error.code).end(error.msg);
@@ -88,7 +90,7 @@ export async function getUserConso(
       throw new CustomError("Error, no user found with this ID", 404);
 
     const conso = await getConsoForecast(session_id, user_id);
-    res.json({ conso_mw: conso.value_mw });
+    res.json({ conso_mw: conso });
   } catch (error) {
     if (error instanceof CustomError) {
       res.status(error.code).end(error.msg);

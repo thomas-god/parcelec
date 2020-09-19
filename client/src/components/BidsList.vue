@@ -1,11 +1,12 @@
 <template>
   <div class="bid__list">
     <h2>Vos enchères</h2>
-    <div class="bid__action">
+
+    <div class="bid__action" v-if="can_bid">
       <BidItem :type="'buy'" :edit="true" />
       <BidItem :type="'sell'" :edit="true" />
     </div>
-    <h3>Vos achats</h3>
+    <h3 v-if="bidsBuy.length > 0">Vos achats</h3>
     <BidItem
       :type="'buy'"
       :edit="false"
@@ -13,7 +14,7 @@
       :key="bid.id"
       :bid="bid"
     />
-    <h3>Vos ventes</h3>
+    <h3 v-if="bidsSell.length > 0">Vos ventes</h3>
     <BidItem
       :type="'sell'"
       :edit="false"
@@ -21,6 +22,10 @@
       :key="bid.id"
       :bid="bid"
     />
+
+    <h3 v-if="bidsBuy.length === 0 && bidsSell.length === 0">
+      Vous n'avez pas d'enchères
+    </h3>
   </div>
 </template>
 
@@ -37,13 +42,15 @@ const bidsModule = namespace("bids");
 @Component({ components: { BidItem } })
 export default class BidsList extends Vue {
   @bidsModule.Getter bids!: Bid[];
+  @sessionModule.Getter can_bid!: boolean;
+  @sessionModule.Getter clearing_available!: boolean;
 
   get bidsSell(): Bid[] {
-    return this.bids.filter(bid => bid.type === "sell");
+    return this.bids.filter((bid) => bid.type === "sell");
   }
 
   get bidsBuy(): Bid[] {
-    return this.bids.filter(bid => bid.type === "buy");
+    return this.bids.filter((bid) => bid.type === "buy");
   }
 }
 </script>

@@ -26,6 +26,10 @@ export interface PowerPlant {
   price_eur_per_mwh: number;
 }
 
+export interface PowerPlantWithPlanning extends PowerPlant {
+  planning: number;
+}
+
 export type PowerPlantTemplate = Omit<
   PowerPlant,
   "session_id" | "user_id" | "id"

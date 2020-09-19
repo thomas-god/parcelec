@@ -118,6 +118,7 @@ function onMessageCallback(
           break;
         case "new-game-phase":
           dispatch("session/loadSessionContent", "running", opts);
+          dispatch("portfolio/loadPortfolioContent", "running", opts);
           break;
         case "clearing-started":
           commit("session/SET_CAN_BID", false, opts);
@@ -127,6 +128,7 @@ function onMessageCallback(
           break;
         case "plannings-closed":
           commit("session/SET_CAN_POST_PLANNING", false, opts);
+          dispatch("portfolio/resetPlanning", {}, { root: true });
           break;
         case "results-available":
           commit("session/SET_RESULTS_AVAILABLE", true, opts);

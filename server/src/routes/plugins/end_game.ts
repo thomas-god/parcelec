@@ -30,6 +30,10 @@ export async function endGame(
     session_id,
   ]);
 
-  // When results are computed, notify the users
+  // When results are computed, notify the users and mark it the phase table
+  await db.query(
+    "UPDATE phases SET results_available=true WHERE session_id=$1 AND phase_no=$2",
+    [session_id, phase_no]
+  );
   sendUpdateToUsers(session_id, "results-available", {});
 }

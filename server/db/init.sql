@@ -36,7 +36,9 @@ CREATE TABLE phases
   clearing_time TIMESTAMPTZ,
   planning_time TIMESTAMPTZ,
   bids_allowed BOOLEAN DEFAULT true,
+  clearing_available BOOLEAN DEFAULT false,
   plannings_allowed BOOLEAN DEFAULT true,
+  results_available BOOLEAN DEFAULT false,
   status TEXT CHECK (status IN ('open', 'closed')),
   PRIMARY KEY (session_id, phase_no)
 );

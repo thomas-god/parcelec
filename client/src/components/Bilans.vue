@@ -1,6 +1,11 @@
 <template>
   <div>
-    <h2>Votre bilan</h2>
+    <h2 style="margin-bottom: 0.8rem;">Votre bilan</h2>
+    <div class="bilans__grid_item" style="margin-bottom: 1rem;">
+      <span class="bilans__grid_item_value"
+        >{{ `${deficit > 0 ? "+" : ""}${deficit}` }} MWh</span
+      >
+    </div>
     <div class="bilans__grid">
       <div
         v-for="item in bilans"
@@ -12,16 +17,10 @@
         <span class="bilans__grid_item_value">{{ item.value }} MWh</span>
       </div>
     </div>
-    <div class="bilans__grid_item">
-      <span class="bilans__grid_item_name">Bilan</span>
-      <span class="bilans__grid_item_value"
-        >{{ `${deficit > 0 ? "+" : ""}${deficit}` }} MWh</span
-      >
-    </div>
   </div>
 </template>
 
-<script lang='ts'>
+<script lang="ts">
 import { Component, Prop, Vue } from "vue-property-decorator";
 import { State, Action, Getter, namespace } from "vuex-class";
 import { BidsState } from "../store/bids";
@@ -36,14 +35,12 @@ export default class PlanningBilans extends Vue {
   @portfolioModule.State conso!: number;
   @bidsModule.State energy_exchanges!: BidsState["energy_exchanges"];
 
-  prod_total_mwh = 1000;
-
   get bilans() {
     return [
-      { name: "Consommation", value: this.conso },
+      { name: "Consommation", value: "-" + this.conso },
       { name: "Production", value: this.prod_total_mwh },
-      { name: "Ventes", value: this.energy_exchanges.sell.volume_mwh },
-      { name: "Achats", value: this.energy_exchanges.buy.volume_mwh }
+      { name: "Ventes", value: "-" + this.energy_exchanges.sell.volume_mwh },
+      { name: "Achats", value: this.energy_exchanges.buy.volume_mwh },
     ];
   }
 
@@ -54,6 +51,16 @@ export default class PlanningBilans extends Vue {
       this.conso -
       this.energy_exchanges.sell.volume_mwh
     );
+  }
+
+  get prod_total_mwh(): number {
+    let prod = 0;
+    if (this.power_plants.length > 0) {
+      prod = this.power_plants
+        .map((pp) => Number(pp.planning_modif))
+        .reduce((a, b) => a + b);
+    }
+    return prod;
   }
 }
 </script>

@@ -69,10 +69,18 @@ describe("Getting a user portfolio", () => {
     const res = await superagent.get(
       `${url}/session/${users[0].session_id}/user/${users[0].id}/portfolio`
     );
+
+    // Add the planning key to what should be returned by the API
+    const pps = power_plants.map((pp) => {
+      return {
+        ...pp,
+        planning: 0,
+      };
+    });
     expect(res.status).toEqual(200);
     expect(Array.isArray(res.body)).toEqual(true);
     expect(res.body.sort((a, b) => (a.id < b.id ? 1 : -1))).toEqual(
-      power_plants
+      pps
         .filter((pp) => pp.user_id === users[0].id)
         .sort((a, b) => (a.id < b.id ? 1 : -1))
     );
