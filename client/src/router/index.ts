@@ -1,19 +1,42 @@
 import Vue from "vue";
 import VueRouter, { RouteConfig } from "vue-router";
 import Home from "../views/Home.vue";
+import SessionSelect from "../components/SessionSelect.vue";
+import UsernameSelect from "../components/UsernameSelect.vue";
 import store from "../store/";
-import { Session } from "@/store/session";
 
 Vue.use(VueRouter);
+
+const uuid_regex =
+  "[A-F0-9]{8}-[A-F0-9]{4}-4[A-F0-9]{3}-[89AB][A-F0-9]{3}-[A-F0-9]{12}";
 
 const routes: Array<RouteConfig> = [
   {
     path: "/",
     name: "Home",
-    component: Home,
+    component: SessionSelect,
   },
   {
-    path: "/session/:session_id/user/:user_id",
+    path: `/session/:session_id(${uuid_regex})`,
+    component: UsernameSelect,
+    beforeEnter: async (to, from, next) => {
+      const session_id: string = to.params.session_id;
+      const res_session = await fetch(
+        `${process.env.VUE_APP_API_URL}/session/${session_id}`,
+        {
+          method: "GET",
+        }
+      );
+      if (res_session.status === 200) {
+        await store.dispatch("session/setSessionID", session_id, {
+          root: true,
+        });
+      }
+      next();
+    },
+  },
+  {
+    path: `/session/:session_id(${uuid_regex})/user/:user_id(${uuid_regex})`,
     component: Home,
     beforeEnter: async (to, from, next) => {
       const session_id: string = to.params.session_id;
@@ -41,6 +64,7 @@ const routes: Array<RouteConfig> = [
       next();
     },
   },
+  { path: "*", redirect: "/" },
 ];
 
 const router = new VueRouter({

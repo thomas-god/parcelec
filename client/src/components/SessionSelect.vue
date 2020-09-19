@@ -1,8 +1,9 @@
 <template>
   <div>
+    <h1>Bienvenue sur Parcélec ! ⚡️</h1>
     <h2>Choisissez une partie à rejoindre</h2>
     <ul class="sessions_list">
-      <li v-for="s in open_sessions" :key="s.name" @click="setSessionID(s.id)">
+      <li v-for="s in open_sessions" :key="s.name" @click="goToSession(s.id)">
         <span>{{ s.name }}</span>
       </li>
       <li v-if="open_sessions.length === 0">
@@ -50,7 +51,7 @@ export default class User extends Vue {
    */
   async getOpenSessions(): Promise<void> {
     const res = await fetch(`${this.api_url}/sessions/open`, {
-      method: "GET"
+      method: "GET",
     });
     this.open_sessions = await res.json();
   }
@@ -67,13 +68,13 @@ export default class User extends Vue {
     const res = await fetch(`${this.api_url}/session/open`, {
       method: "PUT",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ session_name: this.new_session_name })
+      body: JSON.stringify({ session_name: this.new_session_name }),
     });
     if (res.status === 200) {
       this.new_session_name_err = false;
       this.new_session_name_err_msg = "";
       const session_id = (await res.json()).id;
-      this.setSessionID(session_id);
+      this.goToSession(session_id);
     } else {
       this.new_session_name_err = true;
       this.new_session_name_err_msg = await res.text();
@@ -82,6 +83,11 @@ export default class User extends Vue {
 
   async created(): Promise<void> {
     await this.getOpenSessions();
+  }
+
+  goToSession(session_id: string): void {
+    this.setSessionID(session_id);
+    this.$router.push(`/session/${session_id}`);
   }
 }
 </script>

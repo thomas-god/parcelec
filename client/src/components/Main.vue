@@ -1,10 +1,5 @@
 <template>
-  <div v-if="!(session.id && username)" class="app__full">
-    <h1>Bienvenue sur Parcélec ! ⚡️</h1>
-    <SessionSelect v-if="!session.id" />
-    <UsernameSelect v-if="session.id && !username" />
-  </div>
-  <div v-else>
+  <div>
     <div v-if="session_status === 'open'" class="app__full">
       <h1>
         Bonjour {{ username }}, vous avez rejoint la partie
@@ -55,8 +50,6 @@
 import { Component, Prop, Vue } from "vue-property-decorator";
 import { State, Action, Getter, namespace } from "vuex-class";
 import { Session } from "../store/session";
-import SessionSelect from "./SessionSelect.vue";
-import UsernameSelect from "./UsernameSelect.vue";
 import Chatroom from "./Chatroom.vue";
 import Messages from "./Messages.vue";
 import Bid from "./SessionBid.vue";
@@ -69,8 +62,6 @@ const sessionModule = namespace("session");
 
 @Component({
   components: {
-    SessionSelect,
-    UsernameSelect,
     Chatroom,
     Bid,
     PowerPlantsList,
