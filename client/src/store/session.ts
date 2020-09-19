@@ -55,6 +55,7 @@ export const actions: ActionTree<SessionState, RootState> = {
       context.dispatch("session/loadSessionContent", {}, { root: true });
       context.dispatch("portfolio/loadPortfolioContent", {}, { root: true });
       context.dispatch("bids/loadBidsContent", {}, { root: true });
+      context.dispatch("bids/loadClearingContent", {}, { root: true });
       context.dispatch("webSocket/openWebSocket", {}, { root: true });
     }
   },

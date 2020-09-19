@@ -125,6 +125,7 @@ function onMessageCallback(
           break;
         case "clearing-finished":
           commit("session/SET_CLEARING_AVAILABLE", true, opts);
+          dispatch("bids/loadClearingContent", {}, { root: true });
           break;
         case "plannings-closed":
           commit("session/SET_CAN_POST_PLANNING", false, opts);
