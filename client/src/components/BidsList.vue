@@ -1,6 +1,6 @@
 <template>
   <div class="bid__list">
-    <h2>Vos enchères</h2>
+    <h2>Bourse de l'électricité</h2>
 
     <div v-if="can_bid">
       <div class="bid__action" v-if="can_bid">
@@ -28,21 +28,25 @@
         Vous n'avez pas d'enchères
       </h3>
     </div>
+
     <div v-if="!can_bid && !clearing_available">
       <h3>Clearing en cours ...</h3>
     </div>
+
     <div v-if="clearing_available">
       <h3>Résultats des enchères</h3>
-      <p style="font-size: 1.7rem;">
-        <strong>{{ clearing.volume_mwh }}</strong> MWh à
-        <strong>{{ clearing.price_eur_per_mwh }}</strong> €/MWh
+      <p style="font-size: 1.2rem;">
+        Prix du marché : <strong>{{ clearing.price_eur_per_mwh }}</strong> €/MWh
       </p>
-      <h3>Vos échanges</h3>
-      <p v-if="sell.volume_mwh > 0" style="font-size: 1.4rem;">
+      <p style="font-size: 1.2rem;">
+        Volumes échangés : <strong>{{ clearing.volume_mwh }}</strong> MWh
+      </p>
+      <h3>Votre position sur le marché</h3>
+      <p v-if="sell.volume_mwh > 0" style="font-size: 1.2rem;">
         Vous vendez <strong>{{ sell.volume_mwh }}</strong> MWh à
         <strong>{{ sell.price_eur_per_mwh }}</strong> €/MWh
       </p>
-      <p v-if="buy.volume_mwh > 0" style="font-size: 1.4rem;">
+      <p v-if="buy.volume_mwh > 0" style="font-size: 1.2rem;">
         Vous achetez <strong>{{ buy.volume_mwh }}</strong> MWh à
         <strong>{{ buy.price_eur_per_mwh }}</strong> €/MWh
       </p>

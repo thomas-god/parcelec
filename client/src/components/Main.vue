@@ -28,12 +28,13 @@
         </h2>
         <h2 v-if="timeBeforePlanning">
           <span v-if="timeBeforePlanning === 'Temps écoulé'" style="color: red;"
-            >Plannings clôturés</span
+            >Réception des plannings fermée</span
           >
-          <span v-else>Fin des plannings dans {{ timeBeforePlanning }}</span>
+          <span v-else
+            >Fermeture de la réception des plannings dans
+            {{ timeBeforePlanning }}</span
+          >
         </h2>
-        <h2 v-if="clearing_available">Résultats des enchères disponibles</h2>
-        <h2 v-if="results_available">Résultats finaux disponibles</h2>
         <div class="app__main" v-if="session.id && username">
           <PowerPlantsList class="app__main_item" />
           <Bilans class="app__main_item" />
