@@ -18,15 +18,20 @@
       <Chatroom class="chatroom__full" :display_ready="true" />
     </div>
     <div v-if="session_status === 'running'" class="app__grid">
-      <h1 class="app__grid_head">Phase de jeu en cours...</h1>
+      <h1 class="app__grid_head" v-if="!results_available">
+        Phase de jeu en cours...
+      </h1>
+      <h1 class="app__grid_head" v-if="results_available">
+        Phase de jeu terminée
+      </h1>
       <div class="app__grid_main">
-        <h2 v-if="timeBeforeClearing">
+        <h2 v-if="timeBeforeClearing && !results_available">
           <span v-if="timeBeforeClearing === 'Temps écoulé'" style="color: red;"
             >Enchères clôturées</span
           >
           <span v-else>Fin des enchères dans {{ timeBeforeClearing }}</span>
         </h2>
-        <h2 v-if="timeBeforePlanning">
+        <h2 v-if="timeBeforePlanning && !results_available">
           <span v-if="timeBeforePlanning === 'Temps écoulé'" style="color: red;"
             >Réception des plannings fermée</span
           >

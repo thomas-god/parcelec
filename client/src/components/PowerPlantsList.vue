@@ -1,6 +1,6 @@
 <template>
   <div class="pp__list">
-    <h2>Votre parc de production</h2>
+    <h2>Vos centrales</h2>
     <PowerPlantItem
       class="pp__list_item"
       v-for="pp in pp_sorted"
