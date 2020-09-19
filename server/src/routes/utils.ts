@@ -216,9 +216,12 @@ export async function addPlanningToPortfolio(
  */
 export async function getConsoForecast(
   session_id: string,
-  user_id: string
+  user_id: string,
+  phase_no?: number
 ): Promise<number> {
-  const phase_no = await getCurrentPhaseNo(session_id);
+  if (phase_no === undefined) {
+    phase_no = await getCurrentPhaseNo(session_id);
+  }
   const rows: ConsoForecast[] = (
     await db.query("SELECT * FROM conso WHERE phase_no=$1 AND user_id=$2", [
       phase_no,
