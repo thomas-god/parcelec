@@ -3,7 +3,7 @@
  * phase.
  */
 
-import { getCurrentPhaseNo, getSession, getSessionUsers } from "../utils";
+import { getLastPhaseNo, getSession, getSessionUsers } from "../utils";
 import db from "../../db";
 import { sendUpdateToUsers } from "../websocket";
 import clearing from "./clearing";
@@ -13,10 +13,11 @@ import { generateEmptyPlanning, insertPlanning } from "./plannings";
 export async function startGamePhase(session_id: string): Promise<void> {
   const session = await getSession(session_id);
   const users = await getSessionUsers(session_id);
-  const current_phase_no = await getCurrentPhaseNo(session_id);
+  const current_phase_no = await getLastPhaseNo(session_id);
   const next_phase_no = current_phase_no === null ? 0 : current_phase_no + 1;
 
   // Check if all users are ready
+  // TODO: check if there is not an open phase already
   if (
     users.length >= 2 &&
     users.filter((u) => u.game_ready).length === users.length
