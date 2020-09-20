@@ -17,6 +17,7 @@ export interface PowerPlant {
   price_eur_per_mwh: number;
   planning: number;
   planning_modif: number;
+  stock_mwh: number;
 }
 
 export interface Portfolio {
