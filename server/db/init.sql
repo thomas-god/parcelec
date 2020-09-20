@@ -5,6 +5,17 @@ CREATE TABLE sessions
   status TEXT CHECK (status IN ('open','running', 'closed'))
 );
 
+CREATE TABLE options 
+(
+  session_id UUID REFERENCES sessions (id) ON DELETE CASCADE,
+  bids_duration_sec INT NOT NULL CHECK (bids_duration_sec > 0),
+  plannings_duration_sec INT NOT NULL CHECK (plannings_duration_sec > 0),
+  phases_number INT NOT NULL CHECK (phase_number > 0),
+  conso_forecast_mwh INT[] CHECK (array_length(conso_forecast_mwh, 1) = phase_number),
+  conso_price_eur REAL NOT NULL CHECK (conso_price_eur > 0),
+  imbalance_costs_eur REAL NOT NULL CHECK (imbalance_costs_eur > 0)
+);
+
 CREATE TABLE users 
 (
   id UUID PRIMARY KEY,
