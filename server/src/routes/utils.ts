@@ -222,10 +222,11 @@ export async function addPlanningToPortfolio(
     const user_id = portfolio[0].user_id;
     const planning = await getPlanning(session_id, user_id);
     return portfolio.map((pp) => {
-      const p = planning.find((p) => p.plant_id === pp.id);
+      const plan = planning.find((p) => p.plant_id === pp.id);
       return {
         ...pp,
-        planning: p === undefined ? 0 : p.p_mw,
+        planning: plan === undefined ? 0 : plan.p_mw,
+        stock_mwh: plan === undefined ? pp.stock_max_mwh : plan.stock_start_mwh,
       };
     });
   }
