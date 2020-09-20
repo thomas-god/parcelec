@@ -3,6 +3,7 @@ import express from "express";
 import db from "../db/index";
 import { Session } from "./types";
 import {
+  createNewSession,
   getPhaseInfos,
   getSession,
   getSessionBooleans,
@@ -56,6 +57,7 @@ export async function openNewSession(
         "Error, please provide a valid game session name",
         400
       );
+
     if (
       (await db.query("SELECT id FROM sessions WHERE name=$1", [session_name]))
         .rows.length !== 0
@@ -71,10 +73,7 @@ export async function openNewSession(
       id: uuidv4(),
       status: "open",
     };
-    await db.query(
-      "INSERT INTO sessions (name, id, status) VALUES($1, $2, $3)",
-      [session_name, session.id, session.status]
-    );
+    await createNewSession(session);
     res.status(201).json(session);
   } catch (error) {
     res.status(error.code).end(error.msg);
