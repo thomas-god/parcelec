@@ -1,0 +1,25 @@
+version: "3"
+services:
+  server:
+    build:
+      context: .
+      args:
+        - NODE_ENV=production
+    environment:
+      - VIRTUAL_HOST=api.parcelec.org
+      - VIRTUAL_PORT=3000
+      - LETSENCRYPT_HOST=api.parcelec.org
+      - LETSENCRYPT_EMAIL=thomas.godlewski@icloud.com
+    expose:
+      - 3000
+    networks:
+      - proxy
+      - default
+  db:
+    build:
+      context: ./db
+
+networks:
+  proxy:
+    external:
+      name: nginx-proxy
