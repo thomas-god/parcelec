@@ -3,13 +3,21 @@
  * phase.
  */
 import db from "../../db";
-import { getConsoForecast, getSessionUsers } from "../utils";
+import { SessionOptions } from "../types";
+import {
+  getConsoForecast,
+  getSession,
+  getSessionOptions,
+  getSessionUsers,
+} from "../utils";
 import { sendUpdateToUsers } from "../websocket";
 
 export async function endGame(
   session_id: string,
   phase_no: number
 ): Promise<void> {
+  const session = await getSession(session_id);
+  const options = await getSessionOptions(session_id);
   // Notify users that session is finished
   sendUpdateToUsers(session_id, "plannings-closed", {});
 
@@ -20,7 +28,7 @@ export async function endGame(
   );
 
   // Do the metering and results computation, it may take some time
-  await computeResults(session_id, phase_no);
+  await computeResults(session_id, phase_no, options);
 
   // Close the phase and mark all users as not ready for the next phase
   await db.query(
@@ -37,6 +45,16 @@ export async function endGame(
     [session_id, phase_no]
   );
   sendUpdateToUsers(session_id, "results-available", {});
+
+  // If its the last phase, close the session
+  if (phase_no === options.phases_number - 1) {
+    await db.query("UPDATE sessions SET status=$1 WHERE id=$2", [
+      "closed",
+      session.id,
+    ]);
+    session.status = "closed";
+    sendUpdateToUsers(session_id, "game-session-ended", {});
+  }
 }
 
 /**
@@ -46,7 +64,8 @@ export async function endGame(
  */
 async function computeResults(
   session_id: string,
-  phase_no: number
+  phase_no: number,
+  options: SessionOptions
 ): Promise<void> {
   const users = await getSessionUsers(session_id);
   await Promise.all(
@@ -59,7 +78,7 @@ async function computeResults(
 
       // Consumption
       results.conso_mwh = await getConsoForecast(session_id, user.id, phase_no);
-      results.conso_eur = results.conso_mwh * 40;
+      results.conso_eur = results.conso_mwh * options.conso_price_eur;
 
       // Production
       const prod = (
@@ -103,7 +122,8 @@ async function computeResults(
         results.buy_mwh -
         results.conso_mwh -
         results.sell_mwh;
-      results.imbalance_costs_eur = results.imbalance_mwh * 45;
+      results.imbalance_costs_eur =
+        results.imbalance_mwh * options.imbalance_costs_eur;
 
       // Total financial balance
       results.balance_eur =
