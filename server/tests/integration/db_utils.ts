@@ -31,6 +31,15 @@ export const sessions: Session[] = [
   },
 ];
 
+export const session_options = {
+  bids_duration_sec: 180,
+  plannings_duration_sec: 300,
+  phases_number: 3,
+  conso_forecast_mwh: [1000, 1800, 2400],
+  conso_price_eur: 35,
+  imbalance_costs_eur: 45,
+};
+
 export const users: User[] = [
   {
     session_id: sessions[1].id,
@@ -119,6 +128,28 @@ async function populateDB() {
       await db.query(
         "INSERT INTO sessions (id, name, status) VALUES ($1, $2, $3)",
         [session.id, session.name, session.status]
+      );
+      await db.query(
+        `INSERT INTO options
+          (
+            session_id, 
+            bids_duration_sec,
+            plannings_duration_sec,
+            phases_number,
+            conso_forecast_mwh,
+            conso_price_eur,
+            imbalance_costs_eur
+          )
+        VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+        [
+          session.id,
+          session_options.bids_duration_sec,
+          session_options.plannings_duration_sec,
+          session_options.phases_number,
+          session_options.conso_forecast_mwh,
+          session_options.conso_price_eur,
+          session_options.imbalance_costs_eur,
+        ]
       );
     })
   );
