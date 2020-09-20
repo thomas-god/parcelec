@@ -75,6 +75,7 @@ describe("Getting a user portfolio", () => {
       return {
         ...pp,
         planning: 0,
+        stock_mwh: pp.stock_max_mwh,
       };
     });
     expect(res.status).toEqual(200);

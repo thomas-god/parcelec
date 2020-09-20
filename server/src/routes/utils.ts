@@ -11,6 +11,7 @@ import {
   GamePhase,
   PowerPlantWithPlanning,
   PhaseResults,
+  SessionOptions,
 } from "./types";
 
 export const uuid_regex =
@@ -221,10 +222,11 @@ export async function addPlanningToPortfolio(
     const user_id = portfolio[0].user_id;
     const planning = await getPlanning(session_id, user_id);
     return portfolio.map((pp) => {
-      const p = planning.find((p) => p.plant_id === pp.id);
+      const plan = planning.find((p) => p.plant_id === pp.id);
       return {
         ...pp,
-        planning: p === undefined ? 0 : p.p_mw,
+        planning: plan === undefined ? 0 : plan.p_mw,
+        stock_mwh: plan === undefined ? pp.stock_max_mwh : plan.stock_start_mwh,
       };
     });
   }
@@ -562,4 +564,91 @@ export async function getUserEnergyExchanges(
   } else {
     return [];
   }
+}
+
+/**
+ * Return the session games options.
+ * @param session_id Session ID
+ */
+export async function getSessionOptions(
+  session_id: string
+): Promise<SessionOptions> {
+  let options = {
+    bids_duration_sec: 0,
+    plannings_duration_sec: 0,
+    phases_number: 0,
+    conso_forecast_mwh: [],
+    conso_price_eur: 0,
+    imbalance_costs_eur: 0,
+  };
+  const query = (
+    await db.query(
+      `
+      SELECT 
+        bids_duration_sec,
+        plannings_duration_sec,
+        phases_number,
+        conso_forecast_mwh,
+        conso_price_eur,
+        imbalance_costs_eur
+      FROM options
+      WHERE session_id=$1`,
+      [session_id]
+    )
+  ).rows;
+  if (query.length === 1) options = query[0];
+  return options;
+}
+
+/**
+ * Insert a new session record and its corresponding options.
+ * @param session Session object
+ * @param options SessionOptions object
+ */
+export async function createNewSession(
+  session: Session,
+  options?: SessionOptions
+): Promise<void> {
+  // Create new session
+  await db.query(
+    `
+    INSERT INTO sessions 
+      (name, id, status) 
+    VALUES($1, $2, $3)`,
+    [session.name, session.id, session.status]
+  );
+
+  // Insert default options if no custom options provided
+  if (options === undefined) {
+    options = {
+      bids_duration_sec: 180,
+      plannings_duration_sec: 300,
+      phases_number: 3,
+      conso_forecast_mwh: [1000, 1800, 2400],
+      conso_price_eur: 35,
+      imbalance_costs_eur: 45,
+    };
+  }
+  await db.query(
+    `INSERT INTO options
+      (
+        session_id, 
+        bids_duration_sec,
+        plannings_duration_sec,
+        phases_number,
+        conso_forecast_mwh,
+        conso_price_eur,
+        imbalance_costs_eur
+      )
+    VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+    [
+      session.id,
+      options.bids_duration_sec,
+      options.plannings_duration_sec,
+      options.phases_number,
+      options.conso_forecast_mwh,
+      options.conso_price_eur,
+      options.imbalance_costs_eur,
+    ]
+  );
 }

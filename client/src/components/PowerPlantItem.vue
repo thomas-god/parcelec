@@ -44,9 +44,9 @@ export default class PowerPlantItem extends Vue {
   @Prop() editable!: boolean;
 
   get stock(): string {
-    return this.power_plant.stock_max_mwh === -1
+    return this.power_plant.stock_mwh === -1
       ? "∞"
-      : String(this.power_plant.stock_max_mwh);
+      : String(this.power_plant.stock_mwh);
   }
 
   get logo(): string {
