@@ -1,7 +1,7 @@
 <template>
   <div>
     <h1>Bienvenue sur Parcélec ! ⚡️</h1>
-    <h2>Choisissez une partie à rejoindre</h2>
+    <h2>Choisissez une partie à rejoindre {{ api_url }}</h2>
     <ul class="sessions_list">
       <li v-for="s in open_sessions" :key="s.name" @click="goToSession(s.id)">
         <span>{{ s.name }}</span>
