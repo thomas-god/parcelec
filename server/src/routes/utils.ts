@@ -35,7 +35,13 @@ export const uuid_regex =
  */
 export async function getSession(session_id: string): Promise<Session> {
   const session: Session[] = (
-    await db.query("SELECT * FROM sessions WHERE id=$1", [session_id])
+    await db.query(
+      `SELECT 
+        id, name, status
+      FROM sessions 
+      WHERE id=$1;`,
+      [session_id]
+    )
   ).rows;
   return session.length === 1 ? session[0] : null;
 }
@@ -47,7 +53,13 @@ export async function getSession(session_id: string): Promise<Session> {
  */
 export async function getSessionUsers(session_id: string): Promise<User[]> {
   return (
-    await db.query("SELECT * FROM users WHERE session_id=$1", [session_id])
+    await db.query(
+      `SELECT 
+        id, session_id, name, game_ready
+      FROM users
+      WHERE session_id=$1;`,
+      [session_id]
+    )
   ).rows;
 }
 
@@ -63,7 +75,9 @@ export async function insertNewUser(
 ): Promise<string> {
   const user_id = uuid();
   await db.query(
-    "INSERT INTO users (id, session_id, name) VALUES ($1, $2, $3)",
+    `INSERT INTO users 
+      (id, session_id, name) 
+    VALUES ($1, $2, $3);`,
     [user_id, session_id, username]
   );
   return user_id;
@@ -79,10 +93,18 @@ export async function getUser(
   user_id: string
 ): Promise<User> {
   const user = (
-    await db.query("SELECT * FROM users WHERE id=$1 AND session_id=$2", [
-      user_id,
-      session_id,
-    ])
+    await db.query(
+      `SELECT 
+        id, 
+        session_id, 
+        name, 
+        game_ready
+      FROM users 
+      WHERE 
+        id=$1 
+        AND session_id=$2;`,
+      [user_id, session_id]
+    )
   ).rows;
   return user.length === 1 ? user[0] : null;
 }
@@ -99,10 +121,14 @@ export async function checkUsername(
   username: string
 ): Promise<boolean> {
   const users = (
-    await db.query("SELECT * FROM users WHERE name=$1 AND session_id=$2", [
-      username,
-      session_id,
-    ])
+    await db.query(
+      `SELECT 1
+      FROM users 
+      WHERE 
+        name=$1 
+        AND session_id=$2;`,
+      [username, session_id]
+    )
   ).rows;
   return users.length === 0;
 }
@@ -115,7 +141,11 @@ export async function checkUsername(
 export async function getCurrentPhaseNo(session_id: string): Promise<number> {
   const res = (
     await db.query(
-      "SELECT phase_no FROM phases WHERE session_id=$1 AND status='open'",
+      `SELECT phase_no 
+      FROM phases 
+      WHERE 
+        session_id=$1 
+        AND status='open';`,
       [session_id]
     )
   ).rows;
@@ -130,12 +160,11 @@ export async function getCurrentPhaseNo(session_id: string): Promise<number> {
 export async function getLastPhaseNo(session_id: string): Promise<number> {
   const res = (
     await db.query(
-      `
-      SELECT phase_no 
+      `SELECT phase_no 
       FROM phases
       WHERE session_id=$1
       ORDER BY phase_no DESC
-      LIMIT 1`,
+      LIMIT 1;`,
       [session_id]
     )
   ).rows;
@@ -194,8 +223,17 @@ export async function setDefaultPortfolio(
     pps.map(async (pp) => {
       await db.query(
         `INSERT INTO power_plants 
-          (id, session_id, user_id, type, p_min_mw, p_max_mw, stock_max_mwh, price_eur_per_mwh)
-          VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+          (
+            id, 
+            session_id, 
+            user_id, 
+            type, 
+            p_min_mw, 
+            p_max_mw, 
+            stock_max_mwh, 
+            price_eur_per_mwh
+          )
+          VALUES ($1, $2, $3, $4, $5, $6, $7, $8);`,
         [
           pp.id,
           pp.session_id,
@@ -217,7 +255,19 @@ export async function setDefaultPortfolio(
  */
 export async function getPortfolio(user_id: string): Promise<PowerPlant[]> {
   return (
-    await db.query("SELECT * FROM power_plants WHERE user_id=$1", [user_id])
+    await db.query(
+      `SELECT 
+        id,
+        session_id, 
+        user_id, type, 
+        p_min_mw, 
+        p_max_mw, 
+        stock_max_mwh, 
+        price_eur_per_mwh
+      FROM power_plants 
+      WHERE user_id=$1;`,
+      [user_id]
+    )
   ).rows;
 }
 /**
@@ -258,10 +308,15 @@ export async function getConsoForecast(
   }
   if (phase_no !== null) {
     const rows: ConsoForecast[] = (
-      await db.query("SELECT * FROM conso WHERE phase_no=$1 AND user_id=$2", [
-        phase_no,
-        user_id,
-      ])
+      await db.query(
+        `SELECT
+          value_mw
+        FROM conso 
+        WHERE 
+          phase_no=$1 
+          AND user_id=$2;`,
+        [phase_no, user_id]
+      )
     ).rows;
     return rows.length === 1 ? rows[0].value_mw : 0;
   } else {
@@ -285,21 +340,22 @@ export async function getUserResults(
   if (phase_no !== null) {
     const rows: PhaseResults[] = (
       await db.query(
-        `
-      SELECT
-        conso_mwh,
-        conso_eur,
-        prod_mwh,
-        prod_eur,
-        sell_mwh,
-        sell_eur,
-        buy_mwh,
-        buy_eur,
-        imbalance_mwh,
-        imbalance_costs_eur,
-        balance_eur
-      FROM results 
-      WHERE phase_no=$1 AND user_id=$2`,
+        `SELECT
+          conso_mwh,
+          conso_eur,
+          prod_mwh,
+          prod_eur,
+          sell_mwh,
+          sell_eur,
+          buy_mwh,
+          buy_eur,
+          imbalance_mwh,
+          imbalance_costs_eur,
+          balance_eur
+        FROM results 
+        WHERE 
+          phase_no=$1 
+          AND user_id=$2;`,
         [phase_no, user_id]
       )
     ).rows;
@@ -317,8 +373,16 @@ export async function postBid(bid: Omit<Bid, "phase_no">): Promise<void> {
   const phase_no = await getCurrentPhaseNo(bid.session_id);
   await db.query(
     `INSERT INTO bids 
-      (id, user_id, session_id, phase_no, type, volume_mwh, price_eur_per_mwh) 
-      VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+      (
+        id, 
+        user_id, 
+        session_id, 
+        phase_no, 
+        type, 
+        volume_mwh, 
+        price_eur_per_mwh
+      ) 
+      VALUES ($1, $2, $3, $4, $5, $6, $7);`,
     [
       bid.id,
       bid.user_id,
@@ -344,7 +408,19 @@ export async function getUserBid(
   const phase_no = await getCurrentPhaseNo(session_id);
   const res = (
     await db.query(
-      "SELECT * FROM bids WHERE session_id=$1 AND id=$2 AND phase_no=$3",
+      `SELECT
+        id, 
+        user_id, 
+        session_id, 
+        phase_no, 
+        type, 
+        volume_mwh, 
+        price_eur_per_mwh
+      FROM bids 
+      WHERE 
+        session_id=$1 
+        AND id=$2 
+        AND phase_no=$3;`,
       [session_id, bid_id, phase_no]
     )
   ).rows;
@@ -363,7 +439,11 @@ export async function deleteUserBid(
 ): Promise<void> {
   const phase_no = await getCurrentPhaseNo(session_id);
   await db.query(
-    "DELETE FROM bids WHERE session_id=$1 AND id=$2 AND phase_no=$3",
+    `DELETE FROM bids 
+    WHERE 
+      session_id=$1 
+      AND id=$2 
+      AND phase_no=$3;`,
     [session_id, bid_id, phase_no]
   );
 }
@@ -385,7 +465,19 @@ export async function getUserBids(
   if (phase_no !== null) {
     bids = (
       await db.query(
-        "SELECT * FROM bids WHERE session_id=$1 AND user_id=$2 AND phase_no=$3",
+        `SELECT 
+          id, 
+          user_id, 
+          session_id, 
+          phase_no, 
+          type, 
+          volume_mwh, 
+          price_eur_per_mwh
+        FROM bids 
+        WHERE 
+          session_id=$1 
+          AND user_id=$2 
+          AND phase_no=$3;`,
         [session_id, user_id, phase_no]
       )
     ).rows;
@@ -400,10 +492,21 @@ export async function getUserBids(
 export async function getAllBids(sessions_id: string): Promise<Bid[]> {
   const phase_no = await getCurrentPhaseNo(sessions_id);
   const res = (
-    await db.query("SELECT * FROM bids WHERE sessions_id=$1 AND phase_no=$2", [
-      sessions_id,
-      phase_no,
-    ])
+    await db.query(
+      `SELECT 
+        id, 
+        user_id, 
+        session_id, 
+        phase_no, 
+        type, 
+        volume_mwh, 
+        price_eur_per_mwh
+      FROM bids 
+      WHERE 
+        sessions_id=$1 
+        AND phase_no=$2;`,
+      [sessions_id, phase_no]
+    )
   ).rows as Bid[];
   return res.length > 0 ? res : null;
 }
@@ -421,7 +524,19 @@ export async function getPlanning(
   if (phase_no !== null) {
     return (
       await db.query(
-        "SELECT * FROM production_plannings WHERE session_id=$1 AND user_id=$2 AND phase_no=$3",
+        `SELECT
+          user_id, 
+          session_id, 
+          phase_no, 
+          plant_id, 
+          p_mw, 
+          stock_start_mwh, 
+          stock_end_mwh
+        FROM production_plannings 
+        WHERE  
+          session_id=$1 
+          AND user_id=$2 
+          AND phase_no=$3;`,
         [session_id, user_id, phase_no]
       )
     ).rows as ProductionPlanning;
@@ -438,7 +553,20 @@ export async function getPlanning(
 export async function getPhaseInfos(session_id: string): Promise<GamePhase> {
   const rows = (
     await db.query(
-      "SELECT * FROM phases WHERE session_id=$1 ORDER BY phase_no DESC",
+      `SELECT
+        session_id,
+        phase_no,
+        start_time,
+        clearing_time,
+        planning_time,
+        bids_allowed,
+        clearing_available,
+        plannings_allowed,
+        results_available
+        status
+      FROM phases 
+      WHERE session_id=$1 
+      ORDER BY phase_no DESC;`,
       [session_id]
     )
   ).rows as GamePhase[];
@@ -455,7 +583,11 @@ export async function userCanBid(session_id: string): Promise<boolean> {
   if (phase_no !== null) {
     const rows = (
       await db.query(
-        "SELECT bids_allowed FROM phases WHERE session_id=$1 AND phase_no=$2",
+        `SELECT bids_allowed 
+        FROM phases
+        WHERE 
+          session_id=$1 
+          AND phase_no=$2;`,
         [session_id, phase_no]
       )
     ).rows;
@@ -477,7 +609,11 @@ export async function userCanSubmitPlanning(
   if (phase_no !== null) {
     const rows = (
       await db.query(
-        "SELECT plannings_allowed FROM phases WHERE session_id=$1 AND phase_no=$2",
+        `SELECT plannings_allowed 
+        FROM phases 
+        WHERE 
+          session_id=$1 
+          AND phase_no=$2;`,
         [session_id, phase_no]
       )
     ).rows;
@@ -506,10 +642,13 @@ export async function getSessionBooleans(
   const rows = (
     await db.query(
       `SELECT 
-        bids_allowed, clearing_available, plannings_allowed, results_available 
-        FROM phases 
-        WHERE session_id=$1 
-        ORDER BY phase_no DESC`,
+        bids_allowed, 
+        clearing_available, 
+        plannings_allowed, 
+        results_available 
+      FROM phases 
+      WHERE session_id=$1 
+      ORDER BY phase_no DESC;`,
       [session_id]
     )
   ).rows;
@@ -533,10 +672,12 @@ export async function getClearing(
   const clearing = (
     await db.query(
       `SELECT 
-        phase_no, volume_mwh, price_eur_per_mwh 
-        FROM clearings 
-        WHERE session_id=$1 
-        ORDER BY phase_no DESC`,
+        phase_no, 
+        volume_mwh, 
+        price_eur_per_mwh 
+      FROM clearings 
+      WHERE session_id=$1 
+      ORDER BY phase_no DESC;`,
       [session_id]
     )
   ).rows;
@@ -569,11 +710,10 @@ export async function getUserEnergyExchanges(
 > {
   const req_phase = (
     await db.query(
-      `SELECT 
-      phase_no 
+      `SELECT phase_no 
       FROM phases 
       WHERE session_id=$1 
-      ORDER BY phase_no DESC`,
+      ORDER BY phase_no DESC;`,
       [session_id]
     )
   ).rows;
@@ -582,10 +722,14 @@ export async function getUserEnergyExchanges(
     const exchanges = (
       await db.query(
         `SELECT 
-          type, volume_mwh, price_eur_per_mwh 
-          FROM exchanges 
-          WHERE 
-            session_id=$1 AND user_id=$2 AND phase_no=$3`,
+          type, 
+          volume_mwh, 
+          price_eur_per_mwh 
+        FROM exchanges 
+        WHERE 
+          session_id=$1 
+          AND user_id=$2 
+          AND phase_no=$3;`,
         [session_id, user_id, phase_no]
       )
     ).rows;
@@ -618,8 +762,7 @@ export async function getSessionOptions(
   };
   const query = (
     await db.query(
-      `
-      SELECT 
+      `SELECT 
         bids_duration_sec,
         plannings_duration_sec,
         phases_number,
@@ -627,7 +770,7 @@ export async function getSessionOptions(
         conso_price_eur,
         imbalance_costs_eur
       FROM options
-      WHERE session_id=$1`,
+      WHERE session_id=$1;`,
       [session_id]
     )
   ).rows;
@@ -646,10 +789,13 @@ export async function createNewSession(
 ): Promise<void> {
   // Create new session
   await db.query(
-    `
-    INSERT INTO sessions 
-      (name, id, status) 
-    VALUES($1, $2, $3)`,
+    `INSERT INTO sessions 
+      (
+        name, 
+        id, 
+        status
+      ) 
+    VALUES($1, $2, $3);`,
     [session.name, session.id, session.status]
   );
 
@@ -675,7 +821,7 @@ export async function createNewSession(
         conso_price_eur,
         imbalance_costs_eur
       )
-    VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+    VALUES ($1, $2, $3, $4, $5, $6, $7);`,
     [
       session.id,
       options.bids_duration_sec,

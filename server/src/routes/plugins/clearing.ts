@@ -24,10 +24,21 @@ export async function getAllBids(
   let bids = [];
   if (phase_no !== null) {
     bids = (
-      await db.query("SELECT * FROM bids WHERE session_id=$1 AND phase_no=$2", [
-        session_id,
-        phase_no,
-      ])
+      await db.query(
+        `SELECT 
+          id, 
+          user_id, 
+          session_id, 
+          phase_no, 
+          type, 
+          volume_mwh, 
+          price_eur_per_mwh
+        FROM bids 
+        WHERE 
+          sessions_id=$1 
+          AND phase_no=$2;`,
+        [session_id, phase_no]
+      )
     ).rows as Bid[];
   }
   return bids;
