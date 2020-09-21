@@ -4,23 +4,13 @@ import db from "../db/index";
 import { Session } from "./types";
 import {
   createNewSession,
+  CustomError,
   getPhaseInfos,
   getSession,
   getSessionBooleans,
   getSessionUsers,
   uuid_regex,
 } from "./utils";
-
-class CustomError extends Error {
-  msg: string;
-  code: number;
-
-  constructor(msg: string, code?: number, ...params) {
-    super(...params);
-    this.msg = msg;
-    this.code = code || 400;
-  }
-}
 
 // ---------------------- Routing Functions
 

@@ -226,22 +226,6 @@ describe("Deleting a user's bid", () => {
     }
   });
 
-  test("Should error when the session is not running", async () => {
-    try {
-      const user_id = (
-        await superagent
-          .put(`${url}/session/${sessions[0].id}/register_user`)
-          .send({ username: "User" })
-      ).body.user_id;
-      await superagent.delete(
-        `${url}/session/${sessions[0].id}/user/${user_id}/bid/${uuid()}`
-      );
-    } catch (error) {
-      expect(error.status).toEqual(400);
-      expect(error.response.text).toEqual("Error, the session is not running");
-    }
-  });
-
   test("Should delete the bid", async () => {
     try {
       const users_id = await startSession(url, sessions[0].id);

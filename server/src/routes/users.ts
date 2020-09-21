@@ -9,19 +9,9 @@ import {
   uuid_regex,
   setDefaultPortfolio,
   insertNewUser,
+  CustomError,
 } from "./utils";
 import { startGamePhase } from "./plugins/start_game";
-
-class CustomError extends Error {
-  msg: string;
-  code: number;
-
-  constructor(msg: string, code?: number, ...params) {
-    super(...params);
-    this.msg = msg;
-    this.code = code || 400;
-  }
-}
 
 // ---------------------- Routing Functions
 

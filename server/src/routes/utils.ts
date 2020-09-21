@@ -14,6 +14,17 @@ import {
   SessionOptions,
 } from "./types";
 
+export class CustomError extends Error {
+  msg: string;
+  code: number;
+
+  constructor(msg: string, code?: number, ...params) {
+    super(...params);
+    this.msg = msg;
+    this.code = code || 400;
+  }
+}
+
 export const uuid_regex =
   "[A-F0-9]{8}-[A-F0-9]{4}-4[A-F0-9]{3}-[89AB][A-F0-9]{3}-[A-F0-9]{12}";
 
@@ -245,13 +256,17 @@ export async function getConsoForecast(
   if (phase_no === undefined) {
     phase_no = await getCurrentPhaseNo(session_id);
   }
-  const rows: ConsoForecast[] = (
-    await db.query("SELECT * FROM conso WHERE phase_no=$1 AND user_id=$2", [
-      phase_no,
-      user_id,
-    ])
-  ).rows;
-  return rows.length === 1 ? rows[0].value_mw : 0;
+  if (phase_no !== null) {
+    const rows: ConsoForecast[] = (
+      await db.query("SELECT * FROM conso WHERE phase_no=$1 AND user_id=$2", [
+        phase_no,
+        user_id,
+      ])
+    ).rows;
+    return rows.length === 1 ? rows[0].value_mw : 0;
+  } else {
+    return 0;
+  }
 }
 
 /**
@@ -267,27 +282,31 @@ export async function getUserResults(
   if (phase_no === undefined) {
     phase_no = await getLastPhaseNo(session_id);
   }
-  const rows: PhaseResults[] = (
-    await db.query(
-      `
-    SELECT
-      conso_mwh,
-      conso_eur,
-      prod_mwh,
-      prod_eur,
-      sell_mwh,
-      sell_eur,
-      buy_mwh,
-      buy_eur,
-      imbalance_mwh,
-      imbalance_costs_eur,
-      balance_eur
-    FROM results 
-    WHERE phase_no=$1 AND user_id=$2`,
-      [phase_no, user_id]
-    )
-  ).rows;
-  return rows.length === 1 ? rows[0] : null;
+  if (phase_no !== null) {
+    const rows: PhaseResults[] = (
+      await db.query(
+        `
+      SELECT
+        conso_mwh,
+        conso_eur,
+        prod_mwh,
+        prod_eur,
+        sell_mwh,
+        sell_eur,
+        buy_mwh,
+        buy_eur,
+        imbalance_mwh,
+        imbalance_costs_eur,
+        balance_eur
+      FROM results 
+      WHERE phase_no=$1 AND user_id=$2`,
+        [phase_no, user_id]
+      )
+    ).rows;
+    return rows.length === 1 ? rows[0] : null;
+  } else {
+    return {} as PhaseResults;
+  }
 }
 
 /**
@@ -399,12 +418,16 @@ export async function getPlanning(
   user_id: string
 ): Promise<ProductionPlanning> {
   const phase_no = await getLastPhaseNo(session_id);
-  return (
-    await db.query(
-      "SELECT * FROM production_plannings WHERE session_id=$1 AND user_id=$2 AND phase_no=$3",
-      [session_id, user_id, phase_no]
-    )
-  ).rows as ProductionPlanning;
+  if (phase_no !== null) {
+    return (
+      await db.query(
+        "SELECT * FROM production_plannings WHERE session_id=$1 AND user_id=$2 AND phase_no=$3",
+        [session_id, user_id, phase_no]
+      )
+    ).rows as ProductionPlanning;
+  } else {
+    return [];
+  }
 }
 
 /**
@@ -502,11 +525,15 @@ export async function getSessionBooleans(
  */
 export async function getClearing(
   session_id: string
-): Promise<{ volume_mwh: number; price_eur_per_mwh: number }> {
+): Promise<{
+  phase_id: number;
+  volume_mwh: number;
+  price_eur_per_mwh: number;
+}> {
   const clearing = (
     await db.query(
       `SELECT 
-        volume_mwh, price_eur_per_mwh 
+        phase_no, volume_mwh, price_eur_per_mwh 
         FROM clearings 
         WHERE session_id=$1 
         ORDER BY phase_no DESC`,
@@ -514,8 +541,16 @@ export async function getClearing(
     )
   ).rows;
   return clearing.length > 0
-    ? (clearing[0] as { volume_mwh: number; price_eur_per_mwh: number })
-    : null;
+    ? (clearing[0] as {
+        phase_id: number;
+        volume_mwh: number;
+        price_eur_per_mwh: number;
+      })
+    : ({} as {
+        phase_id: number;
+        volume_mwh: number;
+        price_eur_per_mwh: number;
+      });
 }
 
 /**
