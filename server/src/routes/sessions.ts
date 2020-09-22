@@ -5,7 +5,9 @@ import { Session } from "./types";
 import {
   createNewSession,
   CustomError,
+  generateDefaultScenario,
   getPhaseInfos,
+  getScenariosList,
   getSession,
   getSessionBooleans,
   getSessionUsers,
@@ -38,18 +40,11 @@ export async function getScenarios(
   req: express.Request,
   res: express.Response
 ): Promise<void> {
-  const scenarios = (
-    await db.query(
-      `SELECT 
-        id,
-        name,
-        description,
-        difficulty,
-        multi_game
-      FROM scenarios_options`,
-      []
-    )
-  ).rows;
+  let scenarios = await getScenariosList();
+  if (scenarios.length === 0) {
+    await generateDefaultScenario();
+    scenarios = await await getScenariosList();
+  }
   res.json(scenarios);
 }
 

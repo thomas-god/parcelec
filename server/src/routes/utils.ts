@@ -860,12 +860,33 @@ export async function getDefaultScenarioID(): Promise<string> {
   }
   return id;
 }
+type ScenarioInfos = Pick<
+  ScenarioOptions,
+  "id" | "name" | "description" | "difficulty" | "multi_game"
+>;
+/**
+ * Return a list of base informations on available scenarios.
+ */
+export async function getScenariosList(): Promise<ScenarioInfos[]> {
+  return (
+    await db.query(
+      `SELECT 
+        id,
+        name,
+        description,
+        difficulty,
+        multi_game
+      FROM scenarios_options`,
+      []
+    )
+  ).rows;
+}
 
 /**
  * Insert into the database the default scenario options and power plants
  * list.
  */
-async function generateDefaultScenario(): Promise<string> {
+export async function generateDefaultScenario(): Promise<string> {
   const id = uuid();
   const default_options = {
     id: id,
