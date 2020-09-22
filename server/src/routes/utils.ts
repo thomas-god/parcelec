@@ -488,7 +488,7 @@ export async function getAllBids(sessions_id: string): Promise<Bid[]> {
         price_eur_per_mwh
       FROM bids 
       WHERE 
-        sessions_id=$1 
+        session_id=$1 
         AND phase_no=$2;`,
       [sessions_id, phase_no]
     )
