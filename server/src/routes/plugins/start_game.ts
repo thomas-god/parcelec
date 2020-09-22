@@ -26,7 +26,7 @@ export async function startGamePhase(session_id: string): Promise<void> {
   // Check if all users are ready
   // TODO: check if there is not an open phase already
   if (
-    users.length >= 2 &&
+    ((options.multi_game && users.length >= 2) || !options.multi_game) &&
     users.filter((u) => u.game_ready).length === users.length &&
     next_phase_no < options.phases_number
   ) {

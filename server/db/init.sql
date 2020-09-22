@@ -1,3 +1,30 @@
+CREATE TABLE scenarios_options
+(
+  id UUID PRIMARY KEY,
+  name TEXT NOT NULL UNIQUE,
+  description TEXT,
+  difficulty TEXT CHECK (difficulty IN ('easy', 'medium', 'hard')),
+  multi_game BOOLEAN DEFAULT FALSE,
+  bids_duration_sec INT NOT NULL CHECK (bids_duration_sec > 0),
+  plannings_duration_sec INT NOT NULL CHECK (plannings_duration_sec > 0),
+  phases_number INT NOT NULL CHECK (phases_number > 0),
+  conso_forecast_mwh INT[] CHECK (array_length(conso_forecast_mwh, 1) = phases_number),
+  conso_price_eur REAL[] NOT NULL CHECK (array_length(conso_price_eur, 1) = phases_number),
+  imbalance_costs_eur REAL[] NOT NULL CHECK (array_length(imbalance_costs_eur, 1) = phases_number)
+);
+
+CREATE TABLE scenarios_power_plants
+(
+  scenario_id UUID REFERENCES scenarios_options (id) ON DELETE CASCADE,
+  type TEXT NOT NULL CHECK (type IN ('nuc', 'therm', 'hydro', 'ren', 'storage')),
+  p_min_mw REAL NOT NULL,
+  p_max_mw REAL NOT NULL,
+  stock_max_mwh REAL NOT NULL CHECK (stock_max_mwh > 0 OR stock_max_mwh = -1),
+  -- stock_max_mwh = -1 represents infinite stock
+  price_eur_per_mwh REAL NOT NULL,
+  CHECK (p_min_mw < p_max_mw)
+);
+
 CREATE TABLE sessions 
 (
   id UUID PRIMARY KEY,
@@ -8,12 +35,14 @@ CREATE TABLE sessions
 CREATE TABLE options 
 (
   session_id UUID REFERENCES sessions (id) ON DELETE CASCADE,
+  scenario_id UUID REFERENCES scenarios_options (id) ON DELETE CASCADE,
+  multi_game BOOLEAN DEFAULT FALSE,
   bids_duration_sec INT NOT NULL CHECK (bids_duration_sec > 0),
   plannings_duration_sec INT NOT NULL CHECK (plannings_duration_sec > 0),
   phases_number INT NOT NULL CHECK (phases_number > 0),
   conso_forecast_mwh INT[] CHECK (array_length(conso_forecast_mwh, 1) = phases_number),
-  conso_price_eur REAL NOT NULL CHECK (conso_price_eur > 0),
-  imbalance_costs_eur REAL NOT NULL CHECK (imbalance_costs_eur > 0)
+  conso_price_eur REAL[] NOT NULL CHECK (array_length(conso_price_eur, 1) = phases_number),
+  imbalance_costs_eur REAL[] NOT NULL CHECK (array_length(imbalance_costs_eur, 1) = phases_number)
 );
 
 CREATE TABLE users 
@@ -91,7 +120,7 @@ CREATE TABLE clearings
 
 CREATE TABLE exchanges 
 (
-  user_id UUID REFERENCES users (id),
+  user_id UUID REFERENCES users (id) ON DELETE CASCADE,
   session_id UUID,
   phase_no INT,
   FOREIGN KEY (session_id, phase_no) REFERENCES phases (session_id, phase_no) ON DELETE CASCADE,

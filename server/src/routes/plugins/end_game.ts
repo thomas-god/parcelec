@@ -78,7 +78,7 @@ async function computeResults(
 
       // Consumption
       results.conso_mwh = await getConsoForecast(session_id, user.id, phase_no);
-      results.conso_eur = results.conso_mwh * options.conso_price_eur;
+      results.conso_eur = results.conso_mwh * options.conso_price_eur[phase_no];
 
       // Production
       const prod = (
@@ -123,7 +123,7 @@ async function computeResults(
         results.conso_mwh -
         results.sell_mwh;
       results.imbalance_costs_eur =
-        results.imbalance_mwh * options.imbalance_costs_eur;
+        results.imbalance_mwh * options.imbalance_costs_eur[phase_no];
 
       // Total financial balance
       results.balance_eur =

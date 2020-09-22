@@ -1,7 +1,9 @@
 import Vue from "vue";
 import VueRouter, { RouteConfig } from "vue-router";
 import Home from "../views/Home.vue";
-import SessionSelect from "../components/SessionSelect.vue";
+import Main from "../components/Main.vue";
+import SessionSelectMulti from "../components/SessionSelectMulti.vue";
+import SessionSelectScenario from "../components/SessionSelectScenario.vue";
 import UsernameSelect from "../components/UsernameSelect.vue";
 import store from "../store/";
 
@@ -14,7 +16,17 @@ const routes: Array<RouteConfig> = [
   {
     path: "/",
     name: "Home",
-    component: SessionSelect,
+    component: Home,
+  },
+  {
+    path: "/join",
+    name: "Join",
+    component: SessionSelectMulti,
+  },
+  {
+    path: "/create",
+    name: "Create",
+    component: SessionSelectScenario,
   },
   {
     path: `/session/:session_id(${uuid_regex})`,
@@ -39,7 +51,7 @@ const routes: Array<RouteConfig> = [
   },
   {
     path: `/session/:session_id(${uuid_regex})/user/:user_id(${uuid_regex})`,
-    component: Home,
+    component: Main,
     beforeEnter: async (to, from, next) => {
       const session_id: string = to.params.session_id;
       const user_id: string = to.params.user_id;

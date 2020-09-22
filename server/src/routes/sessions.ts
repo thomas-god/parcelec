@@ -5,7 +5,9 @@ import { Session } from "./types";
 import {
   createNewSession,
   CustomError,
+  generateDefaultScenario,
   getPhaseInfos,
+  getScenariosList,
   getSession,
   getSessionBooleans,
   getSessionUsers,
@@ -30,6 +32,23 @@ export async function getOpenSessions(
 }
 
 /**
+ * Get the list of available scenarios.
+ * @param req HTTP request
+ * @param res HTTP response
+ */
+export async function getScenarios(
+  req: express.Request,
+  res: express.Response
+): Promise<void> {
+  let scenarios = await getScenariosList();
+  if (scenarios.length === 0) {
+    await generateDefaultScenario();
+    scenarios = await await getScenariosList();
+  }
+  res.json(scenarios);
+}
+
+/**
  * Open a new session with a user provided name. Name must be unique.
  * @param req HTTP request
  * @param res HTTP response
@@ -40,7 +59,7 @@ export async function openNewSession(
 ): Promise<void> {
   try {
     const session_name: string = req.body.session_name;
-
+    const scenario_id: string = req.body.scenario_id;
     // Checks
     if (!session_name)
       throw new CustomError(
@@ -63,7 +82,7 @@ export async function openNewSession(
       id: uuidv4(),
       status: "open",
     };
-    await createNewSession(session);
+    await createNewSession(session, scenario_id);
     res.status(201).json(session);
   } catch (error) {
     res.status(error.code).end(error.msg);
@@ -131,6 +150,7 @@ export async function getSessionInfos(
 
 const router = express.Router();
 
+router.get("/scenarios", getScenarios);
 router.get("/sessions/open", getOpenSessions);
 router.put("/session/", openNewSession);
 router.get(`/session/:session_id(${uuid_regex})`, getSessionInfos);

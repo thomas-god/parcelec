@@ -1,5 +1,5 @@
 import db from "../db/index";
-import { v4 as uuid } from "uuid";
+import { v4 as uuid, validate } from "uuid";
 import {
   Session,
   User,
@@ -12,6 +12,7 @@ import {
   PowerPlantWithPlanning,
   PhaseResults,
   SessionOptions,
+  ScenarioOptions,
 } from "./types";
 
 export class CustomError extends Error {
@@ -171,43 +172,26 @@ export async function getLastPhaseNo(session_id: string): Promise<number> {
   return res.length === 1 ? (res[0].phase_no as number) : null;
 }
 
-const power_plants_base: PowerPlantTemplate[] = [
-  {
-    type: "nuc",
-    p_min_mw: 400,
-    p_max_mw: 1300,
-    stock_max_mwh: -1,
-    price_eur_per_mwh: 17,
-  },
-  {
-    type: "therm",
-    p_min_mw: 150,
-    p_max_mw: 600,
-    stock_max_mwh: -1,
-    price_eur_per_mwh: 65,
-  },
-  {
-    type: "hydro",
-    p_min_mw: 50,
-    p_max_mw: 500,
-    stock_max_mwh: 5000,
-    price_eur_per_mwh: 0,
-  },
-];
-
-function givePowerPlantsToUser(
-  power_plants: PowerPlantTemplate[],
-  session_id: string,
-  user_id: string
-): PowerPlant[] {
-  return power_plants.map((pp) => {
-    return {
-      ...pp,
-      session_id: session_id,
-      user_id: user_id,
-      id: uuid(),
-    };
-  });
+/**
+ * Return a scenario's default portfolio.
+ * @param scenario_id Scenario ID
+ */
+async function getScenarioDefaultPortfolio(
+  scenario_id
+): Promise<PowerPlantTemplate[]> {
+  return (
+    await db.query(
+      `SELECT 
+        type,
+        p_min_mw,
+        p_max_mw,
+        stock_max_mwh,
+        price_eur_per_mwh
+      FROM scenarios_power_plants
+      WHERE scenario_id=$1`,
+      [scenario_id]
+    )
+  ).rows;
 }
 
 /**
@@ -218,7 +202,8 @@ export async function setDefaultPortfolio(
   session_id: string,
   user_id: string
 ): Promise<void> {
-  const pps = givePowerPlantsToUser(power_plants_base, session_id, user_id);
+  const scenario_id = await getScenarioID(session_id);
+  const pps = await getScenarioDefaultPortfolio(scenario_id);
   await Promise.all(
     pps.map(async (pp) => {
       await db.query(
@@ -235,9 +220,9 @@ export async function setDefaultPortfolio(
           )
           VALUES ($1, $2, $3, $4, $5, $6, $7, $8);`,
         [
-          pp.id,
-          pp.session_id,
-          pp.user_id,
+          uuid(),
+          session_id,
+          user_id,
           pp.type,
           pp.p_min_mw,
           pp.p_max_mw,
@@ -337,6 +322,7 @@ export async function getUserResults(
   if (phase_no === undefined) {
     phase_no = await getLastPhaseNo(session_id);
   }
+  let results = {} as PhaseResults;
   if (phase_no !== null) {
     const rows: PhaseResults[] = (
       await db.query(
@@ -359,10 +345,9 @@ export async function getUserResults(
         [phase_no, user_id]
       )
     ).rows;
-    return rows.length === 1 ? rows[0] : null;
-  } else {
-    return {} as PhaseResults;
+    if (rows.length === 1) results = rows[0];
   }
+  return results;
 }
 
 /**
@@ -503,7 +488,7 @@ export async function getAllBids(sessions_id: string): Promise<Bid[]> {
         price_eur_per_mwh
       FROM bids 
       WHERE 
-        sessions_id=$1 
+        session_id=$1 
         AND phase_no=$2;`,
       [sessions_id, phase_no]
     )
@@ -753,16 +738,21 @@ export async function getSessionOptions(
   session_id: string
 ): Promise<SessionOptions> {
   let options = {
+    scenario_id: "",
+    multi_game: false,
     bids_duration_sec: 0,
     plannings_duration_sec: 0,
     phases_number: 0,
     conso_forecast_mwh: [],
-    conso_price_eur: 0,
-    imbalance_costs_eur: 0,
+    conso_price_eur: [],
+    imbalance_costs_eur: [],
   };
   const query = (
     await db.query(
-      `SELECT 
+      `
+      SELECT 
+        scenario_id,
+        multi_game,
         bids_duration_sec,
         plannings_duration_sec,
         phases_number,
@@ -779,13 +769,29 @@ export async function getSessionOptions(
 }
 
 /**
+ * Return the scenario ID of a session.
+ * @param session_id Session ID
+ */
+export async function getScenarioID(session_id: string): Promise<string> {
+  const rows = (
+    await db.query(
+      `SELECT scenario_id
+    FROM options
+    WHERE session_id=$1`,
+      [session_id]
+    )
+  ).rows;
+  return rows.length === 1 ? rows[0].scenario_id : null;
+}
+
+/**
  * Insert a new session record and its corresponding options.
  * @param session Session object
- * @param options SessionOptions object
+ * @param scenario_id ID of the template scenario
  */
 export async function createNewSession(
   session: Session,
-  options?: SessionOptions
+  scenario_id?: string
 ): Promise<void> {
   // Create new session
   await db.query(
@@ -799,21 +805,17 @@ export async function createNewSession(
     [session.name, session.id, session.status]
   );
 
-  // Insert default options if no custom options provided
-  if (options === undefined) {
-    options = {
-      bids_duration_sec: 180,
-      plannings_duration_sec: 300,
-      phases_number: 3,
-      conso_forecast_mwh: [1000, 1800, 2400],
-      conso_price_eur: 35,
-      imbalance_costs_eur: 45,
-    };
+  // Insert default scenario options if no scenario provided
+  if (scenario_id === undefined || !validate(scenario_id)) {
+    scenario_id = await getDefaultScenarioID();
   }
+  const scenario_options = await getScenarioOptions(scenario_id);
   await db.query(
     `INSERT INTO options
       (
         session_id, 
+        scenario_id,
+        multi_game,
         bids_duration_sec,
         plannings_duration_sec,
         phases_number,
@@ -821,15 +823,194 @@ export async function createNewSession(
         conso_price_eur,
         imbalance_costs_eur
       )
-    VALUES ($1, $2, $3, $4, $5, $6, $7);`,
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
     [
       session.id,
-      options.bids_duration_sec,
-      options.plannings_duration_sec,
-      options.phases_number,
-      options.conso_forecast_mwh,
-      options.conso_price_eur,
-      options.imbalance_costs_eur,
+      scenario_id,
+      scenario_options.multi_game,
+      scenario_options.bids_duration_sec,
+      scenario_options.plannings_duration_sec,
+      scenario_options.phases_number,
+      scenario_options.conso_forecast_mwh,
+      scenario_options.conso_price_eur,
+      scenario_options.imbalance_costs_eur,
     ]
   );
+}
+
+/**
+ * Return the ID of the default game scenario.
+ * If the default scenario does not exists, it is created along
+ * with its default portfolio.
+ */
+export async function getDefaultScenarioID(): Promise<string> {
+  let id = "";
+  const res = (
+    await db.query(
+      `SELECT id
+    FROM scenarios_options
+    WHERE name='default';`,
+      []
+    )
+  ).rows;
+  if (res.length === 1) {
+    id = res[0].id;
+  } else {
+    id = await generateDefaultScenario();
+  }
+  return id;
+}
+type ScenarioInfos = Pick<
+  ScenarioOptions,
+  "id" | "name" | "description" | "difficulty" | "multi_game"
+>;
+/**
+ * Return a list of base informations on available scenarios.
+ */
+export async function getScenariosList(): Promise<ScenarioInfos[]> {
+  return (
+    await db.query(
+      `SELECT 
+        id,
+        name,
+        description,
+        difficulty,
+        multi_game
+      FROM scenarios_options`,
+      []
+    )
+  ).rows;
+}
+
+/**
+ * Insert into the database the default scenario options and power plants
+ * list.
+ */
+export async function generateDefaultScenario(): Promise<string> {
+  const id = uuid();
+  const default_options = {
+    id: id,
+    name: "default",
+    difficulty: "easy",
+    description: "Default scenario.",
+    multi_game: false,
+    bids_duration_sec: 180,
+    plannings_duration_sec: 300,
+    phases_number: 3,
+    conso_forecast_mwh: [1000, 1800, 2400],
+    conso_price_eur: [35, 35, 35],
+    imbalance_costs_eur: [20, 30, 40],
+  };
+
+  await db.query(
+    `INSERT INTO scenarios_options
+    (
+      id,
+      name,
+      difficulty,
+      description,
+      multi_game,
+      bids_duration_sec,
+      plannings_duration_sec,
+      phases_number,
+      conso_forecast_mwh,
+      conso_price_eur,
+      imbalance_costs_eur
+    )
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11);`,
+    [
+      default_options.id,
+      default_options.name,
+      default_options.difficulty,
+      default_options.description,
+      default_options.multi_game,
+      default_options.bids_duration_sec,
+      default_options.plannings_duration_sec,
+      default_options.phases_number,
+      default_options.conso_forecast_mwh,
+      default_options.conso_price_eur,
+      default_options.imbalance_costs_eur,
+    ]
+  );
+
+  const default_power_plants = [
+    {
+      type: "nuc",
+      p_min_mw: 400,
+      p_max_mw: 1300,
+      stock_max_mwh: -1,
+      price_eur_per_mwh: 17,
+    },
+    {
+      type: "therm",
+      p_min_mw: 150,
+      p_max_mw: 600,
+      stock_max_mwh: -1,
+      price_eur_per_mwh: 65,
+    },
+    {
+      type: "hydro",
+      p_min_mw: 50,
+      p_max_mw: 500,
+      stock_max_mwh: 5000,
+      price_eur_per_mwh: 0,
+    },
+  ];
+
+  await Promise.all(
+    default_power_plants.map(async (pp) => {
+      await db.query(
+        `INSERT INTO scenarios_power_plants
+        (
+          scenario_id,
+          type,
+          p_min_mw,
+          p_max_mw,
+          stock_max_mwh,
+          price_eur_per_mwh
+        )
+        VALUES ($1, $2, $3, $4, $5, $6)`,
+        [
+          id,
+          pp.type,
+          pp.p_min_mw,
+          pp.p_max_mw,
+          pp.stock_max_mwh,
+          pp.price_eur_per_mwh,
+        ]
+      );
+    })
+  );
+  return id;
+}
+
+/**
+ * Return the options of a scenario by its ID.
+ * @param scenario_id Scenario ID
+ */
+export async function getScenarioOptions(
+  scenario_id: string
+): Promise<ScenarioOptions> {
+  let scenario_options = {} as ScenarioOptions;
+  const res = (
+    await db.query(
+      `SELECT
+        id,
+        name,
+        description,
+        difficulty,
+        multi_game,
+        bids_duration_sec,
+        plannings_duration_sec,
+        phases_number,
+        conso_forecast_mwh,
+        conso_price_eur,
+        imbalance_costs_eur
+      FROM scenarios_options
+      WHERE id=$1`,
+      [scenario_id]
+    )
+  ).rows;
+  if (res.length === 1) scenario_options = res[0];
+  return scenario_options;
 }
