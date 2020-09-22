@@ -129,3 +129,26 @@ export interface ClientMessage {
   };
   data: any;
 }
+
+export interface ScenarioOptions {
+  id: string;
+  name: string;
+  description: string;
+  difficulty: "easy" | "medium" | "hard";
+  multi_game: boolean;
+  bids_duration_sec: number;
+  plannings_duration_sec: number;
+  phases_number: number;
+  conso_forecast_mwh: number[];
+  conso_price_eur: number[];
+  imbalance_costs_eur: number[];
+}
+
+export interface ScenarioPowerPlant {
+  scenario_id: string;
+  type: "nuc" | "therm" | "hydro" | "ren" | "storage";
+  p_min_mw: number;
+  p_max_mw: number;
+  stock_max_mwh: number;
+  price_eur_per_mwh: number;
+}
