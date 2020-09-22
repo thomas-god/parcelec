@@ -38,11 +38,12 @@ export const actions: ActionTree<WebSocketState, RootState> = {
     if (state.ws?.OPEN) state.ws.close();
 
     // Open new WebSocket connection
+    const ws_url = context.rootState.ws_url;
     const session_id = context.rootState.session.id;
     const user_id = context.rootState.user.user_id;
     const username = context.rootState.user.username;
     const socket = new WebSocket(
-      `wss://api.parcelec.org/auction?auction_id=${session_id}&user_id=${user_id}&username=${username}`
+      `${ws_url}/auction?auction_id=${session_id}&user_id=${user_id}&username=${username}`
     );
 
     socket.addEventListener("close", () => onCloseCallback(context.commit));
