@@ -1,5 +1,5 @@
 import db from "../db/index";
-import { v4 as uuid } from "uuid";
+import { v4 as uuid, validate } from "uuid";
 import {
   Session,
   User,
@@ -787,7 +787,7 @@ export async function getScenarioID(session_id: string): Promise<string> {
 /**
  * Insert a new session record and its corresponding options.
  * @param session Session object
- * @param options SessionOptions object
+ * @param scenario_id ID of the template scenario
  */
 export async function createNewSession(
   session: Session,
@@ -806,7 +806,7 @@ export async function createNewSession(
   );
 
   // Insert default scenario options if no scenario provided
-  if (scenario_id === undefined) {
+  if (scenario_id === undefined || !validate(scenario_id)) {
     scenario_id = await getDefaultScenarioID();
   }
   const scenario_options = await getScenarioOptions(scenario_id);
