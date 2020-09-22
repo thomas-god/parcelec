@@ -872,7 +872,7 @@ async function generateDefaultScenario(): Promise<string> {
     name: "default",
     difficulty: "easy",
     description: "Default scenario.",
-    multi_game: true,
+    multi_game: false,
     bids_duration_sec: 180,
     plannings_duration_sec: 300,
     phases_number: 3,
