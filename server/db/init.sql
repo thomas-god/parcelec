@@ -8,6 +8,7 @@ CREATE TABLE sessions
 CREATE TABLE options 
 (
   session_id UUID REFERENCES sessions (id) ON DELETE CASCADE,
+  multi_game BOOLEAN DEFAULT FALSE,
   bids_duration_sec INT NOT NULL CHECK (bids_duration_sec > 0),
   plannings_duration_sec INT NOT NULL CHECK (plannings_duration_sec > 0),
   phases_number INT NOT NULL CHECK (phases_number > 0),

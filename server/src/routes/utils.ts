@@ -753,6 +753,7 @@ export async function getSessionOptions(
   session_id: string
 ): Promise<SessionOptions> {
   let options = {
+    multi_game: false,
     bids_duration_sec: 0,
     plannings_duration_sec: 0,
     phases_number: 0,
@@ -762,7 +763,9 @@ export async function getSessionOptions(
   };
   const query = (
     await db.query(
-      `SELECT 
+      `
+      SELECT 
+        multi_game,
         bids_duration_sec,
         plannings_duration_sec,
         phases_number,
@@ -802,6 +805,7 @@ export async function createNewSession(
   // Insert default options if no custom options provided
   if (options === undefined) {
     options = {
+      multi_game: true,
       bids_duration_sec: 180,
       plannings_duration_sec: 300,
       phases_number: 3,
@@ -814,6 +818,7 @@ export async function createNewSession(
     `INSERT INTO options
       (
         session_id, 
+        multi_game,
         bids_duration_sec,
         plannings_duration_sec,
         phases_number,
@@ -821,9 +826,10 @@ export async function createNewSession(
         conso_price_eur,
         imbalance_costs_eur
       )
-    VALUES ($1, $2, $3, $4, $5, $6, $7);`,
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
     [
       session.id,
+      options.multi_game,
       options.bids_duration_sec,
       options.plannings_duration_sec,
       options.phases_number,
