@@ -1,10 +1,10 @@
 <template>
   <div id="nav">
-    <router-link to="/">Accueil ⚡️</router-link>
+    <router-link to="/">Accueil</router-link>
     |
-    <router-link to="/join">Rejoindre une partie</router-link>
+    <router-link to="/join">Rejoindre</router-link>
     |
-    <router-link to="/create">Créer une partie</router-link>
+    <router-link to="/create">Créer</router-link>
   </div>
 </template>
 
