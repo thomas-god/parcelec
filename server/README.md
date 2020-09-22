@@ -57,7 +57,13 @@ The following describes the various routes composing the parcelec API.
 ### Open a new session (session_name must be unique)
  - Route: `PUT /session`
     - Type : `application/json`,
-    - Body : `{session_name: string}`
+    - Body : 
+    ```js
+      {
+        session_name: string,
+        scenario_id?: string
+      }
+    ```
  - Response : 
     - Code : `201` on success
     - Type : `application/json`,

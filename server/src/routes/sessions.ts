@@ -64,7 +64,7 @@ export async function openNewSession(
 ): Promise<void> {
   try {
     const session_name: string = req.body.session_name;
-
+    const scenario_id: string = req.body.scenario_id;
     // Checks
     if (!session_name)
       throw new CustomError(
@@ -87,7 +87,7 @@ export async function openNewSession(
       id: uuidv4(),
       status: "open",
     };
-    await createNewSession(session);
+    await createNewSession(session, scenario_id);
     res.status(201).json(session);
   } catch (error) {
     res.status(error.code).end(error.msg);
@@ -155,6 +155,7 @@ export async function getSessionInfos(
 
 const router = express.Router();
 
+router.get("/scenarios", getScenarios);
 router.get("/sessions/open", getOpenSessions);
 router.put("/session/", openNewSession);
 router.get(`/session/:session_id(${uuid_regex})`, getSessionInfos);
