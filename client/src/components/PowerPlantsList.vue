@@ -7,13 +7,13 @@
       :key="`pp-list-${pp.id}`"
       :power_plant="pp"
       :power_max_mw="power_plants_max_power_mw"
-      :editable="can_post_planning"
+      :editable="dummy || can_post_planning"
     />
     <div class="actions">
-      <button @click="updatePlanning" :disabled="!can_post_planning">
+      <button @click="updatePlanning" :disabled="!dummy && !can_post_planning">
         Envoyer
       </button>
-      <button @click="resetPlanning" :disabled="!can_post_planning">
+      <button @click="resetPlanning" :disabled="!dummy && !can_post_planning">
         Reset
       </button>
     </div>
@@ -32,6 +32,7 @@ const portfolioModule = namespace("portfolio");
 
 @Component({ components: { PowerPlantItem } })
 export default class PowerPlantsList extends Vue {
+  @Prop({ default: false }) dummy!: boolean;
   @portfolioModule.Getter power_plants!: PowerPlant[];
   @portfolioModule.Action resetPlanning!: () => {};
   @portfolioModule.Action onSuccessfulPlanningUpdate!: () => {};
@@ -51,26 +52,30 @@ export default class PowerPlantsList extends Vue {
   }
 
   async updatePlanning() {
-    const planning_formatted = this.power_plants.map((pp) => {
-      return {
-        user_id: this.user_id,
-        session_id: this.session_id,
-        plant_id: pp.id,
-        p_mw: pp.planning_modif,
-      };
-    });
-    const res = await fetch(
-      `${this.api_url}/session/${this.session_id}/user/${this.user_id}/planning`,
-      {
-        method: "PUT",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify(planning_formatted),
+    if (!this.dummy) {
+      const planning_formatted = this.power_plants.map((pp) => {
+        return {
+          user_id: this.user_id,
+          session_id: this.session_id,
+          plant_id: pp.id,
+          p_mw: pp.planning_modif,
+        };
+      });
+      const res = await fetch(
+        `${this.api_url}/session/${this.session_id}/user/${this.user_id}/planning`,
+        {
+          method: "PUT",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify(planning_formatted),
+        }
+      );
+      if (res.status === 201) {
+        this.onSuccessfulPlanningUpdate();
+      } else {
+        console.log(await res.text());
       }
-    );
-    if (res.status === 201) {
-      this.onSuccessfulPlanningUpdate();
     } else {
-      console.log(await res.text());
+      this.onSuccessfulPlanningUpdate();
     }
   }
 }

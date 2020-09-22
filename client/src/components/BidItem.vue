@@ -1,6 +1,6 @@
 <template>
   <div class="bid__box" :style="borderStyle">
-    <span class="bid__input" v-if="edit && can_bid">
+    <span class="bid__input" v-if="edit">
       <strong>{{ actionString }} : </strong>
       <input
         type="number"
@@ -15,12 +15,12 @@
         v-model="price_eur_per_mwh"
       />
       <span> €/MWh </span>
-      <button @click="postBid" :disabled="!can_bid">➕</button>
+      <button @click="postBid" :disabled="!dummy && !can_bid">➕</button>
     </span>
     <span v-else class="bids__list">
       <span class="bids__list-puce">📋</span>
       {{ `${bid.volume_mwh} MWh, à ${bid.price_eur_per_mwh} €/MWh` }}
-      <button @click="deleteBid" :disabled="!can_bid">🗑</button>
+      <button @click="deleteBid" :disabled="!dummy && !can_bid">🗑</button>
     </span>
     <span class="bid__error">{{ volume_mwh_err_msg }}</span>
   </div>
@@ -31,6 +31,7 @@ import { Component, Prop, Vue, Watch } from "vue-property-decorator";
 import { use } from "vue/types/umd";
 import { State, Action, Getter, namespace } from "vuex-class";
 import { Bid } from "../store/bids";
+import { v4 as uuid } from "uuid";
 
 const sessionModule = namespace("session");
 const userModule = namespace("user");
@@ -41,6 +42,7 @@ export default class BidItem extends Vue {
   @Prop() type!: "buy" | "sell";
   @Prop() edit!: boolean;
   @Prop() bid!: Bid;
+  @Prop({ default: false }) dummy!: boolean;
   @sessionModule.Getter can_bid!: boolean;
   volume_mwh = 0;
   volume_mwh_err_msg = "";
@@ -52,7 +54,6 @@ export default class BidItem extends Vue {
 
   @Watch("volume_mwh")
   validateVolume(): boolean {
-    console.log(this.volume_mwh_err_msg);
     let flag = true;
     if (isNaN(Number(this.volume_mwh))) {
       flag = false;
@@ -77,45 +78,58 @@ export default class BidItem extends Vue {
   @userModule.Getter user_id!: string;
   @bidsModule.Mutation PUSH_BID!: (bid: Bid) => void;
   async postBid(): Promise<void> {
-    const res = await fetch(
-      `${this.api_url}/session/${this.session_id}/user/${this.user_id}/bid`,
-      {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          bid: {
-            type: this.type,
-            volume_mwh: this.volume_mwh,
-            price_eur_per_mwh: this.price_eur_per_mwh,
-          },
-        }),
+    if (!this.dummy) {
+      const res = await fetch(
+        `${this.api_url}/session/${this.session_id}/user/${this.user_id}/bid`,
+        {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            bid: {
+              type: this.type,
+              volume_mwh: this.volume_mwh,
+              price_eur_per_mwh: this.price_eur_per_mwh,
+            },
+          }),
+        }
+      );
+      if (res.status === 201) {
+        const bid_id = (await res.json()).bid_id;
+        this.PUSH_BID({
+          type: this.type,
+          volume_mwh: this.volume_mwh,
+          price_eur_per_mwh: this.price_eur_per_mwh,
+          id: bid_id,
+        });
+      } else {
+        console.log(await res.text());
       }
-    );
-    if (res.status === 201) {
-      const bid_id = (await res.json()).bid_id;
+    } else {
       this.PUSH_BID({
         type: this.type,
         volume_mwh: this.volume_mwh,
         price_eur_per_mwh: this.price_eur_per_mwh,
-        id: bid_id,
+        id: uuid(),
       });
-    } else {
-      console.log(await res.text());
     }
   }
 
   @bidsModule.Mutation DELETE_BID!: (bid_id: string) => void;
   async deleteBid(): Promise<void> {
-    const res = await fetch(
-      `${this.api_url}/session/${this.session_id}/user/${this.user_id}/bid/${this.bid.id}`,
-      {
-        method: "DELETE",
+    if (!this.dummy) {
+      const res = await fetch(
+        `${this.api_url}/session/${this.session_id}/user/${this.user_id}/bid/${this.bid.id}`,
+        {
+          method: "DELETE",
+        }
+      );
+      if (res.status === 200) {
+        this.DELETE_BID(this.bid.id);
+      } else {
+        console.log(await res.text());
       }
-    );
-    if (res.status === 200) {
-      this.DELETE_BID(this.bid.id);
     } else {
-      console.log(await res.text());
+      this.DELETE_BID(this.bid.id);
     }
   }
 
