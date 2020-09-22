@@ -362,8 +362,6 @@ export async function getUserResults(
     ).rows;
     if (rows.length === 1) results = rows[0];
   }
-  console.log(results);
-
   return results;
 }
 
@@ -760,8 +758,8 @@ export async function getSessionOptions(
     plannings_duration_sec: 0,
     phases_number: 0,
     conso_forecast_mwh: [],
-    conso_price_eur: 0,
-    imbalance_costs_eur: 0,
+    conso_price_eur: [],
+    imbalance_costs_eur: [],
   };
   const query = (
     await db.query(
@@ -812,8 +810,8 @@ export async function createNewSession(
       plannings_duration_sec: 300,
       phases_number: 3,
       conso_forecast_mwh: [1000, 1800, 2400],
-      conso_price_eur: 35,
-      imbalance_costs_eur: 45,
+      conso_price_eur: [35, 35, 35],
+      imbalance_costs_eur: [20, 30, 40],
     };
   }
   await db.query(

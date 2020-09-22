@@ -14,8 +14,8 @@ export interface SessionOptions {
   plannings_duration_sec: number;
   phases_number: number;
   conso_forecast_mwh: number[];
-  conso_price_eur: number;
-  imbalance_costs_eur: number;
+  conso_price_eur: number[];
+  imbalance_costs_eur: number[];
 }
 
 export interface User {

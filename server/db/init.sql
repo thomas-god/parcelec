@@ -13,8 +13,8 @@ CREATE TABLE options
   plannings_duration_sec INT NOT NULL CHECK (plannings_duration_sec > 0),
   phases_number INT NOT NULL CHECK (phases_number > 0),
   conso_forecast_mwh INT[] CHECK (array_length(conso_forecast_mwh, 1) = phases_number),
-  conso_price_eur REAL NOT NULL CHECK (conso_price_eur > 0),
-  imbalance_costs_eur REAL NOT NULL CHECK (imbalance_costs_eur > 0)
+  conso_price_eur REAL[] NOT NULL CHECK (array_length(conso_price_eur, 1) = phases_number),
+  imbalance_costs_eur REAL[] NOT NULL CHECK (array_length(imbalance_costs_eur, 1) = phases_number),
 );
 
 CREATE TABLE users 
