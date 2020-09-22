@@ -1,8 +1,8 @@
 <template>
   <div>
-    <h2>Nouvelle partie</h2>
+    <h1>Nouvelle partie</h1>
 
-    <h3>Choisissez un scenario ...</h3>
+    <h2>Choisissez un scenario ...</h2>
     <ul class="sessions_list">
       <li v-for="s in scenarios" :key="s.name" @click="scenario_id = s.id">
         <span :class="s.id === scenario_id ? 'scenario__selected' : ''">{{
@@ -12,17 +12,17 @@
     </ul>
     <div class="session_open">
       <label for="session_open_input">
-        <h3>... et choisissez un nom de partie</h3>
+        <h2>... et un nom de partie</h2>
       </label>
-      <div>
-        <input
-          type="text"
-          v-model="new_session_name"
-          v-on:keyup.enter="openSession()"
-          id="session_open_input"
-        />
-        <button @click="openSession()">Open</button>
-      </div>
+
+      <input
+        type="text"
+        v-model="new_session_name"
+        v-on:keyup.enter="openSession()"
+        id="session_open_input"
+      />
+      <button @click="openSession()">Créer</button>
+
       <span v-if="new_session_name_err" style="color: red">{{
         new_session_name_err_msg
       }}</span>
@@ -115,6 +115,7 @@ ul {
 
 li span {
   padding: 0 0.5rem;
+  font-size: 1.3rem;
 }
 
 li:hover span,
@@ -125,6 +126,18 @@ li:hover span,
 .session_open {
   display: flex;
   flex-direction: column;
+  align-items: center;
   margin: auto;
+}
+
+.session_open button {
+  margin-top: 1rem;
+
+  font-size: 1rem;
+}
+
+#session_open_input {
+  font-size: 1.3rem;
+  text-align: center;
 }
 </style>
