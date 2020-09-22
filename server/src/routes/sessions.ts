@@ -30,6 +30,30 @@ export async function getOpenSessions(
 }
 
 /**
+ * Get the list of available scenarios.
+ * @param req HTTP request
+ * @param res HTTP response
+ */
+export async function getScenarios(
+  req: express.Request,
+  res: express.Response
+): Promise<void> {
+  const scenarios = (
+    await db.query(
+      `SELECT 
+        id,
+        name,
+        description,
+        difficulty,
+        multi_game
+      FROM scenarios_options`,
+      []
+    )
+  ).rows;
+  res.json(scenarios);
+}
+
+/**
  * Open a new session with a user provided name. Name must be unique.
  * @param req HTTP request
  * @param res HTTP response
