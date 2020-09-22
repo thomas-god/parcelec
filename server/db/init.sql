@@ -120,7 +120,7 @@ CREATE TABLE clearings
 
 CREATE TABLE exchanges 
 (
-  user_id UUID REFERENCES users (id),
+  user_id UUID REFERENCES users (id) ON DELETE CASCADE,
   session_id UUID,
   phase_no INT,
   FOREIGN KEY (session_id, phase_no) REFERENCES phases (session_id, phase_no) ON DELETE CASCADE,
