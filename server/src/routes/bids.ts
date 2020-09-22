@@ -18,21 +18,10 @@ import {
   getUserBids,
   getUserBid,
   deleteUserBid,
-  getPhaseInfos,
   getClearing,
   getUserEnergyExchanges,
+  CustomError,
 } from "./utils";
-
-class CustomError extends Error {
-  msg: string;
-  code: number;
-
-  constructor(msg: string, code?: number, ...params) {
-    super(...params);
-    this.msg = msg;
-    this.code = code || 400;
-  }
-}
 
 // ---------------------- Routing Functions
 
@@ -121,8 +110,6 @@ export async function getUserBidsRoute(
     const session = await getSession(session_id);
     if (session === null)
       throw new CustomError("Error, no session found with this ID", 404);
-    if (session.status !== "running")
-      throw new CustomError("Error, the session is not running");
     const user = await getUser(session_id, user_id);
     if (user === null)
       throw new CustomError("Error, no user found with this ID", 404);
@@ -157,8 +144,6 @@ export async function deleteUserBidRoute(
     const session = await getSession(session_id);
     if (session === null)
       throw new CustomError("Error, no session found with this ID", 404);
-    if (session.status !== "running")
-      throw new CustomError("Error, the session is not running");
     const user = await getUser(session_id, user_id);
     if (user === null)
       throw new CustomError("Error, no user found with this ID", 404);
@@ -194,12 +179,6 @@ export async function getClearingRoute(
     const session = await getSession(session_id);
     if (session === null)
       throw new CustomError("Error, no session found with this ID", 404);
-    if (session.status !== "running")
-      throw new CustomError("Error, the session is not running");
-
-    const phase_infos = await getPhaseInfos(session_id);
-    if (!phase_infos.clearing_available)
-      throw new CustomError("Error, clearing is not done.");
 
     const clearing = await getClearing(session_id);
     res.status(200).json(clearing);
@@ -231,18 +210,11 @@ export async function getUserEnergyExchangesRoute(
     // Session exists and is running
     if (session === null)
       throw new CustomError("Error, no session found with this ID", 404);
-    if (session.status !== "running")
-      throw new CustomError("Error, the session is not running");
 
     // User exists
     const user = await getUser(session_id, user_id);
     if (user === null)
       throw new CustomError("Error, no user found with this ID", 404);
-
-    // Clearing informations are available
-    const phase_infos = await getPhaseInfos(session_id);
-    if (!phase_infos.clearing_available)
-      throw new CustomError("Error, clearing is not done.");
 
     // Getting and sending the exchanges
     const exchanges = await getUserEnergyExchanges(session_id, user_id);

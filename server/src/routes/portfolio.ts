@@ -20,18 +20,8 @@ import {
   getPlanning,
   addPlanningToPortfolio,
   getUserResults,
+  CustomError,
 } from "./utils";
-
-class CustomError extends Error {
-  msg: string;
-  code: number;
-
-  constructor(msg: string, code?: number, ...params) {
-    super(...params);
-    this.msg = msg;
-    this.code = code || 400;
-  }
-}
 
 // ---------------------- Routing Functions
 
@@ -84,8 +74,6 @@ export async function getUserConso(
     const session = await getSession(session_id);
     if (session === null)
       throw new CustomError("Error, no session found with this ID", 404);
-    if (session.status !== "running")
-      throw new CustomError("Error, the session is not running");
     const user = await getUser(session_id, user_id);
     if (user === null)
       throw new CustomError("Error, no user found with this ID", 404);
@@ -154,8 +142,6 @@ export async function getUserPlanningRoute(
     const session = await getSession(session_id);
     if (session === null)
       throw new CustomError("Error, no session found with this ID", 404);
-    if (session.status !== "running")
-      throw new CustomError("Error, the session is not running");
     const user = await getUser(session_id, user_id);
     if (user === null)
       throw new CustomError("Error, no user found with this ID", 404);
