@@ -172,43 +172,26 @@ export async function getLastPhaseNo(session_id: string): Promise<number> {
   return res.length === 1 ? (res[0].phase_no as number) : null;
 }
 
-const power_plants_base: PowerPlantTemplate[] = [
-  {
-    type: "nuc",
-    p_min_mw: 400,
-    p_max_mw: 1300,
-    stock_max_mwh: -1,
-    price_eur_per_mwh: 17,
-  },
-  {
-    type: "therm",
-    p_min_mw: 150,
-    p_max_mw: 600,
-    stock_max_mwh: -1,
-    price_eur_per_mwh: 65,
-  },
-  {
-    type: "hydro",
-    p_min_mw: 50,
-    p_max_mw: 500,
-    stock_max_mwh: 5000,
-    price_eur_per_mwh: 0,
-  },
-];
-
-function givePowerPlantsToUser(
-  power_plants: PowerPlantTemplate[],
-  session_id: string,
-  user_id: string
-): PowerPlant[] {
-  return power_plants.map((pp) => {
-    return {
-      ...pp,
-      session_id: session_id,
-      user_id: user_id,
-      id: uuid(),
-    };
-  });
+/**
+ * Return a scenario's default portfolio.
+ * @param scenario_id Scenario ID
+ */
+async function getScenarioDefaultPortfolio(
+  scenario_id
+): Promise<PowerPlantTemplate[]> {
+  return (
+    await db.query(
+      `SELECT 
+        type,
+        p_min_mw,
+        p_max_mw,
+        stock_max_mwh,
+        price_eur_per_mwh
+      FROM scenarios_power_plants
+      WHERE scenario_id=$1`,
+      [scenario_id]
+    )
+  ).rows;
 }
 
 /**
@@ -219,7 +202,8 @@ export async function setDefaultPortfolio(
   session_id: string,
   user_id: string
 ): Promise<void> {
-  const pps = givePowerPlantsToUser(power_plants_base, session_id, user_id);
+  const scenario_id = await getScenarioID(session_id);
+  const pps = await getScenarioDefaultPortfolio(scenario_id);
   await Promise.all(
     pps.map(async (pp) => {
       await db.query(
@@ -236,9 +220,9 @@ export async function setDefaultPortfolio(
           )
           VALUES ($1, $2, $3, $4, $5, $6, $7, $8);`,
         [
-          pp.id,
-          pp.session_id,
-          pp.user_id,
+          uuid(),
+          session_id,
+          user_id,
           pp.type,
           pp.p_min_mw,
           pp.p_max_mw,
@@ -782,6 +766,22 @@ export async function getSessionOptions(
   ).rows;
   if (query.length === 1) options = query[0];
   return options;
+}
+
+/**
+ * Return the scenario ID of a session.
+ * @param session_id Session ID
+ */
+export async function getScenarioID(session_id: string): Promise<string> {
+  const rows = (
+    await db.query(
+      `SELECT scenario_id
+    FROM options
+    WHERE session_id=$1`,
+      [session_id]
+    )
+  ).rows;
+  return rows.length === 1 ? rows[0].scenario_id : null;
 }
 
 /**
