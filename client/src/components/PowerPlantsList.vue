@@ -14,7 +14,7 @@
         Envoyer
       </button>
       <button @click="resetPlanning" :disabled="!dummy && !can_post_planning">
-        Reset
+        Effacer
       </button>
     </div>
   </div>
