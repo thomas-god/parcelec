@@ -337,6 +337,7 @@ export async function getUserResults(
   if (phase_no === undefined) {
     phase_no = await getLastPhaseNo(session_id);
   }
+  let results = {} as PhaseResults;
   if (phase_no !== null) {
     const rows: PhaseResults[] = (
       await db.query(
@@ -359,10 +360,11 @@ export async function getUserResults(
         [phase_no, user_id]
       )
     ).rows;
-    return rows.length === 1 ? rows[0] : null;
-  } else {
-    return {} as PhaseResults;
+    if (rows.length === 1) results = rows[0];
   }
+  console.log(results);
+
+  return results;
 }
 
 /**
