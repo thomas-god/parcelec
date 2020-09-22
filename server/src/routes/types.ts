@@ -9,6 +9,7 @@ export interface Session {
 }
 
 export interface SessionOptions {
+  scenario_id: string;
   multi_game: boolean;
   bids_duration_sec: number;
   plannings_duration_sec: number;
