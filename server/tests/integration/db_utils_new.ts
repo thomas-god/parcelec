@@ -45,3 +45,30 @@ export async function insertNewSession(
     .send({ session_name: session_name, scenario_id: scenario_id });
   return res.body.id;
 }
+
+/**
+ * Register a new user to a game session and return its ID.
+ * @param session_id Session ID
+ * @param username Username
+ */
+export async function insertNewUser(
+  session_id: string,
+  username: string
+): Promise<string> {
+  const res = await superagent
+    .put(`${url}/session/${session_id}/register_user`)
+    .send({ username: username });
+  return res.body.user_id;
+}
+
+/**
+ * Register a new user to a game session and return its ID.
+ * @param session_id Session ID
+ * @param user_id User ID
+ */
+export async function setUserReady(
+  session_id: string,
+  user_id: string
+): Promise<void> {
+  await superagent.put(`${url}/session/${session_id}/user/${user_id}/ready`);
+}
