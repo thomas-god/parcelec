@@ -82,7 +82,7 @@ export async function openNewSession(
       id: uuidv4(),
       status: "open",
     };
-    await createNewSession(session, scenario_id);
+    await createNewSession(session);
     res.status(201).json(session);
   } catch (error) {
     res.status(error.code).end(error.msg);
