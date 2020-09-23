@@ -26,8 +26,13 @@
       </div>
     </div>
     <div class="pp__infos">
-      Coût : <strong>{{ power_plant.price_eur_per_mwh }}</strong> €/MWh, Stock :
-      <strong>{{ stock }}</strong> {{ stock === "∞" ? "" : "MWh" }}
+      <span>
+        Coût :
+        <strong>{{ power_plant.price_eur_per_mwh }}</strong> €/MWh,
+      </span>
+      <span>
+        Stock : <strong>{{ stock }}</strong> {{ stock === "∞" ? "" : "MWh" }}
+      </span>
     </div>
   </div>
 </template>
@@ -136,20 +141,40 @@ export default class PowerPlantItem extends Vue {
 </script>
 
 <style scoped>
-.pp__grid {
-  display: grid;
-  grid-template-areas:
-    "vide infos"
-    "logo barre"
-    "X legend";
-  grid-template-columns: 50px 1fr;
-  grid-template-rows: 20px 50px 30px;
+@media screen and (max-width: 400px) {
+  .pp__grid {
+    display: grid;
+    grid-template-areas:
+      "logo infos"
+      "X legend"
+      "barre barre";
+    grid-template-columns: 50px 1fr;
+    grid-template-rows: 45px 30px 60px;
+  }
+
+  .pp__logo {
+    padding-bottom: 10px;
+  }
+  .pp__infos {
+    display: flex;
+    flex-direction: column;
+  }
+}
+@media screen and (min-width: 400px) {
+  .pp__grid {
+    display: grid;
+    grid-template-areas:
+      "vide infos"
+      "logo barre"
+      "X legend";
+    grid-template-columns: 50px 1fr;
+    grid-template-rows: 20px 50px 30px;
+  }
 }
 
 .pp__logo {
   grid-area: logo;
   align-self: center;
-  text-align: start;
   font-size: 2rem;
 }
 
@@ -195,6 +220,37 @@ export default class PowerPlantItem extends Vue {
 
 /*-------------------- Input range default styling ----------------------*/
 
+@media screen and (max-width: 400px) {
+  /* Cannot merge selectors */
+  input[type="range"] {
+    height: 60px;
+  }
+  input[type="range"]::-webkit-slider-thumb {
+    height: 60px;
+  }
+  input[type="range"]::-moz-range-thumb {
+    height: 60px;
+  }
+  input[type="range"]::-ms-thumb {
+    height: 60px;
+  }
+}
+@media screen and (min-width: 400px) {
+  /* Cannot merge selectors */
+  input[type="range"] {
+    height: 50px;
+  }
+  input[type="range"]::-webkit-slider-thumb {
+    height: 50px;
+  }
+  input[type="range"]::-moz-range-thumb {
+    height: 50px;
+  }
+  input[type="range"]::-ms-thumb {
+    height: 50px;
+  }
+}
+
 .pp__barre__slider {
   position: absolute;
   left: 0;
@@ -208,7 +264,6 @@ input[type="range"] {
   -webkit-appearance: none; /* Hides the slider so that custom slider can be made */
   width: 100%; /* Specific width is required for Firefox. */
   background: transparent; /* Otherwise white in Chrome */
-  height: 50px;
 }
 
 input[type="range"]::-webkit-slider-thumb {
@@ -234,8 +289,7 @@ input[type="range"]::-ms-track {
 input[type="range"]::-webkit-slider-thumb {
   -webkit-appearance: none;
   border: 1px solid #000000;
-  height: 50px;
-  width: 5px;
+  width: 7px;
   border-radius: 3px;
   background: #ffffff;
   cursor: pointer;
@@ -247,7 +301,6 @@ input[type="range"]::-webkit-slider-thumb {
 input[type="range"]::-moz-range-thumb {
   box-shadow: 1px 1px 1px #000000, 0px 0px 1px #0d0d0d;
   border: 1px solid #000000;
-  height: 50px;
   width: 4px;
   border-radius: 3px;
   background: #ffffff;
