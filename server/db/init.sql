@@ -28,6 +28,7 @@ CREATE TABLE scenarios_power_plants
 CREATE TABLE sessions 
 (
   id UUID PRIMARY KEY,
+  scenario_id UUID REFERENCES scenarios_options (id) ON DELETE CASCADE,
   name TEXT UNIQUE,
   status TEXT CHECK (status IN ('open','running', 'closed'))
 );
