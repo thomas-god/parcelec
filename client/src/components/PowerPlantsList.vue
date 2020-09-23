@@ -94,6 +94,7 @@ export default class PowerPlantsList extends Vue {
 .actions {
   display: flex;
   flex-direction: row;
+  justify-content: center;
   margin: 1rem;
 }
 .actions button {
