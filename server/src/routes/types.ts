@@ -3,8 +3,9 @@
  */
 
 export interface Session {
-  name: string;
   id: string;
+  scenario_id?: string;
+  name: string;
   status: "open" | "running" | "closed";
 }
 

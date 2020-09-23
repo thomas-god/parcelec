@@ -787,29 +787,26 @@ export async function getScenarioID(session_id: string): Promise<string> {
 /**
  * Insert a new session record and its corresponding options.
  * @param session Session object
- * @param scenario_id ID of the template scenario
  */
-export async function createNewSession(
-  session: Session,
-  scenario_id?: string
-): Promise<void> {
+export async function createNewSession(session: Session): Promise<void> {
+  // Insert default scenario options if no scenario provided
+  if (session.scenario_id === undefined || !validate(session.scenario_id)) {
+    session.scenario_id = await getDefaultScenarioID();
+  }
   // Create new session
   await db.query(
     `INSERT INTO sessions 
       (
         name, 
         id, 
-        status
+        status,
+        scenario_id
       ) 
-    VALUES($1, $2, $3);`,
-    [session.name, session.id, session.status]
+    VALUES($1, $2, $3, $4);`,
+    [session.name, session.id, session.status, session.scenario_id]
   );
 
-  // Insert default scenario options if no scenario provided
-  if (scenario_id === undefined || !validate(scenario_id)) {
-    scenario_id = await getDefaultScenarioID();
-  }
-  const scenario_options = await getScenarioOptions(scenario_id);
+  const scenario_options = await getScenarioOptions(session.scenario_id);
   await db.query(
     `INSERT INTO options
       (
@@ -826,7 +823,7 @@ export async function createNewSession(
     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
     [
       session.id,
-      scenario_id,
+      session.scenario_id,
       scenario_options.multi_game,
       scenario_options.bids_duration_sec,
       scenario_options.plannings_duration_sec,
