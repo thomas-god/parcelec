@@ -95,7 +95,6 @@ export default class BidsList extends Vue {
 <style scoped>
 .bid__action {
   border: 2px solid grey;
-  margin: 1rem;
 }
 
 .bid__list {

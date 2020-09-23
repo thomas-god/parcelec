@@ -1,28 +1,40 @@
 <template>
   <div class="bid__box" :style="borderStyle">
-    <span class="bid__input" v-if="edit">
-      <strong>{{ actionString }} : </strong>
-      <input
-        type="number"
-        min="0"
-        class="bid__number_input"
-        v-model="volume_mwh"
-      />
-      <span> MWh à </span>
-      <input
-        type="number"
-        class="bid__number_input"
-        v-model="price_eur_per_mwh"
-      />
-      <span> €/MWh </span>
-      <button @click="postBid" :disabled="!dummy && !can_bid">➕</button>
-    </span>
+    <div class="bid__input" v-if="edit">
+      <strong style="grid-area: type;">{{ actionString }} : </strong>
+      <span style="grid-area: inputs;">
+        <input
+          type="number"
+          min="0"
+          class="bid__number_input"
+          v-model="volume_mwh"
+        />
+        <span> MWh à </span>
+        <input
+          type="number"
+          class="bid__number_input"
+          v-model="price_eur_per_mwh"
+        />
+        <span> €/MWh </span>
+      </span>
+      <button
+        @click="postBid"
+        :disabled="!dummy && !can_bid"
+        style="grid-area: btn"
+      >
+        ➕
+      </button>
+      <span class="bid__error" style="grid-area: err">{{
+        inputs_err_msg.volume === ""
+          ? inputs_err_msg.price
+          : inputs_err_msg.volume
+      }}</span>
+    </div>
     <span v-else class="bids__list">
       <span class="bids__list-puce">📋</span>
       {{ `${bid.volume_mwh} MWh, à ${bid.price_eur_per_mwh} €/MWh` }}
       <button @click="deleteBid" :disabled="!dummy && !can_bid">🗑</button>
     </span>
-    <span class="bid__error">{{ volume_mwh_err_msg }}</span>
   </div>
 </template>
 
@@ -45,8 +57,11 @@ export default class BidItem extends Vue {
   @Prop({ default: false }) dummy!: boolean;
   @sessionModule.Getter can_bid!: boolean;
   volume_mwh = 0;
-  volume_mwh_err_msg = "";
   price_eur_per_mwh = 0;
+  inputs_err_msg = {
+    price: "",
+    volume: "",
+  };
 
   validateInputs(): boolean {
     return this.validateVolume() && this.validatePrice();
@@ -55,20 +70,34 @@ export default class BidItem extends Vue {
   @Watch("volume_mwh")
   validateVolume(): boolean {
     let flag = true;
+    console.log("checking volume");
     if (isNaN(Number(this.volume_mwh))) {
       flag = false;
-      this.volume_mwh_err_msg = "Le volume doit être un nombre";
+      this.inputs_err_msg.volume = "Le volume doit être un nombre";
     } else if (this.volume_mwh <= 0) {
       flag = false;
-      this.volume_mwh_err_msg = "Le volume doit être positif";
+      this.inputs_err_msg.volume = "Le volume doit être positif";
+    } else {
+      this.inputs_err_msg.volume = "";
     }
     return flag;
   }
+
+  @Watch("price_eur_per_mwh")
   validatePrice(): boolean {
+    console.log(
+      "checking price",
+      this.price_eur_per_mwh,
+      isNaN(Number(this.price_eur_per_mwh))
+    );
     let flag = true;
     if (isNaN(Number(this.price_eur_per_mwh))) {
+      console.log("price false");
+
       flag = false;
-      this.volume_mwh_err_msg = "Le volume doit être un nombre";
+      this.inputs_err_msg.price = "Le prix doit être un nombre";
+    } else {
+      this.inputs_err_msg.price = "";
     }
     return flag;
   }
@@ -161,11 +190,29 @@ input[type="number"] {
   margin: 0.7rem;
 }
 
-.bid__input {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  justify-content: space-around;
+@media screen and (min-width: 500px) {
+  .bid__input {
+    display: grid;
+    grid-template-areas:
+      "type inputs btn"
+      "X err err";
+    grid-template-columns: 70px auto 20px;
+    grid-template-rows: auto 30px;
+    align-content: center;
+  }
+}
+
+@media screen and (max-width: 500px) {
+  .bid__input {
+    display: grid;
+    grid-template-areas:
+      "type X X"
+      "inputs inputs btn"
+      "err err err";
+    grid-template-columns: 70px auto 20px;
+    grid-template-rows: 30px auto 30px;
+    align-content: center;
+  }
 }
 
 button {
