@@ -99,9 +99,9 @@ export default class BidsList extends Vue {
 }
 
 .bid__list {
-  max-width: 400px;
   border: 2px solid gray;
   border-radius: 2px;
+  overflow: scroll;
 }
 
 .bid__list h3 {

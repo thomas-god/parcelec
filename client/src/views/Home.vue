@@ -131,7 +131,6 @@ export default class Home extends Vue {
 
 <style scoped>
 .home {
-  padding: 0 1.5rem;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -158,37 +157,51 @@ export default class Home extends Vue {
   box-shadow: 12px 12px 2px 1px rgba(28, 28, 56, 0.26);
 }
 
-.grid__left {
-  display: flex;
-  flex-direction: row;
-  flex-wrap: wrap;
-  flex: 1 1 0;
-  align-items: center;
-  justify-content: center;
-}
-.grid__left p {
-  padding-left: 1rem;
-  max-width: 600px;
-}
-
-.grid__right {
-  display: flex;
-  flex-direction: row;
-  flex-wrap: wrap-reverse;
-  flex: 1 1 0;
-  align-items: center;
-  justify-content: center;
-}
+.grid__left p,
 .grid__right p {
-  text-align: end;
   max-width: 600px;
-  padding-left: 1rem;
-  box-sizing: border-box;
 }
 
-@media screen and (max-width: 1110px) {
+@media screen and (min-width: 900px) {
+  .home {
+    padding: 0 1.5rem;
+  }
+  .grid__left {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    align-items: center;
+  }
+
+  .grid__right {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    align-items: center;
+  }
   .grid__right p {
-    text-align: start;
+    text-align: end;
+  }
+}
+@media screen and (max-width: 900px) {
+  .grid__left {
+    display: grid;
+    grid-template-rows: auto auto;
+    justify-items: center;
+    align-items: flex-start;
+  }
+  .grid__left p {
+    text-align: initial;
+  }
+
+  .grid__right {
+    display: grid;
+    grid-template-rows: auto auto;
+    justify-items: center;
+  }
+  .grid__right > .card {
+    grid-row-start: 1;
+  }
+  .grid__right p {
+    text-align: initial;
   }
 }
 </style>
