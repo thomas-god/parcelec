@@ -9,6 +9,7 @@ import superagent from "superagent";
 import {
   PowerPlant,
   PowerPlantTemplate,
+  PowerPlantWithPlanning,
   ScenarioOptions,
   Session,
   User,
@@ -71,4 +72,35 @@ export async function setUserReady(
   user_id: string
 ): Promise<void> {
   await superagent.put(`${url}/session/${session_id}/user/${user_id}/ready`);
+}
+
+/**
+ * Return the portfolio of a user.
+ * @param session_id Session ID
+ * @param user_id User ID
+ */
+export async function getUserPortfolio(
+  session_id: string,
+  user_id: string
+): Promise<PowerPlantWithPlanning[]> {
+  const res = await superagent.get(
+    `${url}/session/${session_id}/user/${user_id}/portfolio`
+  );
+  return res.body;
+}
+
+/**
+ * Create a running session by inserting 2 users and marking them
+ * as ready.
+ * @param session_name Name of the session to create
+ */
+export async function insertRunningSession(
+  session_name: string
+): Promise<{ session_id: string; user_id_1: string; user_id_2: string }> {
+  const session_id = await insertNewSession(session_name);
+  const user_id_1 = await insertNewUser(session_id, "User 1");
+  const user_id_2 = await insertNewUser(session_id, "User 2");
+  await setUserReady(session_id, user_id_1);
+  await setUserReady(session_id, user_id_2);
+  return { session_id, user_id_1, user_id_2 };
 }
