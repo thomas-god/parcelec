@@ -154,7 +154,12 @@ export default class Home extends Vue {
   padding: 1rem;
   border: 1px solid rgba(0, 0, 0, 0.493);
   border-radius: 3px;
-  box-shadow: 12px 12px 2px 1px rgba(28, 28, 56, 0.26);
+}
+
+@media screen and (min-width: 400) {
+  .card {
+    box-shadow: 12px 12px 2px 1px rgba(28, 28, 56, 0.26);
+  }
 }
 
 .grid__left p,
