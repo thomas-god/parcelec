@@ -83,10 +83,18 @@ export default class PowerPlantsList extends Vue {
 
 <style scoped>
 .pp__list_item {
-  margin: 1rem 1.5rem 1rem 1rem;
+  margin: 1rem 1rem 1rem 0rem;
+}
+@media screen and (max-width: 400px) {
+  .pp__list_item {
+    margin: 1rem 0.5rem 0.5rem 0rem;
+  }
 }
 
 .actions {
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
   margin: 1rem;
 }
 .actions button {
