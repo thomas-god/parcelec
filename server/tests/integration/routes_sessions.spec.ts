@@ -2,40 +2,62 @@
  * Integration tests for session management routes.
  *
  * The tested routes are :
- *  GET /sessions/open
+ *  GET /scenarios
  *  PUT /session
+ *  GET /sessions/open
  *  GET /session/:session_id
  *
  */
-import { validate as uuidValidate } from "uuid";
+import { v4 as uuid, validate as uuidValidate } from "uuid";
 import superagent from "superagent";
-import { clearDB, prepareDB, sessions } from "./db_utils";
+import {
+  clearDB,
+  getDefaultScenarioID,
+  insertNewSession,
+} from "./db_utils_new";
 
 const url = process.env.API_URL;
 
 /**
- * Get /sessions/open
+ * GET /scenarios
  */
-describe("Listing open game sessions", () => {
-  const endpoint = "/sessions/open";
-  beforeAll(async () => {
-    await prepareDB();
-  });
-
-  test("Should list the available game sessions that are currently open", async () => {
-    const res = await superagent.get(`${url}${endpoint}`);
-    expect(Array.isArray(res.body)).toBe(true);
-    expect(res.body.length).toEqual(1);
-    expect(res.body[0].id).toEqual(sessions[0].id);
-    expect(res.body[0].name).toEqual(sessions[0].name);
-  });
-
-  test("Should return an empty object if there are no open auctions", async () => {
+describe("Getting a list of scenarios", () => {
+  beforeEach(async () => {
     await clearDB();
-    const res = await superagent.get(`${url}${endpoint}`);
-    const body = JSON.parse(res.text);
-    expect(Array.isArray(body)).toBe(true);
-    expect(body.length).toEqual(0);
+  });
+
+  it("should always return a scenario", async () => {
+    try {
+      const res = await superagent.get(`${url}/scenarios`);
+      expect(res.status).toEqual(200);
+      expect(res.body.length).toEqual(1);
+
+      // Check ID
+      expect(res.body[0]).toHaveProperty("id");
+      expect(typeof res.body[0].id).toEqual("string");
+      expect(uuidValidate(res.body[0].id)).toEqual(true);
+
+      // Check scenario name
+      expect(res.body[0]).toHaveProperty("name");
+      expect(typeof res.body[0].name).toEqual("string");
+
+      // Check scenario description
+      expect(res.body[0]).toHaveProperty("description");
+      expect(typeof res.body[0].description).toEqual("string");
+
+      // Check difficulty property
+      expect(res.body[0]).toHaveProperty("difficulty");
+      expect(typeof res.body[0].difficulty).toEqual("string");
+      expect(
+        ["easy", "medium", "hard"].includes(res.body[0].difficulty)
+      ).toEqual(true);
+
+      // Check multi game property
+      expect(res.body[0]).toHaveProperty("multi_game");
+      expect(typeof res.body[0].multi_game).toEqual("boolean");
+    } catch (error) {
+      fail(error);
+    }
   });
 });
 
@@ -43,44 +65,122 @@ describe("Listing open game sessions", () => {
  * PUT /session
  */
 describe("Opening a new auction", () => {
-  const endpoint = "/session";
-  beforeAll(async () => {
-    await prepareDB();
+  const endpoint = `${url}/session`;
+  beforeEach(async () => {
+    await clearDB();
+    await getDefaultScenarioID();
   });
 
-  test("Should return a 400 error if no session_name is provided in body", async () => {
+  it("Should success using the default scenario ID", async () => {
     try {
-      await superagent.put(`${url}${endpoint}`);
+      const scenario_id = await getDefaultScenarioID();
+      const session = {
+        session_name: "My session",
+        scenario_id: scenario_id,
+      };
+      const res = await superagent.put(endpoint).send(session);
+      expect(res.status).toEqual(201);
+
+      // Check ID
+      expect(res.body).toHaveProperty("id");
+      expect(typeof res.body.id).toEqual("string");
+      expect(uuidValidate(res.body.id)).toEqual(true);
+
+      // Check session name
+      expect(res.body.name).toEqual(session.session_name);
+
+      // Check status
+      expect(res.body.status).toEqual("open");
+    } catch (error) {
+      fail(error);
+    }
+  });
+
+  it("Should success even if no scenario ID is provided", async () => {
+    try {
+      const session = {
+        session_name: "My session",
+      };
+      const res = await superagent.put(endpoint).send(session);
+      expect(res.status).toEqual(201);
+
+      // Check ID
+      expect(res.body).toHaveProperty("id");
+      expect(typeof res.body.id).toEqual("string");
+      expect(uuidValidate(res.body.id)).toEqual(true);
+
+      // Check session name
+      expect(res.body.name).toEqual(session.session_name);
+
+      // Check status
+      expect(res.body.status).toEqual("open");
+    } catch (error) {
+      fail(error);
+    }
+  });
+
+  it("Should fail if no session_name is provided", async () => {
+    try {
+      await superagent.put(endpoint).send({});
     } catch (err) {
-      expect(err.status).toEqual(400);
       expect(err.response.text).toEqual(
         "Error, please provide a valid game session name"
       );
+      expect(err.status).toEqual(400);
     }
   });
 
-  test("It should return a 409 error if the name is already taken", async () => {
+  test("should fail if the name is already taken", async () => {
     try {
-      await superagent
-        .put(`${url}${endpoint}`)
-        .send({ session_name: sessions[0].name });
+      await superagent.put(endpoint).send({ session_name: "Session" });
+      await superagent.put(endpoint).send({ session_name: "Session" });
     } catch (err) {
-      expect(err.status).toEqual(409);
       expect(err.response.text).toEqual(
         "Error, a session already exists with this name"
       );
+      expect(err.status).toEqual(409);
     }
   });
 
-  test("It should get back an session object on success", async () => {
-    const res = await superagent
-      .put(`${url}${endpoint}`)
-      .send({ session_name: "My auction" });
-    expect(res.status).toEqual(201);
-    expect(res.body.name).toEqual("My auction");
-    expect(res.body.status).toEqual("open");
-    expect(res.body).toHaveProperty("id");
-    expect(uuidValidate(res.body.id)).toEqual(true);
+  it("should fail if the scenario ID does not correspond to a valid scenario", async () => {
+    try {
+      await superagent
+        .put(endpoint)
+        .send({ session_name: "Session", scenario_id: uuid() });
+    } catch (err) {
+      expect(err.response.text).toEqual(
+        "Error, no scenario found with this ID"
+      );
+      expect(err.status).toEqual(400);
+    }
+  });
+});
+
+/**
+ * Get /sessions/open
+ */
+describe("Listing open game sessions", () => {
+  const endpoint = `${url}/sessions/open`;
+  beforeEach(async () => {
+    await clearDB();
+    await getDefaultScenarioID();
+  });
+
+  test("Should list the available game sessions that are currently open", async () => {
+    await insertNewSession("Session 1");
+    await insertNewSession("Session 2");
+    const res = await superagent.get(endpoint);
+    expect(Array.isArray(res.body)).toBe(true);
+    expect(res.body.length).toEqual(2);
+    expect(res.body[0].name).toEqual("Session 1");
+    expect(res.body[1].name).toEqual("Session 2");
+  });
+
+  test("Should return an empty object if there are no open auctions", async () => {
+    const res = await superagent.get(endpoint);
+    const body = JSON.parse(res.text);
+    expect(Array.isArray(body)).toBe(true);
+    expect(body.length).toEqual(0);
   });
 });
 
@@ -88,37 +188,17 @@ describe("Opening a new auction", () => {
  * GET /session/:session_id
  */
 describe("Retrieving session public infos", () => {
+  let session_id: string;
   beforeAll(async () => {
-    await prepareDB();
-  });
-
-  test("Should get a 404 error if no session_id is provided", async () => {
-    try {
-      await superagent.get(`${url}/session`);
-    } catch (error) {
-      expect(error.status).toEqual(404);
-    }
+    await clearDB();
+    await getDefaultScenarioID();
+    session_id = await insertNewSession("Session");
   });
 
   test("Should get basic infos for an open session", async () => {
-    await superagent
-      .put(`${url}/session/${sessions[0].id}/register_user`)
-      .send({ username: "User 1" });
-    const res = await superagent.get(`${url}/session/${sessions[0].id}`);
-    expect(res.body.id).toEqual(sessions[0].id);
-    expect(res.body.name).toEqual(sessions[0].name);
-    expect(res.body.status).toEqual(sessions[0].status);
-    expect(res.body.users).toEqual([{ name: "User 1", ready: false }]);
-  });
-
-  test("Should get basic infos for a running session", async () => {
-    const res = await superagent.get(`${url}/session/${sessions[1].id}`);
-    expect(res.body.id).toEqual(sessions[1].id);
-    expect(res.body.name).toEqual(sessions[1].name);
-    expect(res.body.status).toEqual(sessions[1].status);
-    expect(res.body.users).toEqual([
-      { name: "User 1", ready: true },
-      { name: "User 2", ready: true },
-    ]);
+    const res = await superagent.get(`${url}/session/${session_id}`);
+    expect(res.body.id).toEqual(session_id);
+    expect(res.body.name).toEqual("Session");
+    expect(res.body.users.length).toEqual(0);
   });
 });

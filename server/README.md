@@ -70,7 +70,7 @@ The following describes the various routes composing the parcelec API.
     - Body : 
     ``` js
       {
-        session_id: UUID string,
+        id: UUID string,
         name: string,
         status: 'open' | 'running' | 'closed'
       }
