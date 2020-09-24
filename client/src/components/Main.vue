@@ -206,11 +206,9 @@ function toTimeString(dt: number): string {
 }
 
 .app__main_item {
-  border: 2px solid gray;
   border-radius: 2px;
   flex-grow: 1;
   max-width: 500px;
-  /* min-width: 400px; */
   margin: 2rem;
   box-shadow: 12px 12px 2px 1px rgba(28, 28, 56, 0.26);
 }
@@ -218,12 +216,22 @@ function toTimeString(dt: number): string {
 @media screen and (min-width: 400px) {
   .app__main_item {
     margin: 2rem;
+    border: 2px solid gray;
+  }
+  .app__footer_bilans {
+    font-size: 2rem;
   }
 }
 
 @media screen and (max-width: 400px) {
   .app__main_item {
     margin: 1rem 3px;
+    border: 1px solid gray;
+    padding: 4px;
+  }
+
+  .app__footer_bilans {
+    font-size: 1.7rem;
   }
 }
 
@@ -253,7 +261,6 @@ function toTimeString(dt: number): string {
 .app__footer_bilans {
   width: 100%;
   height: 4rem;
-  font-size: 2rem;
   display: flex;
   justify-content: center;
   align-items: center;
