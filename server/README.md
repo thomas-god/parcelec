@@ -69,11 +69,13 @@ The following describes the various routes composing the parcelec API.
     - Type : `application/json`,
     - Body : 
     ``` js
-      {
-        session_id: UUID string,
-        name: string,
-        status: 'open' | 'running' | 'closed'
-      }
+      [
+        {
+          id: UUID string,
+          name: string,
+          status: 'open' | 'running' | 'closed'
+        }
+      ]
     ```
     - `400` if a session already exists with this name
 

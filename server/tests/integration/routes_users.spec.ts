@@ -9,7 +9,12 @@
  */
 import { v4 as uuid, validate as uuidValidate } from "uuid";
 import superagent from "superagent";
-import { prepareDB, sessions, users } from "./db_utils";
+import {
+  clearDB,
+  getDefaultScenarioID,
+  insertNewSession,
+  insertNewUser,
+} from "./db_utils_new";
 
 const url = process.env.API_URL;
 
@@ -17,11 +22,12 @@ const url = process.env.API_URL;
  * PUT /session/:session_id/register_user
  */
 describe("Registering a new user to an open session", () => {
-  beforeAll(async () => {
-    await prepareDB();
+  beforeEach(async () => {
+    await clearDB();
+    await getDefaultScenarioID();
   });
 
-  test("Should return error 404 when no credentials are provided", async () => {
+  test("Should fail when no credentials are provided", async () => {
     try {
       await superagent.put(`${url}/session/register_user`);
     } catch (err) {
@@ -29,73 +35,79 @@ describe("Registering a new user to an open session", () => {
     }
   });
 
-  test("Should error when the session_id does not correspond to an existing session", async () => {
+  test("Should fail when the session_id does not correspond to an existing session", async () => {
     try {
       await superagent
         .put(`${url}/session/${uuid()}/register_user`)
         .send({ username: "User" });
     } catch (err) {
-      expect(err.status).toEqual(404);
       expect(err.response.text).toEqual(
         "Error, the session_id does not correspond to an existing session"
       );
+      expect(err.status).toEqual(404);
     }
   });
 
   test("Should error when the session_id correspond to a running session", async () => {
     try {
-      await superagent
-        .put(`${url}/session/${sessions[1].id}/register_user`)
-        .send({ username: "User" });
+      // TODO start session
     } catch (err) {
-      expect(err.status).toEqual(400);
       expect(err.response.text).toEqual(
         "Error, the session is not open for registration"
       );
+      expect(err.status).toEqual(400);
     }
   });
 
   test("Should error when the session_id correspond to a closed session", async () => {
     try {
-      await superagent
-        .put(`${url}/session/${sessions[2].id}/register_user`)
-        .send({ username: "User" });
+      // TODO close session
     } catch (err) {
-      expect(err.status).toEqual(400);
       expect(err.response.text).toEqual(
         "Error, the session is not open for registration"
       );
+      expect(err.status).toEqual(400);
     }
   });
 
   test("Should error when no username is provided", async () => {
     try {
-      await superagent.put(`${url}/session/${sessions[0].id}/register_user`);
+      const session_id = await insertNewSession("Session");
+      await superagent.put(`${url}/session/${session_id}/register_user`);
     } catch (err) {
-      expect(err.status).toEqual(400);
       expect(err.response.text).toEqual("Error, no username provided");
+      expect(err.status).toEqual(400);
     }
   });
 
   test("Should return a uuid_v4 user_id on successful registration", async () => {
-    const res = await superagent
-      .put(`${url}/session/${sessions[0].id}/register_user`)
-      .send({ username: "User" });
-    expect(res.status).toEqual(201);
-    expect(res.body).toHaveProperty("user_id");
-    expect(uuidValidate(res.body.user_id)).toBe(true);
+    try {
+      const session_id = await insertNewSession("Session");
+      const res = await superagent
+        .put(`${url}/session/${session_id}/register_user`)
+        .send({ username: "User" });
+      expect(res.status).toEqual(201);
+      expect(res.body).toHaveProperty("user_id");
+      expect(uuidValidate(res.body.user_id)).toBe(true);
+    } catch (err) {
+      fail(err);
+    }
   });
 
   test("Should error when we try to register a user whose name already exists", async () => {
     try {
+      const session_id = await insertNewSession("Session");
       await superagent
-        .put(`${url}/session/${sessions[0].id}/register_user`)
+        .put(`${url}/session/${session_id}/register_user`)
+        .send({ username: "User" });
+      await superagent
+        .put(`${url}/session/${session_id}/register_user`)
         .send({ username: "User" });
     } catch (err) {
-      expect(err.status).toEqual(409);
       expect(err.response.text).toEqual(
         "Error, a user with this username is already registered to the session"
       );
+      expect(err.status).toEqual(409);
     }
   });
 });
@@ -104,39 +116,48 @@ describe("Registering a new user to an open session", () => {
  * GET /session/:session_id/user/:user_id
  */
 describe("Get informations about a given user", () => {
-  beforeAll(async () => {
-    await prepareDB();
+  let session_id: string;
+  let user_id: string;
+  beforeEach(async () => {
+    await clearDB();
+    await getDefaultScenarioID();
+    session_id = await insertNewSession("Session");
+    user_id = await insertNewUser(session_id, "User");
   });
 
   test("Should error if session does not exist", async () => {
     try {
       await superagent.get(`${url}/session/${uuid()}/user/${uuid()}`);
     } catch (error) {
-      expect(error.status).toEqual(404);
       expect(error.response.text).toEqual(
         "Error, cannot find an user with these IDs"
       );
+      expect(error.status).toEqual(404);
     }
   });
 
   test("Should error if the user does not exist on the session", async () => {
     try {
-      await superagent.get(`${url}/session/${sessions[0].id}/user/${uuid()}`);
+      await superagent.get(`${url}/session/${session_id}/user/${uuid()}`);
     } catch (error) {
-      expect(error.status).toEqual(404);
       expect(error.response.text).toEqual(
         "Error, cannot find an user with these IDs"
       );
+      expect(error.status).toEqual(404);
     }
   });
 
   test("Should get user infos", async () => {
-    const res = await superagent.get(
-      `${url}/session/${users[0].session_id}/user/${users[0].id}`
-    );
-    expect(res.body.session_id).toEqual(users[0].session_id);
-    expect(res.body.name).toEqual(users[0].name);
-    expect(res.body.ready).toEqual(users[0].game_ready);
+    try {
+      const res = await superagent.get(
+        `${url}/session/${session_id}/user/${user_id}`
+      );
+      expect(res.body.session_id).toEqual(session_id);
+      expect(res.body.name).toEqual("User");
+      expect(res.body.ready).toEqual(false);
+    } catch (err) {
+      fail(err);
+    }
   });
 });
 
@@ -144,8 +165,13 @@ describe("Get informations about a given user", () => {
  * PUT /session/:session_id/user/:user_id/ready
  */
 describe("Marking an user as ready for a game session to start", () => {
-  beforeAll(async () => {
-    await prepareDB();
+  let session_id: string;
+  let user_id: string;
+  beforeEach(async () => {
+    await clearDB();
+    await getDefaultScenarioID();
+    session_id = await insertNewSession("Session");
+    user_id = await insertNewUser(session_id, "User");
   });
 
   test("Should error if no session_id is provided", async () => {
@@ -158,7 +184,7 @@ describe("Marking an user as ready for a game session to start", () => {
 
   test("Should error if no user_id is provided", async () => {
     try {
-      await superagent.put(`${url}/session/${sessions[0].id}/user/ready`);
+      await superagent.put(`${url}/session/${session_id}/user/ready`);
     } catch (error) {
       expect(error.status).toEqual(404);
     }
@@ -168,69 +194,30 @@ describe("Marking an user as ready for a game session to start", () => {
     try {
       await superagent.put(`${url}/session/${uuid()}/user/${uuid()}/ready`);
     } catch (error) {
-      expect(error.status).toEqual(404);
       expect(error.response.text).toEqual(
         "Error, no session found with this ID"
       );
+      expect(error.status).toEqual(404);
     }
   });
 
   test("Should error if the user is not registered to the session", async () => {
     try {
-      await superagent.put(
-        `${url}/session/${sessions[0].id}/user/${uuid()}/ready`
-      );
+      await superagent.put(`${url}/session/${session_id}/user/${uuid()}/ready`);
     } catch (error) {
-      expect(error.status).toEqual(400);
       expect(error.response.text).toEqual("Error, no user found with this ID");
-    }
-  });
-
-  test("Should error if the session is running", async () => {
-    try {
-      await superagent.put(
-        `${url}/session/${sessions[1].id}/user/${users[0].id}/ready`
-      );
-    } catch (error) {
       expect(error.status).toEqual(400);
-      expect(error.response.text).toEqual("Error, the session is running");
-    }
-  });
-
-  test("Should error if the session is closed", async () => {
-    try {
-      await superagent.put(
-        `${url}/session/${sessions[2].id}/user/${users[2].id}/ready`
-      );
-    } catch (error) {
-      expect(error.status).toEqual(400);
-      expect(error.response.text).toEqual("Error, the session is closed");
     }
   });
 
   test("Should success with a registered user on an open session", async () => {
-    const user_id = (
-      await superagent
-        .put(`${url}/session/${sessions[0].id}/register_user`)
-        .send({ username: "User" })
-    ).body.user_id;
-    const res = await superagent.put(
-      `${url}/session/${sessions[0].id}/user/${user_id}/ready`
-    );
-    expect(res.status).toEqual(201);
-  });
-
-  test("Should start the session when at least 2 users are ready", async () => {
-    const user_id = (
-      await superagent
-        .put(`${url}/session/${sessions[0].id}/register_user`)
-        .send({ username: "User 2" })
-    ).body.user_id;
-    await superagent.put(
-      `${url}/session/${sessions[0].id}/user/${user_id}/ready`
-    );
-    await new Promise((r) => setTimeout(r, 150));
-    const res = await superagent.get(`${url}/session/${sessions[0].id}`);
-    expect(res.body.status).toEqual("running");
+    try {
+      const res = await superagent.put(
+        `${url}/session/${session_id}/user/${user_id}/ready`
+      );
+      expect(res.status).toEqual(201);
+    } catch (err) {
+      fail(err);
+    }
   });
 });

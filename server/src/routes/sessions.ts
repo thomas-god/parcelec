@@ -3,6 +3,8 @@ import express from "express";
 import db from "../db/index";
 import { Session } from "./types";
 import {
+  checkScenarioID,
+  checkSessionName,
   createNewSession,
   CustomError,
   generateDefaultScenario,
@@ -61,26 +63,25 @@ export async function openNewSession(
     const session_name: string = req.body.session_name;
     const scenario_id: string = req.body.scenario_id;
     // Checks
-    if (!session_name)
-      throw new CustomError(
-        "Error, please provide a valid game session name",
-        400
-      );
+    if (session_name === undefined)
+      throw new CustomError("Error, please provide a valid game session name");
 
-    if (
-      (await db.query("SELECT id FROM sessions WHERE name=$1", [session_name]))
-        .rows.length !== 0
-    )
+    if (!(await checkSessionName(session_name)))
       throw new CustomError(
         "Error, a session already exists with this name",
         409
       );
+
+    if (scenario_id !== undefined)
+      if (!(await checkScenarioID(scenario_id)))
+        throw new CustomError("Error, no scenario found with this ID");
 
     // Insertion
     const session: Session = {
       name: session_name,
       id: uuidv4(),
       status: "open",
+      scenario_id: scenario_id,
     };
     await createNewSession(session);
     res.status(201).json(session);

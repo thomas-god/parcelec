@@ -47,7 +47,7 @@ export async function getUserPortfolio(
 
     const portfolio = await getPortfolio(user_id);
     const portfolio_with_planning = await addPlanningToPortfolio(portfolio);
-    await res.json(portfolio_with_planning);
+    res.json(portfolio_with_planning);
   } catch (error) {
     if (error instanceof CustomError) {
       res.status(error.code).end(error.msg);

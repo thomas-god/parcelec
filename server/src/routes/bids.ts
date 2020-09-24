@@ -41,11 +41,11 @@ export async function postUserBid(
     const session = await getSession(session_id);
     if (session === null)
       throw new CustomError("Error, no session found with this ID", 404);
-    if (session.status !== "running")
-      throw new CustomError("Error, the session is not running");
     const user = await getUser(session_id, user_id);
     if (user === null)
       throw new CustomError("Error, no user found with this ID", 404);
+    if (session.status !== "running")
+      throw new CustomError("Error, the session is not running");
 
     // Payload checks
     if (req.body.bid === undefined)

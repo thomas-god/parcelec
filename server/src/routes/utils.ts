@@ -1011,3 +1011,37 @@ export async function getScenarioOptions(
   if (res.length === 1) scenario_options = res[0];
   return scenario_options;
 }
+
+/**
+ * Check if a session name already exists, and return `true` if not.
+ * @param session_name Session name
+ */
+export async function checkSessionName(session_name: string): Promise<boolean> {
+  return (
+    (
+      await db.query(
+        `SELECT id 
+        FROM sessions 
+        WHERE name=$1`,
+        [session_name]
+      )
+    ).rows.length === 0
+  );
+}
+
+/**
+ * Check if a scenario with a given ID exists, return true if yes.
+ * @param scenario_id Scenario ID
+ */
+export async function checkScenarioID(scenario_id: string): Promise<boolean> {
+  return (
+    (
+      await db.query(
+        `SELECT id 
+        FROM scenarios_options 
+        WHERE id=$1`,
+        [scenario_id]
+      )
+    ).rows.length === 1
+  );
+}
