@@ -1,5 +1,5 @@
 <template>
-  <div>
+  <div class="main">
     <!-- Open session -->
     <div v-if="session_status === 'open'" class="app__full">
       <h1>
@@ -44,12 +44,11 @@
         </h2>
         <div class="app__main" v-if="session.id && username">
           <PowerPlantsList class="app__main_item" />
-          <Bilans class="app__main_item" />
           <BidsList class="app__main_item" />
         </div>
       </div>
-      <!-- <Chatroom class="chatroom__grid" display_direction="column" /> -->
     </div>
+    <BilansSimple class="app__footer_bilans" v-if="session.id && username" />
   </div>
 </template>
 
@@ -62,7 +61,7 @@ import Messages from "./Messages.vue";
 import Bid from "./SessionBid.vue";
 import PowerPlantsList from "./PowerPlantsList.vue";
 import BidsList from "./BidsList.vue";
-import Bilans from "./Bilans.vue";
+import BilansSimple from "./BilansSimple.vue";
 
 const userModule = namespace("user");
 const sessionModule = namespace("session");
@@ -73,8 +72,8 @@ const sessionModule = namespace("session");
     Bid,
     PowerPlantsList,
     BidsList,
-    Bilans,
-  },
+    BilansSimple
+  }
 })
 export default class Main extends Vue {
   @userModule.Getter username!: string;
@@ -128,7 +127,7 @@ export default class Main extends Vue {
     const res = await fetch(
       `${this.api_url}/session/${this.session_id}/user/${this.user_id}/ready`,
       {
-        method: "PUT",
+        method: "PUT"
       }
     );
     if (res.status === 201) this.SET_GAME_READY(true);
@@ -144,6 +143,11 @@ function toTimeString(dt: number): string {
 </script>
 
 <style scoped>
+.main {
+  height: calc(100%-36px);
+  margin-bottom: 4rem;
+}
+
 .app__grid {
   display: grid;
   width: 100%;
@@ -230,5 +234,19 @@ function toTimeString(dt: number): string {
     display: block;
     margin: 0.2em auto;
   }
+}
+
+.app__footer_bilans {
+  width: 100%;
+  height: 4rem;
+  font-size: 2rem;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background-color: rgb(204, 218, 250);
+  border-top: 1px solid black;
+  position: fixed;
+  bottom: 0;
+  z-index: 10;
 }
 </style>
