@@ -18,8 +18,8 @@ services:
   db:
     build:
       context: ./db
-  volumes:
-    - /home/thomas/data/parcelec/db_data:/var/lib/postgresql/data
+    volumes:
+      - /home/thomas/data/parcelec/db_data:/var/lib/postgresql/data
 
 networks:
   proxy:
