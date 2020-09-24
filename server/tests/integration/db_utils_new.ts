@@ -121,3 +121,31 @@ export async function insertRunningSession(
   });
   return { session_id, user_id_1, user_id_2 };
 }
+
+/**
+ * Insert a bid on behalf of a user.
+ * @param session_id Session ID
+ * @param user_id User ID
+ * @param type Type of the bid (`sell` | `buy`). Default `sell`.
+ * @param volume_mwh Volume of the bid in MWh. Default 10 MWh.
+ * @param price_eur_per_mwh Price of the bid in €/MWh. Default 10 €/MWh.
+ */
+export async function insertBid(
+  session_id: string,
+  user_id: string,
+  type = "sell",
+  volume_mwh = 10,
+  price_eur_per_mwh = 10
+): Promise<string> {
+  return (
+    await superagent
+      .post(`${url}/session/${session_id}/user/${user_id}/bid`)
+      .send({
+        bid: {
+          type: type,
+          volume_mwh: volume_mwh,
+          price_eur_per_mwh: price_eur_per_mwh,
+        },
+      })
+  ).body.bid_id as string;
+}
