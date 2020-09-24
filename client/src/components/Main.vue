@@ -228,6 +228,7 @@ function toTimeString(dt: number): string {
   bottom: 5rem;
   display: block;
   margin: auto;
+  z-index: 12;
 }
 .ready__btn:hover {
   background-color: #4095c6;
