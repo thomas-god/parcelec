@@ -14,6 +14,7 @@ import {
   clearDB,
   getDefaultScenarioID,
   insertNewSession,
+  insertRunningSession,
 } from "./db_utils_new";
 
 const url = process.env.API_URL;
@@ -189,7 +190,7 @@ describe("Listing open game sessions", () => {
  */
 describe("Retrieving session public infos", () => {
   let session_id: string;
-  beforeAll(async () => {
+  beforeEach(async () => {
     await clearDB();
     await getDefaultScenarioID();
     session_id = await insertNewSession("Session");
@@ -200,5 +201,13 @@ describe("Retrieving session public infos", () => {
     expect(res.body.id).toEqual(session_id);
     expect(res.body.name).toEqual("Session");
     expect(res.body.users.length).toEqual(0);
+  });
+
+  test("Should get basic infos for a session with users", async () => {
+    const { session_id } = await insertRunningSession("Running Session");
+    const res = await superagent.get(`${url}/session/${session_id}`);
+    expect(res.body.id).toEqual(session_id);
+    expect(res.body.name).toEqual("Running Session");
+    expect(res.body.users.length).toEqual(2);
   });
 });
