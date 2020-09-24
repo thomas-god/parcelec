@@ -223,7 +223,7 @@ function toTimeString(dt: number): string {
 
 @media screen and (max-width: 400px) {
   .app__main_item {
-    margin: 3px;
+    margin: 1rem 3px;
   }
 }
 

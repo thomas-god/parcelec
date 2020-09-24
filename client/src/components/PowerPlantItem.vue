@@ -83,6 +83,7 @@ export default class PowerPlantItem extends Vue {
       position: relative;
       box-sizing: border-box;
       grid-area: barre;
+      margin-left: 3px;
       border: 2px solid rgb(0, 195, 255);
       border-radius: 2px;
       width: ${this.p_max_abs_ratio}%

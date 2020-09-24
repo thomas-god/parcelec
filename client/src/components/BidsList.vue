@@ -83,11 +83,11 @@ export default class BidsList extends Vue {
   @sessionModule.Getter clearing_available!: boolean;
 
   get bidsSell(): Bid[] {
-    return this.bids.filter((bid) => bid.type === "sell");
+    return this.bids.filter(bid => bid.type === "sell");
   }
 
   get bidsBuy(): Bid[] {
-    return this.bids.filter((bid) => bid.type === "buy");
+    return this.bids.filter(bid => bid.type === "buy");
   }
 }
 </script>
@@ -95,12 +95,13 @@ export default class BidsList extends Vue {
 <style scoped>
 .bid__action {
   border: 2px solid grey;
+  margin: 0 3px;
 }
 
 .bid__list {
   border: 2px solid gray;
   border-radius: 2px;
-  overflow: scroll;
+  overflow: hidden;
 }
 
 .bid__list h3 {
