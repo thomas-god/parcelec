@@ -102,5 +102,22 @@ export async function insertRunningSession(
   const user_id_2 = await insertNewUser(session_id, "User 2");
   await setUserReady(session_id, user_id_1);
   await setUserReady(session_id, user_id_2);
+
+  // Wait for session to be in the 'running' state.
+  await new Promise((resolve, reject) => {
+    let i = 0;
+    const interval = setInterval(async () => {
+      const res = await superagent.get(`${url}/session/${session_id}`);
+      if (res.body.status === "running") {
+        resolve();
+        clearInterval(interval);
+      }
+      if (i > 5) {
+        reject();
+        clearInterval(interval);
+      }
+      i++;
+    }, 15);
+  });
   return { session_id, user_id_1, user_id_2 };
 }
