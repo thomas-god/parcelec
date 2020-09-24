@@ -43,7 +43,7 @@ export default class PowerPlantsList extends Vue {
 
   get pp_sorted(): PowerPlant[] {
     return this.power_plants
-      .map((pp) => pp)
+      .map(pp => pp)
       .sort((a, b) => b.p_max_mw - a.p_max_mw);
   }
 
@@ -53,12 +53,12 @@ export default class PowerPlantsList extends Vue {
 
   async updatePlanning() {
     if (!this.dummy) {
-      const planning_formatted = this.power_plants.map((pp) => {
+      const planning_formatted = this.power_plants.map(pp => {
         return {
           user_id: this.user_id,
           session_id: this.session_id,
           plant_id: pp.id,
-          p_mw: pp.planning_modif,
+          p_mw: pp.planning_modif
         };
       });
       const res = await fetch(
@@ -66,7 +66,7 @@ export default class PowerPlantsList extends Vue {
         {
           method: "PUT",
           headers: { "content-type": "application/json" },
-          body: JSON.stringify(planning_formatted),
+          body: JSON.stringify(planning_formatted)
         }
       );
       if (res.status === 201) {
@@ -82,6 +82,10 @@ export default class PowerPlantsList extends Vue {
 </script>
 
 <style scoped>
+.pp__list {
+  overflow: hidden;
+}
+
 .pp__list_item {
   margin: 1rem 1rem 1rem 0rem;
 }

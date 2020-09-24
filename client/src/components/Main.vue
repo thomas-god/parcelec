@@ -201,7 +201,6 @@ function toTimeString(dt: number): string {
   display: flex;
   flex-direction: row;
   flex-wrap: wrap;
-  flex-grow: 0;
   align-items: stretch;
   justify-content: center;
 }
@@ -209,9 +208,23 @@ function toTimeString(dt: number): string {
 .app__main_item {
   border: 2px solid gray;
   border-radius: 2px;
-  min-width: 400px;
+  flex-grow: 1;
+  max-width: 500px;
+  /* min-width: 400px; */
   margin: 2rem;
   box-shadow: 12px 12px 2px 1px rgba(28, 28, 56, 0.26);
+}
+
+@media screen and (min-width: 400px) {
+  .app__main_item {
+    margin: 2rem;
+  }
+}
+
+@media screen and (max-width: 400px) {
+  .app__main_item {
+    margin: 3px;
+  }
 }
 
 .ready__btn {
