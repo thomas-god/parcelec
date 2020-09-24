@@ -50,10 +50,10 @@ export async function registerNewUser(
 
     // Insertion
     const user_id = await insertNewUser(session_id, username);
-    res.status(201).json({ user_id: user_id });
-
     // Generate and attribute default portfolio
     await setDefaultPortfolio(session_id, user_id);
+
+    res.status(201).json({ user_id: user_id });
 
     // Notify all users that a new user has joined
     notifyUsersListUpdate(session_id);
