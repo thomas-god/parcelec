@@ -1,5 +1,5 @@
 <template>
-  <div>
+  <div class="main">
     <!-- Open session -->
     <div v-if="session_status === 'open'" class="app__full">
       <h1>
@@ -21,9 +21,6 @@
       </h1>
       <h1 class="app__grid_head" v-if="results_available">
         Phase de jeu terminée
-        <button class="ready__btn" @click="setStatusReady" :disable="!ready">
-          Passer à la phase suivante
-        </button>
       </h1>
 
       <div class="app__grid_main">
@@ -44,12 +41,19 @@
         </h2>
         <div class="app__main" v-if="session.id && username">
           <PowerPlantsList class="app__main_item" />
-          <Bilans class="app__main_item" />
           <BidsList class="app__main_item" />
         </div>
       </div>
-      <!-- <Chatroom class="chatroom__grid" display_direction="column" /> -->
     </div>
+    <button
+      class="ready__btn"
+      @click="setStatusReady"
+      :disable="!ready"
+      v-if="results_available"
+    >
+      Passer à la phase suivante
+    </button>
+    <BilansSimple class="app__footer_bilans" v-if="session.id && username" />
   </div>
 </template>
 
@@ -62,7 +66,7 @@ import Messages from "./Messages.vue";
 import Bid from "./SessionBid.vue";
 import PowerPlantsList from "./PowerPlantsList.vue";
 import BidsList from "./BidsList.vue";
-import Bilans from "./Bilans.vue";
+import BilansSimple from "./BilansSimple.vue";
 
 const userModule = namespace("user");
 const sessionModule = namespace("session");
@@ -73,8 +77,8 @@ const sessionModule = namespace("session");
     Bid,
     PowerPlantsList,
     BidsList,
-    Bilans,
-  },
+    BilansSimple
+  }
 })
 export default class Main extends Vue {
   @userModule.Getter username!: string;
@@ -128,7 +132,7 @@ export default class Main extends Vue {
     const res = await fetch(
       `${this.api_url}/session/${this.session_id}/user/${this.user_id}/ready`,
       {
-        method: "PUT",
+        method: "PUT"
       }
     );
     if (res.status === 201) this.SET_GAME_READY(true);
@@ -144,6 +148,11 @@ function toTimeString(dt: number): string {
 </script>
 
 <style scoped>
+.main {
+  height: calc(100%-36px);
+  margin-bottom: 4.5rem;
+}
+
 .app__grid {
   display: grid;
   width: 100%;
@@ -151,13 +160,13 @@ function toTimeString(dt: number): string {
   grid-template-areas:
     "head head"
     "main  main";
-  grid-template-rows: 125px 1fr;
+  grid-template-rows: auto 1fr;
   grid-template-columns: 2fr 1fr;
 }
 
 .app__grid_head {
   grid-area: head;
-  margin-bottom: 1rem;
+  margin-bottom: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -192,32 +201,55 @@ function toTimeString(dt: number): string {
   display: flex;
   flex-direction: row;
   flex-wrap: wrap;
-  flex-grow: 0;
   align-items: stretch;
   justify-content: center;
 }
 
 .app__main_item {
-  border: 2px solid gray;
   border-radius: 2px;
-  min-width: 400px;
+  flex-grow: 1;
+  max-width: 500px;
   margin: 2rem;
   box-shadow: 12px 12px 2px 1px rgba(28, 28, 56, 0.26);
+}
+
+@media screen and (min-width: 400px) {
+  .app__main_item {
+    margin: 2rem;
+    border: 2px solid gray;
+  }
+  .app__footer_bilans {
+    font-size: 2rem;
+  }
+}
+
+@media screen and (max-width: 400px) {
+  .app__main_item {
+    margin: 1rem 3px;
+    border: 1px solid gray;
+    padding: 4px;
+  }
+
+  .app__footer_bilans {
+    font-size: 1.7rem;
+  }
 }
 
 .ready__btn {
   border: none;
   font-size: 1.2rem;
-  display: inline-block;
-  padding: 0.3em 1.2em;
-  margin: 1rem 0.3em 0.3em 0;
+  padding: 0.3rem 1.2rem 0.3rem 1.2rem;
   border-radius: 2em;
-  box-sizing: border-box;
-  text-decoration: none;
-  color: #ffffff;
+  color: white;
   background-color: #4eb5f1;
   text-align: center;
   transition: all 0.2s;
+  position: -webkit-sticky;
+  position: sticky;
+  bottom: 5rem;
+  display: block;
+  margin: auto;
+  z-index: 12;
 }
 .ready__btn:hover {
   background-color: #4095c6;
@@ -225,10 +257,17 @@ function toTimeString(dt: number): string {
 .ready__btn:active {
   font-size: 1.1rem;
 }
-@media all and (max-width: 30em) {
-  .ready__btn {
-    display: block;
-    margin: 0.2em auto;
-  }
+
+.app__footer_bilans {
+  width: 100%;
+  height: 4rem;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background-color: rgb(204, 218, 250);
+  border-top: 1px solid black;
+  position: fixed;
+  bottom: 0;
+  z-index: 10;
 }
 </style>

@@ -20,7 +20,7 @@
       <button
         @click="postBid"
         :disabled="!dummy && !can_bid"
-        style="grid-area: btn"
+        style="grid-area: btn;"
       >
         ➕
       </button>
@@ -60,7 +60,7 @@ export default class BidItem extends Vue {
   price_eur_per_mwh = 0;
   inputs_err_msg = {
     price: "",
-    volume: "",
+    volume: ""
   };
 
   validateInputs(): boolean {
@@ -117,9 +117,9 @@ export default class BidItem extends Vue {
             bid: {
               type: this.type,
               volume_mwh: this.volume_mwh,
-              price_eur_per_mwh: this.price_eur_per_mwh,
-            },
-          }),
+              price_eur_per_mwh: this.price_eur_per_mwh
+            }
+          })
         }
       );
       if (res.status === 201) {
@@ -128,7 +128,7 @@ export default class BidItem extends Vue {
           type: this.type,
           volume_mwh: this.volume_mwh,
           price_eur_per_mwh: this.price_eur_per_mwh,
-          id: bid_id,
+          id: bid_id
         });
       } else {
         console.log(await res.text());
@@ -138,7 +138,7 @@ export default class BidItem extends Vue {
         type: this.type,
         volume_mwh: this.volume_mwh,
         price_eur_per_mwh: this.price_eur_per_mwh,
-        id: uuid(),
+        id: uuid()
       });
     }
   }
@@ -149,7 +149,7 @@ export default class BidItem extends Vue {
       const res = await fetch(
         `${this.api_url}/session/${this.session_id}/user/${this.user_id}/bid/${this.bid.id}`,
         {
-          method: "DELETE",
+          method: "DELETE"
         }
       );
       if (res.status === 200) {
@@ -196,7 +196,7 @@ input[type="number"] {
     grid-template-areas:
       "type inputs btn"
       "X err err";
-    grid-template-columns: 70px auto 20px;
+    grid-template-columns: 70px auto auto;
     grid-template-rows: auto 30px;
     align-content: center;
   }
