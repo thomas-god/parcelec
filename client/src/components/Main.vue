@@ -21,9 +21,6 @@
       </h1>
       <h1 class="app__grid_head" v-if="results_available">
         Phase de jeu terminée
-        <button class="ready__btn" @click="setStatusReady" :disable="!ready">
-          Passer à la phase suivante
-        </button>
       </h1>
 
       <div class="app__grid_main">
@@ -48,6 +45,14 @@
         </div>
       </div>
     </div>
+    <button
+      class="ready__btn"
+      @click="setStatusReady"
+      :disable="!ready"
+      v-if="results_available"
+    >
+      Passer à la phase suivante
+    </button>
     <BilansSimple class="app__footer_bilans" v-if="session.id && username" />
   </div>
 </template>
@@ -145,7 +150,7 @@ function toTimeString(dt: number): string {
 <style scoped>
 .main {
   height: calc(100%-36px);
-  margin-bottom: 4rem;
+  margin-bottom: 4.5rem;
 }
 
 .app__grid {
@@ -155,13 +160,13 @@ function toTimeString(dt: number): string {
   grid-template-areas:
     "head head"
     "main  main";
-  grid-template-rows: 125px 1fr;
+  grid-template-rows: auto 1fr;
   grid-template-columns: 2fr 1fr;
 }
 
 .app__grid_head {
   grid-area: head;
-  margin-bottom: 1rem;
+  margin-bottom: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -212,28 +217,23 @@ function toTimeString(dt: number): string {
 .ready__btn {
   border: none;
   font-size: 1.2rem;
-  display: inline-block;
-  padding: 0.3em 1.2em;
-  margin: 1rem 0.3em 0.3em 0;
+  padding: 0.3rem 1.2rem 0.3rem 1.2rem;
   border-radius: 2em;
-  box-sizing: border-box;
-  text-decoration: none;
-  color: #ffffff;
+  color: white;
   background-color: #4eb5f1;
   text-align: center;
   transition: all 0.2s;
+  position: -webkit-sticky;
+  position: sticky;
+  bottom: 5rem;
+  display: block;
+  margin: auto;
 }
 .ready__btn:hover {
   background-color: #4095c6;
 }
 .ready__btn:active {
   font-size: 1.1rem;
-}
-@media all and (max-width: 30em) {
-  .ready__btn {
-    display: block;
-    margin: 0.2em auto;
-  }
 }
 
 .app__footer_bilans {
