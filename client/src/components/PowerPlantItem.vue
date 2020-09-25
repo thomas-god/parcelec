@@ -11,8 +11,9 @@
         step="10"
         :disabled="!editable"
       />
-      <div class="pp__barre__p_min" :style="style_barre_width_pmin"></div>
-      <div class="pp__barre__p_max"></div>
+      <div class="pp__barre__p_planning" :style="style_barre_width_planning" />
+      <div class="pp__barre__p_min" :style="style_barre_width_pmin" />
+      <div class="pp__barre__p_max" />
     </div>
     <div class="pp__barre__legend" :style="style_barre_width_pmax">
       <div class="pp__barre__legend__pmin" :style="style_legend_pmin">
@@ -74,6 +75,9 @@ export default class PowerPlantItem extends Vue {
   get p_min_ratio(): number {
     return (this.power_plant.p_min_mw / this.power_plant.p_max_mw) * 100;
   }
+  get p_planning_ratio(): number {
+    return (this.power_plant.planning / this.power_plant.p_max_mw) * 100;
+  }
   get p_value_ratio(): number {
     return (this.power_plant.planning_modif / this.power_plant.p_max_mw) * 100;
   }
@@ -81,7 +85,7 @@ export default class PowerPlantItem extends Vue {
   get pp__barre_style(): string {
     return `
       position: relative;
-      box-sizing: border-box;
+      box-sizing: content-box;
       grid-area: barre;
       margin-left: 3px;
       border: 2px solid rgb(0, 195, 255);
@@ -100,7 +104,12 @@ export default class PowerPlantItem extends Vue {
       width: ${this.p_min_ratio}%;
     `;
   }
-  visibility_ratio = (25 * 100) / this.p_max_abs_ratio;
+  get style_barre_width_planning(): string {
+    return `
+      width: ${this.p_planning_ratio}%;
+    `;
+  }
+
   get style_legend_pmin(): string {
     return `
       position: absolute;
@@ -177,6 +186,16 @@ export default class PowerPlantItem extends Vue {
   grid-area: logo;
   align-self: center;
   font-size: 2rem;
+}
+
+.pp__barre__p_planning {
+  border-right: 3px dotted red;
+  height: 110%;
+  position: absolute;
+  top: -5%;
+  left: 0px;
+  z-index: 2;
+  box-sizing: border-box;
 }
 
 .pp__barre__p_max {
