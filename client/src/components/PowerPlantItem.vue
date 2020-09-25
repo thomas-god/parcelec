@@ -110,6 +110,7 @@ export default class PowerPlantItem extends Vue {
     `;
   }
 
+  visibility_ratio = 25;
   get style_legend_pmin(): string {
     return `
       position: absolute;
