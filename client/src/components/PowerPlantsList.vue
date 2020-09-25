@@ -10,10 +10,16 @@
       :editable="dummy || can_post_planning"
     />
     <div class="actions">
-      <button @click="updatePlanning" :disabled="!dummy && !can_post_planning">
+      <button
+        @click="updatePlanning"
+        :disabled="(!dummy && !can_post_planning) || diff_abs_planning === 0"
+      >
         Envoyer
       </button>
-      <button @click="resetPlanning" :disabled="!dummy && !can_post_planning">
+      <button
+        @click="resetPlanning"
+        :disabled="(!dummy && !can_post_planning) || diff_abs_planning === 0"
+      >
         Effacer
       </button>
     </div>
@@ -49,6 +55,13 @@ export default class PowerPlantsList extends Vue {
 
   get power_plants_max_power_mw(): number {
     return this.pp_sorted[0].p_max_mw;
+  }
+
+  get diff_abs_planning(): number {
+    return this.power_plants.reduce(
+      (a, b) => a + Math.abs(b.planning - b.planning_modif),
+      0
+    );
   }
 
   async updatePlanning() {
