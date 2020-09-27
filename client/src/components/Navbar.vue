@@ -1,10 +1,10 @@
 <template>
   <div id="nav">
-    <router-link to="/">Accueil</router-link>
+    <router-link to="/">accueil</router-link>
     |
-    <router-link to="/join">Rejoindre</router-link>
+    <router-link to="/join">rejoindre</router-link>
     |
-    <router-link to="/create">Créer</router-link>
+    <router-link to="/create">créer</router-link>
   </div>
 </template>
 
@@ -26,6 +26,8 @@ a {
   align-self: center;
   text-decoration: none;
   color: black;
+  font-family: Montserrat;
   font-size: 1.2rem;
+  font-variant: small-caps;
 }
 </style>
