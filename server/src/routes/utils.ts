@@ -889,7 +889,8 @@ export async function generateDefaultScenario(): Promise<string> {
     id: id,
     name: "default",
     difficulty: "easy",
-    description: "Default scenario.",
+    description:
+      "Le scénario par défaut vous permet de prendre en main les fonctionnalités de parcelec.",
     multi_game: false,
     bids_duration_sec: 180,
     plannings_duration_sec: 300,
