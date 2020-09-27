@@ -1,10 +1,10 @@
 <template>
   <div class="pp__grid">
     <div class="pp__logo">{{ logo }}</div>
-    <div :style="pp__barre_style">
+    <div :style="pp__barre_style" ref="barre">
       <input
         type="range"
-        class="pp__barre__slider"
+        class="pp__barre__slider slider__active"
         v-model="power_plant.planning_modif"
         min="0"
         :max="power_plant.p_max_mw"
@@ -81,6 +81,21 @@ export default class PowerPlantItem extends Vue {
   get p_value_ratio(): number {
     return (this.power_plant.planning_modif / this.power_plant.p_max_mw) * 100;
   }
+  public mounted() {
+    window.addEventListener("resize", this.handleResize);
+    if (this.$refs.barre)
+      this.content_width = (this.$refs.barre as HTMLDivElement).clientWidth;
+  }
+
+  content_width = 0;
+  public handleResize() {
+    if (this.$refs.barre)
+      this.content_width = (this.$refs.barre as HTMLDivElement).clientWidth;
+  }
+
+  public beforeDestroyed() {
+    window.removeEventListener("resize", this.handleResize);
+  }
 
   get pp__barre_style(): string {
     return `
@@ -110,7 +125,9 @@ export default class PowerPlantItem extends Vue {
     `;
   }
 
-  visibility_ratio = 25;
+  get visibility_ratio(): number {
+    return (85 / Number(this.content_width)) * 100;
+  }
   get style_legend_pmin(): string {
     return `
       position: absolute;
