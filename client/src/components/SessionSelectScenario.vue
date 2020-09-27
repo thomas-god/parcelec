@@ -1,5 +1,5 @@
 <template>
-  <div>
+  <div class="container">
     <h1>Nouvelle partie</h1>
 
     <h2>Choisissez un scenario ...</h2>
@@ -131,25 +131,38 @@ export default class SessionSelectScenario extends Vue {
 </script>
 
 <style scoped>
+.container {
+  max-width: 1000px;
+  margin: auto;
+}
+
 @media screen and (min-width: 750px) {
   .scenarios__container {
     display: grid;
-    grid-template-columns: 1fr 2fr;
-    grid-template-rows: 200px;
+    grid-template-columns: 250px 1fr;
+    grid-template-rows: auto;
     align-items: stretch;
     justify-items: center;
     width: 80%;
     margin: auto;
+    gap: 1rem;
+  }
+
+  .scenarios__list {
+    justify-self: end;
+    text-align: start;
+  }
+  .scenarios__ID {
+    justify-self: start;
   }
 }
 @media screen and (max-width: 750px) {
   .scenarios__container {
-    margin: auto;
+    margin: 0 2rem;
     display: grid;
-    grid-template-columns: 70%;
-    grid-template-rows: 1fr 1fr;
-    align-items: stretch;
-    justify-items: center;
+    grid-template-columns: 1fr;
+    grid-template-rows: minmax(100px, auto) auto;
+    gap: 1rem;
   }
 }
 
@@ -158,28 +171,25 @@ export default class SessionSelectScenario extends Vue {
   padding: 1rem;
   border: 1px solid rgba(0, 0, 0, 0.493);
   border-radius: 3px;
-  box-shadow: 5px 5px 2px 1px rgba(28, 28, 56, 0.26);
   height: 100%;
   box-sizing: border-box;
   margin: 0;
-}
-
-.scenario__ID {
   width: 100%;
 }
+
 ul {
   list-style-type: "-";
   padding: 0;
 }
 
 li span {
-  padding: 0 0.5rem;
-  font-size: 1.3rem;
+  padding: 0.5rem 0.5rem;
+  font-size: 1.2rem;
 }
 
 li:hover span,
 .scenario__selected {
-  background-color: rgb(0, 151, 98);
+  border-bottom: 2px solid rgb(0, 151, 98);
 }
 
 .session_open {

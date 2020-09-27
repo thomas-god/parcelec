@@ -1,16 +1,18 @@
 <template>
-  <div v-if="portfolio.length > 0">
-    <h2>
-      {{ options.name === "default" ? "Scénario par défault" : options.name }}
-    </h2>
-    <p>
-      {{ options.description }}
-    </p>
-    <ul>
-      <li>Difficulté : {{ difficulty }}</li>
-      <li>Nombre de phases : {{ options.conso_forecast_mwh.length }}</li>
-      <li>Multijoueur : {{ options.multi_game ? "Oui" : "Non" }}</li>
-    </ul>
+  <div>
+    <div v-if="portfolio.length > 0">
+      <h3>
+        {{ options.name === "default" ? "Scénario par défault" : options.name }}
+      </h3>
+      <p>
+        {{ options.description }}
+      </p>
+      <ul>
+        <li>Difficulté : {{ difficulty }}</li>
+        <li>Nombre de phases : {{ options.conso_forecast_mwh.length }}</li>
+        <li>Multijoueur : {{ options.multi_game ? "Oui" : "Non" }}</li>
+      </ul>
+    </div>
   </div>
 </template>
 
@@ -37,11 +39,19 @@ export default class ScenarioIDCard extends Vue {
 </script>
 
 <style scoped>
-h2 {
+h3 {
+  margin-top: 0;
+  margin-bottom: 10px;
+}
+
+p {
+  font-size: 1.1rem;
+  text-align: start;
   margin-top: 0;
 }
 
 ul {
-  padding: 0;
+  text-align: start;
+  padding-left: 1.5rem;
 }
 </style>
