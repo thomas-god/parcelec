@@ -1013,6 +1013,30 @@ export async function getScenarioOptions(
 }
 
 /**
+ * Return the portfolio of a scenario by its ID.
+ * @param scenario_id Scenario ID
+ */
+export async function getScenarioPortfolio(
+  scenario_id: string
+): Promise<PowerPlantTemplate[]> {
+  const portfolio = (
+    await db.query(
+      `SELECT
+        type,
+        p_min_mw,
+        p_max_mw,
+        stock_max_mwh,
+        price_eur_per_mwh
+        
+      FROM scenarios_power_plants
+      WHERE scenario_id=$1`,
+      [scenario_id]
+    )
+  ).rows as PowerPlantTemplate[];
+  return portfolio;
+}
+
+/**
  * Check if a session name already exists, and return `true` if not.
  * @param session_name Session name
  */

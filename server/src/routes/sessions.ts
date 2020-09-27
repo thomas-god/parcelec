@@ -9,6 +9,8 @@ import {
   CustomError,
   generateDefaultScenario,
   getPhaseInfos,
+  getScenarioOptions,
+  getScenarioPortfolio,
   getScenariosList,
   getSession,
   getSessionBooleans,
@@ -48,6 +50,27 @@ export async function getScenarios(
     scenarios = await await getScenariosList();
   }
   res.json(scenarios);
+}
+
+/**
+ * Get the options (portfolio, session options) of a given scenario.
+ * @param req HTTP request
+ * @param res HTTP response
+ */
+export async function getScenarioOptionsRoute(
+  req: express.Request,
+  res: express.Response
+): Promise<void> {
+  const scenario_id: string = req.params.scenario_id;
+  if (!(await checkScenarioID(scenario_id)))
+    throw new CustomError("Error, no scenario found with this ID.");
+
+  const scenario_options = await getScenarioOptions(scenario_id);
+  const scenario_portfolio = await getScenarioPortfolio(scenario_id);
+  res.json({
+    options: scenario_options,
+    portfolio: scenario_portfolio,
+  });
 }
 
 /**
@@ -152,6 +175,7 @@ export async function getSessionInfos(
 const router = express.Router();
 
 router.get("/scenarios", getScenarios);
+router.get(`/scenario/:scenario_id(${uuid_regex})`, getScenarioOptionsRoute);
 router.get("/sessions/open", getOpenSessions);
 router.put("/session/", openNewSession);
 router.get(`/session/:session_id(${uuid_regex})`, getSessionInfos);
