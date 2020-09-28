@@ -111,7 +111,7 @@ export default class Home extends Vue {
         price_eur_per_mwh: 25,
         planning: 0,
         planning_modif: 0,
-        stock_mwh: -1,
+        stock_mwh: -1
       },
       {
         id: "2",
@@ -122,8 +122,8 @@ export default class Home extends Vue {
         price_eur_per_mwh: 0,
         planning: 0,
         planning_modif: 0,
-        stock_mwh: 500,
-      },
+        stock_mwh: 500
+      }
     ]);
   }
 }
@@ -144,7 +144,7 @@ export default class Home extends Vue {
   hyphens: auto;
 }
 
-.home > p {
+.home p {
   max-width: 600px;
 }
 
