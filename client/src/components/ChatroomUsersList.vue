@@ -39,7 +39,7 @@ export default class UserList extends Vue {
     const res = await fetch(
       `${this.api_url}/session/${this.session_id}/user/${this.user_id}/ready`,
       {
-        method: "PUT"
+        method: "PUT",
       }
     );
     if (res.status === 201) this.SET_GAME_READY(true);
@@ -53,7 +53,7 @@ h3 {
   margin-bottom: 0;
 }
 ul {
-  margin-bottom: 0;
+  margin-bottom: 2rem;
 }
 li {
   text-align: start !important;
