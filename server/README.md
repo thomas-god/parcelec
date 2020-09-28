@@ -3,7 +3,8 @@
 The following describes the various routes composing the parcelec API. 
 
 ### User related route
-- [GET /scenarios](#List-all-available-scenariosd)
+- [GET /scenarios](#List-all-available-scenarios)
+- [GET /scenario/:scenario_id](#Get-information-about-a-scenario)
 - [GET /sessions/open](#List-all-opened-session-that-can-be-joined)
 - [PUT /session](#Open-a-new-session-(session_name-must-be-unique))
 - [GET /session/:session_id](#Get-public-information-about-a-session)
@@ -40,6 +41,17 @@ The following describes the various routes composing the parcelec API.
       ]
     ```
 
+### Get information about a scenario
+ - Route: `GET /scenario/:scenario_id`
+ - Response : 
+    - Type : `application/json`,
+    - Body : 
+    ``` js
+      {
+        options: {},
+        portfolio: []
+      }
+    ```
 ### List all opened session that can be joined
  - Route: `GET /sessions/open`
  - Response : 

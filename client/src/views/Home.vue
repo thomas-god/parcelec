@@ -145,7 +145,7 @@ export default class Home extends Vue {
 }
 
 .home > p {
-  max-width: 700px;
+  max-width: 600px;
 }
 
 .card {
@@ -154,6 +154,7 @@ export default class Home extends Vue {
   padding: 1rem;
   border: 1px solid rgba(0, 0, 0, 0.493);
   border-radius: 3px;
+  max-width: 500px;
 }
 
 @media screen and (min-width: 400) {

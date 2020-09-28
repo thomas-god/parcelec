@@ -1,5 +1,5 @@
 <template>
-  <div :style="containerStyle">
+  <div class="chatroom__container">
     <ChatroomMessages class="chatroom__box chatroom__messages" />
     <ChatroomUsersList
       class="chatroom__box chatroom__users_list"
@@ -16,29 +16,40 @@ import ChatroomUsersList from "./ChatroomUsersList.vue";
 @Component({ components: { ChatroomMessages, ChatroomUsersList } })
 export default class Chatroom extends Vue {
   @Prop({ default: false }) display_ready!: boolean;
-  @Prop({ default: "row" }) display_direction!: "row" | "column";
-
-  get containerStyle(): string {
-    return `
-      display: flex;
-      flex-direction: ${this.display_direction};
-    `;
-  }
 }
 </script>
 
 <style scoped>
+@media screen and (min-width: 750px) {
+  .chatroom__container {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    max-width: 850px;
+  }
+
+  .chatroom__messages {
+    flex-grow: 2;
+    flex-basis: 0;
+  }
+
+  .chatroom__users_list {
+    flex-grow: 1;
+    flex-basis: 0;
+  }
+}
+
+@media screen and (max-width: 750px) {
+  .chatroom__container {
+    display: flex;
+    flex-direction: column;
+    flex-wrap: nowrap;
+  }
+}
+
 .chatroom__box {
   border: 1px solid black;
   margin: 1rem;
   padding: 1rem;
-}
-
-.chatroom__messages {
-  flex-grow: 4;
-}
-
-.chatroom__users_list {
-  flex-grow: 1;
 }
 </style>

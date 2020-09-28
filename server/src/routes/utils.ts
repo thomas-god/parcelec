@@ -889,7 +889,8 @@ export async function generateDefaultScenario(): Promise<string> {
     id: id,
     name: "default",
     difficulty: "easy",
-    description: "Default scenario.",
+    description:
+      "Le scénario par défaut vous permet de prendre en main les fonctionnalités de parcelec.",
     multi_game: false,
     bids_duration_sec: 180,
     plannings_duration_sec: 300,
@@ -1010,6 +1011,30 @@ export async function getScenarioOptions(
   ).rows;
   if (res.length === 1) scenario_options = res[0];
   return scenario_options;
+}
+
+/**
+ * Return the portfolio of a scenario by its ID.
+ * @param scenario_id Scenario ID
+ */
+export async function getScenarioPortfolio(
+  scenario_id: string
+): Promise<PowerPlantTemplate[]> {
+  const portfolio = (
+    await db.query(
+      `SELECT
+        type,
+        p_min_mw,
+        p_max_mw,
+        stock_max_mwh,
+        price_eur_per_mwh
+        
+      FROM scenarios_power_plants
+      WHERE scenario_id=$1`,
+      [scenario_id]
+    )
+  ).rows as PowerPlantTemplate[];
+  return portfolio;
 }
 
 /**

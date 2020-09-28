@@ -1,10 +1,10 @@
 <template>
   <div class="pp__grid">
     <div class="pp__logo">{{ logo }}</div>
-    <div :style="pp__barre_style">
+    <div :style="pp__barre_style" ref="barre">
       <input
         type="range"
-        class="pp__barre__slider"
+        class="pp__barre__slider slider__active"
         v-model="power_plant.planning_modif"
         min="0"
         :max="power_plant.p_max_mw"
@@ -81,13 +81,27 @@ export default class PowerPlantItem extends Vue {
   get p_value_ratio(): number {
     return (this.power_plant.planning_modif / this.power_plant.p_max_mw) * 100;
   }
+  public mounted() {
+    window.addEventListener("resize", this.handleResize);
+    if (this.$refs.barre)
+      this.content_width = (this.$refs.barre as HTMLDivElement).clientWidth;
+  }
+
+  content_width = 0;
+  public handleResize() {
+    if (this.$refs.barre)
+      this.content_width = (this.$refs.barre as HTMLDivElement).clientWidth;
+  }
+
+  public beforeDestroyed() {
+    window.removeEventListener("resize", this.handleResize);
+  }
 
   get pp__barre_style(): string {
     return `
       position: relative;
       box-sizing: content-box;
       grid-area: barre;
-      margin-left: 3px;
       border: 2px solid rgb(0, 195, 255);
       border-radius: 2px;
       width: ${this.p_max_abs_ratio}%
@@ -110,7 +124,9 @@ export default class PowerPlantItem extends Vue {
     `;
   }
 
-  visibility_ratio = 25;
+  get visibility_ratio(): number {
+    return (85 / Number(this.content_width)) * 100;
+  }
   get style_legend_pmin(): string {
     return `
       position: absolute;
@@ -157,7 +173,7 @@ export default class PowerPlantItem extends Vue {
     display: grid;
     grid-template-areas:
       "logo infos"
-      "X legend"
+      "legend legend"
       "barre barre";
     grid-template-columns: 50px 1fr;
     grid-template-rows: 45px 30px 60px;
@@ -305,37 +321,49 @@ input[type="range"]::-ms-track {
   color: transparent;
 }
 
-/*-------------------- Input range thumb styling ----------------------*/
+/*-------------------- Default range thumb styling ----------------------*/
 /* Special styling for WebKit/Blink */
 input[type="range"]::-webkit-slider-thumb {
   -webkit-appearance: none;
-  border: 1px solid #000000;
   width: 7px;
   border-radius: 3px;
-  background: #ffffff;
   cursor: pointer;
   margin-top: 0px; /* You need to specify a margin in Chrome, but in Firefox and IE it is automatic */
-  box-shadow: 1px 1px 1px #000000, 0px 0px 1px #0d0d0d; /* Add cool effects to your sliders! */
 }
 
 /* All the same stuff for Firefox */
 input[type="range"]::-moz-range-thumb {
-  box-shadow: 1px 1px 1px #000000, 0px 0px 1px #0d0d0d;
-  border: 1px solid #000000;
   width: 4px;
   border-radius: 3px;
-  background: #ffffff;
   cursor: pointer;
 }
 
 /* All the same stuff for IE */
 input[type="range"]::-ms-thumb {
-  box-shadow: 1px 1px 1px #000000, 0px 0px 1px #0d0d0d;
-  border: 1px solid #000000;
-  height: 36px;
   width: 16px;
   border-radius: 3px;
-  background: #ffffff;
   cursor: pointer;
+}
+
+/*-------------------- Active range thumb styling ----------------------*/
+
+input[type="range"].slider__active::-webkit-slider-thumb {
+  box-shadow: 1px 1px 1px #000000, 0px 0px 1px #0d0d0d;
+  border: 1px solid #000000;
+  background: #ffffff;
+}
+
+/* All the same stuff for Firefox */
+input[type="range"].slider__active::-moz-range-thumb {
+  box-shadow: 1px 1px 1px #000000, 0px 0px 1px #0d0d0d;
+  border: 1px solid #000000;
+  background: #ffffff;
+}
+
+/* All the same stuff for IE */
+input[type="range"].slider__active::-ms-thumb {
+  box-shadow: 1px 1px 1px #000000, 0px 0px 1px #0d0d0d;
+  border: 1px solid #000000;
+  background: #ffffff;
 }
 </style>
