@@ -118,7 +118,17 @@ export default class PowerPlantsList extends Vue {
   margin: 1rem;
 }
 .actions button {
-  font-size: 1rem;
+  border: none;
+  border-radius: 1rem;
+  background-color: rgb(0, 132, 255);
   margin: 0 1rem;
+  padding: 5px 10px;
+  font-size: 1rem;
+  font-weight: 600;
+  color: white;
+}
+.actions button:disabled {
+  color: rgb(235, 235, 235);
+  background-color: rgba(0, 132, 255, 0.616);
 }
 </style>
