@@ -123,7 +123,7 @@ export default class BidItem extends Vue {
 </script>
 
 <style scoped>
-@media screen and (min-width: 500px) {
+@media screen and (min-width: 350px) {
   .bid__container {
     display: grid;
     grid-template-areas:
@@ -138,27 +138,6 @@ export default class BidItem extends Vue {
     margin: auto;
     gap: 0.2rem 1rem;
   }
-  .bid__container_qte_txt {
-    grid-area: qte_txt;
-  }
-  .bid__container_qte_input {
-    grid-area: qte_input;
-  }
-  .bid__container_qte_err {
-    grid-area: qte_err;
-  }
-  .bid__container_price_txt {
-    grid-area: price_txt;
-  }
-  .bid__container_price_input {
-    grid-area: price_input;
-  }
-  .bid__container_price_err {
-    grid-area: price_err;
-  }
-  .bid__container_actions {
-    grid-area: btns;
-  }
   .bid__container_qte_txt,
   .bid__container_price_txt {
     justify-self: end;
@@ -168,20 +147,69 @@ export default class BidItem extends Vue {
   .bid__container_price_input {
     justify-self: start;
   }
-  .bid__container_qte_input > input,
-  .bid__container_price_input > input {
-    text-align: center;
-    font-size: 1.2rem;
-    max-width: 100px;
+}
+
+@media screen and (max-width: 350px) {
+  .bid__container {
+    display: grid;
+    grid-template-areas:
+      "qte_txt"
+      "qte_input"
+      "qte_err"
+      "price_txt"
+      "price_input"
+      "price_err"
+      "btns";
+    grid-template-columns: 1fr;
+    grid-row: auto auto 20px auto auto 20px auto;
+    margin: auto;
+    gap: 0.6rem;
   }
-  .bid__container_qte_err,
-  .bid__container_price_err {
-    font-size: 0.9rem;
-    color: red;
-    font-style: italic;
-    text-align: center;
-    height: 1rem;
+  .bid__container_qte_input,
+  .bid__container_price_input,
+  .bid__container_qte_txt,
+  .bid__container_price_txt {
+    justify-self: center;
+    align-self: center;
   }
+}
+
+.bid__container_qte_txt {
+  grid-area: qte_txt;
+}
+.bid__container_qte_input {
+  grid-area: qte_input;
+}
+.bid__container_qte_err {
+  grid-area: qte_err;
+}
+.bid__container_price_txt {
+  grid-area: price_txt;
+}
+.bid__container_price_input {
+  grid-area: price_input;
+}
+.bid__container_price_err {
+  grid-area: price_err;
+}
+.bid__container_actions {
+  grid-area: btns;
+}
+
+.bid__container_qte_input > input,
+.bid__container_price_input > input {
+  text-align: center;
+  font-size: 1.2rem;
+  max-width: 100px;
+}
+
+.bid__container_qte_err,
+.bid__container_price_err {
+  font-size: 0.9rem;
+  color: red;
+  font-style: italic;
+  text-align: center;
+  height: 1rem;
 }
 
 .bid__container_actions button {
