@@ -140,7 +140,7 @@ export default class SessionSelectScenario extends Vue {
   .scenarios__container {
     display: grid;
     grid-template-columns: 250px 1fr;
-    grid-template-rows: auto;
+    grid-template-rows: minmax(250px, auto);
     align-items: stretch;
     justify-items: center;
     width: 80%;
