@@ -9,7 +9,7 @@
       :power_max_mw="power_plants_max_power_mw"
       :editable="dummy || can_post_planning"
     />
-    <div class="actions">
+    <div class="actions" v-if="show_actions">
       <button
         @click="updatePlanning"
         :disabled="(!dummy && !can_post_planning) || diff_abs_planning === 0"
@@ -38,6 +38,7 @@ const portfolioModule = namespace("portfolio");
 
 @Component({ components: { PowerPlantItem } })
 export default class PowerPlantsList extends Vue {
+  @Prop({ default: true }) show_actions!: boolean;
   @Prop({ default: false }) dummy!: boolean;
   @portfolioModule.Getter power_plants!: PowerPlant[];
   @portfolioModule.Action resetPlanning!: () => {};
@@ -49,7 +50,7 @@ export default class PowerPlantsList extends Vue {
 
   get pp_sorted(): PowerPlant[] {
     return this.power_plants
-      .map(pp => pp)
+      .map((pp) => pp)
       .sort((a, b) => b.p_max_mw - a.p_max_mw);
   }
 
@@ -66,12 +67,12 @@ export default class PowerPlantsList extends Vue {
 
   async updatePlanning() {
     if (!this.dummy) {
-      const planning_formatted = this.power_plants.map(pp => {
+      const planning_formatted = this.power_plants.map((pp) => {
         return {
           user_id: this.user_id,
           session_id: this.session_id,
           plant_id: pp.id,
-          p_mw: pp.planning_modif
+          p_mw: pp.planning_modif,
         };
       });
       const res = await fetch(
@@ -79,7 +80,7 @@ export default class PowerPlantsList extends Vue {
         {
           method: "PUT",
           headers: { "content-type": "application/json" },
-          body: JSON.stringify(planning_formatted)
+          body: JSON.stringify(planning_formatted),
         }
       );
       if (res.status === 201) {
@@ -99,12 +100,14 @@ export default class PowerPlantsList extends Vue {
   overflow: hidden;
 }
 
-.pp__list_item {
-  margin: 1rem 1rem 1rem 0rem;
+@media screen and (min-width: 400px) {
+  .pp__list_item {
+    margin: 1rem 1.5rem;
+  }
 }
 @media screen and (max-width: 400px) {
   .pp__list_item {
-    margin: 1rem 0.5rem 0.5rem 0rem;
+    margin: 1rem 1.5rem;
   }
 }
 

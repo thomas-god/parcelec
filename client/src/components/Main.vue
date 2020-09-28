@@ -40,7 +40,10 @@
           >
         </h2>
         <div class="app__main" v-if="session.id && username">
-          <PowerPlantsList class="app__main_item" />
+          <PowerPlantsList
+            class="app__main_item"
+            :show_actions="!results_available"
+          />
           <BidsList class="app__main_item" />
         </div>
       </div>
@@ -77,8 +80,8 @@ const sessionModule = namespace("session");
     Bid,
     PowerPlantsList,
     BidsList,
-    BilansSimple
-  }
+    BilansSimple,
+  },
 })
 export default class Main extends Vue {
   @userModule.Getter username!: string;
@@ -132,7 +135,7 @@ export default class Main extends Vue {
     const res = await fetch(
       `${this.api_url}/session/${this.session_id}/user/${this.user_id}/ready`,
       {
-        method: "PUT"
+        method: "PUT",
       }
     );
     if (res.status === 201) this.SET_GAME_READY(true);
