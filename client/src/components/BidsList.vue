@@ -3,29 +3,19 @@
     <h2>Bourse de l'électricité</h2>
 
     <div v-if="dummy || can_bid">
+      <h3>Poster une enchère</h3>
       <div class="bid__action" v-if="dummy || can_bid">
-        <BidItem :type="'buy'" :edit="true" :dummy="dummy" />
-        <BidItem :type="'sell'" :edit="true" :dummy="dummy" />
+        <BidItemInput :type="'buy'" :edit="true" :dummy="dummy" />
       </div>
-      <h3 v-if="bidsBuy.length > 0">Vos achats</h3>
+      <h3 v-if="bidsBuy.length > 0">Vos enchères</h3>
       <BidItem
         :type="'buy'"
         :edit="false"
-        v-for="bid in bidsBuy"
+        v-for="bid in bids_sorted"
         :key="bid.id"
         :bid="bid"
         :dummy="dummy"
       />
-      <h3 v-if="bidsSell.length > 0">Vos ventes</h3>
-      <BidItem
-        :type="'sell'"
-        :edit="false"
-        v-for="bid in bidsSell"
-        :key="bid.id"
-        :bid="bid"
-        :dummy="dummy"
-      />
-
       <h3 v-if="bidsBuy.length === 0 && bidsSell.length === 0">
         Vous n'avez pas d'enchères
       </h3>
@@ -66,13 +56,14 @@
 import { Component, Prop, Vue } from "vue-property-decorator";
 import { State, Action, Getter, namespace } from "vuex-class";
 import { Bid } from "../store/bids";
+import BidItemInput from "./BidItemInput.vue";
 import BidItem from "./BidItem.vue";
 
 const userModule = namespace("user");
 const sessionModule = namespace("session");
 const bidsModule = namespace("bids");
 
-@Component({ components: { BidItem } })
+@Component({ components: { BidItemInput, BidItem } })
 export default class BidsList extends Vue {
   @Prop({ default: false }) dummy!: boolean;
   @bidsModule.Getter bids!: Bid[];
@@ -82,26 +73,48 @@ export default class BidsList extends Vue {
   @sessionModule.Getter can_bid!: boolean;
   @sessionModule.Getter clearing_available!: boolean;
 
+  get bids_sorted(): Bid[] {
+    return this.bids
+      .map((bid) => bid)
+      .sort((a, b) => {
+        if (a.type !== b.type) {
+          return a.type < b.type ? -1 : 1;
+        } else {
+          return a.volume_mwh - b.volume_mwh;
+        }
+      });
+  }
+
   get bidsSell(): Bid[] {
-    return this.bids.filter(bid => bid.type === "sell");
+    return this.bids.filter((bid) => bid.type === "sell");
   }
 
   get bidsBuy(): Bid[] {
-    return this.bids.filter(bid => bid.type === "buy");
+    return this.bids.filter((bid) => bid.type === "buy");
   }
 }
 </script>
 
 <style scoped>
 .bid__action {
-  border: 2px solid grey;
   margin: 0 3px;
 }
 
 .bid__list {
-  border: 2px solid gray;
   border-radius: 2px;
   overflow: hidden;
+}
+
+@media screen and (min-width: 400px) {
+  .bid__list {
+    border: 2px solid gray;
+  }
+}
+
+@media screen and (max-width: 400px) {
+  .bid__list {
+    border: 1px solid gray;
+  }
 }
 
 .bid__list h3 {
