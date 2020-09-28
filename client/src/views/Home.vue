@@ -139,7 +139,7 @@ export default class Home extends Vue {
 .home p {
   font-size: 1.3rem;
   text-align: start;
-  margin: 0 1rem 1rem;
+  margin: 0 0rem 1rem;
   word-break: break-word;
   hyphens: auto;
 }
@@ -149,12 +149,12 @@ export default class Home extends Vue {
 }
 
 .card {
-  margin: auto;
-  margin: 0 1rem 2.5rem 1rem;
   padding: 1rem;
   border: 1px solid rgba(0, 0, 0, 0.493);
   border-radius: 3px;
+  width: 100%;
   max-width: 500px;
+  box-sizing: border-box;
 }
 
 @media screen and (min-width: 400) {
@@ -176,12 +176,20 @@ export default class Home extends Vue {
     display: grid;
     grid-template-columns: 1fr 1fr;
     align-items: center;
+    gap: 2rem;
+  }
+  .grid__left .card {
+    justify-self: end;
   }
 
   .grid__right {
     display: grid;
     grid-template-columns: 1fr 1fr;
     align-items: center;
+    gap: 2rem;
+  }
+  .grid__right .card {
+    justify-self: start;
   }
   .grid__right p {
     text-align: end;
@@ -208,6 +216,10 @@ export default class Home extends Vue {
   }
   .grid__right p {
     text-align: initial;
+  }
+  .grid__left .card,
+  .grid__right .card {
+    margin-bottom: 1rem;
   }
 }
 </style>
