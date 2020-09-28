@@ -23,7 +23,7 @@
       mieux à ce besoin. À la fin d'une phase vous recevrez un bilan de
       performances énergétiques et financières.
     </p>
-    <h2>Vos centrales</h2>
+    <h2>Votre portefeuille</h2>
     <div class="grid__left">
       <power-plants-list class="card" :dummy="true" />
       <div>
@@ -139,7 +139,7 @@ export default class Home extends Vue {
 .home p {
   font-size: 1.3rem;
   text-align: start;
-  margin: 0 1rem 1rem;
+  margin: 0 0rem 1rem;
   word-break: break-word;
   hyphens: auto;
 }
@@ -149,23 +149,12 @@ export default class Home extends Vue {
 }
 
 .card {
-  margin: auto;
-  margin: 0 1rem 2.5rem 1rem;
   padding: 1rem;
   border: 1px solid rgba(0, 0, 0, 0.493);
   border-radius: 3px;
+  width: 100%;
   max-width: 500px;
-}
-
-@media screen and (min-width: 400) {
-  .card {
-    box-shadow: 12px 12px 2px 1px rgba(28, 28, 56, 0.26);
-  }
-}
-
-.grid__left p,
-.grid__right p {
-  max-width: 600px;
+  box-sizing: border-box;
 }
 
 @media screen and (min-width: 900px) {
@@ -176,12 +165,20 @@ export default class Home extends Vue {
     display: grid;
     grid-template-columns: 1fr 1fr;
     align-items: center;
+    gap: 2rem;
+  }
+  .grid__left .card {
+    justify-self: end;
   }
 
   .grid__right {
     display: grid;
     grid-template-columns: 1fr 1fr;
     align-items: center;
+    gap: 2rem;
+  }
+  .grid__right .card {
+    justify-self: start;
   }
   .grid__right p {
     text-align: end;
@@ -194,8 +191,11 @@ export default class Home extends Vue {
     justify-items: center;
     align-items: flex-start;
   }
-  .grid__left p {
+  .grid__left p,
+  .grid__right p,
+  .home p {
     text-align: initial;
+    padding: 0 1.5rem;
   }
 
   .grid__right {
@@ -206,8 +206,31 @@ export default class Home extends Vue {
   .grid__right > .card {
     grid-row-start: 1;
   }
-  .grid__right p {
-    text-align: initial;
+  .grid__left .card,
+  .grid__right .card {
+    margin-bottom: 1rem;
+  }
+}
+
+@media screen and (max-width: 520px) {
+  .card {
+    border: none;
+    position: relative;
+  }
+  .card::before,
+  .card::after {
+    content: "";
+    position: absolute;
+    left: 12.5%;
+    width: 75%;
+    height: 1px;
+    border-bottom: 2px solid gray;
+  }
+  .card::before {
+    top: 0;
+  }
+  .card::after {
+    bottom: 0;
   }
 }
 </style>
