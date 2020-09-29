@@ -23,9 +23,8 @@
         Phase
         {{ `${phase_infos.phase_no + 1}/${phase_infos.nb_phases}` }} terminée
       </h1>
-
       <div class="app__grid_main">
-        <h2>Consommation cible : {{ conso.toLocaleString("fr-FR") }} MWh</h2>
+        <h2>Consommation : {{ conso.toLocaleString("fr-FR") }} MWh</h2>
         <h3 v-if="timeBeforeClearing && !results_available">
           <span
             v-if="timeBeforeClearing === 'Temps écoulé'"
@@ -47,6 +46,7 @@
             <strong>{{ timeBeforePlanning }}</strong></span
           >
         </h3>
+        <Bilans v-if="results_available" />
         <div class="app__main" v-if="session.id && username">
           <PowerPlantsList
             class="app__main_item"
@@ -60,7 +60,9 @@
       class="ready__btn"
       @click="setStatusReady"
       :disable="!ready"
-      v-if="results_available"
+      v-if="
+        results_available && phase_infos.phase_no + 1 < phase_infos.nb_phases
+      "
     >
       Passer à la phase suivante
     </button>
@@ -78,6 +80,7 @@ import Bid from "./SessionBid.vue";
 import PowerPlantsList from "./PowerPlantsList.vue";
 import BidsList from "./BidsList.vue";
 import BilansSimple from "./BilansSimple.vue";
+import Bilans from "./Bilans.vue";
 
 const userModule = namespace("user");
 const sessionModule = namespace("session");
@@ -90,6 +93,7 @@ const portfolioModule = namespace("portfolio");
     PowerPlantsList,
     BidsList,
     BilansSimple,
+    Bilans,
   },
 })
 export default class Main extends Vue {
