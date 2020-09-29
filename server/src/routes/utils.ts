@@ -289,7 +289,7 @@ export async function getConsoForecast(
   phase_no?: number
 ): Promise<number> {
   if (phase_no === undefined) {
-    phase_no = await getCurrentPhaseNo(session_id);
+    phase_no = await getLastPhaseNo(session_id);
   }
   if (phase_no !== null) {
     const rows: ConsoForecast[] = (
