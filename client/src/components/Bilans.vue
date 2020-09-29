@@ -1,44 +1,34 @@
 <template>
-  <div>
-    <h2 style="margin-bottom: 0.8rem;">Votre bilan</h2>
-    <div class="bilans__grid_item" style="margin-bottom: 1rem;">
-      <span class="bilans__grid_item_value">
-        {{ `${deficit > 0 ? "+" : ""}${deficit.toLocaleString("fr-FR")}` }} MWh
-        <span v-if="results_available">
-          /
-          {{
-            `${deficit_money > 0 ? "+" : ""}${deficit_money.toLocaleString(
-              "fr-FR"
-            )}`
-          }}
-          €
-        </span>
-      </span>
+  <div class="bilans__container">
+    <div class="bilans__item">
+      <span><em>Clients</em></span>
+      <span> {{ fmt(conso) }} MWh </span>
+      <span> {{ fmt(conso_eur) }} € </span>
     </div>
-    <!-- Volumes -->
-    <div class="bilans__grid_volume">
-      <div
-        v-for="item in bilans"
-        :key="item.name"
-        :style="`grid-area: ${item.zone};`"
-        class="bilans__grid_item"
-      >
-        <span class="bilans__grid_item_name">{{ item.name }}</span>
-        <span class="bilans__grid_item_value">{{ item.value }} MWh</span>
-      </div>
+    <div class="bilans__item">
+      <span><em>Production</em></span>
+      <span> {{ fmt(prod_total_mwh) }} MWh </span>
+      <span> {{ fmt(-1 * prod_eur) }} € </span>
     </div>
-
-    <!-- Finances -->
-    <div class="bilans__grid_prices" v-if="results_available">
-      <div
-        v-for="item in bilan_money"
-        :key="item.name"
-        :style="`grid-area: ${item.zone};`"
-        class="bilans__grid_item"
-      >
-        <span class="bilans__grid_item_name">{{ item.name }}</span>
-        <span class="bilans__grid_item_value">{{ item.value }} €</span>
-      </div>
+    <div class="bilans__item">
+      <span><em>Ventes</em></span>
+      <span> {{ fmt(sell.volume_mwh) }} MWh </span>
+      <span> {{ fmt(sell_eur) }} € </span>
+    </div>
+    <div class="bilans__item">
+      <span><em>Achats</em></span>
+      <span> {{ fmt(buy.volume_mwh) }} MWh </span>
+      <span> {{ fmt(-1 * buy_eur) }} € </span>
+    </div>
+    <div class="bilans__item">
+      <span><em>Écarts</em></span>
+      <span> {{ fmt(deficit_mwh) }} MWh </span>
+      <span> {{ fmt(imbalance_costs_eur) }} € </span>
+    </div>
+    <div class="bilans__item">
+      <span><em>Total</em></span>
+      <span>-</span>
+      <span> {{ fmt(money) }} € </span>
     </div>
   </div>
 </template>
@@ -55,7 +45,7 @@ const resultsModule = namespace("results");
 const sessionModule = namespace("session");
 
 @Component
-export default class PlanningBilans extends Vue {
+export default class Bilans extends Vue {
   @sessionModule.State results_available!: boolean;
   @portfolioModule.State power_plants!: PowerPlant[];
   @portfolioModule.State conso!: number;
@@ -68,62 +58,7 @@ export default class PlanningBilans extends Vue {
   @resultsModule.State imbalance_costs_eur!: number;
   @resultsModule.State balance_eur!: number;
 
-  get bilans() {
-    return [
-      {
-        name: "Consommation",
-        value: "-" + this.conso.toLocaleString("fr-FR"),
-        zone: "conso",
-      },
-      {
-        name: "Production",
-        value: this.prod_total_mwh.toLocaleString("fr-FR"),
-        zone: "prod",
-      },
-      {
-        name: "Ventes",
-        value: "-" + this.sell.volume_mwh.toLocaleString("fr-FR"),
-        zone: "sell",
-      },
-      {
-        name: "Achats",
-        value: this.buy.volume_mwh.toLocaleString("fr-FR"),
-        zone: "buy",
-      },
-    ];
-  }
-
-  get bilan_money() {
-    return [
-      {
-        name: "Consommation",
-        value: this.conso_eur.toLocaleString("fr-FR"),
-        zone: "conso",
-      },
-      {
-        name: "Production",
-        value: "-" + this.prod_eur.toLocaleString("fr-FR"),
-        zone: "prod",
-      },
-      {
-        name: "Ventes",
-        value: this.sell_eur.toLocaleString("fr-FR"),
-        zone: "sell",
-      },
-      {
-        name: "Achats",
-        value: "-" + this.buy_eur.toLocaleString("fr-FR"),
-        zone: "buy",
-      },
-      {
-        name: "Règlement des écarts",
-        value: this.imbalance_costs_eur.toLocaleString("fr-FR"),
-        zone: "imbalance",
-      },
-    ];
-  }
-
-  get deficit() {
+  get deficit_mwh() {
     return Number(
       this.buy.volume_mwh +
         this.prod_total_mwh -
@@ -132,7 +67,7 @@ export default class PlanningBilans extends Vue {
     );
   }
 
-  get deficit_money() {
+  get money() {
     return Number(
       this.conso_eur +
         this.sell_eur -
@@ -151,35 +86,34 @@ export default class PlanningBilans extends Vue {
     }
     return prod;
   }
+
+  fmt(nb: number): string {
+    return nb.toLocaleString("fr-FR");
+  }
 }
 </script>
 
 <style scoped>
-.bilans__grid_volume {
-  display: grid;
-  grid-template-areas:
-    "conso prod"
-    "sell buy";
-  grid-template-columns: 1fr 1fr;
-  grid-template-rows: 1fr 1fr;
-  margin-bottom: 2rem;
+.bilans__container {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
 }
-
-.bilans__grid_prices {
-  display: grid;
-  grid-template-areas:
-    "conso prod"
-    "sell buy"
-    "imbalance imbalance";
-  grid-template-columns: 1fr 1fr;
-  grid-template-rows: 1fr 1fr 1fr;
-}
-
-.bilans__grid_item {
+.bilans__item {
   display: flex;
   flex-direction: column;
+  margin: 1rem;
+  flex-basis: auto;
+  flex-grow: 0;
 }
-.bilans__grid_item_value {
-  font-size: 1.5rem;
+.bilans__item span {
+  justify-self: start;
+  text-align: start;
+  white-space: nowrap;
+}
+.bilans__item span:not(:first-child) {
+  padding-left: 1ch;
 }
 </style>
