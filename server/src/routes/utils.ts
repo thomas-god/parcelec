@@ -558,6 +558,29 @@ export async function getPhaseInfos(session_id: string): Promise<GamePhase> {
   if (rows.length > 0) return rows[0];
   else return null;
 }
+
+/**
+ * Return session's total number of phases form its scenario. Return `null`
+ * if cannot find scenario.
+ * @param session_id Session ID
+ */
+export async function getSessionNbPhases(session_id: string): Promise<number> {
+  const row = (
+    await db.query(
+      `SELECT 
+        phases_number
+      FROM scenarios_options AS so
+      INNER JOIN sessions AS s
+        ON so.id = s.scenario_id
+      WHERE 
+        s.id=$1`,
+      [session_id]
+    )
+  ).rows;
+
+  return row.length === 1 ? row[0].phases_number : null;
+}
+
 /**
  * Check if users can submit bids to the current phase.
  * @param session_id Session ID
