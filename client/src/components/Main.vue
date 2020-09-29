@@ -24,7 +24,7 @@
       </h1>
 
       <div class="app__grid_main">
-        <h2>Consommation cible : {{ conso }} MWh</h2>
+        <h2>Consommation cible : {{ conso.toLocaleString("fr-FR") }} MWh</h2>
         <h2 v-if="timeBeforeClearing && !results_available">
           <span
             v-if="timeBeforeClearing === 'Temps écoulé'"
