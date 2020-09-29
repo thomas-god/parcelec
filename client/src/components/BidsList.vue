@@ -80,7 +80,7 @@ export default class BidsList extends Vue {
         if (a.type !== b.type) {
           return a.type < b.type ? -1 : 1;
         } else {
-          return a.volume_mwh - b.volume_mwh;
+          return a.price_eur_per_mwh - b.price_eur_per_mwh;
         }
       });
   }
