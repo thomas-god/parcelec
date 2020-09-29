@@ -24,10 +24,14 @@
       </h1>
 
       <div class="app__grid_main">
+        <h2>Consommation cible : {{ conso }} MWh</h2>
         <h2 v-if="timeBeforeClearing && !results_available">
-          <span v-if="timeBeforeClearing === 'Temps écoulé'" style="color: red;"
-            >Enchères clôturées</span
+          <span
+            v-if="timeBeforeClearing === 'Temps écoulé'"
+            style="color: red;"
           >
+            Enchères clôturées
+          </span>
           <span v-else>Fin des enchères dans {{ timeBeforeClearing }}</span>
         </h2>
         <h2 v-if="timeBeforePlanning && !results_available">
@@ -73,6 +77,7 @@ import BilansSimple from "./BilansSimple.vue";
 
 const userModule = namespace("user");
 const sessionModule = namespace("session");
+const portfolioModule = namespace("portfolio");
 
 @Component({
   components: {
@@ -84,15 +89,16 @@ const sessionModule = namespace("session");
   },
 })
 export default class Main extends Vue {
+  @State("api_url") api_url!: string;
   @userModule.Getter username!: string;
   @userModule.Getter user_id!: string;
   @userModule.State ready!: boolean;
+  @userModule.Mutation SET_GAME_READY!: (game_ready: boolean) => void;
   @sessionModule.Getter session!: Session;
   @sessionModule.Getter session_status!: string;
   @sessionModule.Getter phase_infos!: Session["phase_infos"];
   @sessionModule.Getter session_id!: string;
-  @State("api_url") api_url!: string;
-  @userModule.Mutation SET_GAME_READY!: (game_ready: boolean) => void;
+  @portfolioModule.Getter conso!: number;
 
   // Abilities booleans
   @sessionModule.Getter can_bid!: boolean;
