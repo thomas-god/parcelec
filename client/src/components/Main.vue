@@ -17,32 +17,36 @@
     <!-- Running session -->
     <div v-if="session_status === 'running'" class="app__grid">
       <h1 class="app__grid_head" v-if="!results_available">
-        Phase de jeu en cours...
+        Phase {{ `${phase_infos.phase_no + 1}/${phase_infos.nb_phases}` }}
       </h1>
       <h1 class="app__grid_head" v-if="results_available">
-        Phase de jeu terminée
+        Phase
+        {{ `${phase_infos.phase_no + 1}/${phase_infos.nb_phases}` }} terminée
       </h1>
 
       <div class="app__grid_main">
         <h2>Consommation cible : {{ conso.toLocaleString("fr-FR") }} MWh</h2>
-        <h2 v-if="timeBeforeClearing && !results_available">
+        <h3 v-if="timeBeforeClearing && !results_available">
           <span
             v-if="timeBeforeClearing === 'Temps écoulé'"
             style="color: red;"
           >
             Enchères clôturées
           </span>
-          <span v-else>Fin des enchères dans {{ timeBeforeClearing }}</span>
-        </h2>
-        <h2 v-if="timeBeforePlanning && !results_available">
+          <span v-else
+            >Fin des enchères dans
+            <strong>{{ timeBeforeClearing }}</strong></span
+          >
+        </h3>
+        <h3 v-if="timeBeforePlanning && !results_available">
           <span v-if="timeBeforePlanning === 'Temps écoulé'" style="color: red;"
             >Réception des plannings fermée</span
           >
           <span v-else
             >Fermeture de la réception des plannings dans
-            {{ timeBeforePlanning }}</span
+            <strong>{{ timeBeforePlanning }}</strong></span
           >
-        </h2>
+        </h3>
         <div class="app__main" v-if="session.id && username">
           <PowerPlantsList
             class="app__main_item"
@@ -189,6 +193,10 @@ function toTimeString(dt: number): string {
 
 .app__grid_main h2 {
   margin: 10px;
+}
+.app__grid_main h3 {
+  margin: 0.2rem;
+  font-weight: normal;
 }
 
 .app__full h3 {

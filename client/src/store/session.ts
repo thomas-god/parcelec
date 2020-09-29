@@ -17,6 +17,8 @@ export interface Session {
   clearing_available: boolean;
   results_available: boolean;
   phase_infos?: {
+    phase_no: number;
+    nb_phases: number;
     start_time: Date;
     clearing_time: Date;
     planning_time: Date;
@@ -116,6 +118,8 @@ export const mutations: MutationTree<SessionState> = {
   },
   SET_PHASE_INFOS(state, phase_infos): void {
     Vue.set(state, "phase_infos", {
+      phase_no: phase_infos.phase_no,
+      nb_phases: phase_infos.nb_phases,
       start_time: new Date(phase_infos.start_time),
       clearing_time: new Date(phase_infos.clearing_time),
       planning_time: new Date(phase_infos.planning_time),
