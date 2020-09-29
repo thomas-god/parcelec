@@ -3,6 +3,7 @@
  * phase.
  */
 
+import { v4 as uuid } from "uuid";
 import {
   getLastPhaseNo,
   getSession,
@@ -14,7 +15,7 @@ import { sendUpdateToUsers } from "../websocket";
 import clearing from "./clearing";
 import { endGame } from "./end_game";
 import { generateEmptyPlanning, insertPlanning } from "./plannings";
-import { Session } from "../types";
+import { Bid, Session } from "../types";
 
 export async function startGamePhase(session_id: string): Promise<void> {
   const session = await getSession(session_id);
@@ -55,6 +56,45 @@ export async function startGamePhase(session_id: string): Promise<void> {
     await Promise.all(
       users.map(async (user) => {
         await insertPlanning(await generateEmptyPlanning(user, next_phase_no));
+      })
+    );
+
+    // Insert external bids from scenario (with no user attached)
+    const bids: Bid[] = (
+      await db.query(
+        `SELECT
+          type,
+          volume_mwh,
+          price_eur_per_mwh
+        FROM scenarios_bids
+        WHERE
+          scenario_id=$1
+          AND phase_no=$2`,
+        [session.scenario_id, next_phase_no]
+      )
+    ).rows;
+    await Promise.all(
+      bids.map(async (bid) => {
+        await db.query(
+          `INSERT INTO bids
+          (
+            id,
+            session_id,
+            phase_no,
+            type,
+            volume_mwh,
+            price_eur_per_mwh
+          )
+        VALUES ($1, $2, $3, $4, $5, $6)`,
+          [
+            uuid(),
+            session_id,
+            next_phase_no,
+            bid.type,
+            bid.volume_mwh,
+            bid.price_eur_per_mwh,
+          ]
+        );
       })
     );
 

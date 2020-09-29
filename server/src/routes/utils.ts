@@ -38,7 +38,7 @@ export async function getSession(session_id: string): Promise<Session> {
   const session: Session[] = (
     await db.query(
       `SELECT 
-        id, name, status
+        id, name, status, scenario_id
       FROM sessions 
       WHERE id=$1;`,
       [session_id]
@@ -976,6 +976,27 @@ export async function generateDefaultScenario(): Promise<string> {
           pp.stock_max_mwh,
           pp.price_eur_per_mwh,
         ]
+      );
+    })
+  );
+
+  const bids = [
+    { phase_no: 0, type: "buy", volume_mwh: 100, price_eur_per_mwh: 50 },
+    { phase_no: 0, type: "sell", volume_mwh: 100, price_eur_per_mwh: 30 },
+  ];
+  await Promise.all(
+    bids.map(async (bid) => {
+      await db.query(
+        `INSERT INTO scenarios_bids
+        (
+          scenario_id,
+          phase_no,
+          type,
+          volume_mwh,
+          price_eur_per_mwh
+        )
+        VALUES ($1, $2, $3, $4, $5)`,
+        [id, bid.phase_no, bid.type, bid.volume_mwh, bid.price_eur_per_mwh]
       );
     })
   );
