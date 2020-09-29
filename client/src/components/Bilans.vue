@@ -12,12 +12,12 @@
     </div>
     <div class="bilans__item">
       <span><em>Ventes</em></span>
-      <span> {{ fmt(sell.volume_mwh) }} MWh </span>
+      <span> {{ fmt(sell_mwh) }} MWh </span>
       <span> {{ fmt(sell_eur) }} € </span>
     </div>
     <div class="bilans__item">
       <span><em>Achats</em></span>
-      <span> {{ fmt(buy.volume_mwh) }} MWh </span>
+      <span> {{ fmt(buy_mwh) }} MWh </span>
       <span> {{ fmt(-1 * buy_eur) }} € </span>
     </div>
     <div class="bilans__item">
@@ -26,7 +26,7 @@
       <span> {{ fmt(imbalance_costs_eur) }} € </span>
     </div>
     <div class="bilans__item">
-      <span><em>Total</em></span>
+      <span>Total</span>
       <span>-</span>
       <span> {{ fmt(money) }} € </span>
     </div>
@@ -49,31 +49,28 @@ export default class Bilans extends Vue {
   @sessionModule.State results_available!: boolean;
   @portfolioModule.State power_plants!: PowerPlant[];
   @portfolioModule.State conso!: number;
-  @bidsModule.State buy!: EnergyExchange;
-  @bidsModule.State sell!: EnergyExchange;
   @resultsModule.State conso_eur!: number;
   @resultsModule.State prod_eur!: number;
   @resultsModule.State sell_eur!: number;
+  @resultsModule.State sell_mwh!: number;
   @resultsModule.State buy_eur!: number;
+  @resultsModule.State buy_mwh!: number;
   @resultsModule.State imbalance_costs_eur!: number;
   @resultsModule.State balance_eur!: number;
 
   get deficit_mwh() {
     return Number(
-      this.buy.volume_mwh +
-        this.prod_total_mwh -
-        this.conso -
-        this.sell.volume_mwh
+      this.buy_mwh + this.prod_total_mwh - this.conso - this.sell_mwh
     );
   }
 
   get money() {
     return Number(
-      this.conso_eur +
-        this.sell_eur -
-        this.prod_eur -
-        this.buy_eur +
-        this.imbalance_costs_eur
+      Number(this.conso_eur) +
+        Number(this.sell_eur) -
+        Number(this.prod_eur) -
+        Number(this.buy_eur) +
+        Number(this.imbalance_costs_eur)
     );
   }
 
@@ -101,6 +98,11 @@ export default class Bilans extends Vue {
   justify-content: center;
   align-items: center;
 }
+
+.bilans__container .bilans__item:last-of-type span {
+  font-weight: 500;
+}
+
 .bilans__item {
   display: flex;
   flex-direction: column;
@@ -110,10 +112,7 @@ export default class Bilans extends Vue {
 }
 .bilans__item span {
   justify-self: start;
-  text-align: start;
+  text-align: center;
   white-space: nowrap;
-}
-.bilans__item span:not(:first-child) {
-  padding-left: 1ch;
 }
 </style>
