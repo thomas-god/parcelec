@@ -952,7 +952,7 @@ export async function generateDefaultScenario(): Promise<string> {
     bids_duration_sec: 180,
     plannings_duration_sec: 300,
     phases_number: 3,
-    conso_forecast_mwh: [1000, 1800, 2400],
+    conso_forecast_mwh: [600, 1300, 1800],
     conso_price_eur: [35, 35, 35],
     imbalance_costs_factor: [1.08, 1.08, 1.08],
   };
@@ -1038,8 +1038,8 @@ export async function generateDefaultScenario(): Promise<string> {
   );
 
   const bids = [
-    { phase_no: 0, type: "buy", volume_mwh: 100, price_eur_per_mwh: 50 },
-    { phase_no: 0, type: "sell", volume_mwh: 100, price_eur_per_mwh: 30 },
+    /* { phase_no: 0, type: "buy", volume_mwh: 100, price_eur_per_mwh: 50 },
+    { phase_no: 0, type: "sell", volume_mwh: 100, price_eur_per_mwh: 30 }, */
   ];
   await Promise.all(
     bids.map(async (bid) => {
