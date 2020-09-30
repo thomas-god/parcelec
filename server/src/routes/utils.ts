@@ -310,7 +310,7 @@ export async function getConsoForecast(
 }
 
 /**
- * Get the current conso forecast for a given user.
+ * Get user's results for the last phase.
  * @param session_id Session ID
  * @param user_id User ID
  */
@@ -348,6 +348,40 @@ export async function getUserResults(
     if (rows.length === 1) results = rows[0];
   }
   return results;
+}
+
+/**
+ * Get user's results for the whole game.
+ * @param session_id Session ID
+ * @param user_id User ID
+ */
+export async function getUserGameResults(
+  session_id: string,
+  user_id: string
+): Promise<PhaseResults[]> {
+  return (
+    await db.query(
+      `SELECT
+        phase_no,
+        conso_mwh,
+        conso_eur,
+        prod_mwh,
+        prod_eur,
+        sell_mwh,
+        sell_eur,
+        buy_mwh,
+        buy_eur,
+        imbalance_mwh,
+        imbalance_costs_eur,
+        balance_eur
+      FROM results 
+      WHERE 
+        session_id=$1
+        AND user_id=$2
+      ORDER BY phase_no;`,
+      [session_id, user_id]
+    )
+  ).rows as PhaseResults[];
 }
 
 /**
@@ -768,7 +802,7 @@ export async function getSessionOptions(
     phases_number: 0,
     conso_forecast_mwh: [],
     conso_price_eur: [],
-    imbalance_costs_eur: [],
+    imbalance_costs_factor: [],
   };
   const query = (
     await db.query(
@@ -781,7 +815,7 @@ export async function getSessionOptions(
         phases_number,
         conso_forecast_mwh,
         conso_price_eur,
-        imbalance_costs_eur
+        imbalance_costs_factor
       FROM options
       WHERE session_id=$1;`,
       [session_id]
@@ -841,7 +875,7 @@ export async function createNewSession(session: Session): Promise<void> {
         phases_number,
         conso_forecast_mwh,
         conso_price_eur,
-        imbalance_costs_eur
+        imbalance_costs_factor
       )
     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
     [
@@ -853,7 +887,7 @@ export async function createNewSession(session: Session): Promise<void> {
       scenario_options.phases_number,
       scenario_options.conso_forecast_mwh,
       scenario_options.conso_price_eur,
-      scenario_options.imbalance_costs_eur,
+      scenario_options.imbalance_costs_factor,
     ]
   );
 }
@@ -918,9 +952,9 @@ export async function generateDefaultScenario(): Promise<string> {
     bids_duration_sec: 180,
     plannings_duration_sec: 300,
     phases_number: 3,
-    conso_forecast_mwh: [1000, 1800, 2400],
+    conso_forecast_mwh: [600, 1300, 1800],
     conso_price_eur: [35, 35, 35],
-    imbalance_costs_eur: [20, 30, 40],
+    imbalance_costs_factor: [1.08, 1.08, 1.08],
   };
 
   await db.query(
@@ -936,7 +970,7 @@ export async function generateDefaultScenario(): Promise<string> {
       phases_number,
       conso_forecast_mwh,
       conso_price_eur,
-      imbalance_costs_eur
+      imbalance_costs_factor
     )
     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11);`,
     [
@@ -950,7 +984,7 @@ export async function generateDefaultScenario(): Promise<string> {
       default_options.phases_number,
       default_options.conso_forecast_mwh,
       default_options.conso_price_eur,
-      default_options.imbalance_costs_eur,
+      default_options.imbalance_costs_factor,
     ]
   );
 
@@ -1004,8 +1038,8 @@ export async function generateDefaultScenario(): Promise<string> {
   );
 
   const bids = [
-    { phase_no: 0, type: "buy", volume_mwh: 100, price_eur_per_mwh: 50 },
-    { phase_no: 0, type: "sell", volume_mwh: 100, price_eur_per_mwh: 30 },
+    /* { phase_no: 0, type: "buy", volume_mwh: 100, price_eur_per_mwh: 50 },
+    { phase_no: 0, type: "sell", volume_mwh: 100, price_eur_per_mwh: 30 }, */
   ];
   await Promise.all(
     bids.map(async (bid) => {
@@ -1047,7 +1081,7 @@ export async function getScenarioOptions(
         phases_number,
         conso_forecast_mwh,
         conso_price_eur,
-        imbalance_costs_eur
+        imbalance_costs_factor
       FROM scenarios_options
       WHERE id=$1`,
       [scenario_id]

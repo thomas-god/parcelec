@@ -10,7 +10,7 @@ CREATE TABLE scenarios_options
   phases_number INT NOT NULL CHECK (phases_number > 0),
   conso_forecast_mwh INT[] CHECK (array_length(conso_forecast_mwh, 1) = phases_number),
   conso_price_eur REAL[] NOT NULL CHECK (array_length(conso_price_eur, 1) = phases_number),
-  imbalance_costs_eur REAL[] NOT NULL CHECK (array_length(imbalance_costs_eur, 1) = phases_number)
+  imbalance_costs_factor REAL[] NOT NULL CHECK (array_length(imbalance_costs_factor, 1) = phases_number)
 );
 
 CREATE TABLE scenarios_power_plants
@@ -52,7 +52,7 @@ CREATE TABLE options
   phases_number INT NOT NULL CHECK (phases_number > 0),
   conso_forecast_mwh INT[] CHECK (array_length(conso_forecast_mwh, 1) = phases_number),
   conso_price_eur REAL[] NOT NULL CHECK (array_length(conso_price_eur, 1) = phases_number),
-  imbalance_costs_eur REAL[] NOT NULL CHECK (array_length(imbalance_costs_eur, 1) = phases_number)
+  imbalance_costs_factor REAL[] NOT NULL CHECK (array_length(imbalance_costs_factor, 1) = phases_number)
 );
 
 CREATE TABLE users 
