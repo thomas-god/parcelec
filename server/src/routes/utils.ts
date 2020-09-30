@@ -310,7 +310,7 @@ export async function getConsoForecast(
 }
 
 /**
- * Get the current conso forecast for a given user.
+ * Get user's results for the last phase.
  * @param session_id Session ID
  * @param user_id User ID
  */
@@ -348,6 +348,40 @@ export async function getUserResults(
     if (rows.length === 1) results = rows[0];
   }
   return results;
+}
+
+/**
+ * Get user's results for the whole game.
+ * @param session_id Session ID
+ * @param user_id User ID
+ */
+export async function getUserGameResults(
+  session_id: string,
+  user_id: string
+): Promise<PhaseResults[]> {
+  return (
+    await db.query(
+      `SELECT
+        phase_no,
+        conso_mwh,
+        conso_eur,
+        prod_mwh,
+        prod_eur,
+        sell_mwh,
+        sell_eur,
+        buy_mwh,
+        buy_eur,
+        imbalance_mwh,
+        imbalance_costs_eur,
+        balance_eur
+      FROM results 
+      WHERE 
+        session_id=$1
+        AND user_id=$2
+      ORDER BY phase_no;`,
+      [session_id, user_id]
+    )
+  ).rows as PhaseResults[];
 }
 
 /**

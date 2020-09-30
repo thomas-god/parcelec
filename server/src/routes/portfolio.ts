@@ -3,6 +3,9 @@
  *  GET /session/:session_id/user/:user_id/portfolio
  *  GET /session/:session_id/user/:user_id/conso
  *  PUT /session/:session_id/user/:user_id/planning
+ *  GET /session/:session_id/user/:user_id/planning
+ *  GET /session/:session_id/user/:user_id/results
+ *  GET /session/:session_id/user/:user_id/game_results
  */
 
 import express from "express";
@@ -21,6 +24,7 @@ import {
   addPlanningToPortfolio,
   getUserResults,
   CustomError,
+  getUserGameResults,
 } from "./utils";
 
 // ---------------------- Routing Functions
@@ -167,7 +171,7 @@ export async function getUserPlanningRoute(
 }
 
 /**
- * Get the conso forecast for the current phase.
+ * Get the conso forecast for the last phase.
  * @param req HTTP request
  * @param res HTTP response
  */
@@ -188,6 +192,42 @@ export async function getUserResultsRoute(
 
     const results = await getUserResults(session_id, user_id);
     res.json(results);
+  } catch (error) {
+    if (error instanceof CustomError) {
+      res.status(error.code).end(error.msg);
+    } else {
+      res.status(400).end();
+      throw error;
+    }
+  }
+}
+
+/**
+ * Get the conso forecast for the current phase.
+ * @param req HTTP request
+ * @param res HTTP response
+ */
+export async function getUserGameResultsRoute(
+  req: express.Request,
+  res: express.Response
+): Promise<void> {
+  try {
+    // DB checks
+    const session_id = req.params.session_id;
+    const user_id = req.params.user_id;
+    const session = await getSession(session_id);
+    if (session === null)
+      throw new CustomError("Error, no session found with this ID", 404);
+    const user = await getUser(session_id, user_id);
+    if (user === null)
+      throw new CustomError("Error, no user found with this ID", 404);
+
+    if (session.status !== "closed") {
+      res.json([]);
+    } else {
+      const results = await getUserGameResults(session_id, user_id);
+      res.json(results);
+    }
   } catch (error) {
     if (error instanceof CustomError) {
       res.status(error.code).end(error.msg);
@@ -219,6 +259,10 @@ router.get(
 router.get(
   `/session/:session_id(${uuid_regex})/user/:user_id(${uuid_regex})/results`,
   getUserResultsRoute
+);
+router.get(
+  `/session/:session_id(${uuid_regex})/user/:user_id(${uuid_regex})/game_results`,
+  getUserGameResultsRoute
 );
 
 export default router;
