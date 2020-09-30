@@ -25,6 +25,15 @@ CREATE TABLE scenarios_power_plants
   CHECK (p_min_mw < p_max_mw)
 );
 
+CREATE TABLE scenarios_bids 
+(
+  scenario_id UUID REFERENCES scenarios_options (id) ON DELETE CASCADE,
+  phase_no INT,
+  type TEXT CHECK (type IN ('buy', 'sell')),
+  volume_mwh REAL NOT NULL CHECK (volume_mwh > 0),
+  price_eur_per_mwh REAL NOT NULL
+);
+
 CREATE TABLE sessions 
 (
   id UUID PRIMARY KEY,
@@ -95,10 +104,10 @@ CREATE TABLE conso
 
 CREATE TABLE bids 
 (
-  id UUID PRIMARY KEY,
+  id UUID PRIMARY KEY NOT NULL,
   user_id UUID REFERENCES users (id) ON DELETE CASCADE,
-  session_id UUID,
-  phase_no INT,
+  session_id UUID NOT NULL,
+  phase_no INT NOT NULL,
   FOREIGN KEY (session_id, phase_no) REFERENCES phases (session_id, phase_no) ON DELETE CASCADE,
   type TEXT CHECK (type IN ('buy', 'sell')),
   volume_mwh REAL NOT NULL CHECK (volume_mwh > 0),

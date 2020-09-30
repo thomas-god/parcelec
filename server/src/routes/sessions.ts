@@ -14,6 +14,7 @@ import {
   getScenariosList,
   getSession,
   getSessionBooleans,
+  getSessionNbPhases,
   getSessionUsers,
   uuid_regex,
 } from "./utils";
@@ -154,10 +155,13 @@ export async function getSessionInfos(
     // Timing infos
     const phase_infos = await getPhaseInfos(session_id);
     if (phase_infos !== null) {
+      const nb_phases = await getSessionNbPhases(session_id);
       body.phase_infos = {
         start_time: phase_infos.start_time,
         clearing_time: phase_infos.clearing_time,
         planning_time: phase_infos.planning_time,
+        phase_no: phase_infos.phase_no,
+        nb_phases: nb_phases,
       };
     }
 

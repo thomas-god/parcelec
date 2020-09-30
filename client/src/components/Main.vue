@@ -17,28 +17,36 @@
     <!-- Running session -->
     <div v-if="session_status === 'running'" class="app__grid">
       <h1 class="app__grid_head" v-if="!results_available">
-        Phase de jeu en cours...
+        Phase {{ `${phase_infos.phase_no + 1}/${phase_infos.nb_phases}` }}
       </h1>
       <h1 class="app__grid_head" v-if="results_available">
-        Phase de jeu terminée
+        Phase
+        {{ `${phase_infos.phase_no + 1}/${phase_infos.nb_phases}` }} terminée
       </h1>
-
       <div class="app__grid_main">
-        <h2 v-if="timeBeforeClearing && !results_available">
-          <span v-if="timeBeforeClearing === 'Temps écoulé'" style="color: red;"
-            >Enchères clôturées</span
+        <h2>Consommation : {{ conso.toLocaleString("fr-FR") }} MWh</h2>
+        <h3 v-if="timeBeforeClearing && !results_available">
+          <span
+            v-if="timeBeforeClearing === 'Temps écoulé'"
+            style="color: red;"
           >
-          <span v-else>Fin des enchères dans {{ timeBeforeClearing }}</span>
-        </h2>
-        <h2 v-if="timeBeforePlanning && !results_available">
+            Enchères clôturées
+          </span>
+          <span v-else
+            >Fin des enchères dans
+            <strong>{{ timeBeforeClearing }}</strong></span
+          >
+        </h3>
+        <h3 v-if="timeBeforePlanning && !results_available">
           <span v-if="timeBeforePlanning === 'Temps écoulé'" style="color: red;"
             >Réception des plannings fermée</span
           >
           <span v-else
             >Fermeture de la réception des plannings dans
-            {{ timeBeforePlanning }}</span
+            <strong>{{ timeBeforePlanning }}</strong></span
           >
-        </h2>
+        </h3>
+        <Bilans v-if="results_available" />
         <div class="app__main" v-if="session.id && username">
           <PowerPlantsList
             class="app__main_item"
@@ -52,7 +60,9 @@
       class="ready__btn"
       @click="setStatusReady"
       :disable="!ready"
-      v-if="results_available"
+      v-if="
+        results_available && phase_infos.phase_no + 1 < phase_infos.nb_phases
+      "
     >
       Passer à la phase suivante
     </button>
@@ -70,9 +80,11 @@ import Bid from "./SessionBid.vue";
 import PowerPlantsList from "./PowerPlantsList.vue";
 import BidsList from "./BidsList.vue";
 import BilansSimple from "./BilansSimple.vue";
+import Bilans from "./Bilans.vue";
 
 const userModule = namespace("user");
 const sessionModule = namespace("session");
+const portfolioModule = namespace("portfolio");
 
 @Component({
   components: {
@@ -81,18 +93,20 @@ const sessionModule = namespace("session");
     PowerPlantsList,
     BidsList,
     BilansSimple,
+    Bilans,
   },
 })
 export default class Main extends Vue {
+  @State("api_url") api_url!: string;
   @userModule.Getter username!: string;
   @userModule.Getter user_id!: string;
   @userModule.State ready!: boolean;
+  @userModule.Mutation SET_GAME_READY!: (game_ready: boolean) => void;
   @sessionModule.Getter session!: Session;
   @sessionModule.Getter session_status!: string;
   @sessionModule.Getter phase_infos!: Session["phase_infos"];
   @sessionModule.Getter session_id!: string;
-  @State("api_url") api_url!: string;
-  @userModule.Mutation SET_GAME_READY!: (game_ready: boolean) => void;
+  @portfolioModule.Getter conso!: number;
 
   // Abilities booleans
   @sessionModule.Getter can_bid!: boolean;
@@ -183,6 +197,10 @@ function toTimeString(dt: number): string {
 
 .app__grid_main h2 {
   margin: 10px;
+}
+.app__grid_main h3 {
+  margin: 0.2rem;
+  font-weight: normal;
 }
 
 .app__full h3 {

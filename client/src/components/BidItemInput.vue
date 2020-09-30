@@ -4,12 +4,16 @@
     <div class="bid__container_qte_input">
       <input type="number" min="0" step="1" v-model="volume_mwh" />
     </div>
-    <div class="bid__container_qte_err">{{ inputs_err_msg_volume }}</div>
+    <div class="bid__container_qte_err">
+      {{ show_err_msg ? inputs_err_msg_volume : "" }}
+    </div>
     <div class="bid__container_price_txt">Prix (€/MWh)</div>
     <div class="bid__container_price_input">
       <input type="number" step="0" v-model="price_eur_per_mwh" />
     </div>
-    <div class="bid__container_price_err">{{ inputs_err_msg_price }}</div>
+    <div class="bid__container_price_err">
+      {{ show_err_msg ? inputs_err_msg_price : "" }}
+    </div>
     <div class="bid__container_actions">
       <button @click="postBid('buy')">Acheter</button>
       <button @click="postBid('sell')">Vendre</button>
@@ -37,6 +41,7 @@ export default class BidItem extends Vue {
   price_eur_per_mwh: number | "" = 0;
   inputs_err_msg_volume = "";
   inputs_err_msg_price = "";
+  show_err_msg = true;
 
   validateInputs(): boolean {
     return this.validateVolume() && this.validatePrice();
@@ -45,14 +50,16 @@ export default class BidItem extends Vue {
   @Watch("volume_mwh")
   validateVolume(): boolean {
     let flag = true;
-    if (isNaN(Number(this.volume_mwh)) || this.volume_mwh === "") {
-      flag = false;
-      this.inputs_err_msg_volume = "Le volume doit être un nombre";
-    } else if (this.volume_mwh <= 0) {
-      flag = false;
-      this.inputs_err_msg_volume = "Le volume doit être positif";
-    } else {
-      this.inputs_err_msg_volume = "";
+    if (this.show_err_msg) {
+      if (isNaN(Number(this.volume_mwh)) || this.volume_mwh === "") {
+        flag = false;
+        this.inputs_err_msg_volume = "Le volume doit être un nombre";
+      } else if (this.volume_mwh <= 0) {
+        flag = false;
+        this.inputs_err_msg_volume = "Le volume doit être positif";
+      } else {
+        this.inputs_err_msg_volume = "";
+      }
     }
     return flag;
   }
@@ -60,14 +67,16 @@ export default class BidItem extends Vue {
   @Watch("price_eur_per_mwh")
   validatePrice(): boolean {
     let flag = true;
-    if (
-      isNaN(Number(this.price_eur_per_mwh)) ||
-      this.price_eur_per_mwh === ""
-    ) {
-      flag = false;
-      this.inputs_err_msg_price = "Le prix doit être un nombre";
-    } else {
-      this.inputs_err_msg_price = "";
+    if (this.show_err_msg) {
+      if (
+        isNaN(Number(this.price_eur_per_mwh)) ||
+        this.price_eur_per_mwh === ""
+      ) {
+        flag = false;
+        this.inputs_err_msg_price = "Le prix doit être un nombre";
+      } else {
+        this.inputs_err_msg_price = "";
+      }
     }
     return flag;
   }
@@ -100,9 +109,9 @@ export default class BidItem extends Vue {
           price_eur_per_mwh: this.price_eur_per_mwh as number,
           id: bid_id,
         });
+        this.hideErrMsg();
         this.volume_mwh = 0;
         this.price_eur_per_mwh = 0;
-        this.inputs_err_msg_volume = "";
       } else {
         console.log(await res.text());
       }
@@ -114,10 +123,20 @@ export default class BidItem extends Vue {
           price_eur_per_mwh: this.price_eur_per_mwh as number,
           id: uuid(),
         });
+        this.hideErrMsg();
         this.volume_mwh = 0;
         this.price_eur_per_mwh = 0;
       }
     }
+  }
+
+  hideErrMsg(): void {
+    this.show_err_msg = false;
+    this.inputs_err_msg_price = "";
+    this.inputs_err_msg_volume = "";
+    setTimeout(() => {
+      this.show_err_msg = true;
+    }, 200);
   }
 }
 </script>
