@@ -768,7 +768,7 @@ export async function getSessionOptions(
     phases_number: 0,
     conso_forecast_mwh: [],
     conso_price_eur: [],
-    imbalance_costs_eur: [],
+    imbalance_costs_factor: [],
   };
   const query = (
     await db.query(
@@ -781,7 +781,7 @@ export async function getSessionOptions(
         phases_number,
         conso_forecast_mwh,
         conso_price_eur,
-        imbalance_costs_eur
+        imbalance_costs_factor
       FROM options
       WHERE session_id=$1;`,
       [session_id]
@@ -841,7 +841,7 @@ export async function createNewSession(session: Session): Promise<void> {
         phases_number,
         conso_forecast_mwh,
         conso_price_eur,
-        imbalance_costs_eur
+        imbalance_costs_factor
       )
     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
     [
@@ -853,7 +853,7 @@ export async function createNewSession(session: Session): Promise<void> {
       scenario_options.phases_number,
       scenario_options.conso_forecast_mwh,
       scenario_options.conso_price_eur,
-      scenario_options.imbalance_costs_eur,
+      scenario_options.imbalance_costs_factor,
     ]
   );
 }
@@ -920,7 +920,7 @@ export async function generateDefaultScenario(): Promise<string> {
     phases_number: 3,
     conso_forecast_mwh: [1000, 1800, 2400],
     conso_price_eur: [35, 35, 35],
-    imbalance_costs_eur: [20, 30, 40],
+    imbalance_costs_factor: [1.08, 1.08, 1.08],
   };
 
   await db.query(
@@ -936,7 +936,7 @@ export async function generateDefaultScenario(): Promise<string> {
       phases_number,
       conso_forecast_mwh,
       conso_price_eur,
-      imbalance_costs_eur
+      imbalance_costs_factor
     )
     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11);`,
     [
@@ -950,7 +950,7 @@ export async function generateDefaultScenario(): Promise<string> {
       default_options.phases_number,
       default_options.conso_forecast_mwh,
       default_options.conso_price_eur,
-      default_options.imbalance_costs_eur,
+      default_options.imbalance_costs_factor,
     ]
   );
 
@@ -1047,7 +1047,7 @@ export async function getScenarioOptions(
         phases_number,
         conso_forecast_mwh,
         conso_price_eur,
-        imbalance_costs_eur
+        imbalance_costs_factor
       FROM scenarios_options
       WHERE id=$1`,
       [scenario_id]

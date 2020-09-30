@@ -17,7 +17,7 @@ export interface SessionOptions {
   phases_number: number;
   conso_forecast_mwh: number[];
   conso_price_eur: number[];
-  imbalance_costs_eur: number[];
+  imbalance_costs_factor: number[];
 }
 
 export interface User {
@@ -143,7 +143,7 @@ export interface ScenarioOptions {
   phases_number: number;
   conso_forecast_mwh: number[];
   conso_price_eur: number[];
-  imbalance_costs_eur: number[];
+  imbalance_costs_factor: number[];
 }
 
 export interface ScenarioPowerPlant {

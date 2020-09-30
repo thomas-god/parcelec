@@ -123,7 +123,12 @@ async function computeResults(
         results.conso_mwh -
         results.sell_mwh;
       results.imbalance_costs_eur =
-        results.imbalance_mwh * options.imbalance_costs_eur[phase_no];
+        results.imbalance_mwh > 0
+          ? (results.imbalance_mwh * options.conso_price_eur[phase_no]) /
+            options.imbalance_costs_factor[phase_no]
+          : results.imbalance_mwh *
+            options.conso_price_eur[phase_no] *
+            options.imbalance_costs_factor[phase_no];
 
       // Total financial balance
       results.balance_eur =
