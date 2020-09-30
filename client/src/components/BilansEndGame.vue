@@ -66,7 +66,7 @@ export default class BilansEndGame extends Vue {
   }
 
   get money_total(): number {
-    return this.results.reduce((a, b) => a + b.balance_eur, 0 as number);
+    return this.results.reduce((a, b: any) => a + b.balance_eur, 0 as number);
   }
 
   fmt(nb: number): string {
