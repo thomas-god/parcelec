@@ -15,7 +15,7 @@
     </div>
 
     <!-- Running session -->
-    <div v-if="session_status === 'running'" class="app__grid">
+    <div v-if="session_status !== 'open'" class="app__grid">
       <h1 class="app__grid_head" v-if="!results_available">
         Phase {{ `${phase_infos.phase_no + 1}/${phase_infos.nb_phases}` }}
       </h1>
@@ -65,6 +65,15 @@
       "
     >
       Passer à la phase suivante
+    </button>
+    <button
+      class="ready__btn"
+      v-if="
+        results_available && phase_infos.phase_no + 1 === phase_infos.nb_phases
+      "
+      @click="goToGameResults"
+    >
+      Résultats de la partie
     </button>
     <BilansSimple class="app__footer_bilans" v-if="session.id && username" />
   </div>
@@ -153,6 +162,12 @@ export default class Main extends Vue {
       }
     );
     if (res.status === 201) this.SET_GAME_READY(true);
+  }
+
+  goToGameResults(): void {
+    this.$router.push(
+      `/session/${this.session_id}/user/${this.user_id}/results`
+    );
   }
 }
 
