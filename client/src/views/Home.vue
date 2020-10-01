@@ -3,22 +3,22 @@
     <h1>Bienvenue sur Parcélec ! ⚡️</h1>
     <p>
       Parcélec est un jeu éducatif qui vous met dans la peau d'un gestionnaire
-      de parc de production d'électricité. Votre but : couvrir la consommation
-      de vos clients en utilisant le plus efficacement les centrales en votre
-      possession et en ayant recours si besoin au marché de l'électricité.
+      de parc de production d'électricité. Votre but : fournir de l'énergie à
+      vos clients en utilisant le plus efficacement possible les centrales en
+      votre possession et en ayant recours si besoin au marché de l'électricité.
     </p>
     <h2>Déroulé d'une partie</h2>
     <p>
       Une partie se compose d'une succession de phases dans lesquelles vous
-      serez confronté à différents niveaux de consommation.
+      serez confronté·e à différents niveaux de consommation.
     </p>
     <p>
       Au début de chaque phase vos équipes commerciales vous indiqueront quel
-      niveau de consommation vous devrez couvrir (attention tout MWh non convert
+      niveau de consommation vous devrez couvrir (attention tout MWh non couvert
       vous expose à une pénalité financière !).
     </p>
     <p>
-      Vous devrez alors régler les points de consigne de vos centrales et
+      Il vous faudra alors régler les points de consigne de vos centrales et
       acheter ou vendre de l'énergie à d'autres producteurs pour répondre au
       mieux à ce besoin. À la fin d'une phase vous recevrez un bilan de
       performances énergétiques et financières.
@@ -30,21 +30,23 @@
         <p>
           Pour mener à bien votre mission vous disposez de plusieurs centrales
           aux caractéristiques variées. La carte d'identité de chaque centrale
-          vous indique ses puissances maximale et minimale (la bande grisée),
-          son coût à produire de l'énergie, et son éventuel stock (à utiliser
-          donc avec parcimonie!).
+          vous indique ses puissances maximale et minimale (une centrale ne peut
+          produire dans la bande grisée), son coût à produire de l'énergie, et
+          son éventuel stock (à utiliser donc avec parcimonie!).
         </p>
         <p>
-          Pour régler le niveau de puissance d'une centrale vous pouvez déplacer
-          le curseur et voir votre production totale en temps réel (actuellement
+          Pour régler le niveau de puissance d'une centrale déplacez son curseur
+          au-delà de la bande grisée. Vous pouvez voir votre production totale
+          en temps réel (actuellement
           {{ prod_mw }} MW). Entraînez vous !
         </p>
         <p>
           Une fois qu'un plan de production vous convient vous devez l'envoyer
           au gestionnaire du réseau en cliquant sur le bouton <em>Envoyer</em>.
-          Vous pouvez modifier autant de fois votre plan de production avant la
-          fin d'une phase de jeu. Le bouton <em>Effacer</em> vous permet de
-          revenir à votre précédent plan de production.
+          Vous pouvez modifier votre plan de production autant de fois que vous
+          le souhaitez avant la fin d'une phase (mais n'oubliez pas de
+          l'envoyer!). Le bouton <em>Effacer</em> vous permet de revenir à votre
+          précédent plan de production.
         </p>
       </div>
     </div>
@@ -53,7 +55,7 @@
       <div>
         <p>
           Il se peut qu'à certains moments vos centrales ne suffisent pas pour
-          couvrir toute votre consommation et vous pourrez alors essayer
+          couvrir toute votre consommation : vous pourrez alors essayer
           d'acheter l'énergie qu'il vous manque sur le marché. Le marché est un
           endroit où les différents acteurs du jeu peuvent poster des offres
           d'achat ou de vente d'énergie.
@@ -61,9 +63,8 @@
         <p>
           Attention, poster une offre ne suffit pas à vous garantir l'achat ou
           ou la vente du volume d'énergie : pour que l'échange se fasse il faut
-          qu'il y ait une contrepartie (un acheteur si vous vendez et
-          inversement) disposée à faire l'échange à un prix compatible au votre
-          !
+          qu'il y ait un vendeur (ou un acheteur) disposé à faire l'échange à un
+          prix compatible au votre !
         </p>
         <p>
           Une fois les enchères fermées, vous saurez si vos offres ont été
@@ -111,7 +112,7 @@ export default class Home extends Vue {
         price_eur_per_mwh: 25,
         planning: 0,
         planning_modif: 0,
-        stock_mwh: -1
+        stock_mwh: -1,
       },
       {
         id: "2",
@@ -122,8 +123,8 @@ export default class Home extends Vue {
         price_eur_per_mwh: 0,
         planning: 0,
         planning_modif: 0,
-        stock_mwh: 500
-      }
+        stock_mwh: 500,
+      },
     ]);
   }
 }
