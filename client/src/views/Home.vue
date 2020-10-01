@@ -62,7 +62,7 @@
         </p>
         <p>
           Attention, poster une offre ne suffit pas à vous garantir l'achat ou
-          ou la vente du volume d'énergie : pour que l'échange se fasse il faut
+          la vente du volume d'énergie : pour que l'échange se fasse il faut
           qu'il y ait un vendeur (ou un acheteur) disposé à faire l'échange à un
           prix compatible au votre !
         </p>
