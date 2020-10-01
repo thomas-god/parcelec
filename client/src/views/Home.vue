@@ -74,6 +74,10 @@
       </div>
       <bids-list class="card" :dummy="true" />
     </div>
+
+    <button class="home__create_game" @click="$router.push('/create')">
+      Commencer une partie
+    </button>
   </div>
 </template>
 
@@ -233,5 +237,16 @@ export default class Home extends Vue {
   .card::after {
     bottom: 0;
   }
+}
+
+.home__create_game {
+  border: none;
+  border-radius: 1rem;
+  background-color: rgb(0, 132, 255);
+  margin: 1rem 1rem;
+  padding: 5px 10px;
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: white;
 }
 </style>
