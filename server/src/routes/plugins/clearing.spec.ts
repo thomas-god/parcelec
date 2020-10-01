@@ -82,6 +82,86 @@ describe("Computing the clearing value", () => {
   });
 });
 
+describe("Compute correct clearing values for various bids scenarios", () => {
+  test("Bids scenario 1", () => {
+    const bids = [
+      { type: "sell", volume_mwh: 100, price_eur_per_mwh: 10 },
+      { type: "buy", volume_mwh: 100, price_eur_per_mwh: 20 },
+    ];
+    const clearing_value = computeClearing(bids);
+    expect(clearing_value.volume).toEqual(100);
+    expect(clearing_value.price).toEqual(10);
+  });
+
+  test("Bids scenario 2", () => {
+    const bids = [
+      { type: "sell", volume_mwh: 100, price_eur_per_mwh: 10 },
+      { type: "buy", volume_mwh: 50, price_eur_per_mwh: 20 },
+    ];
+    const clearing_value = computeClearing(bids);
+    expect(clearing_value.volume).toEqual(50);
+    expect(clearing_value.price).toEqual(10);
+  });
+
+  test("Bids scenario 3", () => {
+    const bids = [
+      { type: "sell", volume_mwh: 50, price_eur_per_mwh: 10 },
+      { type: "buy", volume_mwh: 100, price_eur_per_mwh: 20 },
+    ];
+    const clearing_value = computeClearing(bids);
+    expect(clearing_value.volume).toEqual(50);
+    expect(clearing_value.price).toEqual(10);
+  });
+
+  test("Bids scenario 4", () => {
+    const bids = [
+      { type: "sell", volume_mwh: 10, price_eur_per_mwh: 10 },
+      { type: "buy", volume_mwh: 10, price_eur_per_mwh: 10 },
+    ];
+    const clearing_value = computeClearing(bids);
+    expect(clearing_value.volume).toEqual(10);
+    expect(clearing_value.price).toEqual(10);
+  });
+
+  test("Bids scenario 5", () => {
+    const bids = [
+      { type: "sell", volume_mwh: 100, price_eur_per_mwh: 5 },
+      { type: "sell", volume_mwh: 100, price_eur_per_mwh: 10 },
+      { type: "buy", volume_mwh: 100, price_eur_per_mwh: 20 },
+      { type: "buy", volume_mwh: 100, price_eur_per_mwh: 5 },
+    ];
+    const clearing_value = computeClearing(bids);
+    expect(clearing_value.volume).toEqual(100);
+    expect(clearing_value.price).toEqual(5);
+  });
+
+  test("Bids scenario 6", () => {
+    const bids = [
+      { type: "sell", volume_mwh: 100, price_eur_per_mwh: 5 },
+      { type: "sell", volume_mwh: 100, price_eur_per_mwh: 10 },
+      { type: "buy", volume_mwh: 100, price_eur_per_mwh: 20 },
+    ];
+    const clearing_value = computeClearing(bids);
+    expect(clearing_value.volume).toEqual(100);
+    expect(clearing_value.price).toEqual(5);
+  });
+});
+
+/**
+ * Helping function to do the clearing from a list of bids.
+ * @param bids List of bids
+ */
+function computeClearing(bids) {
+  const [sell, buy] = clearing.sortBids(bids);
+  const sell_fun = clearing.getBidFunction(sell);
+  const buy_fun = clearing.getBidFunction(buy);
+  const [clearing_value, internal_infos] = clearing.computeClearing(
+    sell_fun,
+    buy_fun
+  );
+  return clearing_value;
+}
+
 /**
  * Shuffles an array in place.
  * @param {Array} a items An array containing the items.

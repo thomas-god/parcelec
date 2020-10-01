@@ -139,6 +139,7 @@ export interface ClearingInternalInfos {
 
 /**
  * Compute the intersection between the offer and demand curves.
+ *
  * @param sell Offer curve
  * @param buy Demand curve
  */
@@ -160,59 +161,85 @@ export function computeClearing(
   if (sell.length !== 0 && buy.length !== 0) {
     const ns = sell.length;
     const nb = buy.length;
-    if (sell[0].price <= buy[0].price) {
-      // Can do the clearing
-      if (sell[ns - 1].price <= buy[nb - 1].price) {
-        // Demand curve is always above supply curve
-        // Clearing is then trivial
-        clearing.price = (sell[ns - 1].price + buy[nb - 1].price) / 2;
-        clearing.volume = Math.min(sell[ns - 1].vol_end, buy[nb - 1].vol_end);
-        internal_infos.buy_last_bid_price = buy[nb - 1].price;
-        internal_infos.buy_last_bid_frac_volume =
-          clearing.volume / buy[nb - 1].vol_end;
-        internal_infos.sell_last_bid_frac_volume =
-          clearing.volume / sell[ns - 1].vol_end;
-        internal_infos.sell_last_bid_price = sell[ns - 1].price;
-      } else {
-        let is = 0;
-        let ib = 0;
-        while (is < ns && ib < nb) {
-          if (sell[is].vol_end < buy[ib].vol_end) {
-            const vol = sell[is].vol_end;
-            const price_b = findPrice(vol, buy);
-            if (sell[is].price < price_b && price_b < sell[is + 1].price) {
-              // Clearing is found
-              clearing.volume = vol;
-              clearing.price = price_b;
-              internal_infos.buy_last_bid_price = price_b;
-              internal_infos.buy_last_bid_frac_volume =
-                (vol - buy[ib].vol_start) /
-                (buy[ib].vol_end - buy[ib].vol_start);
-              internal_infos.sell_last_bid_frac_volume = 1;
-              internal_infos.sell_last_bid_price = sell[is + 1].price;
-              is = ns;
-            }
-            is++;
+    let is = 0;
+    let ib = 0;
+    let flag = true;
+    while (is < ns && ib < nb && flag) {
+      if (sell[is].vol_end < buy[ib].vol_end) {
+        const p = findPrice(sell[is].vol_end, buy);
+        if (is + 1 < ns) {
+          if (sell[is].price <= p && p <= sell[is + 1].price) {
+            // Clearing if sell curve intersects buy curve
+            clearing.price = p;
+            clearing.volume = sell[is].vol_end;
+            flag = false;
           } else {
-            const vol = buy[ib].vol_end;
-            const price_s = findPrice(vol, sell);
-            if (buy[ib + 1].price < price_s && price_s < buy[ib].price) {
-              // Clearing is found
-              clearing.volume = vol;
-              clearing.price = price_s;
-              internal_infos.sell_last_bid_price = price_s;
-              internal_infos.sell_last_bid_frac_volume =
-                (vol - sell[is].vol_start) /
-                (sell[is].vol_end - sell[is].vol_start);
-              internal_infos.buy_last_bid_frac_volume = 1;
-              internal_infos.buy_last_bid_price = buy[ib].price;
-              ib = nb;
-            }
+            is++;
+          }
+        } else {
+          if (sell[is].price <= p) {
+            // Clearing if sell curve is finished and lesser than buy curve
+            clearing.price = sell[is].price;
+            clearing.volume = sell[is].vol_end;
+            flag = false;
+          } else {
+            is++;
+          }
+        }
+      } else if (buy[ib].vol_end < sell[is].vol_end) {
+        const p = findPrice(buy[ib].vol_end, sell);
+        if (ib + 1 < nb) {
+          if (buy[ib + 1].price <= p && p <= buy[ib].price) {
+            // Clearing if buy curve intersects sell curve
+            clearing.price = p;
+            clearing.volume = buy[ib].vol_end;
+            flag = false;
+          } else {
+            ib++;
+          }
+        } else {
+          if (buy[ib].price >= p) {
+            // Clearing if the buy curve is finished and greater than sell curve
+            clearing.price = p;
+            clearing.volume = buy[ib].vol_end;
+            flag = false;
+          } else {
+            ib++;
+          }
+        }
+      } else {
+        if (is + 1 < ns && ib + 1 < nb) {
+          if (sell[is + 1].price >= buy[ib + 1].price) {
+            // Clearing if curves cross each other
+            clearing.price = sell[is].price;
+            clearing.volume = sell[is].vol_end;
+            flag = false;
+          } else {
+            is++;
+            ib++;
+          }
+        } else {
+          if (sell[is].price <= buy[ib].price) {
+            // Clearing if buy curve is still above
+            clearing.price = sell[is].price;
+            clearing.volume = Math.min(sell[is].vol_end, buy[ib].vol_end);
+            flag = false;
+          } else {
+            is++;
             ib++;
           }
         }
       }
     }
+    // Compute internal information based on last bids index
+    internal_infos.buy_last_bid_price = buy[ib].price;
+    internal_infos.buy_last_bid_frac_volume =
+      (clearing.volume - buy[ib].vol_start) /
+      (buy[ib].vol_end - buy[ib].vol_start);
+    internal_infos.sell_last_bid_price = sell[is].price;
+    internal_infos.sell_last_bid_frac_volume =
+      (clearing.volume - sell[is].vol_start) /
+      (sell[is].vol_end - sell[is].vol_start);
   }
 
   return [clearing, internal_infos];
