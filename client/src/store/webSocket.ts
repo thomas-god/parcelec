@@ -46,7 +46,13 @@ export const actions: ActionTree<WebSocketState, RootState> = {
       `${ws_url}/auction?auction_id=${session_id}&user_id=${user_id}&username=${username}`
     );
 
-    socket.addEventListener("close", () => onCloseCallback(context.commit));
+    // Dirty hack to get the WS alive despite Nginx timeout
+    const inter = setInterval(() => socket.send(""), 30000);
+    socket.addEventListener("close", () => {
+      onCloseCallback(context.commit);
+      clearInterval(inter);
+    });
+
     socket.addEventListener("message", (event) =>
       onMessageCallback(context.commit, context.dispatch, event)
     );
