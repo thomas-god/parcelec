@@ -13,6 +13,7 @@
       <button
         @click="updatePlanning"
         :disabled="(!dummy && !can_post_planning) || diff_abs_planning === 0"
+        class="actions__important"
       >
         Envoyer
       </button>
@@ -130,5 +131,14 @@ export default class PowerPlantsList extends Vue {
 .actions button:disabled {
   color: rgb(235, 235, 235);
   background-color: rgba(0, 132, 255, 0.616);
+}
+
+.actions__important {
+  border: 2px solid red !important;
+  padding: 3px 8px !important;
+}
+.actions__important:disabled {
+  padding: 5px 10px !important;
+  border: none !important;
 }
 </style>
