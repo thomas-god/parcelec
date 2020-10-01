@@ -47,7 +47,7 @@ export const actions: ActionTree<WebSocketState, RootState> = {
     );
 
     // Dirty hack to get the WS alive despite Nginx timeout
-    const inter = setInterval(() => socket.send(""), 30000);
+    const inter = setInterval(() => socket.send("{}"), 30000);
     socket.addEventListener("close", () => {
       onCloseCallback(context.commit);
       clearInterval(inter);
