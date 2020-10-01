@@ -135,7 +135,7 @@ async function computeResults(
         results.conso_eur +
         results.sell_eur -
         results.prod_eur -
-        results.buy_eur -
+        results.buy_eur +
         results.imbalance_costs_eur;
 
       // Insert all into table
