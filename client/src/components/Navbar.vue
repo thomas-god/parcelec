@@ -2,9 +2,9 @@
   <div id="nav">
     <router-link to="/">accueil</router-link>
     |
-    <router-link to="/join">rejoindre</router-link>
-    |
     <router-link to="/create">créer</router-link>
+    |
+    <router-link to="/join">rejoindre</router-link>
   </div>
 </template>
 

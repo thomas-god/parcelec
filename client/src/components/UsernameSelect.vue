@@ -11,7 +11,7 @@
       v-on:keyup.enter="addUsername()"
       id="user_add_pseudo_input"
     />
-    <!-- <button @click="addUsername()">▶️</button> -->
+    <button @click="addUsername()">OK</button>
 
     <span v-if="new_username_err" style="color: red">{{
       new_username_err_msg
@@ -86,5 +86,10 @@ export default class User extends Vue {
   font-size: 1.5rem;
   text-align: center;
   margin-bottom: 10px;
+}
+
+.user_add_pseudo button {
+  margin-top: 0.7rem;
+  font-size: 1rem;
 }
 </style>
