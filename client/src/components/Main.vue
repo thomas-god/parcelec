@@ -7,11 +7,13 @@
         <em>{{ session.name }}</em> !
       </h1>
       <h3>
-        Vous pouvez discuter avec les autres joueurs connectés, et quand vous
-        serez prêt·e à démarrer la partie, cliquez sur le bouton
+        Vous pouvez discuter avec les autres joueurs connectés, prendre
+        connaissance de vos centrales, et quand vous serez prêt·e à démarrer la
+        partie, cliquez sur le bouton
         <em>"Je suis prêt·e!"</em>
       </h3>
-      <Chatroom class="chatroom__full" :display_ready="true" />
+      <Chatroom class="app__full__chatroom" :display_ready="true" />
+      <PowerPlantsList class="app__full__pplist" :dummy="true" />
     </div>
 
     <!-- Running session -->
@@ -218,15 +220,27 @@ function toTimeString(dt: number): string {
   font-weight: normal;
 }
 
+.app__full {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
 .app__full h3 {
   max-width: 650px;
   margin: auto;
   margin-bottom: 2rem;
 }
 
-.chatroom__full {
+.app__full__chatroom,
+.app__full__pplist {
+  max-width: 850px;
   width: 85vw;
-  margin: auto;
+}
+.app__full__pplist {
+  padding: 1rem;
+  box-sizing: border-box;
+  margin: 1rem 0;
 }
 
 .chatroom__grid {
