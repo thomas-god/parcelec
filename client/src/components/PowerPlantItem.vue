@@ -98,7 +98,7 @@ export default class PowerPlantItem extends Vue {
     }
     if (new_val < this.current_stock_p_min) {
       this.power_plant.planning_modif = this.current_stock_p_min;
-  }
+    }
   }
 
   get p_min(): number {
@@ -224,7 +224,7 @@ export default class PowerPlantItem extends Vue {
       style += "border-left: none;";
     } else {
       style += "border-left: 2px dashed black;";
-  }
+    }
     return style;
   }
   get style_pp__barre__current_p_min(): string {
@@ -241,7 +241,7 @@ export default class PowerPlantItem extends Vue {
   }
   get style_pp__barre__p_min(): string {
     if (this.power_plant.type !== "storage") {
-    return `
+      return `
       width: ${this.p_min_active_ratio}%;
       display: ${this.p_min_active_ratio === 0 ? "none" : "block"};
       border-right: 2px dashed black;
@@ -252,7 +252,7 @@ export default class PowerPlantItem extends Vue {
         width: ${this.p_min_active_ratio * 2}%;
         display: ${this.p_min_active_ratio === 0 ? "none" : "block"};
         left: calc(${50 - this.p_min_active_ratio}% - 2px);
-    `;
+      `;
       if (this.current_stock_p_min >= -this.power_plant.p_min_mw) {
         style += "border-left: none;";
       } else {
@@ -262,7 +262,7 @@ export default class PowerPlantItem extends Vue {
         style += "border-right: none;";
       } else {
         style += "border-right: 2px dashed black;";
-  }
+      }
       return style;
     }
   }
@@ -274,7 +274,7 @@ export default class PowerPlantItem extends Vue {
   }
   get style_legend_pmin(): string {
     if (this.power_plant.type !== "storage") {
-    return `
+      return `
       position: absolute;
       left: calc(${this.p_min_active_ratio}% - 75px);
       display: ${
@@ -483,7 +483,8 @@ input[type="range"]::-ms-track {
 /* Special styling for WebKit/Blink */
 input[type="range"]::-webkit-slider-thumb {
   -webkit-appearance: none;
-  width: 7px;
+  width: 4px;
+  box-sizing: content-box;
   border-radius: 3px;
   cursor: pointer;
   margin-top: 0px; /* You need to specify a margin in Chrome, but in Firefox and IE it is automatic */
@@ -493,13 +494,15 @@ input[type="range"]::-webkit-slider-thumb {
 input[type="range"]::-moz-range-thumb {
   width: 4px;
   border-radius: 3px;
+  box-sizing: content-box;
   cursor: pointer;
 }
 
 /* All the same stuff for IE */
 input[type="range"]::-ms-thumb {
-  width: 16px;
+  width: 4px;
   border-radius: 3px;
+  box-sizing: content-box;
   cursor: pointer;
 }
 
