@@ -9,7 +9,7 @@
         min="0"
         :max="power_plant.p_max_mw"
         step="10"
-        :disabled="!editable"
+        :disabled="!editable || power_plant.type === 'ren'"
       />
       <div class="pp__barre__p_planning" :style="style_barre_planning_width" />
       <div class="pp__barre__p_min" :style="style_barre_pmin_width" />
@@ -169,6 +169,7 @@ export default class PowerPlantItem extends Vue {
   get style_barre_planning_width(): string {
     return `
       width: ${this.p_planning_ratio}%;
+      display: ${this.power_plant.type === "ren" ? "none" : "block"}
     `;
   }
   get style_legend_pmin(): string {
