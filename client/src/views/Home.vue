@@ -35,6 +35,17 @@
           son éventuel stock (à utiliser donc avec parcimonie!).
         </p>
         <p>
+          Il existe plusieurs types de centrales : les centrales nucléaires ☢️
+          ont un coût de production faible et des puissances maximales
+          importantes mais ne peuvent fonctionner à faibles puissances, les
+          centrales thermiques 🔥 coûtent cher à produire mais sont très
+          flexibles, les centrales hydrauliques 💧 ne coutent rien à produire
+          mais on un stock limité, les centrales de stockage 🔋 peuvent être
+          rechargées si leur stock est trop bas, et enfin les centrales
+          renouvelables ☀️ ne coûtent rien à produire mais vous ne pouvez pas
+          choisir leur point de fonctionnement.
+        </p>
+        <p>
           Pour régler le niveau de puissance d'une centrale déplacez son curseur
           au-delà de la bande grisée. Vous pouvez voir votre production totale
           en temps réel (actuellement
@@ -116,19 +127,52 @@ export default class Home extends Vue {
         price_eur_per_mwh: 25,
         planning: 0,
         planning_modif: 0,
-        stock_mwh: -1,
+        stock_mwh: -1
       },
       {
         id: "2",
         type: "hydro",
         p_min_mw: 50,
         p_max_mw: 500,
-        stock_max_mwh: 500,
+        stock_max_mwh: 1000,
         price_eur_per_mwh: 0,
         planning: 0,
         planning_modif: 0,
-        stock_mwh: 500,
+        stock_mwh: 1000
       },
+      {
+        id: "3",
+        type: "therm",
+        p_min_mw: 150,
+        p_max_mw: 600,
+        stock_max_mwh: -1,
+        price_eur_per_mwh: 65,
+        planning: 0,
+        planning_modif: 0,
+        stock_mwh: -1
+      },
+      {
+        id: "4",
+        type: "ren",
+        p_min_mw: 0,
+        p_max_mw: 350,
+        stock_max_mwh: -1,
+        price_eur_per_mwh: 0,
+        planning: 150,
+        planning_modif: 0,
+        stock_mwh: -1
+      },
+      {
+        id: "5",
+        type: "storage",
+        p_min_mw: 100,
+        p_max_mw: 500,
+        stock_max_mwh: 1000,
+        price_eur_per_mwh: 0,
+        planning: 0,
+        planning_modif: 0,
+        stock_mwh: 500
+      }
     ]);
   }
 }
@@ -142,7 +186,7 @@ export default class Home extends Vue {
 }
 
 .home p {
-  font-size: 1.3rem;
+  font-size: 1.2rem;
   text-align: start;
   margin: 0 0rem 1rem;
   word-break: break-word;
@@ -243,10 +287,10 @@ export default class Home extends Vue {
   border: none;
   border-radius: 1rem;
   background-color: rgb(0, 132, 255);
-  margin: 1rem 1rem;
+  margin: 1rem 1rem 3rem 1rem;
   padding: 5px 10px;
-  font-size: 1.2rem;
-  font-weight: 600;
+  font-size: 1.3rem;
+  font-weight: normal;
   color: white;
 }
 </style>
