@@ -14,6 +14,10 @@
       <div class="pp__barre__p_planning" :style="style_barre_planning_width" />
       <div class="pp__barre__p_min" :style="style_barre_pmin_width" />
       <div class="pp__barre__p_max" />
+      <div
+        class="pp__barre__current_p_max"
+        :style="style_barre_current_pmax_width"
+      />
     </div>
     <div class="pp__barre__legend" :style="style_barre_pmax_width">
       <div class="pp__barre__legend__pmin" :style="style_legend_pmin">
@@ -66,7 +70,7 @@ export default class PowerPlantItem extends Vue {
     }
     if (new_val > this.current_p_max) {
       this.power_plant.planning_modif = this.current_p_max;
-  }
+    }
   }
 
   /**
@@ -77,6 +81,12 @@ export default class PowerPlantItem extends Vue {
   }
   get p_max_ratio(): number {
     return (this.power_plant.p_max_mw / this.power_plant.p_max_mw) * 100;
+  }
+  get current_p_max_ratio(): number {
+    return Math.min(
+      100,
+      Math.max(0, (1 - this.current_p_max / this.power_plant.p_max_mw) * 100)
+    );
   }
   get p_min_ratio(): number {
     return (this.power_plant.p_min_mw / this.power_plant.p_max_mw) * 100;
@@ -144,6 +154,12 @@ export default class PowerPlantItem extends Vue {
       width: ${this.p_max_abs_ratio}%;
     `;
   }
+  get style_barre_current_pmax_width(): string {
+    return `
+      width: ${this.current_p_max_ratio}%;
+      display: ${this.current_p_max_ratio === 0 ? "none" : "block"}
+    `;
+  }
   get style_barre_pmin_width(): string {
     return `
       width: ${this.p_min_ratio}%;
@@ -184,7 +200,7 @@ export default class PowerPlantItem extends Vue {
       left: calc(${this.p_value_ratio}% - 75px);
     `;
   }
-    }
+}
 </script>
 
 <style scoped>
@@ -249,6 +265,20 @@ export default class PowerPlantItem extends Vue {
   height: 100%;
   text-align: end;
   border-right: 2px dashed black;
+  background: repeating-linear-gradient(
+    -45deg,
+    #c8cad4a9,
+    #c8cad4a9 5px,
+    #a2a4aaa9 5px,
+    #a2a4aaa9 10px
+  );
+}
+.pp__barre__current_p_max {
+  position: absolute;
+  height: 100%;
+  right: 0;
+  bottom: 0;
+  border-left: 2px dashed black;
   background: repeating-linear-gradient(
     -45deg,
     #c8cad4a9,
