@@ -158,10 +158,21 @@ export default class PowerPlantItem extends Vue {
     `;
   }
 
+  get p_max_actual(): number {
+    const stock =
+      this.power_plant.stock_mwh === -1
+        ? Number.POSITIVE_INFINITY
+        : this.power_plant.stock_mwh;
+    return Math.min(this.power_plant.p_max_mw, stock);
+  }
+
   @Watch("power_plant.planning_modif")
   onValueUpdate(new_val: number, old_val: number): void {
     if (new_val < this.power_plant.p_min_mw) {
       this.power_plant.planning_modif = 0;
+    }
+    if (new_val > this.p_max_actual) {
+      this.power_plant.planning_modif = this.p_max_actual;
     }
   }
 }
