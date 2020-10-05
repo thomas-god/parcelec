@@ -36,7 +36,12 @@
         <strong>{{ power_plant.price_eur_per_mwh }}</strong> €/MWh,
       </span>
       <span>
-        Stock : <strong>{{ stock }}</strong> {{ stock === "∞" ? "" : "MWh" }}
+        Stock :
+        <strong
+          >{{ stock }}
+          {{ stock === "∞" ? "" : " / " + power_plant.stock_max_mwh }}</strong
+        >
+        {{ stock === "∞" ? "" : "MWh" }}
       </span>
     </div>
   </div>
