@@ -349,10 +349,10 @@ export default class PowerPlantItem extends Vue {
 }
 
 .pp__barre__p_planning {
-  border-right: 3px dotted red;
-  height: 110%;
+  border-right: 3px solid rgba(255, 0, 0, 0.568);
+  height: calc(100% + 4px);
   position: absolute;
-  top: -5%;
+  top: -2px;
   left: 0px;
   z-index: 2;
   box-sizing: border-box;
