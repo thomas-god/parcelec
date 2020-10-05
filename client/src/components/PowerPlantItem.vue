@@ -163,6 +163,7 @@ export default class PowerPlantItem extends Vue {
   get style_barre_pmin_width(): string {
     return `
       width: ${this.p_min_ratio}%;
+      display: ${this.p_min_ratio === 0 ? "none" : "block"}
     `;
   }
   get style_barre_planning_width(): string {
