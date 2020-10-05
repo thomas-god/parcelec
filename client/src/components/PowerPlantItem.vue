@@ -1,7 +1,7 @@
 <template>
   <div class="pp__grid">
     <div class="pp__logo">{{ logo }}</div>
-    <div :style="pp__barre_style" ref="barre">
+    <div :style="style_barre" ref="barre">
       <input
         type="range"
         class="pp__barre__slider slider__active"
@@ -11,11 +11,11 @@
         step="10"
         :disabled="!editable"
       />
-      <div class="pp__barre__p_planning" :style="style_barre_width_planning" />
-      <div class="pp__barre__p_min" :style="style_barre_width_pmin" />
+      <div class="pp__barre__p_planning" :style="style_barre_planning_width" />
+      <div class="pp__barre__p_min" :style="style_barre_pmin_width" />
       <div class="pp__barre__p_max" />
     </div>
-    <div class="pp__barre__legend" :style="style_barre_width_pmax">
+    <div class="pp__barre__legend" :style="style_barre_pmax_width">
       <div class="pp__barre__legend__pmin" :style="style_legend_pmin">
         {{ power_plant.p_min_mw }} MW
       </div>
@@ -49,26 +49,32 @@ export default class PowerPlantItem extends Vue {
   @Prop() power_max_mw!: number;
   @Prop() editable!: boolean;
 
-  get stock(): string {
-    return this.power_plant.stock_mwh === -1
-      ? "∞"
-      : String(this.power_plant.stock_mwh);
+  /**
+   * Watcher to check user's power plant setpoint.
+   */
+  get current_p_max(): number {
+    const stock =
+      this.power_plant.stock_mwh === -1
+        ? Number.POSITIVE_INFINITY
+        : this.power_plant.stock_mwh;
+    return Math.max(0, Math.min(this.power_plant.p_max_mw, stock));
+  }
+  @Watch("power_plant.planning_modif")
+  onValueUpdate(new_val: number, old_val: number): void {
+    if (new_val < this.power_plant.p_min_mw) {
+      this.power_plant.planning_modif = 0;
+    }
+    if (new_val > this.current_p_max) {
+      this.power_plant.planning_modif = this.current_p_max;
+  }
   }
 
-  get logo(): string {
-    let logo = "";
-    if (this.power_plant.type === "nuc") logo = "☢️";
-    if (this.power_plant.type === "therm") logo = "🔥";
-    if (this.power_plant.type === "hydro") logo = "💧";
-    if (this.power_plant.type === "ren") logo = "☀️";
-    if (this.power_plant.type === "storage") logo = "🔋";
-    return logo;
-  }
-
+  /**
+   * Convert power values into width fractions.
+   */
   get p_max_abs_ratio(): number {
     return (this.power_plant.p_max_mw / this.power_max_mw) * 100;
   }
-
   get p_max_ratio(): number {
     return (this.power_plant.p_max_mw / this.power_plant.p_max_mw) * 100;
   }
@@ -81,23 +87,49 @@ export default class PowerPlantItem extends Vue {
   get p_value_ratio(): number {
     return (this.power_plant.planning_modif / this.power_plant.p_max_mw) * 100;
   }
-  public mounted() {
-    window.addEventListener("resize", this.handleResize);
-    if (this.$refs.barre)
-      this.content_width = (this.$refs.barre as HTMLDivElement).clientWidth;
-  }
 
+  /**
+   * Monitor component's width to update visibility ratio.
+   */
   content_width = 0;
   public handleResize() {
     if (this.$refs.barre)
       this.content_width = (this.$refs.barre as HTMLDivElement).clientWidth;
   }
-
+  get visibility_ratio(): number {
+    return (85 / Number(this.content_width)) * 100;
+  }
+  public mounted() {
+    window.addEventListener("resize", this.handleResize);
+    if (this.$refs.barre)
+      this.content_width = (this.$refs.barre as HTMLDivElement).clientWidth;
+  }
   public beforeDestroyed() {
     window.removeEventListener("resize", this.handleResize);
   }
 
-  get pp__barre_style(): string {
+  /**
+   * Logos and format stock string.
+   */
+  get stock(): string {
+    return this.power_plant.stock_mwh === -1
+      ? "∞"
+      : String(this.power_plant.stock_mwh);
+  }
+  get logo(): string {
+    let logo = "";
+    if (this.power_plant.type === "nuc") logo = "☢️";
+    if (this.power_plant.type === "therm") logo = "🔥";
+    if (this.power_plant.type === "hydro") logo = "💧";
+    if (this.power_plant.type === "ren") logo = "☀️";
+    if (this.power_plant.type === "storage") logo = "🔋";
+    return logo;
+  }
+
+  /**
+   * Dynamic styles.
+   */
+  get style_barre(): string {
     return `
       position: relative;
       box-sizing: content-box;
@@ -107,25 +139,20 @@ export default class PowerPlantItem extends Vue {
       width: ${this.p_max_abs_ratio}%
     `;
   }
-
-  get style_barre_width_pmax(): string {
+  get style_barre_pmax_width(): string {
     return `
       width: ${this.p_max_abs_ratio}%;
     `;
   }
-  get style_barre_width_pmin(): string {
+  get style_barre_pmin_width(): string {
     return `
       width: ${this.p_min_ratio}%;
     `;
   }
-  get style_barre_width_planning(): string {
+  get style_barre_planning_width(): string {
     return `
       width: ${this.p_planning_ratio}%;
     `;
-  }
-
-  get visibility_ratio(): number {
-    return (85 / Number(this.content_width)) * 100;
   }
   get style_legend_pmin(): string {
     return `
@@ -157,25 +184,7 @@ export default class PowerPlantItem extends Vue {
       left: calc(${this.p_value_ratio}% - 75px);
     `;
   }
-
-  get p_max_actual(): number {
-    const stock =
-      this.power_plant.stock_mwh === -1
-        ? Number.POSITIVE_INFINITY
-        : this.power_plant.stock_mwh;
-    return Math.min(this.power_plant.p_max_mw, stock);
-  }
-
-  @Watch("power_plant.planning_modif")
-  onValueUpdate(new_val: number, old_val: number): void {
-    if (new_val < this.power_plant.p_min_mw) {
-      this.power_plant.planning_modif = 0;
     }
-    if (new_val > this.p_max_actual) {
-      this.power_plant.planning_modif = this.p_max_actual;
-    }
-  }
-}
 </script>
 
 <style scoped>
