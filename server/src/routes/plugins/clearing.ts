@@ -231,15 +231,18 @@ export function computeClearing(
         }
       }
     }
-    // Compute internal information based on last bids index
-    internal_infos.buy_last_bid_price = buy[ib].price;
-    internal_infos.buy_last_bid_frac_volume =
-      (clearing.volume - buy[ib].vol_start) /
-      (buy[ib].vol_end - buy[ib].vol_start);
-    internal_infos.sell_last_bid_price = sell[is].price;
-    internal_infos.sell_last_bid_frac_volume =
-      (clearing.volume - sell[is].vol_start) /
-      (sell[is].vol_end - sell[is].vol_start);
+    // Compute internal information based on last bids index if
+    // clearing is successful
+    if (is !== ns && ib !== nb) {
+      internal_infos.buy_last_bid_price = buy[ib].price;
+      internal_infos.buy_last_bid_frac_volume =
+        (clearing.volume - buy[ib].vol_start) /
+        (buy[ib].vol_end - buy[ib].vol_start);
+      internal_infos.sell_last_bid_price = sell[is].price;
+      internal_infos.sell_last_bid_frac_volume =
+        (clearing.volume - sell[is].vol_start) /
+        (sell[is].vol_end - sell[is].vol_start);
+    }
   }
 
   return [clearing, internal_infos];
