@@ -759,7 +759,7 @@ export async function getUserEnergyExchanges(
       [session_id]
     )
   ).rows;
-  const phase_no = req_phase.length === 1 ? req_phase[0].phase_no : null;
+  const phase_no = req_phase.length > 0 ? req_phase[0].phase_no : null;
   if (phase_no !== null) {
     const exchanges = (
       await db.query(
