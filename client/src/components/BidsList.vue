@@ -7,7 +7,7 @@
       <div class="bid__action" v-if="dummy || can_bid">
         <BidItemInput :type="'buy'" :edit="true" :dummy="dummy" />
       </div>
-      <h3 v-if="bidsBuy.length > 0">Vos enchères</h3>
+      <h3 v-if="(bidsBuy.length + bidsSell.length) > 0">Vos enchères</h3>
       <BidItem
         :type="'buy'"
         :edit="false"
