@@ -1011,10 +1011,10 @@ export async function generateDefaultScenario(): Promise<string> {
     description:
       "Le scénario par défaut vous permet de prendre en main les fonctionnalités de parcelec.",
     multi_game: false,
-    bids_duration_sec: 20,
-    plannings_duration_sec: 30,
+    bids_duration_sec: 120,
+    plannings_duration_sec: 180,
     phases_number: 3,
-    conso_forecast_mwh: [600, 1300, 1800],
+    conso_forecast_mwh: [900, 1300, 2400],
     conso_price_eur: [35, 35, 35],
     imbalance_costs_factor: [1.08, 1.08, 1.08],
   };
@@ -1069,7 +1069,7 @@ export async function generateDefaultScenario(): Promise<string> {
       type: "hydro",
       p_min_mw: 50,
       p_max_mw: 500,
-      stock_max_mwh: 5000,
+      stock_max_mwh: 500,
       price_eur_per_mwh: 0,
     },
   ];
@@ -1100,10 +1100,9 @@ export async function generateDefaultScenario(): Promise<string> {
   );
 
   const bids = [
-    { phase_no: 0, type: "buy", volume_mwh: 100, price_eur_per_mwh: 50 },
-    { phase_no: 0, type: "buy", volume_mwh: 100, price_eur_per_mwh: 80 },
-    { phase_no: 0, type: "sell", volume_mwh: 100, price_eur_per_mwh: 30 },
-    { phase_no: 0, type: "sell", volume_mwh: 100, price_eur_per_mwh: 10 },
+    { phase_no: 0, type: "buy", volume_mwh: 200, price_eur_per_mwh: 25 },
+    { phase_no: 1, type: "buy", volume_mwh: 200, price_eur_per_mwh: 20 },
+    { phase_no: 2, type: "sell", volume_mwh: 500, price_eur_per_mwh: 70 },
   ];
   await Promise.all(
     bids.map(async (bid) => {
