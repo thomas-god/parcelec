@@ -1,21 +1,29 @@
 <template>
   <div class="pp__grid">
     <div class="pp__logo">{{ logo }}</div>
-    <div :style="pp__barre_style" ref="barre">
+    <div :style="style_barre" ref="barre">
       <input
         type="range"
         class="pp__barre__slider slider__active"
         v-model="power_plant.planning_modif"
-        min="0"
+        :min="p_min"
         :max="power_plant.p_max_mw"
         step="10"
-        :disabled="!editable"
+        :disabled="!editable || power_plant.type === 'ren'"
       />
-      <div class="pp__barre__p_planning" :style="style_barre_width_planning" />
-      <div class="pp__barre__p_min" :style="style_barre_width_pmin" />
+      <div class="pp__barre__p_planning" :style="style_pp__barre__p_planning" />
+      <div class="pp__barre__p_min" :style="style_pp__barre__p_min" />
       <div class="pp__barre__p_max" />
+      <div
+        class="pp__barre__current_p_max"
+        :style="style_pp__barre__current_p_max"
+      />
+      <div
+        class="pp__barre__current_p_min"
+        :style="style_pp__barre__current_p_min"
+      />
     </div>
-    <div class="pp__barre__legend" :style="style_barre_width_pmax">
+    <div class="pp__barre__legend" :style="style_barre_pmax_width">
       <div class="pp__barre__legend__pmin" :style="style_legend_pmin">
         {{ power_plant.p_min_mw }} MW
       </div>
@@ -32,7 +40,12 @@
         <strong>{{ power_plant.price_eur_per_mwh }}</strong> €/MWh,
       </span>
       <span>
-        Stock : <strong>{{ stock }}</strong> {{ stock === "∞" ? "" : "MWh" }}
+        Stock :
+        <strong
+          >{{ stock }}
+          {{ stock === "∞" ? "" : " / " + power_plant.stock_max_mwh }}</strong
+        >
+        {{ stock === "∞" ? "" : "MWh" }}
       </span>
     </div>
   </div>
@@ -49,12 +62,131 @@ export default class PowerPlantItem extends Vue {
   @Prop() power_max_mw!: number;
   @Prop() editable!: boolean;
 
+  /**
+   * Watcher to check user's power plant setpoint.
+   */
+  get current_p_max(): number {
+    // Max power taking into account remaining stock if applicable
+    const stock =
+      this.power_plant.stock_mwh === -1
+        ? Number.POSITIVE_INFINITY
+        : this.power_plant.stock_mwh;
+    return Math.max(0, Math.min(this.power_plant.p_max_mw, stock));
+  }
+  get current_stock_p_min(): number {
+    // Min power taking into account free remaining stock if applicable
+    if (this.power_plant.type === "storage") {
+      const stock =
+        this.power_plant.stock_mwh === -1
+          ? Number.POSITIVE_INFINITY
+          : this.power_plant.stock_mwh;
+      return Math.max(
+        -this.power_plant.p_max_mw,
+        -(this.power_plant.stock_max_mwh - stock)
+      );
+    } else {
+      return 0;
+    }
+  }
+  @Watch("power_plant.planning_modif")
+  onValueUpdate(new_val: number, old_val: number): void {
+    if (Math.abs(new_val) < this.power_plant.p_min_mw) {
+      this.power_plant.planning_modif = 0;
+    }
+    if (new_val > this.current_p_max) {
+      this.power_plant.planning_modif = this.current_p_max;
+    }
+    if (new_val < this.current_stock_p_min) {
+      this.power_plant.planning_modif = this.current_stock_p_min;
+    }
+  }
+
+  get p_min(): number {
+    return this.power_plant.type === "storage" ? -this.power_plant.p_max_mw : 0;
+  }
+
+  /**
+   * Convert power values into width fractions.
+   */
+  get p_max_abs_ratio(): number {
+    // Size of the current PP barre relative to the size of the PP with the highest PMax
+    return (this.power_plant.p_max_mw / this.power_max_mw) * 100;
+  }
+  get p_max_ratio(): number {
+    return (this.power_plant.p_max_mw / this.power_plant.p_max_mw) * 100;
+  }
+  get current_p_max_ratio(): number {
+    return Math.min(
+      100,
+      Math.max(
+        0,
+        (1 -
+          (this.current_p_max - this.p_min) /
+            (this.power_plant.p_max_mw - this.p_min)) *
+          100
+      )
+    );
+  }
+  get current_p_min_ratio(): number {
+    return Math.min(
+      100,
+      Math.max(
+        0,
+        ((this.current_stock_p_min - this.p_min) /
+          (this.power_plant.p_max_mw - this.p_min)) *
+          100
+      )
+    );
+  }
+  get p_min_active_ratio(): number {
+    return (
+      (this.power_plant.p_min_mw / (this.power_plant.p_max_mw - this.p_min)) *
+      100
+    );
+  }
+  get p_planning_ratio(): number {
+    return (
+      ((this.power_plant.planning - this.p_min) /
+        (this.power_plant.p_max_mw - this.p_min)) *
+      100
+    );
+  }
+  get p_value_ratio(): number {
+    return (
+      ((this.power_plant.planning_modif - this.p_min) /
+        (this.power_plant.p_max_mw - this.p_min)) *
+      100
+    );
+  }
+
+  /**
+   * Monitor component's width to update visibility ratio.
+   */
+  content_width = 0;
+  public handleResize() {
+    if (this.$refs.barre)
+      this.content_width = (this.$refs.barre as HTMLDivElement).clientWidth;
+  }
+  get visibility_ratio(): number {
+    return (85 / Number(this.content_width)) * 100;
+  }
+  public mounted() {
+    window.addEventListener("resize", this.handleResize);
+    if (this.$refs.barre)
+      this.content_width = (this.$refs.barre as HTMLDivElement).clientWidth;
+  }
+  public beforeDestroyed() {
+    window.removeEventListener("resize", this.handleResize);
+  }
+
+  /**
+   * Logos and format stock string.
+   */
   get stock(): string {
     return this.power_plant.stock_mwh === -1
       ? "∞"
       : String(this.power_plant.stock_mwh);
   }
-
   get logo(): string {
     let logo = "";
     if (this.power_plant.type === "nuc") logo = "☢️";
@@ -65,39 +197,10 @@ export default class PowerPlantItem extends Vue {
     return logo;
   }
 
-  get p_max_abs_ratio(): number {
-    return (this.power_plant.p_max_mw / this.power_max_mw) * 100;
-  }
-
-  get p_max_ratio(): number {
-    return (this.power_plant.p_max_mw / this.power_plant.p_max_mw) * 100;
-  }
-  get p_min_ratio(): number {
-    return (this.power_plant.p_min_mw / this.power_plant.p_max_mw) * 100;
-  }
-  get p_planning_ratio(): number {
-    return (this.power_plant.planning / this.power_plant.p_max_mw) * 100;
-  }
-  get p_value_ratio(): number {
-    return (this.power_plant.planning_modif / this.power_plant.p_max_mw) * 100;
-  }
-  public mounted() {
-    window.addEventListener("resize", this.handleResize);
-    if (this.$refs.barre)
-      this.content_width = (this.$refs.barre as HTMLDivElement).clientWidth;
-  }
-
-  content_width = 0;
-  public handleResize() {
-    if (this.$refs.barre)
-      this.content_width = (this.$refs.barre as HTMLDivElement).clientWidth;
-  }
-
-  public beforeDestroyed() {
-    window.removeEventListener("resize", this.handleResize);
-  }
-
-  get pp__barre_style(): string {
+  /**
+   * Dynamic styles.
+   */
+  get style_barre(): string {
     return `
       position: relative;
       box-sizing: content-box;
@@ -107,36 +210,83 @@ export default class PowerPlantItem extends Vue {
       width: ${this.p_max_abs_ratio}%
     `;
   }
-
-  get style_barre_width_pmax(): string {
+  get style_barre_pmax_width(): string {
     return `
       width: ${this.p_max_abs_ratio}%;
     `;
   }
-  get style_barre_width_pmin(): string {
-    return `
-      width: ${this.p_min_ratio}%;
+  get style_pp__barre__current_p_max(): string {
+    let style = `
+      width: ${this.current_p_max_ratio}%;
+      display: ${this.current_p_max_ratio === 0 ? "none" : "block"};
     `;
+    if (this.current_p_max <= this.power_plant.p_min_mw) {
+      style += "border-left: none;";
+    } else {
+      style += "border-left: 2px dashed black;";
+    }
+    return style;
   }
-  get style_barre_width_planning(): string {
+  get style_pp__barre__current_p_min(): string {
+    let style = `
+      width: ${this.current_p_min_ratio}%;
+      display: ${this.current_p_min_ratio === 0 ? "none" : "block"};
+    `;
+    if (this.current_stock_p_min >= -this.power_plant.p_min_mw) {
+      style += "border-right: none;";
+    } else {
+      style += "border-right: 2px dashed black;";
+    }
+    return style;
+  }
+  get style_pp__barre__p_min(): string {
+    if (this.power_plant.type !== "storage") {
+      return `
+      width: ${this.p_min_active_ratio}%;
+      display: ${this.p_min_active_ratio === 0 ? "none" : "block"};
+      border-right: 2px dashed black;
+      left: 0;
+    `;
+    } else {
+      let style = `
+        width: ${this.p_min_active_ratio * 2}%;
+        display: ${this.p_min_active_ratio === 0 ? "none" : "block"};
+        left: calc(${50 - this.p_min_active_ratio}% - 2px);
+      `;
+      if (this.current_stock_p_min >= -this.power_plant.p_min_mw) {
+        style += "border-left: none;";
+      } else {
+        style += "border-left: 2px dashed black;";
+      }
+      if (this.current_p_max <= this.power_plant.p_min_mw) {
+        style += "border-right: none;";
+      } else {
+        style += "border-right: 2px dashed black;";
+      }
+      return style;
+    }
+  }
+  get style_pp__barre__p_planning(): string {
     return `
       width: ${this.p_planning_ratio}%;
+      display: ${this.power_plant.type === "ren" ? "none" : "block"}
     `;
   }
-
-  get visibility_ratio(): number {
-    return (85 / Number(this.content_width)) * 100;
-  }
   get style_legend_pmin(): string {
-    return `
+    if (this.power_plant.type !== "storage") {
+      return `
       position: absolute;
-      left: calc(${this.p_min_ratio}% - 75px);
+      left: calc(${this.p_min_active_ratio}% - 75px);
       display: ${
-        Math.abs(this.p_min_ratio - this.p_value_ratio) < this.visibility_ratio
+        Math.abs(this.p_min_active_ratio - this.p_value_ratio) <
+        this.visibility_ratio
           ? "none"
           : "block"
       }
     `;
+    } else {
+      return "display: none;";
+    }
   }
   get style_legend_pmax(): string {
     return `
@@ -156,13 +306,6 @@ export default class PowerPlantItem extends Vue {
       position: absolute;
       left: calc(${this.p_value_ratio}% - 75px);
     `;
-  }
-
-  @Watch("power_plant.planning_modif")
-  onValueUpdate(new_val: number, old_val: number): void {
-    if (new_val < this.power_plant.p_min_mw) {
-      this.power_plant.planning_modif = 0;
-    }
   }
 }
 </script>
@@ -206,10 +349,10 @@ export default class PowerPlantItem extends Vue {
 }
 
 .pp__barre__p_planning {
-  border-right: 3px dotted red;
-  height: 110%;
+  border-right: 3px solid rgba(255, 0, 0, 0.568);
+  height: calc(100% + 4px);
   position: absolute;
-  top: -5%;
+  top: -2px;
   left: 0px;
   z-index: 2;
   box-sizing: border-box;
@@ -224,11 +367,9 @@ export default class PowerPlantItem extends Vue {
   flex-direction: column;
   justify-content: center;
 }
-.pp__barre__p_min {
-  position: relative;
-  height: 100%;
-  text-align: end;
-  border-right: 2px dashed black;
+.pp__barre__p_min,
+.pp__barre__current_p_max,
+.pp__barre__current_p_min {
   background: repeating-linear-gradient(
     -45deg,
     #c8cad4a9,
@@ -236,6 +377,23 @@ export default class PowerPlantItem extends Vue {
     #a2a4aaa9 5px,
     #a2a4aaa9 10px
   );
+}
+.pp__barre__p_min {
+  position: absolute;
+  height: 100%;
+  text-align: end;
+}
+.pp__barre__current_p_max {
+  position: absolute;
+  height: 100%;
+  right: 0;
+  bottom: 0;
+}
+.pp__barre__current_p_min {
+  position: absolute;
+  height: 100%;
+  left: 0;
+  bottom: 0;
 }
 
 .pp__barre__legend {
@@ -325,7 +483,8 @@ input[type="range"]::-ms-track {
 /* Special styling for WebKit/Blink */
 input[type="range"]::-webkit-slider-thumb {
   -webkit-appearance: none;
-  width: 7px;
+  width: 4px;
+  box-sizing: content-box;
   border-radius: 3px;
   cursor: pointer;
   margin-top: 0px; /* You need to specify a margin in Chrome, but in Firefox and IE it is automatic */
@@ -335,13 +494,15 @@ input[type="range"]::-webkit-slider-thumb {
 input[type="range"]::-moz-range-thumb {
   width: 4px;
   border-radius: 3px;
+  box-sizing: content-box;
   cursor: pointer;
 }
 
 /* All the same stuff for IE */
 input[type="range"]::-ms-thumb {
-  width: 16px;
+  width: 4px;
   border-radius: 3px;
+  box-sizing: content-box;
   cursor: pointer;
 }
 
