@@ -20,7 +20,8 @@ import {
   deleteUserBid,
   getClearing,
   getUserEnergyExchanges,
-  CustomError,
+  CustomError, 
+  getClearedPhaseBids
 } from "./utils";
 
 // ---------------------- Routing Functions
@@ -229,6 +230,35 @@ export async function getUserEnergyExchangesRoute(
   }
 }
 
+/**
+ * Get the clearing information for the current phase.
+ * @param req HTTP request
+ * @param res HTTP response
+ */
+export async function getClearingAllBids(
+  req: express.Request,
+  res: express.Response
+): Promise<void> {
+  try {
+    // DB checks
+    const session_id = req.params.session_id;
+    const session = await getSession(session_id);
+    if (session === null)
+      throw new CustomError("Error, no session found with this ID", 404);
+
+    const user_id = req.query.user_id as string;
+    const bids = await getClearedPhaseBids(session_id, user_id);
+    res.status(200).json(bids);
+  } catch (error) {
+    if (error instanceof CustomError) {
+      res.status(error.code).end(error.msg);
+    } else {
+      res.status(400).end();
+      throw error;
+    }
+  }
+}
+
 const router = express.Router();
 
 router.post(
@@ -248,5 +278,6 @@ router.get(
   `/session/:session_id(${uuid_regex})/user/:user_id(${uuid_regex})/clearing`,
   getUserEnergyExchangesRoute
 );
+router.get(`/session/:session_id(${uuid_regex})/clearing/all_bids`, getClearingAllBids);
 
 export default router;

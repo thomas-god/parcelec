@@ -20,6 +20,7 @@ The following describes the various routes composing the parcelec API.
 - [GET /session/:session_id/clearing](#Get-information-on-the-market-clearing)
 - [GET /session/:session_id/user/:user_id/clearing](#Get-specific-information-on-a-user-energy-exchanges-following-market-clearing)
 - [GET /session/:session_id/user/:user_id/results](#Get-energy-and-financial-results-when-a-phase-is-finished)
+- [GET /session/:session_id/clearing/?user_id](#Get-all-the-bids-anonymously-after-a-session-has-cleared)
 
 
 ## Game session related routes
@@ -294,4 +295,20 @@ The following describes the various routes composing the parcelec API.
         imbalance_costs_eur: number;
         balance_eur: number;
       }
+    ```
+
+### Get all the bids anonymously after a session has cleared
+- Route : `GET /session/:session_id/clearing/?user_id`
+- Response :
+    - Type : `application/json`,
+    - Body : 
+    ``` js
+      [
+        {
+          type: "buy" | "sell";
+          volume_mwh: number;
+          price_eur_per_mwh: number;
+          own_bid: boolean;
+        }
+      ]
     ```

@@ -737,6 +737,68 @@ export async function getClearing(
 }
 
 /**
+ * Return anonymously all the bids for a given phase after it has cleared.
+ * User's bids get a `own_bid` flag set to `true`.
+ * @param session_id Session ID
+ * @param user_id Optional, user ID
+ * @param phase_no Optional, id (int) of the phase
+ */
+export async function getClearedPhaseBids(
+  session_id: string,
+  user_id?: string,
+  phase_no?: number
+): Promise<{
+  type: "buy" | "sell";
+  volume_mwh: number;
+  price_eur_per_mwh: number;
+}[]> {
+  if (phase_no === undefined) {
+    const req_phase = (
+      await db.query(
+        `SELECT phase_no
+        FROM phases
+        WHERE session_id=$1
+        ORDER BY phase_no DESC;`,
+        [session_id]
+      )
+    ).rows;
+    phase_no = req_phase.length > 0 ? req_phase[0].phase_no : null;
+  }
+  if (phase_no !== null) {
+    const bids = (
+      await db.query(
+        `SELECT
+          b.type,
+          b.volume_mwh,
+          b.price_eur_per_mwh,
+          CASE 
+            WHEN b.user_id=$1 THEN true
+            ELSE false
+          END AS own_bid
+        FROM bids AS b
+        INNER JOIN phases AS p
+          ON (
+            b.phase_no=p.phase_no
+            AND b.session_id=p.session_id
+          )
+        WHERE
+          b.session_id=$2
+          AND b.phase_no=$3
+          AND p.results_available=true;`,
+        [user_id, session_id, phase_no]
+      )
+    ).rows;
+    return bids as {
+      type: "buy" | "sell";
+      volume_mwh: number;
+      price_eur_per_mwh: number;
+    }[]
+  } else {
+    return []
+  }
+}
+
+/**
  * Return the user's energy exchanges following bids clearing.
  * @param session_id Session ID
  */
@@ -949,8 +1011,8 @@ export async function generateDefaultScenario(): Promise<string> {
     description:
       "Le scénario par défaut vous permet de prendre en main les fonctionnalités de parcelec.",
     multi_game: false,
-    bids_duration_sec: 180,
-    plannings_duration_sec: 300,
+    bids_duration_sec: 20,
+    plannings_duration_sec: 30,
     phases_number: 3,
     conso_forecast_mwh: [600, 1300, 1800],
     conso_price_eur: [35, 35, 35],
@@ -1038,8 +1100,10 @@ export async function generateDefaultScenario(): Promise<string> {
   );
 
   const bids = [
-    /* { phase_no: 0, type: "buy", volume_mwh: 100, price_eur_per_mwh: 50 },
-    { phase_no: 0, type: "sell", volume_mwh: 100, price_eur_per_mwh: 30 }, */
+    { phase_no: 0, type: "buy", volume_mwh: 100, price_eur_per_mwh: 50 },
+    { phase_no: 0, type: "buy", volume_mwh: 100, price_eur_per_mwh: 80 },
+    { phase_no: 0, type: "sell", volume_mwh: 100, price_eur_per_mwh: 30 },
+    { phase_no: 0, type: "sell", volume_mwh: 100, price_eur_per_mwh: 10 },
   ];
   await Promise.all(
     bids.map(async (bid) => {
