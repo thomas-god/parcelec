@@ -34,8 +34,9 @@ export const actions: ActionTree<WebSocketState, RootState> = {
    * Open the WebSocket connection.
    */
   async openWebSocket(context): Promise<void> {
-    // Close existing WebSocket connection
+    // Close existing WebSocket connection and clear messages
     if (state.ws?.OPEN) state.ws.close();
+    state.messages = [];
 
     // Open new WebSocket connection
     const ws_url = context.rootState.ws_url;
