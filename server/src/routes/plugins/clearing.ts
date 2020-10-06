@@ -289,66 +289,65 @@ export async function computeAndInsertEnergyExchanges(
   clearing_value: Clearing,
   clearing_infos: ClearingInternalInfos
 ): Promise<void> {
-  // TODO: handle the case where several multiple bids (from different users or not)
-  // TODO: have the same price, especially if it is the clearing price as the volume
-  // TODO: should then be prorated.
-  const users = await getSessionUsers(session_id);
-  await Promise.all(
-    users.map(async (user) => {
-      const bids = await getUserBids(session_id, user.id, phase_no);
-      const [sell, buy] = sortBids(bids);
+  if (clearing_value.volume > 0) {
+    const users = await getSessionUsers(session_id);
+    await Promise.all(
+      users.map(async (user) => {
+        const bids = await getUserBids(session_id, user.id, phase_no);
+        const [sell, buy] = sortBids(bids);
 
-      // Sell exchange
-      const sell_ok_vol = sell
-        .map((bid) => {
-          if (bid.price_eur_per_mwh < clearing_infos.sell_last_bid_price) {
-            return bid.volume_mwh;
-          } else if (
-            bid.price_eur_per_mwh === clearing_infos.sell_last_bid_price
-          ) {
-            return bid.volume_mwh * clearing_infos.sell_last_bid_frac_volume;
-          } else {
-            return 0;
-          }
-        })
-        .reduce((a, b) => a + b, 0);
-      if (sell_ok_vol > 0) {
-        await db.query(
-          `
+        // Sell exchange
+        const sell_ok_vol = sell
+          .map((bid) => {
+            if (bid.price_eur_per_mwh < clearing_infos.sell_last_bid_price) {
+              return bid.volume_mwh;
+            } else if (
+              bid.price_eur_per_mwh === clearing_infos.sell_last_bid_price
+            ) {
+              return bid.volume_mwh * clearing_infos.sell_last_bid_frac_volume;
+            } else {
+              return 0;
+            }
+          })
+          .reduce((a, b) => a + b, 0);
+        if (sell_ok_vol > 0) {
+          await db.query(
+            `
         INSERT INTO exchanges 
           (user_id, session_id, phase_no, type, volume_mwh, price_eur_per_mwh)
         VALUES
          ($1, $2, $3, 'sell', $4, $5)`,
-          [user.id, session_id, phase_no, sell_ok_vol, clearing_value.price]
-        );
-      }
+            [user.id, session_id, phase_no, sell_ok_vol, clearing_value.price]
+          );
+        }
 
-      // Buy exchange
-      const buy_ok_vol = buy
-        .map((bid) => {
-          if (bid.price_eur_per_mwh > clearing_infos.buy_last_bid_price) {
-            return bid.volume_mwh;
-          } else if (
-            bid.price_eur_per_mwh === clearing_infos.buy_last_bid_price
-          ) {
-            return bid.volume_mwh * clearing_infos.buy_last_bid_frac_volume;
-          } else {
-            return 0;
-          }
-        })
-        .reduce((a, b) => a + b, 0);
-      if (buy_ok_vol > 0) {
-        await db.query(
-          `
+        // Buy exchange
+        const buy_ok_vol = buy
+          .map((bid) => {
+            if (bid.price_eur_per_mwh > clearing_infos.buy_last_bid_price) {
+              return bid.volume_mwh;
+            } else if (
+              bid.price_eur_per_mwh === clearing_infos.buy_last_bid_price
+            ) {
+              return bid.volume_mwh * clearing_infos.buy_last_bid_frac_volume;
+            } else {
+              return 0;
+            }
+          })
+          .reduce((a, b) => a + b, 0);
+        if (buy_ok_vol > 0) {
+          await db.query(
+            `
         INSERT INTO exchanges 
           (user_id, session_id, phase_no, type, volume_mwh, price_eur_per_mwh)
         VALUES
          ($1, $2, $3, 'buy', $4, $5)`,
-          [user.id, session_id, phase_no, buy_ok_vol, clearing_value.price]
-        );
-      }
-    })
-  );
+            [user.id, session_id, phase_no, buy_ok_vol, clearing_value.price]
+          );
+        }
+      })
+    );
+  }
 }
 
 /**
