@@ -23,9 +23,8 @@ export default class Chatroom extends Vue {
 @media screen and (min-width: 750px) {
   .chatroom__container {
     display: flex;
-    flex-direction: row;
+    flex-direction: column;
     flex-wrap: nowrap;
-    max-width: 850px;
   }
 
   .chatroom__messages {
@@ -49,7 +48,7 @@ export default class Chatroom extends Vue {
 
 .chatroom__box {
   border: 1px solid black;
-  margin: 1rem;
+  margin-bottom: 1rem;
   padding: 1rem;
 }
 </style>

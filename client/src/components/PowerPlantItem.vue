@@ -338,7 +338,7 @@ export default class PowerPlantItem extends Vue {
       "logo barre"
       "X legend";
     grid-template-columns: 50px 1fr;
-    grid-template-rows: 20px 50px 30px;
+    grid-template-rows: auto 50px 30px;
   }
 }
 

@@ -1,19 +1,22 @@
 <template>
   <div class="main">
     <!-- Open session -->
-    <div v-if="session_status === 'open'" class="app__full">
-      <h1>
-        Bonjour {{ username }}, vous avez rejoint la partie
-        <em>{{ session.name }}</em> !
-      </h1>
-      <h3>
-        Vous pouvez discuter avec les autres joueurs connectés, prendre
-        connaissance de vos centrales, et quand vous serez prêt·e à démarrer la
-        partie, cliquez sur le bouton
-        <em>"Je suis prêt·e!"</em>
-      </h3>
-      <Chatroom class="app__full__chatroom" :display_ready="true" />
-      <PowerPlantsList class="app__full__pplist" :dummy="true" />
+    <div v-if="session_status === 'open'" class="app__waitroom">
+      <div class="app__waitroom__title">
+        <h1>
+          Bonjour {{ username }}, vous avez rejoint la partie
+          <em>{{ session.name }}</em> !
+        </h1>
+        <h3>
+          Vous pouvez discuter avec les autres joueurs connectés, prendre
+          connaissance de vos centrales, et quand vous serez prêt·e à démarrer
+          la partie, cliquez sur le bouton
+          <em>"Je suis prêt·e !"</em>
+        </h3>
+      </div>
+
+      <Chatroom class="app__waitroom__chatroom" :display_ready="true" />
+      <PowerPlantsList class="app__waitroom__pplist" :dummy="true" />
     </div>
 
     <!-- Running session -->
@@ -104,8 +107,8 @@ const portfolioModule = namespace("portfolio");
     PowerPlantsList,
     BidsList,
     BilansSimple,
-    Bilans,
-  },
+    Bilans
+  }
 })
 export default class Main extends Vue {
   @State("api_url") api_url!: string;
@@ -160,7 +163,7 @@ export default class Main extends Vue {
     const res = await fetch(
       `${this.api_url}/session/${this.session_id}/user/${this.user_id}/ready`,
       {
-        method: "PUT",
+        method: "PUT"
       }
     );
     if (res.status === 201) this.SET_GAME_READY(true);
@@ -186,7 +189,77 @@ function toTimeString(dt: number): string {
   height: calc(100%-36px);
   margin-bottom: 4.5rem;
 }
+/**
+  Waitroom
+*/
+.app__waitroom {
+  display: grid;
+  max-width: 1000px;
+  margin: auto;
+  padding: 0 10px;
+}
+@media screen and (min-width: 750px) {
+  .app__waitroom {
+    grid-template-areas:
+      "title title"
+      "pp chat";
+    grid-template-columns: 2fr 1.5fr;
+    grid-template-rows: auto auto;
+    align-items: flex-start;
+    justify-items: stretch;
+  }
+  .app__waitroom__pplis {
+    margin: 1rem auto;
+    padding: 1rem;
+  }
+  .app__waitroom__chatroom {
+    margin: 0rem 1rem;
+    padding: 0rem;
+  }
+}
+@media screen and (max-width: 750px) {
+  .app__waitroom {
+    grid-template-areas:
+      "title"
+      "pp"
+      "chat";
+    grid-template-columns: auto;
+    grid-template-rows: auto auto auto;
+    align-items: flex-start;
+    justify-items: stretch;
+  }
+  .app__waitroom__pplist {
+    margin: auto 1rem;
+    padding: 0rem;
+  }
+  .app__waitroom__chatroom {
+    margin: 1rem 1rem;
+    padding: 0rem;
+  }
+}
+.app__waitroom__title {
+  grid-area: title;
+}
+.app__waitroom__title h3 {
+  max-width: 650px;
+  margin: auto;
+  margin-bottom: 2rem;
+}
+.app__waitroom__chatroom {
+  box-sizing: content-box;
+  max-width: 650px;
+  grid-area: chat;
+}
+.app__waitroom__pplist {
+  grid-area: pp;
+  box-sizing: content-box;
+  border: 1px solid black;
+  max-width: 650px;
+}
 
+/**
+  Game mode
+*/
 .app__grid {
   display: grid;
   width: 100%;
@@ -218,33 +291,6 @@ function toTimeString(dt: number): string {
 .app__grid_main h3 {
   margin: 0.2rem;
   font-weight: normal;
-}
-
-.app__full {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
-
-.app__full h3 {
-  max-width: 650px;
-  margin: auto;
-  margin-bottom: 2rem;
-}
-
-.app__full__chatroom,
-.app__full__pplist {
-  max-width: 850px;
-  width: 85vw;
-}
-.app__full__pplist {
-  padding: 1rem;
-  box-sizing: border-box;
-  margin: 1rem 0;
-}
-
-.chatroom__grid {
-  grid-area: message;
 }
 
 .app__main {
