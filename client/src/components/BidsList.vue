@@ -7,7 +7,7 @@
       <div class="bid__action" v-if="dummy || can_bid">
         <BidItemInput :type="'buy'" :edit="true" :dummy="dummy" />
       </div>
-      <h3 v-if="(bidsBuy.length + bidsSell.length) > 0">Vos enchères</h3>
+      <h3 v-if="bidsBuy.length + bidsSell.length > 0">Vos enchères</h3>
       <BidItem
         :type="'buy'"
         :edit="false"
@@ -49,6 +49,11 @@
         Vous n'avez pas d'enchères retenues
       </p>
     </div>
+
+    <div v-if="results_available">
+      <h3>Offres du marché</h3>
+      <AllBidsChart class="chart" />
+    </div>
   </div>
 </template>
 
@@ -58,12 +63,13 @@ import { State, Action, Getter, namespace } from "vuex-class";
 import { Bid } from "../store/bids";
 import BidItemInput from "./BidItemInput.vue";
 import BidItem from "./BidItem.vue";
+import AllBidsChart from "../components/AllBidsGraph.vue";
 
 const userModule = namespace("user");
 const sessionModule = namespace("session");
 const bidsModule = namespace("bids");
 
-@Component({ components: { BidItemInput, BidItem } })
+@Component({ components: { BidItemInput, BidItem, AllBidsChart } })
 export default class BidsList extends Vue {
   @Prop({ default: false }) dummy!: boolean;
   @bidsModule.Getter bids!: Bid[];
@@ -71,11 +77,12 @@ export default class BidsList extends Vue {
   @bidsModule.State buy!: any;
   @bidsModule.State sell!: any;
   @sessionModule.Getter can_bid!: boolean;
+  @sessionModule.Getter results_available!: boolean;
   @sessionModule.Getter clearing_available!: boolean;
 
   get bids_sorted(): Bid[] {
     return this.bids
-      .map((bid) => bid)
+      .map(bid => bid)
       .sort((a, b) => {
         if (a.type !== b.type) {
           return a.type < b.type ? -1 : 1;
@@ -86,11 +93,11 @@ export default class BidsList extends Vue {
   }
 
   get bidsSell(): Bid[] {
-    return this.bids.filter((bid) => bid.type === "sell");
+    return this.bids.filter(bid => bid.type === "sell");
   }
 
   get bidsBuy(): Bid[] {
-    return this.bids.filter((bid) => bid.type === "buy");
+    return this.bids.filter(bid => bid.type === "buy");
   }
 }
 </script>
@@ -124,5 +131,13 @@ export default class BidsList extends Vue {
 
 .bid__list_item {
   margin: 1rem;
+}
+
+.chart {
+  position: relative;
+  height: 100%;
+  width: 100%;
+  padding: 0 2rem 0.5rem;
+  box-sizing: border-box;
 }
 </style>

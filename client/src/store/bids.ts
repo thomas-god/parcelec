@@ -149,6 +149,9 @@ export const getters: GetterTree<BidsState, RootState> = {
   bids(state): Bid[] {
     return state.bids;
   },
+  all_market_bids(state): Bid[] {
+    return state.all_market_bids;
+  },
 };
 
 // ------------------------ MODULE -------------------------
