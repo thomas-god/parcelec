@@ -18,6 +18,7 @@ export interface BidsState {
   clearing: EnergyExchange;
   sell: EnergyExchange;
   buy: EnergyExchange;
+  all_market_bids: Bid[];
 }
 
 // ------------------------ STATE -------------------------
@@ -26,6 +27,7 @@ export const state: BidsState = {
   clearing: { volume_mwh: 0, price_eur_per_mwh: 0 },
   sell: { volume_mwh: 0, price_eur_per_mwh: 0 },
   buy: { volume_mwh: 0, price_eur_per_mwh: 0 },
+  all_market_bids: []
 };
 
 // ------------------------ ACTIONS -------------------------
@@ -79,6 +81,24 @@ export const actions: ActionTree<BidsState, RootState> = {
     }
     commit("SET_ENERGY_EXCHANGES", exchanges);
   },
+  async loadMarketBids({ commit, rootState }): Promise<void> {
+    const api_url = rootState.api_url;
+    const session_id = rootState.session.id;
+    const user_id = rootState.user.user_id;
+
+    // All market bids
+    let all_market_bids: Bid[] = [];
+    const res_bids = await fetch(
+      `${api_url}/session/${session_id}/clearing/all_bids/?user_id=${user_id}`,
+      {
+        method: "GET",
+      }
+    );
+    if (res_bids.status === 200) {
+      all_market_bids = await res_bids.json();
+    }
+    commit("SET_ALL_MARKET_BIDS", all_market_bids);
+  }
 };
 
 // ------------------------ MUTATIONS -------------------------
@@ -95,6 +115,9 @@ export const mutations: MutationTree<BidsState> = {
   },
   SET_CLEARING(state, clearing: EnergyExchange): void {
     state.clearing = clearing;
+  },
+  SET_ALL_MARKET_BIDS(state, bids: Bid[]): void {
+    state.all_market_bids = bids;
   },
   SET_ENERGY_EXCHANGES(state, energy_exchanges: any[]): void {
     // Set buy

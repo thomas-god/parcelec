@@ -135,16 +135,16 @@ function onMessageCallback(
           break;
         case "clearing-finished":
           commit("session/SET_CLEARING_AVAILABLE", true, opts);
-          dispatch("bids/loadClearingContent", {}, { root: true });
+          dispatch("bids/loadClearingContent", {}, opts);
           break;
         case "plannings-closed":
           commit("session/SET_CAN_POST_PLANNING", false, opts);
-          dispatch("portfolio/resetPlanning", {}, { root: true });
+          dispatch("portfolio/resetPlanning", {}, opts);
           break;
         case "results-available":
           commit("session/SET_RESULTS_AVAILABLE", true, opts);
-          dispatch("results/loadResultsContent", {}, { root: true });
-
+          dispatch("results/loadResultsContent", {}, opts);
+          dispatch("bids/loadMarketBids", {}, opts);
           break;
       }
     }
