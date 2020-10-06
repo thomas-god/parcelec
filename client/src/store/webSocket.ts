@@ -127,6 +127,8 @@ function onMessageCallback(
           dispatch("session/loadSessionContent", "running", opts);
           dispatch("portfolio/loadPortfolioContent", "running", opts);
           commit("bids/SET_BIDS", [], opts);
+          commit("bids/SET_CLEARING", [], opts);
+          commit("bids/SET_ENERGY_EXCHANGES", [], opts);
           break;
         case "clearing-started":
           commit("session/SET_CAN_BID", false, opts);
