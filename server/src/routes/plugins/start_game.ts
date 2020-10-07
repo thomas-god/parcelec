@@ -48,7 +48,6 @@ export async function checkUserReadyAction(session_id: string): Promise<void> {
     startNewGamePhase(session_id);
     resetUsersReady(session_id);
   } else if (phase.bids_allowed === true && users_ready) {
-    resetUsersReady(session_id);
     const t0_sec = Date.now() / 1000;
     // Clear the timer and directly call the clearing callback
     clearTimeout(callbacks[session_id].id_timer_clearing);
@@ -76,7 +75,6 @@ export async function checkUserReadyAction(session_id: string): Promise<void> {
     phase.plannings_allowed === true &&
     users_ready
   ) {
-    resetUsersReady(session_id);
     const t0_sec = Date.now() / 1000;
     // Clear the timer and directly call the end_game callback
     clearTimeout(callbacks[session_id].id_timer_results);
@@ -172,12 +170,18 @@ export async function startNewGamePhase(session_id: string): Promise<void> {
   const t_start = Date.now() / 1000; // ms -> s for PSQL
   const t_clearing = t_start + options.bids_duration_sec;
   const t_end = t_start + options.plannings_duration_sec;
-  const cb_clearing = () => clearing(session_id, next_phase_no);
+  const cb_clearing = () => {
+    resetUsersReady(session_id);
+    clearing(session_id, next_phase_no);
+  };
   const id_timer_clearing = setTimeout(
     cb_clearing,
     options.bids_duration_sec * 1000
   );
-  const cb_results = () => endGame(session_id, next_phase_no);
+  const cb_results = () => {
+    resetUsersReady(session_id);
+    endGame(session_id, next_phase_no);
+  };
   const id_timer_results = setTimeout(
     cb_results,
     options.plannings_duration_sec * 1000
