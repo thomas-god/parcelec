@@ -32,7 +32,7 @@
         v-on:keyup.enter="openSession()"
         id="session_open_input"
       />
-      <button @click="openSession()">Créer</button>
+      <Btn @click="openSession()">Créer</Btn>
 
       <span v-if="new_session_name_err" style="color: red">{{
         new_session_name_err_msg
@@ -46,10 +46,11 @@ import { Component, Prop, Vue } from "vue-property-decorator";
 import { State, Action, Getter, namespace } from "vuex-class";
 import { Session } from "../store/session";
 import ScenarioIDCard from "./SessionSelectScenarioIDCard.vue";
+import Btn from './base/Button.vue'
 
 const sessionModule = namespace("session");
 
-@Component({ components: { ScenarioIDCard } })
+@Component({ components: { ScenarioIDCard, Btn } })
 export default class SessionSelectScenario extends Vue {
   // Store related stuff
   @sessionModule.Getter session!: Session;

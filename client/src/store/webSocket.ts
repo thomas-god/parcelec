@@ -124,9 +124,13 @@ function onMessageCallback(
         case "users-list-update":
           commit("session/SET_USERS", message.data, opts);
           break;
+        case "reset-game-ready":
+          dispatch("session/loadSessionContent", {}, opts);
+          commit("user/SET_GAME_READY", false, opts);
+          break;
         case "new-game-phase":
-          dispatch("session/loadSessionContent", "running", opts);
-          dispatch("portfolio/loadPortfolioContent", "running", opts);
+          dispatch("session/loadSessionContent", {}, opts);
+          dispatch("portfolio/loadPortfolioContent", {}, opts);
           commit("bids/SET_BIDS", [], opts);
           commit("bids/SET_CLEARING", [], opts);
           commit("bids/SET_ENERGY_EXCHANGES", [], opts);

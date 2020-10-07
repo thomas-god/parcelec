@@ -7,14 +7,16 @@
           Bonjour {{ username }}, vous avez rejoint la partie
           <em>{{ session.name }}</em> !
         </h1>
-        <h3>
+        <p>
           Vous pouvez discuter avec les autres joueurs connectés, prendre
           connaissance de vos centrales, et quand vous serez prêt·e à démarrer
           la partie, cliquez sur le bouton
           <em>"Je suis prêt·e !"</em>
-        </h3>
+        </p>
+        <Btn font_size="1.1rem" @click="setStatusReady">
+          Je suis prêt·e !
+        </Btn>
       </div>
-
       <Chatroom class="app__waitroom__chatroom" :display_ready="true" />
       <PowerPlantsList class="app__waitroom__pplist" :dummy="true" />
     </div>
@@ -41,6 +43,9 @@
             >Fin des enchères dans
             <strong>{{ timeBeforeClearing }}</strong></span
           >
+          <Btn :disabled="ready" v-show="can_bid" @click="setStatusReady"
+            >Passer</Btn
+          >
         </h3>
         <h3 v-if="timeBeforePlanning && !results_available">
           <span v-if="timeBeforePlanning === 'Temps écoulé'" style="color: red;"
@@ -49,6 +54,12 @@
           <span v-else
             >Fermeture de la réception des plannings dans
             <strong>{{ timeBeforePlanning }}</strong></span
+          >
+          <Btn
+            :disabled="ready"
+            v-show="!can_bid && can_post_planning"
+            @click="setStatusReady"
+            >Passer</Btn
           >
         </h3>
         <Bilans v-if="results_available" />
@@ -61,25 +72,27 @@
         </div>
       </div>
     </div>
-    <button
+    <Btn
       class="ready__btn"
+      font_size="1.2rem"
       @click="setStatusReady"
-      :disable="!ready"
+      :disabled="ready"
       v-if="
         results_available && phase_infos.phase_no + 1 < phase_infos.nb_phases
       "
     >
       Passer à la phase suivante
-    </button>
-    <button
+    </Btn>
+    <Btn
       class="ready__btn"
+      font_size="1.2rem"
       v-if="
         results_available && phase_infos.phase_no + 1 === phase_infos.nb_phases
       "
       @click="goToGameResults"
     >
       Résultats de la partie
-    </button>
+    </Btn>
     <BilansSimple class="app__footer_bilans" v-if="session.id && username" />
   </div>
 </template>
@@ -95,6 +108,7 @@ import PowerPlantsList from "./PowerPlantsList.vue";
 import BidsList from "./BidsList.vue";
 import BilansSimple from "./BilansSimple.vue";
 import Bilans from "./Bilans.vue";
+import Btn from "./base/Button.vue";
 
 const userModule = namespace("user");
 const sessionModule = namespace("session");
@@ -107,7 +121,8 @@ const portfolioModule = namespace("portfolio");
     PowerPlantsList,
     BidsList,
     BilansSimple,
-    Bilans
+    Bilans,
+    Btn
   }
 })
 export default class Main extends Vue {
@@ -214,7 +229,7 @@ function toTimeString(dt: number): string {
   }
   .app__waitroom__chatroom {
     margin: 0rem 1rem;
-    padding: 0rem;
+    padding: 1rem;
   }
 }
 @media screen and (max-width: 750px) {
@@ -240,14 +255,19 @@ function toTimeString(dt: number): string {
 .app__waitroom__title {
   grid-area: title;
 }
-.app__waitroom__title h3 {
+.app__waitroom__title p {
   max-width: 650px;
   margin: auto;
-  margin-bottom: 2rem;
+  margin-bottom: 1rem;
+  font-size: 1.1rem;
+}
+.app__waitroom__title button {
+  margin-bottom: 1.3rem;
 }
 .app__waitroom__chatroom {
   box-sizing: content-box;
   max-width: 650px;
+  border: 1px solid black;
   grid-area: chat;
 }
 .app__waitroom__pplist {
@@ -291,6 +311,9 @@ function toTimeString(dt: number): string {
 .app__grid_main h3 {
   margin: 0.2rem;
   font-weight: normal;
+}
+.app__grid_main button {
+  margin-left: 1rem;
 }
 
 .app__main {
@@ -341,26 +364,12 @@ function toTimeString(dt: number): string {
 }
 
 .ready__btn {
-  border: none;
-  font-size: 1.2rem;
-  padding: 0.3rem 1.2rem 0.3rem 1.2rem;
-  border-radius: 2em;
-  color: white;
-  background-color: #4eb5f1;
-  text-align: center;
-  transition: all 0.2s;
   position: -webkit-sticky;
   position: sticky;
   bottom: 5rem;
   display: block;
   margin: auto;
   z-index: 12;
-}
-.ready__btn:hover {
-  background-color: #4095c6;
-}
-.ready__btn:active {
-  font-size: 1.1rem;
 }
 
 .app__footer_bilans {

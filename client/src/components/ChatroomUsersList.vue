@@ -7,13 +7,6 @@
         <span v-if="display_ready_status && user.ready">✅</span>
       </li>
     </ul>
-    <button
-      v-if="display_ready_status"
-      :disabled="user_ready"
-      @click="setStatusReady"
-    >
-      Je suis prêt·e!
-    </button>
   </div>
 </template>
 
@@ -21,11 +14,12 @@
 import { Component, Prop, Vue } from "vue-property-decorator";
 import { State, Action, Getter, namespace } from "vuex-class";
 import { User } from "../store/session";
+import Btn from './base/Button.vue'
 
 const sessionModule = namespace("session");
 const userModule = namespace("user");
 
-@Component
+@Component({ components: { Btn }})
 export default class UserList extends Vue {
   @Prop({ default: false }) readonly display_ready_status!: boolean;
   @sessionModule.State users!: User[];
@@ -34,26 +28,17 @@ export default class UserList extends Vue {
   @userModule.Getter user_ready!: boolean;
   @userModule.Mutation SET_GAME_READY!: (game_ready: boolean) => void;
   @State("api_url") api_url!: string;
-
-  async setStatusReady(): Promise<void> {
-    const res = await fetch(
-      `${this.api_url}/session/${this.session_id}/user/${this.user_id}/ready`,
-      {
-        method: "PUT",
-      }
-    );
-    if (res.status === 201) this.SET_GAME_READY(true);
-  }
 }
 </script>
 
 <style scoped>
 h3 {
-  margin-top: 0;
+  margin-top: 10px;
   margin-bottom: 0;
 }
 ul {
-  margin-bottom: 2rem;
+  margin-top: 0;
+  margin-bottom: 0rem;
 }
 li {
   text-align: start !important;
@@ -62,10 +47,8 @@ li {
 
 .container {
   display: grid;
-  grid-template-rows: 30px 1fr 40px;
+  grid-template-rows: auto auto;
+  align-items: center;
 }
 
-button {
-  font-size: 1.1rem;
-}
 </style>

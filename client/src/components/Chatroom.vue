@@ -46,9 +46,4 @@ export default class Chatroom extends Vue {
   }
 }
 
-.chatroom__box {
-  border: 1px solid black;
-  margin-bottom: 1rem;
-  padding: 1rem;
-}
 </style>

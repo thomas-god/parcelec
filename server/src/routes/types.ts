@@ -50,6 +50,7 @@ export type PowerPlantTemplate = Omit<
 export interface GamePhase {
   session_id: string;
   phase_no: number;
+  status: "open" | "closed";
   start_time: Date;
   clearing_time: Date;
   planning_time: Date;

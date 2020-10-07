@@ -10,19 +10,20 @@
       :editable="dummy || can_post_planning"
     />
     <div class="actions" v-if="show_actions">
-      <button
+      <Btn
         @click="updatePlanning"
-        :disabled="(!dummy && !can_post_planning) || diff_abs_planning === 0"
-        class="actions__important"
+        :disabled="btn_disabled"
+        :background_color="btn_disabled ? 'rgb(0, 132, 255)' : 'red'"
       >
-        Envoyer
-      </button>
-      <button
+        {{ envoyer_btn_txt }}
+      </Btn>
+      <Btn
         @click="resetPlanning"
-        :disabled="(!dummy && !can_post_planning) || diff_abs_planning === 0"
+        :disabled="btn_disabled"
+        background_color="rgba(0, 132, 255, 0.8)"
       >
         Effacer
-      </button>
+      </Btn>
     </div>
   </div>
 </template>
@@ -32,12 +33,13 @@ import { Component, Prop, Vue } from "vue-property-decorator";
 import { State, Action, Getter, namespace } from "vuex-class";
 import { PowerPlant } from "../store/portfolio";
 import PowerPlantItem from "./PowerPlantItem.vue";
+import Btn from "../components/base/Button.vue";
 
 const userModule = namespace("user");
 const sessionModule = namespace("session");
 const portfolioModule = namespace("portfolio");
 
-@Component({ components: { PowerPlantItem } })
+@Component({ components: { PowerPlantItem, Btn } })
 export default class PowerPlantsList extends Vue {
   @Prop({ default: true }) show_actions!: boolean;
   @Prop({ default: false }) dummy!: boolean;
@@ -48,10 +50,11 @@ export default class PowerPlantsList extends Vue {
   @userModule.State user_id!: string;
   @sessionModule.Getter session_id!: string;
   @sessionModule.Getter can_post_planning!: boolean;
+  envoyer_btn_txt = "Envoyer";
 
   get pp_sorted(): PowerPlant[] {
     return this.power_plants
-      .map((pp) => pp)
+      .map(pp => pp)
       .sort((a, b) => b.p_max_mw - a.p_max_mw);
   }
 
@@ -68,12 +71,12 @@ export default class PowerPlantsList extends Vue {
 
   async updatePlanning() {
     if (!this.dummy) {
-      const planning_formatted = this.power_plants.map((pp) => {
+      const planning_formatted = this.power_plants.map(pp => {
         return {
           user_id: this.user_id,
           session_id: this.session_id,
           plant_id: pp.id,
-          p_mw: pp.planning_modif,
+          p_mw: pp.planning_modif
         };
       });
       const res = await fetch(
@@ -81,17 +84,27 @@ export default class PowerPlantsList extends Vue {
         {
           method: "PUT",
           headers: { "content-type": "application/json" },
-          body: JSON.stringify(planning_formatted),
+          body: JSON.stringify(planning_formatted)
         }
       );
       if (res.status === 201) {
         this.onSuccessfulPlanningUpdate();
+        this.envoyer_btn_txt = "OK!";
+        setTimeout(() => { this.envoyer_btn_txt = 'Envoyer'}, 500)
       } else {
         console.log(await res.text());
       }
     } else {
+      this.envoyer_btn_txt = "OK!";
+      setTimeout(() => { this.envoyer_btn_txt = 'Envoyer'}, 500)
       this.onSuccessfulPlanningUpdate();
     }
+  }
+
+  get btn_disabled(): boolean {
+    return (
+      (!this.dummy && !this.can_post_planning) || this.diff_abs_planning === 0
+    );
   }
 }
 </script>
@@ -119,28 +132,6 @@ export default class PowerPlantsList extends Vue {
   margin: 1rem;
 }
 .actions button {
-  border: none;
-  border-radius: 1rem;
-  background-color: rgb(0, 132, 255);
   margin: 0 1rem;
-  padding: 5px 10px;
-  font-size: 1rem;
-  font-weight: 600;
-  color: white;
-}
-.actions button:disabled {
-  color: rgb(235, 235, 235);
-  background-color: rgba(0, 132, 255, 0.616);
-}
-
-.actions__important {
-  background-color: red !important;
-  border: 2px solid red !important;
-  padding: 3px 8px !important;
-}
-.actions__important:disabled {
-  padding: 5px 10px !important;
-  border: none !important;
-  background-color: rgba(0, 132, 255, 0.616) !important;
 }
 </style>

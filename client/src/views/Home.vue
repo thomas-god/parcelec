@@ -86,9 +86,13 @@
       <bids-list class="card" :dummy="true" />
     </div>
 
-    <button class="home__create_game" @click="$router.push('/create')">
+    <Btn
+      font_size="1.3rem"
+      @click="$router.push('/create')"
+      class="home__create_game"
+    >
       Commencer une partie
-    </button>
+    </Btn>
   </div>
 </template>
 
@@ -98,10 +102,11 @@ import { State, Action, Getter, namespace } from "vuex-class";
 import PowerPlantsList from "../components/PowerPlantsList.vue";
 import BidsList from "../components/BidsList.vue";
 import { PowerPlant } from "../store/portfolio";
+import Btn from "../components/base/Button.vue";
 
 const portfolioModule = namespace("portfolio");
 
-@Component({ components: { PowerPlantsList, BidsList } })
+@Component({ components: { PowerPlantsList, BidsList, Btn } })
 export default class Home extends Vue {
   @portfolioModule.Mutation SET_POWER_PLANTS!: (
     power_plants: PowerPlant[]
@@ -284,13 +289,6 @@ export default class Home extends Vue {
 }
 
 .home__create_game {
-  border: none;
-  border-radius: 1rem;
-  background-color: rgb(0, 132, 255);
   margin: 1rem 1rem 3rem 1rem;
-  padding: 5px 10px;
-  font-size: 1.3rem;
-  font-weight: normal;
-  color: white;
 }
 </style>

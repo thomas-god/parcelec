@@ -11,7 +11,7 @@
       v-on:keyup.enter="addUsername()"
       id="user_add_pseudo_input"
     />
-    <button @click="addUsername()">OK</button>
+    <Btn @click="addUsername()">OK</Btn>
 
     <span v-if="new_username_err" style="color: red">{{
       new_username_err_msg
@@ -23,11 +23,12 @@
 import { Component, Prop, Vue } from "vue-property-decorator";
 import { State, Action, Getter, namespace } from "vuex-class";
 import { Session } from "../store/session";
+import Btn from './base/Button.vue'
 
 const userModule = namespace("user");
 const sessionModule = namespace("session");
 
-@Component
+@Component({ components: { Btn }})
 export default class User extends Vue {
   // Store related
   @userModule.Action setUserID!: (payload: string) => void;

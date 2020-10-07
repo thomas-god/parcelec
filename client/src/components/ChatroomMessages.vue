@@ -17,7 +17,7 @@
         v-on:keyup.enter="postMsg()"
         autofocus
       />
-      <button @click="postMsg()">▶️</button>
+      <Btn @click="postMsg()" background_color="rgba(0,0,0,0)">▶️</Btn>
     </div>
   </div>
 </template>
@@ -26,10 +26,11 @@
 import { Component, Prop, Vue } from "vue-property-decorator";
 import { State, Action, Getter, namespace } from "vuex-class";
 import { ClientMessage } from "../store/webSocket";
+import Btn from "./base/Button.vue";
 
 const webSocketModule = namespace("webSocket");
 
-@Component
+@Component({ components: { Btn } })
 export default class Messages extends Vue {
   @webSocketModule.Action sendMsg!: (payload: string) => void;
   @webSocketModule.State messages!: ClientMessage[];
@@ -72,18 +73,6 @@ h3 {
 .message__input input {
   font-size: 1rem;
   width: 90%;
-}
-
-.message__input button {
-  text-decoration: none;
-  border: none;
-  background-color: white;
-  font-size: 1.5rem;
-  padding-left: 1rem;
-  color: grey;
-}
-.message__input button:hover {
-  color: green;
 }
 
 .message__messages {
