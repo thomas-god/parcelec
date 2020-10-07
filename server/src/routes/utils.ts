@@ -565,11 +565,15 @@ export async function getPlanning(
 }
 
 /**
- * Returns the a GamePhase object for the current phase. Returns `null` if
- * there is no active phase.
+ * Returns a GamePhase object for corresponding phase. Return `null` if not
+ * phase is found.
  * @param session_id Session ID
+ * @param phase_no Phase number (int)
  */
-export async function getPhaseInfos(session_id: string): Promise<GamePhase> {
+export async function getPhaseInfos(
+  session_id: string,
+  phase_no: number
+): Promise<GamePhase> {
   const rows = (
     await db.query(
       `SELECT
@@ -581,7 +585,39 @@ export async function getPhaseInfos(session_id: string): Promise<GamePhase> {
         bids_allowed,
         clearing_available,
         plannings_allowed,
-        results_available
+        results_available,
+        status
+      FROM phases 
+      WHERE 
+        session_id=$1 
+        AND phase_no=$2;`,
+      [session_id, phase_no]
+    )
+  ).rows as GamePhase[];
+  if (rows.length > 0) return rows[0];
+  else return null;
+}
+
+/**
+ * Returns a GamePhase object for the last phase. Returns `null` if
+ * there is no active phase.
+ * @param session_id Session ID
+ */
+export async function getLastPhaseInfos(
+  session_id: string
+): Promise<GamePhase> {
+  const rows = (
+    await db.query(
+      `SELECT
+        session_id,
+        phase_no,
+        start_time,
+        clearing_time,
+        planning_time,
+        bids_allowed,
+        clearing_available,
+        plannings_allowed,
+        results_available,
         status
       FROM phases 
       WHERE session_id=$1 
