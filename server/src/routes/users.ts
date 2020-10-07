@@ -11,7 +11,7 @@ import {
   insertNewUser,
   CustomError,
 } from "./utils";
-import { startGamePhase } from "./plugins/start_game";
+import { checkUserReadyAction } from "./plugins/start_game";
 
 // ---------------------- Routing Functions
 
@@ -129,7 +129,7 @@ export async function setUserReady(
     notifyUsersListUpdate(session_id);
 
     // Check if the game can start
-    startGamePhase(session_id);
+    checkUserReadyAction(session_id);
   } catch (error) {
     if (error instanceof CustomError) {
       res.status(error.code).end(error.msg);
