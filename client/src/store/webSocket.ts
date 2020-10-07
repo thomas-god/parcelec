@@ -124,6 +124,9 @@ function onMessageCallback(
         case "users-list-update":
           commit("session/SET_USERS", message.data, opts);
           break;
+        case "reset-game-ready":
+          commit("user/SET_GAME_READY", false, opts);
+          break;
         case "new-game-phase":
           dispatch("session/loadSessionContent", "running", opts);
           dispatch("portfolio/loadPortfolioContent", "running", opts);

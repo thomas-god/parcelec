@@ -231,4 +231,5 @@ async function resetUsersReady(session_id: string): Promise<void> {
     WHERE session_id=$1;`,
     [session_id]
   );
+  sendUpdateToUsers(session_id, "reset-game-ready", {});
 }
