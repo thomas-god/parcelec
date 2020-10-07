@@ -41,6 +41,9 @@
             >Fin des enchères dans
             <strong>{{ timeBeforeClearing }}</strong></span
           >
+          <Btn :disabled="ready" v-show="can_bid" @click="setStatusReady"
+            >Passer</Btn
+          >
         </h3>
         <h3 v-if="timeBeforePlanning && !results_available">
           <span v-if="timeBeforePlanning === 'Temps écoulé'" style="color: red;"
@@ -49,6 +52,9 @@
           <span v-else
             >Fermeture de la réception des plannings dans
             <strong>{{ timeBeforePlanning }}</strong></span
+          >
+          <Btn :disabled="ready" v-show="!can_bid && can_post_planning" @click="setStatusReady"
+            >Passer</Btn
           >
         </h3>
         <Bilans v-if="results_available" />
@@ -97,7 +103,7 @@ import PowerPlantsList from "./PowerPlantsList.vue";
 import BidsList from "./BidsList.vue";
 import BilansSimple from "./BilansSimple.vue";
 import Bilans from "./Bilans.vue";
-import Btn from './base/Button.vue'
+import Btn from "./base/Button.vue";
 
 const userModule = namespace("user");
 const sessionModule = namespace("session");
@@ -295,6 +301,9 @@ function toTimeString(dt: number): string {
 .app__grid_main h3 {
   margin: 0.2rem;
   font-weight: normal;
+}
+.app__grid_main button {
+  margin-left: 1rem;
 }
 
 .app__main {
