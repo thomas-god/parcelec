@@ -8,7 +8,7 @@ import {
   createNewSession,
   CustomError,
   generateDefaultScenario,
-  getPhaseInfos,
+  getLastPhaseInfos,
   getScenarioOptions,
   getScenarioPortfolio,
   getScenariosList,
@@ -153,7 +153,7 @@ export async function getSessionInfos(
       .sort((a, b) => (a.name > b.name ? 1 : -1));
 
     // Timing infos
-    const phase_infos = await getPhaseInfos(session_id);
+    const phase_infos = await getLastPhaseInfos(session_id);
     if (phase_infos !== null) {
       const nb_phases = await getSessionNbPhases(session_id);
       body.phase_infos = {
