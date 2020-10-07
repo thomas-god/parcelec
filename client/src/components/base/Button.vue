@@ -36,6 +36,7 @@ button {
   border-radius: 1rem;
   padding: 5px 1rem;
   font-weight: normal;
+  font-family: Roboto;
 }
 button:active {
   opacity: 0.5 !important;
