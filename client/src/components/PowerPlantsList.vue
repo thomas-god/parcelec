@@ -15,7 +15,7 @@
         :disabled="btn_disabled"
         :background_color="btn_disabled ? 'rgb(0, 132, 255)' : 'red'"
       >
-        Envoyer
+        {{ envoyer_btn_txt }}
       </Btn>
       <Btn
         @click="resetPlanning"
@@ -50,6 +50,7 @@ export default class PowerPlantsList extends Vue {
   @userModule.State user_id!: string;
   @sessionModule.Getter session_id!: string;
   @sessionModule.Getter can_post_planning!: boolean;
+  envoyer_btn_txt = "Envoyer";
 
   get pp_sorted(): PowerPlant[] {
     return this.power_plants
@@ -88,10 +89,14 @@ export default class PowerPlantsList extends Vue {
       );
       if (res.status === 201) {
         this.onSuccessfulPlanningUpdate();
+        this.envoyer_btn_txt = "OK!";
+        setTimeout(() => { this.envoyer_btn_txt = 'Envoyer'}, 500)
       } else {
         console.log(await res.text());
       }
     } else {
+      this.envoyer_btn_txt = "OK!";
+      setTimeout(() => { this.envoyer_btn_txt = 'Envoyer'}, 500)
       this.onSuccessfulPlanningUpdate();
     }
   }
