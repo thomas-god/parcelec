@@ -61,25 +61,27 @@
         </div>
       </div>
     </div>
-    <button
+    <Btn
       class="ready__btn"
+      font_size="1.2rem"
       @click="setStatusReady"
-      :disable="!ready"
+      :disabled="ready"
       v-if="
         results_available && phase_infos.phase_no + 1 < phase_infos.nb_phases
       "
     >
       Passer à la phase suivante
-    </button>
-    <button
+    </Btn>
+    <Btn
       class="ready__btn"
+      font_size="1.2rem"
       v-if="
         results_available && phase_infos.phase_no + 1 === phase_infos.nb_phases
       "
       @click="goToGameResults"
     >
       Résultats de la partie
-    </button>
+    </Btn>
     <BilansSimple class="app__footer_bilans" v-if="session.id && username" />
   </div>
 </template>
@@ -95,6 +97,7 @@ import PowerPlantsList from "./PowerPlantsList.vue";
 import BidsList from "./BidsList.vue";
 import BilansSimple from "./BilansSimple.vue";
 import Bilans from "./Bilans.vue";
+import Btn from './base/Button.vue'
 
 const userModule = namespace("user");
 const sessionModule = namespace("session");
@@ -107,7 +110,8 @@ const portfolioModule = namespace("portfolio");
     PowerPlantsList,
     BidsList,
     BilansSimple,
-    Bilans
+    Bilans,
+    Btn
   }
 })
 export default class Main extends Vue {
@@ -341,26 +345,12 @@ function toTimeString(dt: number): string {
 }
 
 .ready__btn {
-  border: none;
-  font-size: 1.2rem;
-  padding: 0.3rem 1.2rem 0.3rem 1.2rem;
-  border-radius: 2em;
-  color: white;
-  background-color: #4eb5f1;
-  text-align: center;
-  transition: all 0.2s;
   position: -webkit-sticky;
   position: sticky;
   bottom: 5rem;
   display: block;
   margin: auto;
   z-index: 12;
-}
-.ready__btn:hover {
-  background-color: #4095c6;
-}
-.ready__btn:active {
-  font-size: 1.1rem;
 }
 
 .app__footer_bilans {

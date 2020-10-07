@@ -15,8 +15,8 @@
       {{ show_err_msg ? inputs_err_msg_price : "" }}
     </div>
     <div class="bid__container_actions">
-      <button @click="postBid('buy')">Acheter</button>
-      <button @click="postBid('sell')">Vendre</button>
+      <Btn @click="postBid('buy')" background_color="green">Acheter</Btn>
+      <Btn @click="postBid('sell')" background_color="green">Vendre</Btn>
     </div>
   </div>
 </template>
@@ -27,12 +27,13 @@ import { use } from "vue/types/umd";
 import { State, Action, Getter, namespace } from "vuex-class";
 import { Bid } from "../store/bids";
 import { v4 as uuid } from "uuid";
+import Btn from "./base/Button.vue";
 
 const sessionModule = namespace("session");
 const userModule = namespace("user");
 const bidsModule = namespace("bids");
 
-@Component
+@Component({ components: { Btn } })
 export default class BidItem extends Vue {
   @Prop() edit!: boolean;
   @Prop({ default: false }) dummy!: boolean;
@@ -96,9 +97,9 @@ export default class BidItem extends Vue {
             bid: {
               type: type,
               volume_mwh: this.volume_mwh,
-              price_eur_per_mwh: this.price_eur_per_mwh,
-            },
-          }),
+              price_eur_per_mwh: this.price_eur_per_mwh
+            }
+          })
         }
       );
       if (res.status === 201) {
@@ -107,7 +108,7 @@ export default class BidItem extends Vue {
           type: type,
           volume_mwh: this.volume_mwh as number,
           price_eur_per_mwh: this.price_eur_per_mwh as number,
-          id: bid_id,
+          id: bid_id
         });
         this.hideErrMsg();
         this.volume_mwh = 0;
@@ -121,7 +122,7 @@ export default class BidItem extends Vue {
           type: type,
           volume_mwh: this.volume_mwh as number,
           price_eur_per_mwh: this.price_eur_per_mwh as number,
-          id: uuid(),
+          id: uuid()
         });
         this.hideErrMsg();
         this.volume_mwh = 0;
@@ -232,14 +233,7 @@ export default class BidItem extends Vue {
 }
 
 .bid__container_actions button {
-  border: 1px solid gray;
-  border-radius: 1rem;
-  background-color: green;
   margin: 0 1rem;
-  padding: 5px 10px;
-  font-size: 1rem;
-  font-weight: 600;
-  color: white;
 }
 
 /* Chrome, Safari, Edge, Opera */

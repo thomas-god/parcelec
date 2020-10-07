@@ -7,13 +7,15 @@
         <span v-if="display_ready_status && user.ready">✅</span>
       </li>
     </ul>
-    <button
+    <Btn
       v-if="display_ready_status"
       :disabled="user_ready"
       @click="setStatusReady"
+      font_size="1.2rem"
+      background_color="green"
     >
       Je suis prêt·e!
-    </button>
+    </Btn>
   </div>
 </template>
 
@@ -21,11 +23,12 @@
 import { Component, Prop, Vue } from "vue-property-decorator";
 import { State, Action, Getter, namespace } from "vuex-class";
 import { User } from "../store/session";
+import Btn from './base/Button.vue'
 
 const sessionModule = namespace("session");
 const userModule = namespace("user");
 
-@Component
+@Component({ components: { Btn }})
 export default class UserList extends Vue {
   @Prop({ default: false }) readonly display_ready_status!: boolean;
   @sessionModule.State users!: User[];
@@ -65,7 +68,4 @@ li {
   grid-template-rows: 30px 1fr 40px;
 }
 
-button {
-  font-size: 1.1rem;
-}
 </style>
