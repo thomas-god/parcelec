@@ -7,14 +7,16 @@
           Bonjour {{ username }}, vous avez rejoint la partie
           <em>{{ session.name }}</em> !
         </h1>
-        <h3>
+        <p>
           Vous pouvez discuter avec les autres joueurs connectés, prendre
           connaissance de vos centrales, et quand vous serez prêt·e à démarrer
           la partie, cliquez sur le bouton
           <em>"Je suis prêt·e !"</em>
-        </h3>
+        </p>
+        <Btn font_size="1.1rem" @click="setStatusReady">
+          Je suis prêt·e !
+        </Btn>
       </div>
-
       <Chatroom class="app__waitroom__chatroom" :display_ready="true" />
       <PowerPlantsList class="app__waitroom__pplist" :dummy="true" />
     </div>
@@ -53,7 +55,10 @@
             >Fermeture de la réception des plannings dans
             <strong>{{ timeBeforePlanning }}</strong></span
           >
-          <Btn :disabled="ready" v-show="!can_bid && can_post_planning" @click="setStatusReady"
+          <Btn
+            :disabled="ready"
+            v-show="!can_bid && can_post_planning"
+            @click="setStatusReady"
             >Passer</Btn
           >
         </h3>
@@ -224,7 +229,7 @@ function toTimeString(dt: number): string {
   }
   .app__waitroom__chatroom {
     margin: 0rem 1rem;
-    padding: 0rem;
+    padding: 1rem;
   }
 }
 @media screen and (max-width: 750px) {
@@ -250,14 +255,19 @@ function toTimeString(dt: number): string {
 .app__waitroom__title {
   grid-area: title;
 }
-.app__waitroom__title h3 {
+.app__waitroom__title p {
   max-width: 650px;
   margin: auto;
-  margin-bottom: 2rem;
+  margin-bottom: 1rem;
+  font-size: 1.1rem;
+}
+.app__waitroom__title button {
+  margin-bottom: 1.3rem;
 }
 .app__waitroom__chatroom {
   box-sizing: content-box;
   max-width: 650px;
+  border: 1px solid black;
   grid-area: chat;
 }
 .app__waitroom__pplist {

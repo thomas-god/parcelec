@@ -7,15 +7,6 @@
         <span v-if="display_ready_status && user.ready">✅</span>
       </li>
     </ul>
-    <Btn
-      v-if="display_ready_status"
-      :disabled="user_ready"
-      @click="setStatusReady"
-      font_size="1.2rem"
-      background_color="green"
-    >
-      Je suis prêt·e!
-    </Btn>
   </div>
 </template>
 
@@ -37,26 +28,17 @@ export default class UserList extends Vue {
   @userModule.Getter user_ready!: boolean;
   @userModule.Mutation SET_GAME_READY!: (game_ready: boolean) => void;
   @State("api_url") api_url!: string;
-
-  async setStatusReady(): Promise<void> {
-    const res = await fetch(
-      `${this.api_url}/session/${this.session_id}/user/${this.user_id}/ready`,
-      {
-        method: "PUT",
-      }
-    );
-    if (res.status === 201) this.SET_GAME_READY(true);
-  }
 }
 </script>
 
 <style scoped>
 h3 {
-  margin-top: 0;
+  margin-top: 10px;
   margin-bottom: 0;
 }
 ul {
-  margin-bottom: 2rem;
+  margin-top: 0;
+  margin-bottom: 0rem;
 }
 li {
   text-align: start !important;
@@ -65,7 +47,8 @@ li {
 
 .container {
   display: grid;
-  grid-template-rows: 30px 1fr 40px;
+  grid-template-rows: auto auto;
+  align-items: center;
 }
 
 </style>
