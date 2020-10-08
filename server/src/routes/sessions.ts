@@ -31,7 +31,44 @@ export async function getOpenSessions(
   res: express.Response
 ): Promise<void> {
   const sessions: Session[] = (
-    await db.query("SELECT id, name FROM sessions WHERE status='open'", [])
+    await db.query(
+      `
+      WITH os AS 
+      (
+        SELECT 
+          id AS session_id, 
+          name 
+        FROM sessions 
+        WHERE status='open'
+      ),
+      n_users AS 
+      (
+        SELECT
+          COUNT(*) AS n_users,
+          session_id
+        FROM users
+        GROUP BY session_id
+      ),
+      solo AS 
+      (
+        SELECT
+          session_id,
+          multi_game
+        FROM options
+      )
+      SELECT 
+        os.session_id AS id,
+        os.name
+      FROM os
+      LEFT JOIN solo
+        ON os.session_id=solo.session_id
+      LEFT JOIN n_users
+        ON os.session_id=n_users.session_id
+      WHERE
+        solo.multi_game
+        OR COALESCE(n_users.n_users, 0)=0;`,
+      []
+    )
   ).rows;
   res.json(sessions);
 }
