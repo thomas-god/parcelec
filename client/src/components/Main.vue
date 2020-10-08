@@ -62,6 +62,10 @@
             >Passer</Btn
           >
         </h3>
+        <h3 v-if="results_available">
+          Classement phase : <strong>{{ user_rankings.current }}/{{session_nb_users}} </strong>
+          (Total : <strong>{{ user_rankings.overall }}/{{session_nb_users}} </strong>)
+        </h3>
         <Bilans v-if="results_available" />
         <div class="app__main" v-if="session.id && username">
           <PowerPlantsList
@@ -113,6 +117,7 @@ import Btn from "./base/Button.vue";
 const userModule = namespace("user");
 const sessionModule = namespace("session");
 const portfolioModule = namespace("portfolio");
+const resultsModule = namespace("results");
 
 @Component({
   components: {
@@ -142,6 +147,10 @@ export default class Main extends Vue {
   @sessionModule.Getter can_post_planning!: boolean;
   @sessionModule.Getter clearing_available!: boolean;
   @sessionModule.Getter results_available!: boolean;
+
+  // Ranking
+  @sessionModule.Getter session_nb_users!: number;
+  @resultsModule.Getter user_rankings!: number;
 
   now: Date = new Date();
   created() {

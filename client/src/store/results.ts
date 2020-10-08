@@ -14,6 +14,8 @@ export interface ResultsState {
   imbalance_mwh: number;
   imbalance_costs_eur: number;
   balance_eur: number;
+  ranking_current: number;
+  ranking_overall: number;
 }
 
 // ------------------------ STATE -------------------------
@@ -29,6 +31,8 @@ export const state: ResultsState = {
   imbalance_mwh: 0,
   imbalance_costs_eur: 0,
   balance_eur: 0,
+  ranking_current: 0,
+  ranking_overall: 0,
 };
 
 // ------------------------ ACTIONS -------------------------
@@ -63,7 +67,14 @@ export const mutations: MutationTree<ResultsState> = {
 };
 
 // ------------------------ GETTERS -------------------------
-export const getters: GetterTree<ResultsState, RootState> = {};
+export const getters: GetterTree<ResultsState, RootState> = {
+  user_rankings(state): { current: number; overall: number } {
+    return {
+      current: state.ranking_current,
+      overall: state.ranking_overall,
+    };
+  },
+};
 
 // ------------------------ MODULE -------------------------
 export const results: Module<ResultsState, RootState> = {

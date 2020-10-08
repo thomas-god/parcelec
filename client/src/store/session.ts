@@ -158,6 +158,9 @@ export const getters: GetterTree<SessionState, RootState> = {
   session_status(state): string {
     return state.status;
   },
+  session_nb_users(state): number {
+    return state.users.length;
+  },
   can_bid(state): boolean {
     return state.can_bid;
   },
