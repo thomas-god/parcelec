@@ -45,7 +45,7 @@ export const actions: ActionTree<SessionState, RootState> = {
     commit("SET_SESSION_ID", session_id);
   },
   /**
-   * Master entry-point to load all game related informations,
+   * Master entry-point to load all game related information,
    * user, session, portfolio, etc. and open the WebSocket
    * connection. User ID and session ID must be set in their
    * respective stores before proceeding.
@@ -64,7 +64,7 @@ export const actions: ActionTree<SessionState, RootState> = {
     }
   },
   /**
-   * Load all session related informations from the server into
+   * Load all session related information from the server into
    * the session store.
    */
   async loadSessionContent({ commit, rootState }) {
@@ -82,6 +82,21 @@ export const actions: ActionTree<SessionState, RootState> = {
     commit("SET_CLEARING_AVAILABLE", session.clearing_available);
     commit("SET_RESULTS_AVAILABLE", session.results_available);
     commit("SET_USERS", session.users);
+    if (session.phase_infos) {
+      commit("SET_PHASE_INFOS", session.phase_infos);
+    }
+  },
+  /**
+   * Load session information related to timings.
+   */
+  async loadSessionTimings({ commit, rootState }) {
+    const api_url = rootState.api_url;
+    const session_id = rootState.session.id;
+    const session = await (
+      await fetch(`${api_url}/session/${session_id}`, {
+        method: "GET",
+      })
+    ).json();
     if (session.phase_infos) {
       commit("SET_PHASE_INFOS", session.phase_infos);
     }
@@ -112,6 +127,7 @@ export const mutations: MutationTree<SessionState> = {
     state.can_post_planning = can_post_planning;
   },
   SET_CLEARING_AVAILABLE(state, clearing_available: boolean): void {
+    //console.log("clearing", state.clearing_available, clearing_available);
     state.clearing_available = clearing_available;
   },
   SET_RESULTS_AVAILABLE(state, results_available: boolean): void {
