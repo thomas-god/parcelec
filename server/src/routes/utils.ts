@@ -111,27 +111,47 @@ export async function getUser(
 }
 
 /**
- * Check if a given username can be registered to an session (i.e. is
- * not already registered). Return `true` if the user can be inserted
- * with this username.
+ * Check if a given username can be registered to a session : either the username
+ * is not taken, or there is no user in game of a solo session.
+ *
+ * Return an integer :
+ * - 1 if the user can be inserted
+ * - -1 is the session cannot accept new users
+ * - -2 if the username already exists
  * @param session_id Session UUID
  * @param username Username to be registered
  */
 export async function checkUsername(
   session_id: string,
   username: string
-): Promise<boolean> {
-  const users = (
-    await db.query(
-      `SELECT 1
+): Promise<number> {
+  // Check if solo game with already one user
+  const options = await getSessionOptions(session_id);
+  if (!options.multi_game) {
+    const n_users = (
+      await db.query(
+        `SELECT
+          COUNT(*) AS n_users
+        FROM users
+        WHERE session_id=$1;`,
+        [session_id]
+      )
+    ).rows[0].n_users;
+    return n_users > 0 ? -1 : 1;
+  } else {
+    // Check username
+    const users_same_name = (
+      await db.query(
+        `SELECT 1
       FROM users 
       WHERE 
         name=$1 
         AND session_id=$2;`,
-      [username, session_id]
-    )
-  ).rows;
-  return users.length === 0;
+        [username, session_id]
+      )
+    ).rows;
+    return users_same_name.length === 0 ? 1 : -2;
+  }
 }
 
 /**
@@ -787,11 +807,13 @@ export async function getClearedPhaseBids(
   session_id: string,
   user_id?: string,
   phase_no?: number
-): Promise<{
-  type: "buy" | "sell";
-  volume_mwh: number;
-  price_eur_per_mwh: number;
-}[]> {
+): Promise<
+  {
+    type: "buy" | "sell";
+    volume_mwh: number;
+    price_eur_per_mwh: number;
+  }[]
+> {
   if (phase_no === undefined) {
     const req_phase = (
       await db.query(
@@ -832,9 +854,9 @@ export async function getClearedPhaseBids(
       type: "buy" | "sell";
       volume_mwh: number;
       price_eur_per_mwh: number;
-    }[]
+    }[];
   } else {
-    return []
+    return [];
   }
 }
 
@@ -1050,7 +1072,7 @@ export async function generateDefaultScenario(): Promise<string> {
     difficulty: "easy",
     description:
       "Le scénario par défaut vous permet de prendre en main les fonctionnalités de parcelec.",
-    multi_game: false,
+    multi_game: true,
     bids_duration_sec: 120,
     plannings_duration_sec: 180,
     phases_number: 3,

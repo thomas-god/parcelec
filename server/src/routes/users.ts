@@ -42,9 +42,14 @@ export async function registerNewUser(
     if (session.status !== "open")
       throw new CustomError("Error, the session is not open for registration");
     const canInsertUsername = await checkUsername(session_id, username);
-    if (!canInsertUsername)
+    if (canInsertUsername === -2)
       throw new CustomError(
         "Error, a user with this username is already registered to the session",
+        409
+      );
+    if (canInsertUsername === -1)
+      throw new CustomError(
+        "Error, cannot register new user to this session",
         409
       );
 
