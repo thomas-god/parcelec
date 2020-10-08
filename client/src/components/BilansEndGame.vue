@@ -1,7 +1,9 @@
 <template>
   <div>
     <h1>Résultats de la partie</h1>
-    <h2 v-if="session_nb_users > 1" >Classement : {{rank_final}} / {{session_nb_users}}</h2>
+    <h2 v-if="session_nb_users > 1">
+      Classement : {{ rank_final }} / {{ session_nb_users }}
+    </h2>
     <h3>Gains finaux : {{ fmt(money_total) }} €</h3>
     <div v-for="(phase, idx) in results" :key="`res-phase-${idx}`">
       <h3>Phase {{ phase.phase_no + 1 }}</h3>
@@ -54,7 +56,7 @@ export default class BilansEndGame extends Vue {
   @sessionModule.Getter session_nb_users!: number;
   @userModule.Getter user_id!: string;
 
-  results = [];
+  results: { phase_no: number; ranking_overall: number }[] = [];
   async mounted() {
     const res = await fetch(
       `${this.api_url}/session/${this.session_id}/user/${this.user_id}/game_results`,
@@ -73,7 +75,7 @@ export default class BilansEndGame extends Vue {
   }
 
   get rank_final(): number {
-    const tmp = this.results.find(res => res.phase_no === this.nb_phases - 1)
+    const tmp = this.results.find(res => res.phase_no === this.nb_phases - 1);
     return tmp === undefined ? -1 : tmp.ranking_overall;
   }
 

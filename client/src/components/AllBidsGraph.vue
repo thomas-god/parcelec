@@ -15,20 +15,20 @@ const options: ChartOptions = {
     axis: "y",
     position: "nearest",
     filter: (item: Chart.ChartTooltipItem, data: ChartData): boolean => {
-      return item.index > 0;
+      return item.index! > 0;
     },
     callbacks: {
       title: (item: Chart.ChartTooltipItem[], data: ChartData): string => {
         return "";
       },
       label: (tooltipItem: Chart.ChartTooltipItem, data: ChartData): string => {
-        if (tooltipItem.index > 0) {
-          const type = data.datasets[tooltipItem.datasetIndex].label;
-          const val = data.datasets[tooltipItem.datasetIndex].data[
-            tooltipItem.index
+        if (tooltipItem.index! > 0) {
+          const type = data!.datasets![tooltipItem!.datasetIndex!].label!;
+          const val = data!.datasets![tooltipItem!.datasetIndex!].data![
+            tooltipItem!.index!
           ] as ChartPoint;
-          const prev_val = data.datasets[tooltipItem.datasetIndex].data[
-            tooltipItem.index - 1
+          const prev_val = data!.datasets![tooltipItem!.datasetIndex!].data![
+            tooltipItem!.index! - 1
           ] as ChartPoint;
           return `${type} : ${(val.x as number) -
             (prev_val.x as number)} MWh à ${val.y} €/MWh`;
@@ -69,6 +69,7 @@ const options: ChartOptions = {
 export default class CommitChart extends Vue {
   public renderChart!: (chartData: ChartData, options?: ChartOptions) => void;
   @bids_module.Getter all_market_bids!: Bid[];
+  options = options;
 
   get bids_sell(): { x: number; y: number }[] {
     const tmp = this.all_market_bids
@@ -112,7 +113,7 @@ export default class CommitChart extends Vue {
   }
 
   plot(): void {
-    options.scales.yAxes[0].ticks.suggestedMax = this.max_price + 10;
+    options!.scales!.yAxes![0].ticks!.suggestedMax! = this.max_price + 10;
     this.renderChart(
       {
         datasets: [
