@@ -62,7 +62,7 @@
             >Passer</Btn
           >
         </h3>
-        <h3 v-if="results_available">
+        <h3 v-if="results_available && session_nb_users > 1">
           Classement phase : <strong>{{ user_rankings.current }}/{{session_nb_users}} </strong>
           (Total : <strong>{{ user_rankings.overall }}/{{session_nb_users}} </strong>)
         </h3>
