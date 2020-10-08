@@ -178,4 +178,70 @@ async function computeResults(
       );
     })
   );
+
+  // All players' results have been computed, compute current phase and overall
+  // ranking for each player
+  console.log("computing ranking");
+  const rankings = (
+    await db.query(
+      `WITH r AS (
+      SELECT 
+        SUM(balance_eur) AS total_eur,
+        user_id AS user_id
+      FROM results
+      WHERE session_id=$1
+      GROUP BY user_id
+    ),
+    rr AS (
+      SELECT 
+        balance_eur AS current_eur,
+        user_id AS user_id
+      FROM results
+      WHERE 
+        phase_no=$2
+        AND session_id=$1
+    ) 
+    SELECT 
+      r.user_id AS user_id,
+      r.total_eur,
+      rr.current_eur
+    FROM r
+    INNER JOIN rr 
+      ON r.user_id=rr.user_id
+    ;`,
+      [session_id, phase_no]
+    )
+  ).rows;
+  // Overall ranking
+  rankings.sort((a, b) => a.total_eur - b.total_eur);
+  rankings.forEach((val, i) => {
+    val.overall_rank = i + 1;
+  });
+  // Current phase ranking
+  rankings.sort((a, b) => a.current_eur - b.current_eur);
+  rankings.forEach((val, i) => {
+    val.current_rank = i + 1;
+  });
+  console.log(rankings);
+  await Promise.all(
+    rankings.map(async (rank) => {
+      await db.query(
+        `UPDATE results
+        SET 
+          ranking_current=$1,
+          ranking_overall=$2
+        WHERE 
+          user_id=$3
+          AND session_id=$4
+          AND phase_no=$5;`,
+        [
+          rank.current_rank,
+          rank.overall_rank,
+          rank.user_id,
+          session_id,
+          phase_no,
+        ]
+      );
+    })
+  );
 }
