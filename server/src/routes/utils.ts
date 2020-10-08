@@ -337,7 +337,9 @@ export async function getUserResults(
           buy_eur,
           imbalance_mwh,
           imbalance_costs_eur,
-          balance_eur
+          balance_eur,
+          ranking_current,
+          ranking_overall
         FROM results 
         WHERE 
           phase_no=$1 
@@ -373,7 +375,9 @@ export async function getUserGameResults(
         buy_eur,
         imbalance_mwh,
         imbalance_costs_eur,
-        balance_eur
+        balance_eur,
+        ranking_current,
+        ranking_overall
       FROM results 
       WHERE 
         session_id=$1

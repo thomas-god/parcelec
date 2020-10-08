@@ -168,7 +168,9 @@ CREATE TABLE results
   buy_eur REAL NOT NULL,
   imbalance_mwh REAL NOT NULL,
   imbalance_costs_eur REAL NOT NULL,
-  balance_eur REAL NOT NULL
+  balance_eur REAL NOT NULL,
+  ranking_current INT NOT NULL DEFAULT -1,
+  ranking_overall INT NOT NULL DEFAULT -1
 );
 
 CREATE OR REPLACE FUNCTION get_url(session_name text, username text) 

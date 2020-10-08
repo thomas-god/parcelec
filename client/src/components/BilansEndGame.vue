@@ -1,7 +1,8 @@
 <template>
   <div>
     <h1>Résultats de la partie</h1>
-    <h2>Résultat net : {{ fmt(money_total) }} €</h2>
+    <h2 v-if="session_nb_users > 1" >Classement : {{rank_final}} / {{session_nb_users}}</h2>
+    <h3>Gains finaux : {{ fmt(money_total) }} €</h3>
     <div v-for="(phase, idx) in results" :key="`res-phase-${idx}`">
       <h3>Phase {{ phase.phase_no + 1 }}</h3>
       <div class="bilans__container">
@@ -49,6 +50,8 @@ const sessionModule = namespace("session");
 export default class BilansEndGame extends Vue {
   @State("api_url") api_url!: string;
   @sessionModule.Getter session_id!: string;
+  @sessionModule.Getter nb_phases!: number;
+  @sessionModule.Getter session_nb_users!: number;
   @userModule.Getter user_id!: string;
 
   results = [];
@@ -67,6 +70,11 @@ export default class BilansEndGame extends Vue {
 
   get money_total(): number {
     return this.results.reduce((a, b: any) => a + b.balance_eur, 0 as number);
+  }
+
+  get rank_final(): number {
+    const tmp = this.results.find(res => res.phase_no === this.nb_phases - 1)
+    return tmp === undefined ? -1 : tmp.ranking_overall;
   }
 
   fmt(nb: number): string {
