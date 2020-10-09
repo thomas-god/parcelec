@@ -213,15 +213,23 @@ async function computeResults(
     )
   ).rows;
   // Overall ranking
-  rankings.sort((a, b) => a.total_eur - b.total_eur);
-  rankings.forEach((val, i) => {
-    val.overall_rank = i + 1;
-  });
+  rankings.sort((a, b) => b.total_eur - a.total_eur);
+  for (let i = 0; i < rankings.length; i++) {
+    if (i > 0 && rankings[i].total_eur === rankings[i - 1].total_eur) {
+      rankings[i].overall_rank = rankings[i - 1].overall_rank;
+    } else {
+      rankings[i].overall_rank = i + 1;
+    }
+  }
   // Current phase ranking
-  rankings.sort((a, b) => a.current_eur - b.current_eur);
-  rankings.forEach((val, i) => {
-    val.current_rank = i + 1;
-  });
+  rankings.sort((a, b) => b.current_eur - a.current_eur);
+  for (let i = 0; i < rankings.length; i++) {
+    if (i > 0 && rankings[i].current_eur === rankings[i - 1].current_eur) {
+      rankings[i].current_rank = rankings[i - 1].current_rank;
+    } else {
+      rankings[i].current_rank = i + 1;
+    }
+  }
   console.log(rankings);
   await Promise.all(
     rankings.map(async (rank) => {
