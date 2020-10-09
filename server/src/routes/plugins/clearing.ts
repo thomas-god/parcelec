@@ -7,6 +7,7 @@ import db from "../../db";
 import { Bid } from "../types";
 import { getSessionUsers, getUserBids } from "../utils";
 import { sendUpdateToUsers } from "../websocket";
+import logger from "../../utils/log";
 
 // Gather all bids
 // Sort the bids, desc. for the buyers and asc. for the sellers
@@ -275,11 +276,22 @@ export async function doClearingProcedure(
   session_id: string,
   phase_no: number
 ): Promise<[Clearing, ClearingInternalInfos]> {
+  logger.info("starting clearing procedure", {
+    session_id,
+    phase_no,
+  });
   const bids = await getAllBids(session_id, phase_no);
   const [sell, buy] = sortBids(bids);
   const sell_fun = getBidFunction(sell);
   const buy_fun = getBidFunction(buy);
   const [clearing_value, internal_infos] = computeClearing(sell_fun, buy_fun);
+  logger.info(
+    `clearing done at volume: ${clearing_value.volume} MWh, price ${clearing_value.price} €/MWh`,
+    {
+      session_id,
+      phase_no,
+    }
+  );
   return [clearing_value, internal_infos];
 }
 

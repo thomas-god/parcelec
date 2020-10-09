@@ -12,6 +12,7 @@ import {
   getSessionUsers,
 } from "../utils";
 import db from "../../db";
+import logger from "../../utils/log";
 import { sendUpdateToUsers } from "../websocket";
 import clearing from "./clearing";
 import { endGame } from "./end_game";
@@ -43,6 +44,7 @@ export async function checkUserReadyAction(session_id: string): Promise<void> {
   if ((session.status === "open" || phase.status === "closed") && users_ready) {
     if (session.status === "open") {
       // Update session status to prevent new users registration
+      logger.info("session started", { session_id });
       await setSessionStatus(session, "running");
     }
     startNewGamePhase(session_id);
@@ -50,6 +52,10 @@ export async function checkUserReadyAction(session_id: string): Promise<void> {
   } else if (phase.bids_allowed === true && users_ready) {
     const t0_sec = Date.now() / 1000;
     // Clear the timer and directly call the clearing callback
+    logger.info("skipping to clearing", {
+      session_id,
+      phase_no: phase.phase_no,
+    });
     clearTimeout(callbacks[session_id].id_timer_clearing);
     callbacks[session_id].cb_clearing();
 
@@ -75,6 +81,10 @@ export async function checkUserReadyAction(session_id: string): Promise<void> {
     phase.plannings_allowed === true &&
     users_ready
   ) {
+    logger.info("skipping to results", {
+      session_id,
+      phase_no: phase.phase_no,
+    });
     const t0_sec = Date.now() / 1000;
     // Clear the timer and directly call the end_game callback
     clearTimeout(callbacks[session_id].id_timer_results);
@@ -203,6 +213,9 @@ export async function startNewGamePhase(session_id: string): Promise<void> {
     WHERE session_id=$4 AND phase_no=$5`,
     [t_start, t_clearing, t_end, session_id, next_phase_no]
   );
+
+  logger.info("phase started", { session_id, phase_no: next_phase_no });
+
   // Notify users that a new phase has started
   sendUpdateToUsers(session_id, "new-game-phase", {});
 }
