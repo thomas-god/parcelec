@@ -1,7 +1,10 @@
 <template>
   <div class="main">
     <!-- Open session -->
-    <div v-if="session_status === 'open'" class="app__waitroom">
+    <div
+      v-if="session_status === 'open'"
+      :class="session.multi_game ? 'app__waitroom' : 'app__waitroom_solo'"
+    >
       <div class="app__waitroom__title">
         <h1>
           Bonjour {{ username }}, vous avez rejoint la partie
@@ -13,11 +16,15 @@
           la partie, cliquez sur le bouton
           <em>"Je suis prêt·e !"</em>
         </p>
-        <Btn font_size="1.1rem" @click="setStatusReady">
+        <Btn font_size="1.1rem" @click="setStatusReady" :disabled="ready">
           Je suis prêt·e !
         </Btn>
       </div>
-      <Chatroom class="app__waitroom__chatroom" :display_ready="true" />
+      <Chatroom
+        class="app__waitroom__chatroom"
+        :display_ready="true"
+        v-if="session.multi_game"
+      />
       <PowerPlantsList class="app__waitroom__pplist" :dummy="true" />
     </div>
 
@@ -63,8 +70,10 @@
           >
         </h3>
         <h3 v-if="results_available && session_nb_users > 1">
-          Classement phase : <strong>{{ user_rankings.current }}/{{session_nb_users}} </strong>
-          (Total : <strong>{{ user_rankings.overall }}/{{session_nb_users}} </strong>)
+          Classement phase :
+          <strong>{{ user_rankings.current }}/{{ session_nb_users }} </strong>
+          (Total :
+          <strong>{{ user_rankings.overall }}/{{ session_nb_users }} </strong>)
         </h3>
         <Bilans v-if="results_available" />
         <div class="app__main" v-if="session.id && username">
@@ -216,6 +225,17 @@ function toTimeString(dt: number): string {
 /**
   Waitroom
 */
+
+.app__waitroom_solo {
+  display: grid;
+  max-width: 1000px;
+  grid-template-areas:
+    "title"
+    "pp";
+  margin: auto;
+  padding: 0 10px;
+}
+
 .app__waitroom {
   display: grid;
   max-width: 1000px;
@@ -227,17 +247,12 @@ function toTimeString(dt: number): string {
     grid-template-areas:
       "title title"
       "pp chat";
-    grid-template-columns: 2fr 1.5fr;
+    grid-template-columns: auto auto;
     grid-template-rows: auto auto;
-    align-items: flex-start;
-    justify-items: stretch;
+    gap: 1rem;
   }
-  .app__waitroom__pplis {
-    margin: 1rem auto;
-    padding: 1rem;
-  }
+  .app__waitroom__pplist,
   .app__waitroom__chatroom {
-    margin: 0rem 1rem;
     padding: 1rem;
   }
 }
@@ -249,16 +264,11 @@ function toTimeString(dt: number): string {
       "chat";
     grid-template-columns: auto;
     grid-template-rows: auto auto auto;
-    align-items: flex-start;
-    justify-items: stretch;
+    gap: 1rem;
   }
-  .app__waitroom__pplist {
-    margin: auto 1rem;
-    padding: 0rem;
-  }
+  .app__waitroom__pplist,
   .app__waitroom__chatroom {
-    margin: 1rem 1rem;
-    padding: 0rem;
+    padding: 1rem;
   }
 }
 .app__waitroom__title {
@@ -273,17 +283,21 @@ function toTimeString(dt: number): string {
 .app__waitroom__title button {
   margin-bottom: 1.3rem;
 }
-.app__waitroom__chatroom {
-  box-sizing: content-box;
+.app__waitroom__chatroom,
+.app__waitroom__pplist {
+  height: 100%;
+  width: 100%;
+  box-sizing: border-box;
   max-width: 650px;
   border: 1px solid black;
+  justify-self: center;
+}
+.app__waitroom__chatroom {
   grid-area: chat;
 }
+
 .app__waitroom__pplist {
   grid-area: pp;
-  box-sizing: content-box;
-  border: 1px solid black;
-  max-width: 650px;
 }
 
 /**
