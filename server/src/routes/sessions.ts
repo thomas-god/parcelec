@@ -14,6 +14,7 @@ import {
   getSession,
   getSessionBooleans,
   getSessionNbPhases,
+  getSessionOptions,
   getSessionUsers,
   uuid_regex,
 } from "./utils";
@@ -176,6 +177,10 @@ export async function getSessionInfos(
       name: session.name,
       status: session.status,
     };
+
+    // Session options
+    const options = await getSessionOptions(session_id);
+    body.multi_game = options.multi_game;
 
     // Session booleans
     const bools = await getSessionBooleans(session_id);
