@@ -133,9 +133,8 @@ export async function openNewSession(
         409
       );
 
-    if (scenario_id !== undefined)
-      if (!(await checkScenarioID(scenario_id)))
-        throw new CustomError("Error, no scenario found with this ID");
+    if (scenario_id === undefined || !(await checkScenarioID(scenario_id)))
+      throw new CustomError("Error, please provide a valid scenario ID");
 
     // Insertion
     const session: Session = {
