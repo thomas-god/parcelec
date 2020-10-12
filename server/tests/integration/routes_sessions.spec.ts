@@ -31,7 +31,7 @@ describe("Getting a list of scenarios", () => {
     try {
       const res = await superagent.get(`${url}/scenarios`);
       expect(res.status).toEqual(200);
-      expect(res.body.length).toEqual(1);
+      expect(res.body.length).toEqual(2);
 
       // Check ID
       expect(res.body[0]).toHaveProperty("id");
@@ -74,6 +74,7 @@ describe("Opening a new auction", () => {
 
   it("Should success using the default scenario ID", async () => {
     try {
+      await clearDB();
       const scenario_id = await getDefaultScenarioID();
       const session = {
         session_name: "My session",
@@ -97,32 +98,26 @@ describe("Opening a new auction", () => {
     }
   });
 
-  it("Should success even if no scenario ID is provided", async () => {
+  it("Should fail if no scenario ID is provided", async () => {
     try {
       const session = {
         session_name: "My session",
       };
-      const res = await superagent.put(endpoint).send(session);
-      expect(res.status).toEqual(201);
-
-      // Check ID
-      expect(res.body).toHaveProperty("id");
-      expect(typeof res.body.id).toEqual("string");
-      expect(uuidValidate(res.body.id)).toEqual(true);
-
-      // Check session name
-      expect(res.body.name).toEqual(session.session_name);
-
-      // Check status
-      expect(res.body.status).toEqual("open");
-    } catch (error) {
-      fail(error);
+      await superagent.put(endpoint).send(session);
+    } catch (err) {
+      expect(err.response.text).toEqual(
+        "Error, please provide a valid scenario ID"
+      );
+      expect(err.status).toEqual(400);
     }
   });
 
   it("Should fail if no session_name is provided", async () => {
     try {
-      await superagent.put(endpoint).send({});
+      const scenario_id = await getDefaultScenarioID();
+      await superagent.put(endpoint).send({
+        scenario_id: scenario_id,
+      });
     } catch (err) {
       expect(err.response.text).toEqual(
         "Error, please provide a valid game session name"
@@ -133,8 +128,13 @@ describe("Opening a new auction", () => {
 
   test("should fail if the name is already taken", async () => {
     try {
-      await superagent.put(endpoint).send({ session_name: "Session" });
-      await superagent.put(endpoint).send({ session_name: "Session" });
+      const scenario_id = await getDefaultScenarioID();
+      await superagent
+        .put(endpoint)
+        .send({ session_name: "Session", scenario_id: scenario_id });
+      await superagent
+        .put(endpoint)
+        .send({ session_name: "Session", scenario_id: scenario_id });
     } catch (err) {
       expect(err.response.text).toEqual(
         "Error, a session already exists with this name"
@@ -150,7 +150,7 @@ describe("Opening a new auction", () => {
         .send({ session_name: "Session", scenario_id: uuid() });
     } catch (err) {
       expect(err.response.text).toEqual(
-        "Error, no scenario found with this ID"
+        "Error, please provide a valid scenario ID"
       );
       expect(err.status).toEqual(400);
     }
