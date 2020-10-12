@@ -1,32 +1,7 @@
 <template>
   <div class="main">
     <!-- Open session -->
-    <div
-      v-if="session_status === 'open'"
-      :class="session.multi_game ? 'app__waitroom' : 'app__waitroom_solo'"
-    >
-      <div class="app__waitroom__title">
-        <h1>
-          Bonjour {{ username }}, vous avez rejoint la partie
-          <em>{{ session.name }}</em> !
-        </h1>
-        <p>
-          Vous pouvez discuter avec les autres joueurs connectés, prendre
-          connaissance de vos centrales, et quand vous serez prêt·e à démarrer
-          la partie, cliquez sur le bouton
-          <em>"Je suis prêt·e !"</em>
-        </p>
-        <Btn font_size="1.1rem" @click="setStatusReady" :disabled="ready">
-          Je suis prêt·e !
-        </Btn>
-      </div>
-      <Chatroom
-        class="app__waitroom__chatroom"
-        :display_ready="true"
-        v-if="session.multi_game"
-      />
-      <PowerPlantsList class="app__waitroom__pplist" :dummy="true" />
-    </div>
+    <Waitroom v-if="session_status === 'open'"/>
 
     <!-- Running session -->
     <div v-if="session_status !== 'open'" class="app__grid">
@@ -122,6 +97,7 @@ import BidsList from "./BidsList.vue";
 import BilansSimple from "./BilansSimple.vue";
 import Bilans from "./Bilans.vue";
 import Btn from "./base/Button.vue";
+import Waitroom from './Waitroom.vue'
 
 const userModule = namespace("user");
 const sessionModule = namespace("session");
@@ -136,7 +112,8 @@ const resultsModule = namespace("results");
     BidsList,
     BilansSimple,
     Bilans,
-    Btn
+    Btn,
+    Waitroom
   }
 })
 export default class Main extends Vue {
