@@ -1,31 +1,26 @@
 <template>
-  <div class="main">
-    <div
-      :class="session.multi_game ? 'app__waitroom' : 'app__waitroom_solo'"
-    >
-      <div class="app__waitroom__title">
-        <h1>
-          Bonjour {{ username }}, vous avez rejoint la partie
-          <em>{{ session.name }}</em> !
-        </h1>
-        <p>
-          Vous pouvez discuter avec les autres joueurs connectés, prendre
-          connaissance de vos centrales, et quand vous serez prêt·e à démarrer
-          la partie, cliquez sur le bouton
-          <em>"Je suis prêt·e !"</em>
-        </p>
-        <Btn font_size="1.1rem" @click="setStatusReady" :disabled="ready">
-          Je suis prêt·e !
-        </Btn>
-      </div>
-      <Chatroom
-        class="app__waitroom__chatroom"
-        :display_ready="true"
-        v-if="session.multi_game"
-      />
-      <PowerPlantsList class="app__waitroom__pplist" :dummy="true" />
+  <div :class="session.multi_game ? 'app__waitroom' : 'app__waitroom_solo'">
+    <div class="app__waitroom__title">
+      <h1>
+        Bonjour {{ username }}, vous avez rejoint la partie
+        <em>{{ session.name }}</em> !
+      </h1>
+      <p>
+        Vous pouvez discuter avec les autres joueurs connectés, prendre
+        connaissance de vos centrales, et quand vous serez prêt·e à démarrer la
+        partie, cliquez sur le bouton
+        <em>"Je suis prêt·e !"</em>
+      </p>
+      <Btn font_size="1.1rem" @click="setStatusReady" :disabled="ready">
+        Je suis prêt·e !
+      </Btn>
     </div>
-    <BilansSimple class="app__footer_bilans" v-if="session.id && username" />
+    <Chatroom
+      class="app__waitroom__chatroom"
+      :display_ready="true"
+      v-if="session.multi_game"
+    />
+    <PowerPlantsList class="app__waitroom__pplist" :dummy="true" />
   </div>
 </template>
 
@@ -35,7 +30,6 @@ import { State, namespace } from "vuex-class";
 import { Session } from "../store/session";
 import Chatroom from "./Chatroom.vue";
 import PowerPlantsList from "./PowerPlantsList.vue";
-import BilansSimple from "./BilansSimple.vue";
 import Btn from "./base/Button.vue";
 
 const userModule = namespace("user");
@@ -47,8 +41,7 @@ const resultsModule = namespace("results");
   components: {
     Chatroom,
     PowerPlantsList,
-    BilansSimple,
-    Btn,
+    Btn
   }
 })
 export default class Main extends Vue {
