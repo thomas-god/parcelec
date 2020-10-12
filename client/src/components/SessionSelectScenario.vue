@@ -9,10 +9,11 @@
           v-for="s in scenarios"
           :key="s.name"
           @click="getScenarioDetails(s.id)"
+          :class="s.id === scenario_id ? 'scenario__selected' : ''"
         >
-          <span :class="s.id === scenario_id ? 'scenario__selected' : ''">{{
-            s.name === "default" ? "Scénario par défault" : name
-          }}</span>
+          {{
+            s.name
+          }}
         </li>
       </ul>
       <ScenarioIDCard
@@ -183,14 +184,18 @@ ul {
   padding: 0;
 }
 
-li span {
-  padding: 0.5rem 0.5rem;
-  font-size: 1.2rem;
+li {
+  padding: 0.2rem 0.5rem;
+  margin: 0.3rem 0;
+  font-size: 1.1rem;
+  box-sizing: border-box;
 }
 
-li:hover span,
+li:hover{
+  background-color: rgb(0, 151, 98, 0.2);
+}
 .scenario__selected {
-  border-bottom: 2px solid rgb(0, 151, 98);
+  background-color: rgba(0, 151, 98, 0.671) !important;
 }
 
 .session_open {
@@ -202,7 +207,6 @@ li:hover span,
 
 .session_open button {
   margin-top: 1rem;
-
   font-size: 1rem;
 }
 
