@@ -7,7 +7,6 @@ import {
   checkSessionName,
   createNewSession,
   CustomError,
-  generateDefaultScenario,
   getLastPhaseInfos,
   getScenarioOptions,
   getScenarioPortfolio,
@@ -18,6 +17,7 @@ import {
   getSessionUsers,
   uuid_regex,
 } from "./utils";
+import generateDefaultScenarios from "./plugins/default_scenarios";
 
 // ---------------------- Routing Functions
 
@@ -84,8 +84,8 @@ export async function getScenarios(
 ): Promise<void> {
   let scenarios = await getScenariosList();
   if (scenarios.length === 0) {
-    await generateDefaultScenario();
-    scenarios = await await getScenariosList();
+    await generateDefaultScenarios();
+    scenarios = await getScenariosList();
   }
   res.json(scenarios);
 }
