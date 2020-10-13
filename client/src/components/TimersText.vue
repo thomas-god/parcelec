@@ -1,6 +1,6 @@
 <template>
   <div class="timers_text__container">
-    <h3 v-if="time_before_clearing_string && !results_available">
+    <span v-if="time_before_clearing_string && !results_available" class="timers_text__item">
       <span
         v-if="time_before_clearing_string === 'Temps écoulé'"
         style="color: red;"
@@ -13,8 +13,8 @@
       <Btn :disabled="ready" v-show="can_bid" @click="setStatusReady">
         Passer
       </Btn>
-    </h3>
-    <h3 v-if="time_before_planning_string && !results_available">
+    </span>
+    <span v-if="time_before_planning_string && !results_available" class="timers_text__item">
       <span
         v-if="time_before_planning_string === 'Temps écoulé'"
         style="color: red;"
@@ -32,7 +32,7 @@
       >
         Passer
       </Btn>
-    </h3>
+    </span>
   </div>
 </template>
 
@@ -123,6 +123,20 @@ function toTimeString(dt: number): string {
 </script>
 
 <style scoped>
+.timers_text__container {
+  display: flex;
+  flex-direction: column;
+}
+.timers_text__item {
+  width: 100%;
+  margin-bottom: 6px;
+}
+.timers_text__item strong {
+  display: inline-block;
+  text-align: start;
+  width: 50px;
+}
+
 .timers_text__container button{
   margin-left: 1rem;
 }

@@ -1,12 +1,12 @@
 <template>
   <div class="bilans__main">
     <div class="bilans_ranking">
-      <h3 v-if="results_available && session_nb_users > 1">
+      <p v-if="results_available && session_nb_users > 1">
         Classement phase :
         <strong>{{ user_rankings.current }}/{{ session_nb_users }} </strong>
-        (Total :
+        (total :
         <strong>{{ user_rankings.overall }}/{{ session_nb_users }} </strong>)
-      </h3>
+      </p>
     </div>
     <div class="bilans__container">
       <div class="bilans__item">
@@ -105,7 +105,7 @@ export default class Bilans extends Vue {
 </script>
 
 <style scoped>
-.bilans__main h3 {
+.bilans__main p {
   margin-bottom: 0;
 }
 .bilans__container {
