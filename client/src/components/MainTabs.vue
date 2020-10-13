@@ -1,5 +1,5 @@
 <template>
-  <div class="tabs_container">
+  <div class="tabs_container" ref="tabs_container">
     <div
       v-for="cat in categories"
       :key="cat.name"
@@ -7,7 +7,9 @@
       @click="update_category(cat.name)"
     >
       <span class="tabs_category_logo">{{ cat.logo }}</span>
-      <span class="tabs_category_name">{{ cat.name }}</span>
+      <span class="tabs_category_name" v-if="content_width > 360">{{
+        cat.name
+      }}</span>
     </div>
   </div>
 </template>
@@ -16,7 +18,7 @@
 import { Component, Vue, Prop } from "vue-property-decorator";
 
 const categories = [
-  { name: "Home", logo: "" },
+  { name: "Home", logo: "🏠" },
   { name: "Centrales", logo: "⚡" },
   { name: "Marché", logo: "⚖️" },
   { name: "Chat", logo: "💬" }
@@ -31,6 +33,24 @@ export default class MainTabs extends Vue {
     this.$emit("input", new_cat);
   }
 
+  /**
+   * Monitor component's width to update visibility ratio.
+   */
+  content_width = 0;
+  public handleResize() {
+    if (this.$refs.tabs_container)
+      this.content_width = (this.$refs
+        .tabs_container as HTMLDivElement).clientWidth;
+  }
+  public mounted() {
+    window.addEventListener("resize", this.handleResize);
+    if (this.$refs.tabs_container)
+      this.content_width = (this.$refs
+        .tabs_container as HTMLDivElement).clientWidth;
+  }
+  public beforeDestroyed() {
+    window.removeEventListener("resize", this.handleResize);
+  }
 }
 </script>
 
@@ -45,12 +65,22 @@ export default class MainTabs extends Vue {
   border-bottom: 2px solid rgba(0, 0, 0, 0.712);
 }
 
-.tabs_category:hover,
-.tabs_category_active {
+.tabs_category:hover .tabs_category_name,
+.tabs_category_active .tabs_category_name {
   font-style: italic;
 }
-.tabs_category_active {
+.tabs_category_active .tabs_category_name {
   font-weight: bold;
+}
+
+@media screen and (max-width: 450px) {
+  .tabs_category_active .tabs_category_logo{
+    background-color: rgba(128, 128, 128, 0.5);
+    border-radius: 0.7rem;
+  }
+  .tabs_category_logo{
+    padding: 0.2rem 0.7rem !important;
+  }
 }
 
 .tabs_category_logo,
