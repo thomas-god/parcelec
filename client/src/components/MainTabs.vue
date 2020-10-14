@@ -6,8 +6,16 @@
       :class="cat.name === value ? 'tabs_category_active' : 'tabs_category'"
       @click="update_category(cat.name)"
     >
-      <span class="tabs_category_logo">{{ cat.logo }}</span>
-      <span class="tabs_category_name" v-if="content_width > 420">{{
+      <span
+        class="tabs_category_logo"
+        :style="
+          cat.name === value
+            ? style_tabs_category_logo_active
+            : style_tabs_category_logo
+        "
+        >{{ cat.logo }}</span
+      >
+      <span class="tabs_category_name" v-if="display_tab_name">{{
         cat.name
       }}</span>
     </div>
@@ -26,6 +34,13 @@ export default class MainTabs extends Vue {
   @session_module.Getter session_multi_game!: boolean;
   @session_module.State results_available!: boolean;
 
+  update_category(new_cat: string): void {
+    this.$emit("input", new_cat);
+  }
+
+  /**
+   * Dynamic tabs depending on context
+   */
   get categories() {
     const categories = [
       { name: "Home", logo: "🏠" },
@@ -36,10 +51,6 @@ export default class MainTabs extends Vue {
     if (this.results_available)
       categories.push({ name: "Résultats", logo: "🏆" });
     return categories;
-  }
-
-  update_category(new_cat: string): void {
-    this.$emit("input", new_cat);
   }
 
   /**
@@ -59,6 +70,28 @@ export default class MainTabs extends Vue {
   }
   public beforeDestroyed() {
     window.removeEventListener("resize", this.handleResize);
+  }
+  get display_tab_name(): boolean {
+    return this.content_width > this.categories.length * (45 + 80);
+  }
+
+  /**
+   * Dynamic styles
+   */
+  get style_tabs_category_logo(): string {
+    let style = "";
+    if (this.content_width < this.categories.length * (45 + 80)) {
+      style += "padding: 0.2rem 0.7rem !important;";
+    }
+    return style;
+  }
+  get style_tabs_category_logo_active(): string {
+    let style = this.style_tabs_category_logo;
+    if (this.content_width < this.categories.length * (45 + 80)) {
+      style += "background-color: rgba(128, 128, 128, 0.5);";
+      style += "border-radius: 0.7rem;";
+    }
+    return style;
   }
 }
 </script>
@@ -82,14 +115,15 @@ export default class MainTabs extends Vue {
   font-weight: bold;
 }
 
-@media screen and (max-width: 520px) {
-  .tabs_category_active .tabs_category_logo {
-    background-color: rgba(128, 128, 128, 0.5);
-    border-radius: 0.7rem;
-  }
-  .tabs_category_logo {
-    padding: 0.2rem 0.7rem !important;
-  }
+.tabs_category_name {
+  display: inline-block;
+  box-sizing: border-box;
+}
+
+.tabs_category_logo {
+  display: inline-block;
+  width: 45px;
+  box-sizing: border-box;
 }
 
 .tabs_category_logo,
