@@ -7,7 +7,7 @@
       @click="update_category(cat.name)"
     >
       <span class="tabs_category_logo">{{ cat.logo }}</span>
-      <span class="tabs_category_name" v-if="content_width > 360">{{
+      <span class="tabs_category_name" v-if="content_width > 420">{{
         cat.name
       }}</span>
     </div>
@@ -16,18 +16,27 @@
 
 <script lang='ts'>
 import { Component, Vue, Prop } from "vue-property-decorator";
+import { namespace } from "vuex-class";
 
-const categories = [
-  { name: "Home", logo: "🏠" },
-  { name: "Centrales", logo: "⚡" },
-  { name: "Marché", logo: "⚖️" },
-  { name: "Chat", logo: "💬" }
-];
+const session_module = namespace("session");
 
 @Component
 export default class MainTabs extends Vue {
   @Prop({ default: "Home" }) value!: string;
-  categories = categories;
+  @session_module.Getter session_multi_game!: boolean;
+  @session_module.State results_available!: boolean;
+
+  get categories() {
+    const categories = [
+      { name: "Home", logo: "🏠" },
+      { name: "Centrales", logo: "⚡" },
+      { name: "Marché", logo: "⚖️" }
+    ];
+    if (this.session_multi_game) categories.push({ name: "Chat", logo: "💬" });
+    if (this.results_available)
+      categories.push({ name: "Résultats", logo: "🏆" });
+    return categories;
+  }
 
   update_category(new_cat: string): void {
     this.$emit("input", new_cat);
@@ -73,12 +82,12 @@ export default class MainTabs extends Vue {
   font-weight: bold;
 }
 
-@media screen and (max-width: 450px) {
-  .tabs_category_active .tabs_category_logo{
+@media screen and (max-width: 520px) {
+  .tabs_category_active .tabs_category_logo {
     background-color: rgba(128, 128, 128, 0.5);
     border-radius: 0.7rem;
   }
-  .tabs_category_logo{
+  .tabs_category_logo {
     padding: 0.2rem 0.7rem !important;
   }
 }
