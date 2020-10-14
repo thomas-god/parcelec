@@ -11,6 +11,7 @@ export interface Session {
   name: string;
   id: string;
   status: "open" | "running" | "closed";
+  multi_game: boolean;
   users: User[];
   can_bid: boolean;
   can_post_planning: boolean;
@@ -32,6 +33,7 @@ export const state: SessionState = {
   name: "",
   id: "",
   status: "open",
+  multi_game: false,
   users: [],
   can_bid: false,
   can_post_planning: false,
@@ -76,6 +78,7 @@ export const actions: ActionTree<SessionState, RootState> = {
       })
     ).json();
     commit("SET_NAME", session.name);
+    commit("SET_MULTI_GAME", session.multi_game);
     commit("SET_STATUS", session.status);
     commit("SET_CAN_BID", session.bids_allowed);
     commit("SET_CAN_POST_PLANNING", session.plannings_allowed);
@@ -113,6 +116,9 @@ export const mutations: MutationTree<SessionState> = {
   },
   SET_STATUS(state, status: Session["status"]): void {
     state.status = status;
+  },
+  SET_MULTI_GAME(state, multi_game: Session["multi_game"]): void {
+    state.multi_game = multi_game;
   },
   SET_USERS(state, users: User[]): void {
     state.users = users;
@@ -154,6 +160,9 @@ export const getters: GetterTree<SessionState, RootState> = {
   },
   session_name(state): string {
     return state.name;
+  },
+  session_multi_game(state): boolean {
+    return state.multi_game;
   },
   session_status(state): string {
     return state.status;

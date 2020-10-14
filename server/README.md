@@ -103,6 +103,7 @@ The following describes the various routes composing the parcelec API.
         session_id: UUID string,
         name: string,
         status: 'open' | 'running' | 'closed',
+        multi_game: boolean,
         users: [
           { name: string }
         ],

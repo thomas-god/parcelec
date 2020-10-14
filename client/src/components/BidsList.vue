@@ -109,18 +109,23 @@ export default class BidsList extends Vue {
 
 .bid__list {
   border-radius: 2px;
-  overflow: hidden;
 }
 
 @media screen and (min-width: 400px) {
   .bid__list {
     border: 2px solid gray;
   }
+  .chart {
+    width: 80vw;
+  }
 }
 
 @media screen and (max-width: 400px) {
   .bid__list {
     border: 1px solid gray;
+  }
+  .chart {
+    width: 95vw;
   }
 }
 
@@ -135,9 +140,9 @@ export default class BidsList extends Vue {
 
 .chart {
   position: relative;
-  height: 100%;
-  width: 100%;
-  padding: 0 2rem 0.5rem;
-  box-sizing: border-box;
+  max-width: 100%;
+  height: 300px;
+  margin-left: 0;
+  padding: 5px 10px 5px 0;
 }
 </style>

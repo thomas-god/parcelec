@@ -1,34 +1,45 @@
 <template>
-  <div class="bilans__container">
-    <div class="bilans__item">
-      <span><em>Clients</em></span>
-      <span> {{ fmt(conso) }} MWh </span>
-      <span> {{ fmt(conso_eur) }} € </span>
+  <div class="bilans__main">
+    <div class="bilans_ranking">
+      <h3>Résultats</h3>
+      <p v-if="results_available && session_nb_users > 1">
+        Classement phase :
+        <strong>{{ user_rankings.current }}/{{ session_nb_users }} </strong>
+        (total :
+        <strong>{{ user_rankings.overall }}/{{ session_nb_users }} </strong>)
+      </p>
     </div>
-    <div class="bilans__item">
-      <span><em>Production</em></span>
-      <span> {{ fmt(prod_total_mwh) }} MWh </span>
-      <span> {{ fmt(-1 * prod_eur) }} € </span>
-    </div>
-    <div class="bilans__item">
-      <span><em>Ventes</em></span>
-      <span> {{ fmt(sell_mwh) }} MWh </span>
-      <span> {{ fmt(sell_eur) }} € </span>
-    </div>
-    <div class="bilans__item">
-      <span><em>Achats</em></span>
-      <span> {{ fmt(buy_mwh) }} MWh </span>
-      <span> {{ fmt(-1 * buy_eur) }} € </span>
-    </div>
-    <div class="bilans__item">
-      <span><em>Écarts</em></span>
-      <span> {{ fmt(deficit_mwh) }} MWh </span>
-      <span> {{ fmt(imbalance_costs_eur) }} € </span>
-    </div>
-    <div class="bilans__item">
-      <span>Total</span>
-      <span>-</span>
-      <span> {{ fmt(money) }} € </span>
+    <div class="bilans__container">
+      <div class="bilans__item">
+        <span><em>Clients</em></span>
+        <span> {{ fmt(conso) }} MWh </span>
+        <span> {{ fmt(conso_eur) }} € </span>
+      </div>
+      <div class="bilans__item">
+        <span><em>Production</em></span>
+        <span> {{ fmt(prod_total_mwh) }} MWh </span>
+        <span> {{ fmt(-1 * prod_eur) }} € </span>
+      </div>
+      <div class="bilans__item">
+        <span><em>Ventes</em></span>
+        <span> {{ fmt(sell_mwh) }} MWh </span>
+        <span> {{ fmt(sell_eur) }} € </span>
+      </div>
+      <div class="bilans__item">
+        <span><em>Achats</em></span>
+        <span> {{ fmt(buy_mwh) }} MWh </span>
+        <span> {{ fmt(-1 * buy_eur) }} € </span>
+      </div>
+      <div class="bilans__item">
+        <span><em>Écarts</em></span>
+        <span> {{ fmt(deficit_mwh) }} MWh </span>
+        <span> {{ fmt(imbalance_costs_eur) }} € </span>
+      </div>
+      <div class="bilans__item">
+        <span>Total</span>
+        <span>-</span>
+        <span> {{ fmt(money) }} € </span>
+      </div>
     </div>
   </div>
 </template>
@@ -58,6 +69,10 @@ export default class Bilans extends Vue {
   @resultsModule.State imbalance_costs_eur!: number;
   @resultsModule.State balance_eur!: number;
 
+  // Ranking
+  @sessionModule.Getter session_nb_users!: number;
+  @resultsModule.Getter user_rankings!: number;
+
   get deficit_mwh() {
     return Number(
       this.buy_mwh + this.prod_total_mwh - this.conso - this.sell_mwh
@@ -78,7 +93,7 @@ export default class Bilans extends Vue {
     let prod = 0;
     if (this.power_plants.length > 0) {
       prod = this.power_plants
-        .map((pp) => Number(pp.planning_modif))
+        .map(pp => Number(pp.planning_modif))
         .reduce((a, b) => a + b);
     }
     return prod;
@@ -91,6 +106,9 @@ export default class Bilans extends Vue {
 </script>
 
 <style scoped>
+.bilans__main p {
+  margin-bottom: 0;
+}
 .bilans__container {
   display: flex;
   flex-direction: row;

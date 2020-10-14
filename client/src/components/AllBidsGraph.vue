@@ -9,6 +9,7 @@ const bids_module = namespace("bids");
 
 const options: ChartOptions = {
   maintainAspectRatio: false,
+  responsive: true,
   tooltips: {
     intersect: false,
     mode: "nearest",

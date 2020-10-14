@@ -1,103 +1,90 @@
 <template>
   <div class="main">
     <!-- Open session -->
-    <div v-if="session_status === 'open'" class="app__waitroom">
-      <div class="app__waitroom__title">
-        <h1>
-          Bonjour {{ username }}, vous avez rejoint la partie
-          <em>{{ session.name }}</em> !
-        </h1>
-        <p>
-          Vous pouvez discuter avec les autres joueurs connectés, prendre
-          connaissance de vos centrales, et quand vous serez prêt·e à démarrer
-          la partie, cliquez sur le bouton
-          <em>"Je suis prêt·e !"</em>
-        </p>
-        <Btn font_size="1.1rem" @click="setStatusReady">
-          Je suis prêt·e !
-        </Btn>
-      </div>
-      <Chatroom class="app__waitroom__chatroom" :display_ready="true" />
-      <PowerPlantsList class="app__waitroom__pplist" :dummy="true" />
-    </div>
+    <Waitroom v-if="session_status === 'open'" />
 
     <!-- Running session -->
     <div v-if="session_status !== 'open'" class="app__grid">
-      <h1 class="app__grid_head" v-if="!results_available">
-        Phase {{ `${phase_infos.phase_no + 1}/${phase_infos.nb_phases}` }}
-      </h1>
-      <h1 class="app__grid_head" v-if="results_available">
-        Phase
-        {{ `${phase_infos.phase_no + 1}/${phase_infos.nb_phases}` }} terminée
-      </h1>
-      <div class="app__grid_main">
-        <h2>Consommation : {{ conso.toLocaleString("fr-FR") }} MWh</h2>
-        <h3 v-if="timeBeforeClearing && !results_available">
-          <span
-            v-if="timeBeforeClearing === 'Temps écoulé'"
-            style="color: red;"
-          >
-            Enchères clôturées
+      <!--
+        Grid head
+      -->
+      <div class="app__grid_head">
+        <MainTabs class="app__grid_tabs" v-model="active_category" />
+        <div class="app__phase_infos">
+          <span>
+            Phase
+            <strong>{{
+              `${phase_infos.phase_no + 1}/${phase_infos.nb_phases}`
+            }}</strong>
+            {{ `${results_available ? "(terminée)" : ""}` }}
           </span>
-          <span v-else
-            >Fin des enchères dans
-            <strong>{{ timeBeforeClearing }}</strong></span
-          >
-          <Btn :disabled="ready" v-show="can_bid" @click="setStatusReady"
-            >Passer</Btn
-          >
-        </h3>
-        <h3 v-if="timeBeforePlanning && !results_available">
-          <span v-if="timeBeforePlanning === 'Temps écoulé'" style="color: red;"
-            >Réception des plannings fermée</span
-          >
-          <span v-else
-            >Fermeture de la réception des plannings dans
-            <strong>{{ timeBeforePlanning }}</strong></span
-          >
-          <Btn
-            :disabled="ready"
-            v-show="!can_bid && can_post_planning"
-            @click="setStatusReady"
-            >Passer</Btn
-          >
-        </h3>
-        <h3 v-if="results_available && session_nb_users > 1">
-          Classement phase : <strong>{{ user_rankings.current }}/{{session_nb_users}} </strong>
-          (Total : <strong>{{ user_rankings.overall }}/{{session_nb_users}} </strong>)
-        </h3>
-        <Bilans v-if="results_available" />
-        <div class="app__main" v-if="session.id && username">
+          |
+          <span>
+            Consommation :
+            <strong>{{ conso.toLocaleString("fr-FR") }} MWh</strong>
+          </span>
+        </div>
+        <TimersText />
+        <Btn
+          class="ready__btn"
+          font_size="1.1rem"
+          @click="setStatusReady"
+          :disabled="ready"
+          v-if="
+            results_available &&
+              phase_infos.phase_no + 1 < phase_infos.nb_phases
+          "
+        >
+          Passer à la phase suivante
+        </Btn>
+        <Btn
+          class="ready__btn"
+          font_size="1.1rem"
+          v-if="
+            results_available &&
+              phase_infos.phase_no + 1 === phase_infos.nb_phases
+          "
+          @click="goToGameResults"
+        >
+          Résultats de la partie
+        </Btn>
+      </div>
+      <!--
+        Grid main
+      -->
+      <div class="app__grid_main">
+        <Bilans
+          v-if="
+            results_available &&
+              (active_category === 'Home' || active_category === 'Résultats')
+          "
+        />
+        <div class="app__main">
           <PowerPlantsList
             class="app__main_item"
             :show_actions="!results_available"
+            v-if="
+              (!results_available && active_category === 'Home') ||
+                active_category === 'Centrales'
+            "
           />
-          <BidsList class="app__main_item" />
+          <BidsList
+            class="app__main_item"
+            v-if="
+              (!results_available && active_category === 'Home') ||
+                active_category === 'Marché'
+            "
+          />
+          <Chatroom
+            class="app__main_item"
+            v-if="active_category === 'Chat'"
+            style="padding: 1rem; max-width: 500px;"
+          />
         </div>
       </div>
     </div>
-    <Btn
-      class="ready__btn"
-      font_size="1.2rem"
-      @click="setStatusReady"
-      :disabled="ready"
-      v-if="
-        results_available && phase_infos.phase_no + 1 < phase_infos.nb_phases
-      "
-    >
-      Passer à la phase suivante
-    </Btn>
-    <Btn
-      class="ready__btn"
-      font_size="1.2rem"
-      v-if="
-        results_available && phase_infos.phase_no + 1 === phase_infos.nb_phases
-      "
-      @click="goToGameResults"
-    >
-      Résultats de la partie
-    </Btn>
-    <BilansSimple class="app__footer_bilans" v-if="session.id && username" />
+
+    <BilansSimple class="app__footer_bilans" />
   </div>
 </template>
 
@@ -113,6 +100,9 @@ import BidsList from "./BidsList.vue";
 import BilansSimple from "./BilansSimple.vue";
 import Bilans from "./Bilans.vue";
 import Btn from "./base/Button.vue";
+import TimersText from "./TimersText.vue";
+import Waitroom from "./Waitroom.vue";
+import MainTabs from "./MainTabs.vue";
 
 const userModule = namespace("user");
 const sessionModule = namespace("session");
@@ -127,7 +117,10 @@ const resultsModule = namespace("results");
     BidsList,
     BilansSimple,
     Bilans,
-    Btn
+    Btn,
+    TimersText,
+    Waitroom,
+    MainTabs
   }
 })
 export default class Main extends Vue {
@@ -148,40 +141,8 @@ export default class Main extends Vue {
   @sessionModule.Getter clearing_available!: boolean;
   @sessionModule.Getter results_available!: boolean;
 
-  // Ranking
-  @sessionModule.Getter session_nb_users!: number;
-  @resultsModule.Getter user_rankings!: number;
-
-  now: Date = new Date();
-  created() {
-    setInterval(() => (this.now = new Date()), 1000);
-  }
-
-  get timeBeforeClearing() {
-    if (this.phase_infos?.clearing_time) {
-      const dt = this.phase_infos.clearing_time.valueOf() - this.now.valueOf();
-      if (dt > 0)
-        return toTimeString(
-          this.phase_infos.clearing_time.valueOf() - this.now.valueOf()
-        );
-      else return "Temps écoulé";
-    } else {
-      return null;
-    }
-  }
-
-  get timeBeforePlanning() {
-    if (this.phase_infos?.planning_time) {
-      const dt = this.phase_infos.planning_time.valueOf() - this.now.valueOf();
-      if (dt > 0)
-        return toTimeString(
-          this.phase_infos.planning_time.valueOf() - this.now.valueOf()
-        );
-      else return "Temps écoulé";
-    } else {
-      return null;
-    }
-  }
+  // Tabs
+  active_category = "Home";
 
   async setStatusReady(): Promise<void> {
     const res = await fetch(
@@ -213,78 +174,6 @@ function toTimeString(dt: number): string {
   height: calc(100%-36px);
   margin-bottom: 4.5rem;
 }
-/**
-  Waitroom
-*/
-.app__waitroom {
-  display: grid;
-  max-width: 1000px;
-  margin: auto;
-  padding: 0 10px;
-}
-@media screen and (min-width: 750px) {
-  .app__waitroom {
-    grid-template-areas:
-      "title title"
-      "pp chat";
-    grid-template-columns: 2fr 1.5fr;
-    grid-template-rows: auto auto;
-    align-items: flex-start;
-    justify-items: stretch;
-  }
-  .app__waitroom__pplis {
-    margin: 1rem auto;
-    padding: 1rem;
-  }
-  .app__waitroom__chatroom {
-    margin: 0rem 1rem;
-    padding: 1rem;
-  }
-}
-@media screen and (max-width: 750px) {
-  .app__waitroom {
-    grid-template-areas:
-      "title"
-      "pp"
-      "chat";
-    grid-template-columns: auto;
-    grid-template-rows: auto auto auto;
-    align-items: flex-start;
-    justify-items: stretch;
-  }
-  .app__waitroom__pplist {
-    margin: auto 1rem;
-    padding: 0rem;
-  }
-  .app__waitroom__chatroom {
-    margin: 1rem 1rem;
-    padding: 0rem;
-  }
-}
-.app__waitroom__title {
-  grid-area: title;
-}
-.app__waitroom__title p {
-  max-width: 650px;
-  margin: auto;
-  margin-bottom: 1rem;
-  font-size: 1.1rem;
-}
-.app__waitroom__title button {
-  margin-bottom: 1.3rem;
-}
-.app__waitroom__chatroom {
-  box-sizing: content-box;
-  max-width: 650px;
-  border: 1px solid black;
-  grid-area: chat;
-}
-.app__waitroom__pplist {
-  grid-area: pp;
-  box-sizing: content-box;
-  border: 1px solid black;
-  max-width: 650px;
-}
 
 /**
   Game mode
@@ -306,6 +195,16 @@ function toTimeString(dt: number): string {
   display: flex;
   flex-direction: column;
   align-items: center;
+}
+
+.app__grid_tabs {
+  width: 80%;
+  max-width: 700px;
+  margin: auto;
+}
+.app__phase_infos {
+  margin: 1rem;
+  font-size: 1.15rem;
 }
 
 .app__grid_main {
@@ -357,28 +256,9 @@ function toTimeString(dt: number): string {
     position: relative;
   }
 
-  .app__main_item::after {
-    content: "";
-    position: absolute;
-    bottom: 0;
-    left: 12.5%;
-    width: 75%;
-    height: 1px;
-    border-bottom: 2px solid gray;
-  }
-
   .app__footer_bilans {
     font-size: 1.7rem;
   }
-}
-
-.ready__btn {
-  position: -webkit-sticky;
-  position: sticky;
-  bottom: 5rem;
-  display: block;
-  margin: auto;
-  z-index: 12;
 }
 
 .app__footer_bilans {
