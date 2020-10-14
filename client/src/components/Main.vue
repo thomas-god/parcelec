@@ -9,7 +9,7 @@
         Grid head
       -->
       <div class="app__grid_head">
-        <MainTabs style="width: 80%; margin: auto;" v-model="active_category" />
+        <MainTabs class="app__grid_tabs" v-model="active_category" />
         <div class="app__phase_infos">
           <span>
             Phase
@@ -195,6 +195,12 @@ function toTimeString(dt: number): string {
   display: flex;
   flex-direction: column;
   align-items: center;
+}
+
+.app__grid_tabs {
+  width: 80%;
+  max-width: 700px;
+  margin: auto;
 }
 .app__phase_infos {
   margin: 1rem;
