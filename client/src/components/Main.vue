@@ -5,6 +5,9 @@
 
     <!-- Running session -->
     <div v-if="session_status !== 'open'" class="app__grid">
+      <!--
+        Grid head
+      -->
       <div class="app__grid_head">
         <MainTabs style="width: 80%; margin: auto;" v-model="active_category" />
         <div class="app__phase_infos">
@@ -22,43 +25,65 @@
           </span>
         </div>
         <TimersText />
+        <Btn
+          class="ready__btn"
+          font_size="1.1rem"
+          @click="setStatusReady"
+          :disabled="ready"
+          v-if="
+            results_available &&
+              phase_infos.phase_no + 1 < phase_infos.nb_phases
+          "
+        >
+          Passer à la phase suivante
+        </Btn>
+        <Btn
+          class="ready__btn"
+          font_size="1.1rem"
+          v-if="
+            results_available &&
+              phase_infos.phase_no + 1 === phase_infos.nb_phases
+          "
+          @click="goToGameResults"
+        >
+          Résultats de la partie
+        </Btn>
       </div>
+      <!--
+        Grid main
+      -->
       <div class="app__grid_main">
-        <Bilans v-if="results_available && active_category === 'Home'"/>
+        <Bilans
+          v-if="
+            results_available &&
+              (active_category === 'Home' || active_category === 'Résultats')
+          "
+        />
         <div class="app__main">
           <PowerPlantsList
             class="app__main_item"
             :show_actions="!results_available"
-            v-if="active_category === 'Home' || active_category === 'Centrales'"
+            v-if="
+              (!results_available && active_category === 'Home') ||
+                active_category === 'Centrales'
+            "
           />
           <BidsList
             class="app__main_item"
-            v-if="active_category === 'Home' || active_category === 'Marché'"
+            v-if="
+              (!results_available && active_category === 'Home') ||
+                active_category === 'Marché'
+            "
+          />
+          <Chatroom
+            class="app__main_item"
+            v-if="active_category === 'Chat'"
+            style="padding: 1rem; max-width: 500px;"
           />
         </div>
       </div>
     </div>
-    <Btn
-      class="ready__btn"
-      font_size="1.2rem"
-      @click="setStatusReady"
-      :disabled="ready"
-      v-if="
-        results_available && phase_infos.phase_no + 1 < phase_infos.nb_phases
-      "
-    >
-      Passer à la phase suivante
-    </Btn>
-    <Btn
-      class="ready__btn"
-      font_size="1.2rem"
-      v-if="
-        results_available && phase_infos.phase_no + 1 === phase_infos.nb_phases
-      "
-      @click="goToGameResults"
-    >
-      Résultats de la partie
-    </Btn>
+
     <BilansSimple class="app__footer_bilans" />
   </div>
 </template>
@@ -225,28 +250,9 @@ function toTimeString(dt: number): string {
     position: relative;
   }
 
-  .app__main_item::after {
-    content: "";
-    position: absolute;
-    bottom: 0;
-    left: 12.5%;
-    width: 75%;
-    height: 1px;
-    border-bottom: 2px solid gray;
-  }
-
   .app__footer_bilans {
     font-size: 1.7rem;
   }
-}
-
-.ready__btn {
-  position: -webkit-sticky;
-  position: sticky;
-  bottom: 5rem;
-  display: block;
-  margin: auto;
-  z-index: 12;
 }
 
 .app__footer_bilans {

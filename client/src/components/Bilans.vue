@@ -1,6 +1,7 @@
 <template>
   <div class="bilans__main">
     <div class="bilans_ranking">
+      <h3>Résultats</h3>
       <p v-if="results_available && session_nb_users > 1">
         Classement phase :
         <strong>{{ user_rankings.current }}/{{ session_nb_users }} </strong>
