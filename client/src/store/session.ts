@@ -30,16 +30,16 @@ export interface SessionState extends Session {}
 
 // ------------------------ STATE -------------------------
 export const state: SessionState = {
-         name: "",
-         id: "",
-         status: "open",
-         multi_game: false,
-         users: [],
-         can_bid: false,
-         can_post_planning: false,
-         clearing_available: false,
-         results_available: false,
-       };
+  name: "",
+  id: "",
+  status: "open",
+  multi_game: false,
+  users: [],
+  can_bid: false,
+  can_post_planning: false,
+  clearing_available: false,
+  results_available: false,
+};
 
 // ------------------------ ACTIONS -------------------------
 export const actions: ActionTree<SessionState, RootState> = {
@@ -108,87 +108,87 @@ export const actions: ActionTree<SessionState, RootState> = {
 
 // ------------------------ MUTATIONS -------------------------
 export const mutations: MutationTree<SessionState> = {
-         SET_NAME(state, name: string): void {
-           state.name = name;
-         },
-         SET_SESSION_ID(state, session_id: string): void {
-           state.id = session_id;
-         },
-         SET_STATUS(state, status: Session["status"]): void {
-           state.status = status;
-         },
-         SET_MULTI_GAME(state, multi_game: Session["multi_game"]): void {
-           state.multi_game = multi_game;
-         },
-         SET_USERS(state, users: User[]): void {
-           state.users = users;
-         },
-         PUSH_NEW_USER(state, new_user: User): void {
-           state.users.push(new_user);
-         },
-         SET_CAN_BID(state, can_bid: boolean): void {
-           state.can_bid = can_bid;
-         },
-         SET_CAN_POST_PLANNING(state, can_post_planning: boolean): void {
-           state.can_post_planning = can_post_planning;
-         },
-         SET_CLEARING_AVAILABLE(state, clearing_available: boolean): void {
-           //console.log("clearing", state.clearing_available, clearing_available);
-           state.clearing_available = clearing_available;
-         },
-         SET_RESULTS_AVAILABLE(state, results_available: boolean): void {
-           state.results_available = results_available;
-         },
-         SET_PHASE_INFOS(state, phase_infos): void {
-           Vue.set(state, "phase_infos", {
-             phase_no: phase_infos.phase_no,
-             nb_phases: phase_infos.nb_phases,
-             start_time: new Date(phase_infos.start_time),
-             clearing_time: new Date(phase_infos.clearing_time),
-             planning_time: new Date(phase_infos.planning_time),
-           });
-         },
-       };
+  SET_NAME(state, name: string): void {
+    state.name = name;
+  },
+  SET_SESSION_ID(state, session_id: string): void {
+    state.id = session_id;
+  },
+  SET_STATUS(state, status: Session["status"]): void {
+    state.status = status;
+  },
+  SET_MULTI_GAME(state, multi_game: Session["multi_game"]): void {
+    state.multi_game = multi_game;
+  },
+  SET_USERS(state, users: User[]): void {
+    state.users = users;
+  },
+  PUSH_NEW_USER(state, new_user: User): void {
+    state.users.push(new_user);
+  },
+  SET_CAN_BID(state, can_bid: boolean): void {
+    state.can_bid = can_bid;
+  },
+  SET_CAN_POST_PLANNING(state, can_post_planning: boolean): void {
+    state.can_post_planning = can_post_planning;
+  },
+  SET_CLEARING_AVAILABLE(state, clearing_available: boolean): void {
+    //console.log("clearing", state.clearing_available, clearing_available);
+    state.clearing_available = clearing_available;
+  },
+  SET_RESULTS_AVAILABLE(state, results_available: boolean): void {
+    state.results_available = results_available;
+  },
+  SET_PHASE_INFOS(state, phase_infos): void {
+    Vue.set(state, "phase_infos", {
+      phase_no: phase_infos.phase_no,
+      nb_phases: phase_infos.nb_phases,
+      start_time: new Date(phase_infos.start_time),
+      clearing_time: new Date(phase_infos.clearing_time),
+      planning_time: new Date(phase_infos.planning_time),
+    });
+  },
+};
 
 // ------------------------ GETTERS -------------------------
 export const getters: GetterTree<SessionState, RootState> = {
-         session(state): Session {
-           return state;
-         },
-         session_id(state): string {
-           return state.id;
-         },
-         session_name(state): string {
-           return state.name;
-         },
-         session_multi_game(state): boolean {
-           return state.multi_game;
-         },
-         session_status(state): string {
-           return state.status;
-         },
-         session_nb_users(state): number {
-           return state.users.length;
-         },
-         can_bid(state): boolean {
-           return state.can_bid;
-         },
-         can_post_planning(state): boolean {
-           return state.can_post_planning;
-         },
-         clearing_available(state): boolean {
-           return state.clearing_available;
-         },
-         results_available(state): boolean {
-           return state.results_available;
-         },
-         phase_infos(state): Session["phase_infos"] {
-           return state.phase_infos;
-         },
-         nb_phases(state): number {
-           return state.phase_infos ? state.phase_infos.nb_phases : -1;
-         },
-       };
+  session(state): Session {
+    return state;
+  },
+  session_id(state): string {
+    return state.id;
+  },
+  session_name(state): string {
+    return state.name;
+  },
+  session_multi_game(state): boolean {
+    return state.multi_game;
+  },
+  session_status(state): string {
+    return state.status;
+  },
+  session_nb_users(state): number {
+    return state.users.length;
+  },
+  can_bid(state): boolean {
+    return state.can_bid;
+  },
+  can_post_planning(state): boolean {
+    return state.can_post_planning;
+  },
+  clearing_available(state): boolean {
+    return state.clearing_available;
+  },
+  results_available(state): boolean {
+    return state.results_available;
+  },
+  phase_infos(state): Session["phase_infos"] {
+    return state.phase_infos;
+  },
+  nb_phases(state): number {
+    return state.phase_infos ? state.phase_infos.nb_phases : -1;
+  },
+};
 
 // ------------------------ MODULE -------------------------
 export const session: Module<SessionState, RootState> = {
