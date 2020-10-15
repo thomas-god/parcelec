@@ -4,7 +4,11 @@
     <Waitroom v-if="session_status === 'open'" />
 
     <!-- Running session -->
-    <MainTabs class="app__tabs" v-model="active_category" />
+    <MainTabs
+      v-if="session_status !== 'open'"
+      class="app__tabs"
+      v-model="active_category"
+    />
     <div v-if="session_status !== 'open'" class="app__grid">
       <!--
         Grid head
