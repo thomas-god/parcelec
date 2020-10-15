@@ -14,7 +14,7 @@
         Grid head
       -->
       <div class="app__grid_head">
-        <div class="app__phase_infos">
+        <div class="app__phase_infos" v-show="active_category === 'Home'">
           <span>
             Phase
             <strong>{{
@@ -36,7 +36,8 @@
           :disabled="ready"
           v-if="
             results_available &&
-              phase_infos.phase_no + 1 < phase_infos.nb_phases
+              phase_infos.phase_no + 1 < phase_infos.nb_phases &&
+              active_category === 'Home'
           "
         >
           Passer à la phase suivante
@@ -58,6 +59,7 @@
       -->
       <div class="app__grid_main">
         <Bilans
+          class="app__main_item"
           v-show="
             results_available &&
               (active_category === 'Home' || active_category === 'Résultats')

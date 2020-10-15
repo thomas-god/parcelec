@@ -111,6 +111,10 @@ export default class BidsList extends Vue {
   border-radius: 2px;
 }
 
+.bid__list h2 {
+  margin-top: 0;
+}
+
 @media screen and (min-width: 400px) {
   .bid__list {
     border: 2px solid gray;

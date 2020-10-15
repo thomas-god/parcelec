@@ -118,6 +118,10 @@ export default class PowerPlantsList extends Vue {
   overflow: hidden;
 }
 
+.pp__list h2 {
+  margin-top: 0;
+}
+
 @media screen and (min-width: 400px) {
   .pp__list_item {
     margin: 1rem 1.5rem;
@@ -137,7 +141,7 @@ export default class PowerPlantsList extends Vue {
     left: 2.5%;
     width: 95%;
     height: 1px;
-    border-bottom: 2px solid gray;
+    border-bottom: 2px solid rgba(128, 128, 128, 0.466);
   }
 }
 
