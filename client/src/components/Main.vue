@@ -244,6 +244,7 @@ function toTimeString(dt: number): string {
   }
   .app__footer_bilans {
     font-size: 2rem;
+    height: 3rem;
   }
 
   .app__tabs {
@@ -260,7 +261,8 @@ function toTimeString(dt: number): string {
   }
 
   .app__footer_bilans {
-    font-size: 1.7rem;
+    font-size: 1.5rem;
+    height: 2.5rem;
   }
 
   .app__tabs {
@@ -270,7 +272,6 @@ function toTimeString(dt: number): string {
 
 .app__footer_bilans {
   width: 100%;
-  height: 4rem;
   display: flex;
   justify-content: center;
   align-items: center;
