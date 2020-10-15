@@ -2,14 +2,14 @@
   <div class="bid__container">
     <div class="bid__container_qte_txt">Quantité (MWh)</div>
     <div class="bid__container_qte_input">
-      <input type="number" min="0" step="1" v-model="volume_mwh" />
+      <input type="number" min="0" step="0.01" v-model="volume_mwh" />
     </div>
     <div class="bid__container_qte_err">
       {{ show_err_msg ? inputs_err_msg_volume : "" }}
     </div>
     <div class="bid__container_price_txt">Prix (€/MWh)</div>
     <div class="bid__container_price_input">
-      <input type="number" step="0" v-model="price_eur_per_mwh" />
+      <input type="number" step="0.01" v-model="price_eur_per_mwh" />
     </div>
     <div class="bid__container_price_err">
       {{ show_err_msg ? inputs_err_msg_price : "" }}
@@ -96,8 +96,8 @@ export default class BidItem extends Vue {
           body: JSON.stringify({
             bid: {
               type: type,
-              volume_mwh: this.volume_mwh,
-              price_eur_per_mwh: this.price_eur_per_mwh
+              volume_mwh: Number(this.volume_mwh),
+              price_eur_per_mwh: Number(this.price_eur_per_mwh)
             }
           })
         }
@@ -106,8 +106,8 @@ export default class BidItem extends Vue {
         const bid_id = (await res.json()).bid_id;
         this.PUSH_BID({
           type: type,
-          volume_mwh: this.volume_mwh as number,
-          price_eur_per_mwh: this.price_eur_per_mwh as number,
+          volume_mwh: Number(this.volume_mwh),
+          price_eur_per_mwh: Number(this.price_eur_per_mwh),
           id: bid_id
         });
         this.hideErrMsg();
@@ -120,8 +120,8 @@ export default class BidItem extends Vue {
       if (this.validateInputs()) {
         this.PUSH_BID({
           type: type,
-          volume_mwh: this.volume_mwh as number,
-          price_eur_per_mwh: this.price_eur_per_mwh as number,
+          volume_mwh: Number(this.volume_mwh),
+          price_eur_per_mwh: Number(this.price_eur_per_mwh),
           id: uuid()
         });
         this.hideErrMsg();
