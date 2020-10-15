@@ -90,13 +90,17 @@ export default class PowerPlantsList extends Vue {
       if (res.status === 201) {
         this.onSuccessfulPlanningUpdate();
         this.envoyer_btn_txt = "OK!";
-        setTimeout(() => { this.envoyer_btn_txt = 'Envoyer'}, 500)
+        setTimeout(() => {
+          this.envoyer_btn_txt = "Envoyer";
+        }, 500);
       } else {
         console.log(await res.text());
       }
     } else {
       this.envoyer_btn_txt = "OK!";
-      setTimeout(() => { this.envoyer_btn_txt = 'Envoyer'}, 500)
+      setTimeout(() => {
+        this.envoyer_btn_txt = "Envoyer";
+      }, 500);
       this.onSuccessfulPlanningUpdate();
     }
   }
@@ -121,7 +125,19 @@ export default class PowerPlantsList extends Vue {
 }
 @media screen and (max-width: 400px) {
   .pp__list_item {
-    margin: 1rem 1.5rem;
+    position: relative;
+    margin: 0 1.5rem 1.5rem;
+    padding-bottom: 1.5rem;
+  }
+
+  .pp__list_item::after {
+    content: "";
+    position: absolute;
+    bottom: 0;
+    left: 2.5%;
+    width: 95%;
+    height: 1px;
+    border-bottom: 2px solid gray;
   }
 }
 
