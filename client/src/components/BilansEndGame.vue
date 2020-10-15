@@ -89,10 +89,9 @@ export default class BilansEndGame extends Vue {
 .bilans__container {
   display: flex;
   flex-direction: row;
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
   justify-content: center;
   align-items: center;
-  overflow-y: scroll;
 }
 
 .bilans__container .bilans__item:last-of-type span {
