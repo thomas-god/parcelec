@@ -10,7 +10,7 @@
       <span v-else>
         Fin des enchères dans <strong>{{ time_before_clearing_string }}</strong>
       </span>
-      <Btn :disabled="ready" v-show="can_bid" @click="setStatusReady">
+      <Btn :disabled="user_ready" v-show="can_bid" @click="setStatusReady">
         Passer
       </Btn>
     </span>
@@ -26,7 +26,7 @@
         <strong>{{ time_before_planning_string }}</strong>
       </span>
       <Btn
-        :disabled="ready"
+        :disabled="user_ready"
         v-show="!can_bid && can_post_planning"
         @click="setStatusReady"
       >
@@ -52,6 +52,7 @@ export default class TimersText extends Vue {
   @session_module.Getter session!: Session;
   @session_module.Getter phase_infos!: Session["phase_infos"];
   @user_module.Getter user_id!: string;
+  @user_module.Getter user_ready!: string;
   @user_module.Mutation SET_GAME_READY!: (game_ready: boolean) => void;
 
   // Abilities booleans
