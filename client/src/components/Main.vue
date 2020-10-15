@@ -58,7 +58,7 @@
       -->
       <div class="app__grid_main">
         <Bilans
-          v-if="
+          v-show="
             results_available &&
               (active_category === 'Home' || active_category === 'Résultats')
           "
@@ -67,21 +67,21 @@
           <PowerPlantsList
             class="app__main_item"
             :show_actions="!results_available"
-            v-if="
+            v-show="
               (!results_available && active_category === 'Home') ||
                 active_category === 'Centrales'
             "
           />
           <BidsList
             class="app__main_item"
-            v-if="
+            v-show="
               (!results_available && active_category === 'Home') ||
                 active_category === 'Marché'
             "
           />
           <Chatroom
             class="app__main_item"
-            v-if="active_category === 'Chat'"
+            v-show="active_category === 'Chat'"
             style="padding: 1rem; max-width: 500px;"
           />
         </div>
