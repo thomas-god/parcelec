@@ -3,7 +3,8 @@
     <h2>Vos centrales</h2>
     <PowerPlantItem
       class="pp__list_item"
-      v-for="pp in pp_sorted"
+      v-for="(pp, id) in pp_sorted"
+      :class="id !== pp_sorted.length - 1 ? 'pp__list_item_w_separator' : ''"
       :key="`pp-list-${pp.id}`"
       :power_plant="pp"
       :power_max_mw="power_plants_max_power_mw"
@@ -134,7 +135,7 @@ export default class PowerPlantsList extends Vue {
     padding-bottom: 1.5rem;
   }
 
-  .pp__list_item::after {
+  .pp__list_item_w_separator::after {
     content: "";
     position: absolute;
     bottom: 0;
