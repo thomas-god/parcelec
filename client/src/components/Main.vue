@@ -4,12 +4,12 @@
     <Waitroom v-if="session_status === 'open'" />
 
     <!-- Running session -->
+    <MainTabs class="app__tabs" v-model="active_category" />
     <div v-if="session_status !== 'open'" class="app__grid">
       <!--
         Grid head
       -->
       <div class="app__grid_head">
-        <MainTabs class="app__grid_tabs" v-model="active_category" />
         <div class="app__phase_infos">
           <span>
             Phase
@@ -197,8 +197,7 @@ function toTimeString(dt: number): string {
   align-items: center;
 }
 
-.app__grid_tabs {
-  width: 80%;
+.app__tabs {
   max-width: 700px;
   margin: auto;
 }
@@ -246,6 +245,10 @@ function toTimeString(dt: number): string {
   .app__footer_bilans {
     font-size: 2rem;
   }
+
+  .app__tabs {
+    width: 90%;
+  }
 }
 
 @media screen and (max-width: 400px) {
@@ -258,6 +261,10 @@ function toTimeString(dt: number): string {
 
   .app__footer_bilans {
     font-size: 1.7rem;
+  }
+
+  .app__tabs {
+    width: 100%;
   }
 }
 

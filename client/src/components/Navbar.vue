@@ -14,8 +14,6 @@
   height: 34px;
   background-color: rgb(204, 218, 250);
   border-bottom: 1px solid black;
-  position: -webkit-sticky;
-  position: sticky;
   top: 0;
   display: flex;
   align-items: center;

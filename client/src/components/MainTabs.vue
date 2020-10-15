@@ -103,8 +103,14 @@ export default class MainTabs extends Vue {
   justify-content: space-around;
   align-items: center;
 
+  position: -webkit-sticky;
+  position: sticky;
+  top: -8px;
+  z-index: 12;
+
   padding: 1rem 0 0.5rem 0;
   border-bottom: 2px solid rgba(0, 0, 0, 0.712);
+  background-color: white;
 }
 
 .tabs_category:hover .tabs_category_name,
