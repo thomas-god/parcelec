@@ -1,5 +1,5 @@
 <template>
-  <div class="main">
+  <div class="main" id="main">
     <!-- Open session -->
     <Waitroom v-if="session_status === 'open'" />
 
@@ -148,6 +148,9 @@ export default class Main extends Vue {
   // Tabs
   active_category = "Home";
 
+  /**
+   * Status ready and go to end game
+   */
   async setStatusReady(): Promise<void> {
     const res = await fetch(
       `${this.api_url}/session/${this.session_id}/user/${this.user_id}/ready`,
@@ -157,7 +160,6 @@ export default class Main extends Vue {
     );
     if (res.status === 201) this.SET_GAME_READY(true);
   }
-
   goToGameResults(): void {
     this.$router.push(
       `/session/${this.session_id}/user/${this.user_id}/results`

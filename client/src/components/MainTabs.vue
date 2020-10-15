@@ -35,6 +35,7 @@ export default class MainTabs extends Vue {
   @session_module.State results_available!: boolean;
 
   update_category(new_cat: string): void {
+    (document.getElementById('main') as HTMLDivElement).scrollIntoView();
     this.$emit("input", new_cat);
   }
 
