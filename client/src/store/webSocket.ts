@@ -132,6 +132,7 @@ function onMessageCallback(
           dispatch("session/loadSessionContent", {}, opts);
           dispatch("portfolio/loadPortfolioContent", {}, opts);
           commit("bids/SET_BIDS", [], opts);
+          commit("otcs/SET_OTCS", [], opts);
           commit("bids/SET_CLEARING", [], opts);
           commit("bids/SET_ENERGY_EXCHANGES", [], opts);
           break;
@@ -151,6 +152,8 @@ function onMessageCallback(
           dispatch("results/loadResultsContent", {}, opts);
           dispatch("bids/loadMarketBids", {}, opts);
           break;
+        case "new-otc":
+          commit("otcs/PUSH_OTC", message.data, opts);
       }
     }
   } catch (error) {
