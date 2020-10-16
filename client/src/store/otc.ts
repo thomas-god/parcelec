@@ -2,10 +2,13 @@ import Vuex, { Module, GetterTree, MutationTree, ActionTree } from "vuex";
 import { RootState } from "./index";
 
 export interface OTC {
+  id: string;
+  user_from: string;
+  user_to: string;
   type: "buy" | "sell";
   volume_mwh: number;
   price_eur_per_mwh: number;
-  id: string;
+  status: "pending" | "accepted" | "rejected";
 }
 
 export interface EnergyExchange {

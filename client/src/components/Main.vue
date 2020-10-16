@@ -86,6 +86,7 @@
             v-show="active_category === 'Chat'"
             style="padding: 1rem; max-width: 500px;"
           />
+          <AddNewOTC v-show="active_category === 'Home'" class="app__main_item" />
         </div>
       </div>
     </div>
@@ -109,6 +110,7 @@ import Btn from "./base/Button.vue";
 import TimersText from "./TimersText.vue";
 import Waitroom from "./Waitroom.vue";
 import MainTabs from "./MainTabs.vue";
+import AddNewOTC from "./AddNewOTC.vue";
 
 const userModule = namespace("user");
 const sessionModule = namespace("session");
@@ -126,7 +128,8 @@ const resultsModule = namespace("results");
     Btn,
     TimersText,
     Waitroom,
-    MainTabs
+    MainTabs,
+    AddNewOTC
   }
 })
 export default class Main extends Vue {
