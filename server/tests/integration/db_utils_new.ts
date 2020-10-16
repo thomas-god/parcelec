@@ -92,7 +92,7 @@ export async function getUserPortfolio(
 
 /**
  * Create a running session by inserting 2 users and marking them
- * as ready.
+ * as ready. Names of the users are `User 1` and `User 2`.
  * @param session_name Name of the session to create
  */
 export async function insertRunningSession(

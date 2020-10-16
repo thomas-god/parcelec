@@ -13,6 +13,7 @@ import {
   PhaseResults,
   SessionOptions,
   ScenarioOptions,
+  OTCEnergyExchangeNoIDs,
 } from "./types";
 
 export class CustomError extends Error {
@@ -1121,4 +1122,63 @@ export async function checkScenarioID(scenario_id: string): Promise<boolean> {
       )
     ).rows.length === 1
   );
+}
+
+/**
+ * Check by its name if a user belongs to a session. Return its UUID (string) if true,
+ * else return `null`.
+ * @param session_id Session UID
+ * @param username Username, string
+ */
+export async function checkUserInSessionByName(
+  session_id: string,
+  username: string
+): Promise<string> {
+  const rows = (
+    await db.query(
+      `SELECT
+      id
+    FROM users
+    WHERE 
+      session_id=$1
+      AND name=$2;`,
+      [session_id, username]
+    )
+  ).rows;
+  return rows.length === 1 ? rows[0].id : null;
+}
+
+/**
+ * Return the list a user's OTCs.
+ * @param session_id Session UUID
+ * @param user_id User UUID
+ */
+export async function getUserOTCs(
+  session_id: string,
+  user_id: string
+): Promise<OTCEnergyExchangeNoIDs[]> {
+  return (
+    await db.query(
+      `SELECT
+        otc.id AS id,
+        otc.session_id AS session_id,
+        otc.phase_no AS phase_no,
+        otc.type AS type,
+        otc.volume_mwh AS volume_mwh,
+        otc.price_eur_per_mwh AS price_eur_per_mwh,
+        otc.status AS status, 
+        u_from.name AS user_from,
+        u_to.name AS user_to
+      FROM otc_exchanges AS otc
+      INNER JOIN users AS u_from
+        ON otc.user_from_id=u_from.id
+      INNER JOIN users AS u_to
+        ON otc.user_to_id=u_to.id
+      WHERE 
+        (otc.user_from_id=$1
+        OR otc.user_to_id=$1)
+        AND otc.session_id=$2;`,
+      [user_id, session_id]
+    )
+  ).rows as OTCEnergyExchangeNoIDs[];
 }

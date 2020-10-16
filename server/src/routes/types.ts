@@ -105,6 +105,12 @@ export interface OTCEnergyExchange {
   status: "pending" | "accepted" | "rejected";
 }
 
+export interface OTCEnergyExchangeNoIDs
+  extends Omit<OTCEnergyExchange, "user_from_id" | "user_to_id"> {
+  user_from: string;
+  user_to: string;
+}
+
 export interface PowerPlantDispatch {
   user_id: string;
   session_id: string;
