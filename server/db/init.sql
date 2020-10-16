@@ -150,7 +150,7 @@ CREATE TABLE otc_exchanges
   type TEXT CHECK (type IN ('buy', 'sell')),
   volume_mwh REAL NOT NULL CHECK (volume_mwh > 0),
   price_eur_per_mwh REAL NOT NULL,
-  status TEXT CHECK (type IN ('pending', 'accepted', 'rejected'))
+  status TEXT CHECK (status IN ('pending', 'accepted', 'rejected'))
 );
 
 CREATE TABLE production_plannings 
