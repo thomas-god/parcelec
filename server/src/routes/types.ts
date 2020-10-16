@@ -93,6 +93,18 @@ export interface EnergyExchange {
   price_eur_per_mwh: number;
 }
 
+export interface OTCEnergyExchange {
+  id: string;
+  user_from_id: string;
+  user_to_id: string;
+  session_id: string;
+  phase_no: number;
+  type: "buy" | "sell";
+  volume_mwh: number;
+  price_eur_per_mwh: number;
+  status: "pending" | "accepted" | "rejected";
+}
+
 export interface PowerPlantDispatch {
   user_id: string;
   session_id: string;
