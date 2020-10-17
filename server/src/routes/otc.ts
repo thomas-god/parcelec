@@ -4,7 +4,6 @@
  *  POST /session/:session_id/user/:user_id/otc
  *  PUT /session/:session_id/user/:user_id/otc/:otc_id/accept
  *  PUT /session/:session_id/user/:user_id/otc/:otc_id/reject
- *  PUT /session/:session_id/user/:user_id/otc/:otc_id/counter_offer
  */
 import express from "express";
 import { v4 as uuid } from "uuid";
@@ -18,6 +17,7 @@ import {
   getLastPhaseInfos,
   checkUserInSessionByName,
   getUserOTCs,
+  getOTCByID,
 } from "./utils";
 import { notifyUser } from "./websocket";
 
@@ -186,7 +186,7 @@ export async function postOTC(
 }
 
 /**
- * Accept an OTC exchange.
+ * Accept an OTC exchange. Can only be done by the OTC's user_to.
  * @param req HTTP request
  * @param res HTTP response
  */
@@ -195,14 +195,62 @@ export async function acceptOTC(
   res: express.Response
 ): Promise<void> {
   try {
-    //
-  } catch (err) {
-    //
+    const session_id = req.params.session_id;
+    const user_id = req.params.user_id;
+    const otc_id = req.params.otc_id;
+
+    /**
+     * DB checks
+     */
+    const session = await getSession(session_id);
+    if (session === null)
+      throw new CustomError("Error, no session found with this ID", 404);
+    const user = await getUser(session_id, user_id);
+    if (user === null)
+      throw new CustomError("Error, no user found with this ID", 404);
+    const phase_infos = await getLastPhaseInfos(session_id);
+    if (!phase_infos.plannings_allowed)
+      throw new CustomError("Error, cannot update an OTC exchange");
+
+    /**
+     * OTC specific validation
+     */
+    const otc = await getOTCByID(otc_id);
+    if (otc === null)
+      throw new CustomError("Error, no OTC found with this ID", 404);
+    if (otc.user_to_id !== user_id)
+      throw new CustomError("Error, not allowed to modify this OTC", 403);
+    if (otc.status === "accepted" || otc.status === "rejected")
+      throw new CustomError("Error, OTC has already been accepted/rejected");
+
+    /**
+     * Update DB and notify user_from and user_to
+     */
+    await db.query(
+      `UPDATE otc_exchanges
+      SET status='accepted'
+      WHERE id=$1;`,
+      [otc_id]
+    );
+    res.end();
+    const update = {
+      otc_id: otc.id,
+      status: "accepted",
+    };
+    notifyUser(session_id, otc.user_from_id, "otc-update", update);
+    notifyUser(session_id, otc.user_to_id, "otc-update", update);
+  } catch (error) {
+    if (error instanceof CustomError) {
+      res.status(error.code).end(error.msg);
+    } else {
+      res.status(400).end();
+      throw error;
+    }
   }
 }
 
 /**
- *Reject and OTC exchange.
+ *Reject and OTC exchange. Can only be done by the OTC's user_to.
  * @param req HTTP request
  * @param res HTTP response
  */
@@ -211,25 +259,57 @@ export async function rejectOTC(
   res: express.Response
 ): Promise<void> {
   try {
-    //
-  } catch (err) {
-    //
-  }
-}
+    const session_id = req.params.session_id;
+    const user_id = req.params.user_id;
+    const otc_id = req.params.otc_id;
 
-/**
- * Reject an OTC exchange and make a counter-offer.
- * @param req HTTP request
- * @param res HTTP response
- */
-export async function counterOfferOTC(
-  req: express.Request,
-  res: express.Response
-): Promise<void> {
-  try {
-    //
-  } catch (err) {
-    //
+    /**
+     * DB checks
+     */
+    const session = await getSession(session_id);
+    if (session === null)
+      throw new CustomError("Error, no session found with this ID", 404);
+    const user = await getUser(session_id, user_id);
+    if (user === null)
+      throw new CustomError("Error, no user found with this ID", 404);
+    const phase_infos = await getLastPhaseInfos(session_id);
+    if (!phase_infos.plannings_allowed)
+      throw new CustomError("Error, cannot update an OTC exchange");
+
+    /**
+     * OTC specific validation
+     */
+    const otc = await getOTCByID(otc_id);
+    if (otc === null)
+      throw new CustomError("Error, no OTC found with this ID", 404);
+    if (otc.user_to_id !== user_id)
+      throw new CustomError("Error, not allowed to modify this OTC", 403);
+    if (otc.status === "accepted" || otc.status === "rejected")
+      throw new CustomError("Error, OTC has already been accepted/rejected");
+
+    /**
+     * Update DB and notify user_from and user_to
+     */
+    await db.query(
+      `UPDATE otc_exchanges
+      SET status='rejected'
+      WHERE id=$1;`,
+      [otc_id]
+    );
+    res.end();
+    const update = {
+      otc_id: otc.id,
+      status: "rejected",
+    };
+    notifyUser(session_id, otc.user_from_id, "otc-update", update);
+    notifyUser(session_id, otc.user_to_id, "otc-update", update);
+  } catch (error) {
+    if (error instanceof CustomError) {
+      res.status(error.code).end(error.msg);
+    } else {
+      res.status(400).end();
+      throw error;
+    }
   }
 }
 
@@ -250,10 +330,6 @@ router.put(
 router.put(
   `/session/:session_id(${uuid_regex})/user/:user_id(${uuid_regex})/otc/:otc_id(${uuid_regex})/reject`,
   rejectOTC
-);
-router.put(
-  `/session/:session_id(${uuid_regex})/user/:user_id(${uuid_regex})/otc/:otc_id(${uuid_regex})/counter_offer`,
-  counterOfferOTC
 );
 
 export default router;

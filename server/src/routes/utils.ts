@@ -14,6 +14,7 @@ import {
   SessionOptions,
   ScenarioOptions,
   OTCEnergyExchangeNoIDs,
+  OTCEnergyExchange,
 } from "./types";
 
 export class CustomError extends Error {
@@ -1181,4 +1182,29 @@ export async function getUserOTCs(
       [user_id, session_id]
     )
   ).rows as OTCEnergyExchangeNoIDs[];
+}
+
+/**
+ * Find and return an OTC by its ID.
+ * @param otc_id OTC UUID
+ */
+export async function getOTCByID(otc_id: string): Promise<OTCEnergyExchange> {
+  const rows = (
+    await db.query(
+      `SELECT 
+        id,
+        user_from_id,
+        user_to_id,
+        session_id,
+        phase_no,
+        type,
+        volume_mwh,
+        price_eur_per_mwh,
+        status
+      FROM otc_exchanges
+      WHERE id=$1;`,
+      [otc_id]
+    )
+  ).rows as OTCEnergyExchange[];
+  return rows.length === 1 ? rows[0] : null;
 }
