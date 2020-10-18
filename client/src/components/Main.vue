@@ -86,7 +86,7 @@
             v-show="active_category === 'Chat'"
             style="padding: 1rem; max-width: 500px;"
           />
-          <AddNewOTC v-show="active_category === 'Home'" class="app__main_item" />
+          <OTC v-show="active_category === 'Home'" class="app__main_item" />
         </div>
       </div>
     </div>
@@ -110,7 +110,7 @@ import Btn from "./base/Button.vue";
 import TimersText from "./TimersText.vue";
 import Waitroom from "./Waitroom.vue";
 import MainTabs from "./MainTabs.vue";
-import AddNewOTC from "./AddNewOTC.vue";
+import OTC from "./OTC.vue";
 
 const userModule = namespace("user");
 const sessionModule = namespace("session");
@@ -129,7 +129,7 @@ const resultsModule = namespace("results");
     TimersText,
     Waitroom,
     MainTabs,
-    AddNewOTC
+    OTC,
   }
 })
 export default class Main extends Vue {
@@ -252,6 +252,7 @@ function toTimeString(dt: number): string {
     margin: 2rem;
     border-radius: 2px;
     border: 2px solid gray;
+    padding: 10px
   }
   .app__footer_bilans {
     font-size: 2rem;

@@ -1,6 +1,5 @@
 <template>
   <div>
-    <h3>Faire une offre directe</h3>
     <div class="new_otc__inputs__container">
       <div class="new_otc__input_item">
         <label for="new__otc_user_to">Joueur</label>
