@@ -21,6 +21,10 @@ The following describes the various routes composing the parcelec API.
 - [GET /session/:session_id/user/:user_id/clearing](#Get-specific-information-on-a-user-energy-exchanges-following-market-clearing)
 - [GET /session/:session_id/user/:user_id/results](#Get-energy-and-financial-results-when-a-phase-is-finished)
 - [GET /session/:session_id/clearing/?user_id](#Get-all-the-bids-anonymously-after-a-session-has-cleared)
+- [POST /session/:session_id/user_ir/:user_id/otc](#Post-an-over-the-counter-(OTC)-offer)
+- [GET /session/:session_id/user_ir/:user_id/otc](#Get-all-user's-OTCs-(send-and-received))
+- [PUT /session/:session_id/user/:user_id/otc/:otc_id/accept](#Accept-an-OTC)
+- [PUT /session/:session_id/user/:user_id/otc/:otc_id/reject](#Reject-an-OTC)
 
 
 ## Game session related routes
@@ -313,3 +317,56 @@ The following describes the various routes composing the parcelec API.
         }
       ]
     ```
+
+### Get all user's OTCs (send and received)
+- Route : `GET /session/:session_id/user_ir/:user_id/otc`
+- Response :
+    - Type : `application/json`,
+    - Body : 
+    ``` js
+      [
+        {
+          id: UUID string;
+          user_from: string;
+          user_to: string;
+          session_id: UUID string;
+          phase_no: number;
+          type: "buy" | "sell";
+          volume_mwh: number;
+          price_eur_per_mwh: number;
+          status: "pending" | "accepted" | "rejected";
+        }
+      ]
+    ```
+
+### Post an over-the-counter (OTC) offer
+- Route : `POST /session/:session_id/user_ir/:user_id/otc`
+    - Type : `application/json`,
+    - Body : 
+    ``` js
+      {
+        type: "buy" | "sell",
+        user_to: string,
+        volume_mwh: number,
+        price_eur_per_mwh: number,
+      }
+    ```
+- Response :
+    - Type : `application/json`,
+    - Code : `201` on success
+    - Body : 
+    ``` js
+      {
+        otc_id: UUID string;
+      }
+    ```
+
+### Accept an OTC
+- Route : `PUT /session/:session_id/user/:user_id/otc/:otc_id/accept`
+- Response :
+    - Code : `200` on success
+
+### Reject an OTC 
+- Route : `PUT /session/:session_id/user/:user_id/otc/:otc_id/reject`
+- Response :
+    - Code : `200` on success
