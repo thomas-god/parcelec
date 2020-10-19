@@ -3,7 +3,6 @@
     <h2>Contrats directs</h2>
     <h3>Proposer un contrat</h3>
     <OTCAddNew/>
-    <h3>Vos contrats</h3>
     <OTCList/>
 </div>
 </template>
