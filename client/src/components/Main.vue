@@ -58,14 +58,14 @@
         Grid main
       -->
       <div class="app__grid_main">
-        <Bilans
-          class="app__main_item"
-          v-show="
-            results_available &&
-              (active_category === 'Home' || active_category === 'Résultats')
-          "
-        />
         <div class="app__main">
+          <Bilans
+            class="app__main_item"
+            v-show="
+              results_available &&
+                (active_category === 'Home' || active_category === 'Résultats')
+            "
+          />
           <PowerPlantsList
             class="app__main_item"
             :show_actions="!results_available"
@@ -84,9 +84,8 @@
           <Chatroom
             class="app__main_item"
             v-show="active_category === 'Chat'"
-            style="padding: 1rem; max-width: 500px;"
           />
-          <OTC v-show="active_category === 'Home'" class="app__main_item" />
+          <OTC v-show="active_category === 'Marché'" class="app__main_item" />
         </div>
       </div>
     </div>
@@ -129,7 +128,7 @@ const resultsModule = namespace("results");
     TimersText,
     Waitroom,
     MainTabs,
-    OTC,
+    OTC
   }
 })
 export default class Main extends Vue {
@@ -252,7 +251,7 @@ function toTimeString(dt: number): string {
     margin: 2rem;
     border-radius: 2px;
     border: 2px solid gray;
-    padding: 10px
+    padding: 10px;
   }
   .app__footer_bilans {
     font-size: 2rem;

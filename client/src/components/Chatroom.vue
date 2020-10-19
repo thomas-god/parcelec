@@ -1,5 +1,6 @@
 <template>
   <div class="chatroom__container">
+    <h2>Messages</h2>
     <ChatroomMessages class="chatroom__box chatroom__messages" />
     <ChatroomUsersList
       class="chatroom__box chatroom__users_list"
@@ -20,6 +21,9 @@ export default class Chatroom extends Vue {
 </script>
 
 <style scoped>
+h2 {
+  margin-top: 0;
+}
 @media screen and (min-width: 750px) {
   .chatroom__container {
     display: flex;
