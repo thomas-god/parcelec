@@ -55,6 +55,13 @@ export const mutations: MutationTree<OTCState> = {
   PUSH_OTC(state, otc: OTC): void {
     state.otcs.push(otc);
   },
+  UPDATE_OTC(
+    state,
+    update: { otc_id: string; status: "accepted" | "rejected" }
+  ): void {
+    const otc = state.otcs.find((otc) => otc.id === update.otc_id);
+    if (otc !== undefined) otc.status = update.status;
+  },
 };
 
 // ------------------------ GETTERS -------------------------

@@ -154,6 +154,10 @@ function onMessageCallback(
           break;
         case "new-otc":
           commit("otcs/PUSH_OTC", message.data, opts);
+          break;
+        case 'otc-update':
+          commit("otcs/UPDATE_OTC", message.data, opts);
+          break;
       }
     }
   } catch (error) {
