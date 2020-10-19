@@ -178,12 +178,10 @@ export default class NewOTC extends Vue {
           method: "POST",
           headers: { "content-type": "application/json" },
           body: JSON.stringify({
-            user_from: this.username,
             user_to: this.user_to,
             type: this.type as "sell" | "buy",
             volume_mwh: Number(this.volume_mwh),
             price_eur_per_mwh: Number(this.price_eur_per_mwh),
-            status: "pending"
           })
         }
       );
