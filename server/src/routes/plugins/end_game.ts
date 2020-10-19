@@ -97,7 +97,7 @@ async function computeResults(
       results.prod_mwh = prod.length === 1 ? prod[0].prod_mwh : 0;
       results.prod_eur = prod.length === 1 ? prod[0].prod_eur : 0;
 
-      // Energy exchanges
+      // Energy exchanges (via market)
       const exchanges = (
         await db.query(
           `
@@ -115,6 +115,42 @@ async function computeResults(
       const sell = exchanges.find((e) => e.type === "sell");
       results.sell_mwh = sell !== undefined ? sell.volume_mwh : 0;
       results.sell_eur = sell !== undefined ? sell.price_eur : 0;
+
+      // Energy exchanges (via OTC)
+      const otcs = (
+        await db.query(
+          `SELECT
+            user_from_id,
+            user_to_id,
+            type,
+            volume_mwh,
+            volume_mwh * price_eur_per_mwh AS price_eur
+          FROM otc_exchanges
+          WHERE 
+            session_id=$1
+            AND phase_no=$2
+            AND (user_from_id=$3
+            OR user_to_id=$3)
+            AND status='accepted';`,
+          [session_id, phase_no, user.id]
+        )
+      ).rows;
+      otcs.forEach((otc) => {
+        if (
+          (otc.user_from_id === user.id && otc.type === "buy") ||
+          (otc.user_to_id === user.id && otc.type === "sell")
+        ) {
+          results.buy_mwh += otc.volume_mwh;
+          results.buy_eur += otc.price_eur;
+        }
+        if (
+          (otc.user_from_id === user.id && otc.type === "sell") ||
+          (otc.user_to_id === user.id && otc.type === "buy")
+        ) {
+          results.sell_mwh += otc.volume_mwh;
+          results.sell_eur += otc.price_eur;
+        }
+      });
 
       // Imbalance
       results.imbalance_mwh =
