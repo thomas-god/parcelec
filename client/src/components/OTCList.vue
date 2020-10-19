@@ -1,13 +1,13 @@
 <template>
   <div>
-    <h3>Contrats envoyés</h3>
+    <h3 v-if="otcs_send.length > 0">Contrats envoyés</h3>
     <OTCItem
       v-for="otc in otcs_send"
       :key="otc.id"
       :item="otc"
       :type="'send'"
     />
-    <h3>Contrats reçus</h3>
+    <h3 v-if="otcs_received.length > 0">Contrats reçus</h3>
     <OTCItem
       v-for="otc in otcs_received"
       :key="otc.id"
@@ -32,11 +32,15 @@ export default class OTCList extends Vue {
   @otc_module.State otcs!: OTC[];
 
   get otcs_send(): OTC[] {
-    return this.otcs.filter(otc => otc.user_from === this.username);
+    return this.otcs
+      .filter(otc => otc.user_from === this.username)
+      .sort((a, b) => (a.status > b.status ? 1 : -1));
   }
 
   get otcs_received(): OTC[] {
-    return this.otcs.filter(otc => otc.user_to === this.username);
+    return this.otcs
+      .filter(otc => otc.user_to === this.username)
+      .sort((a, b) => (a.status > b.status ? 1 : -1));
   }
 }
 </script>
