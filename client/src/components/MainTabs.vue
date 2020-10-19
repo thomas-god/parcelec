@@ -1,13 +1,13 @@
 <template>
-  <div class="tabs_container" ref="tabs_container">
+  <div class="tabs__container" ref="tabs_container">
     <div
       v-for="cat in categories"
       :key="cat.name"
-      :class="cat.name === value ? 'tabs_category_active' : 'tabs_category'"
+      :class="cat.name === value ? 'tabs__category_active' : 'tabs__category'"
       @click="update_category(cat.name)"
     >
       <span
-        class="tabs_category_logo"
+        class="tabs__category_logo"
         :style="
           cat.name === value
             ? style_tabs_category_logo_active
@@ -15,9 +15,12 @@
         "
         >{{ cat.logo }}</span
       >
-      <span class="tabs_category_name" v-if="display_tab_name">{{
+      <span class="tabs__category_name" v-if="display_tab_name">{{
         cat.name
       }}</span>
+      <span class="tabs__category_notif" v-if="cat.name === 'Marché' && n_pending_otcs > 0">
+        {{ n_pending_otcs }}
+      </span>
     </div>
   </div>
 </template>
@@ -27,12 +30,14 @@ import { Component, Vue, Prop } from "vue-property-decorator";
 import { namespace } from "vuex-class";
 
 const session_module = namespace("session");
+const otc_module = namespace("otcs")
 
 @Component
 export default class MainTabs extends Vue {
   @Prop({ default: "Home" }) value!: string;
   @session_module.Getter session_multi_game!: boolean;
   @session_module.State results_available!: boolean;
+  @otc_module.Getter n_pending_otcs!: number;
 
   update_category(new_cat: string): void {
     (document.getElementById('main') as HTMLDivElement).scrollIntoView();
@@ -98,7 +103,7 @@ export default class MainTabs extends Vue {
 </script>
 
 <style scoped>
-.tabs_container {
+.tabs__container {
   display: flex;
   flex-direction: row;
   justify-content: space-around;
@@ -113,28 +118,45 @@ export default class MainTabs extends Vue {
   border-bottom: 2px solid rgba(0, 0, 0, 0.712);
   background-color: white;
 }
+.tabs__category,
+.tabs__category_active {
+  position: relative;
+}
 
-.tabs_category:hover .tabs_category_name,
-.tabs_category_active .tabs_category_name {
+.tabs__category:hover .tabs__category_name,
+.tabs__category_active .tabs__category_name {
   font-style: italic;
 }
-.tabs_category_active .tabs_category_name {
+.tabs__category_active .tabs__category_name {
   font-weight: bold;
 }
 
-.tabs_category_name {
+.tabs__category_name {
   display: inline-block;
   box-sizing: border-box;
 }
 
-.tabs_category_logo {
+.tabs__category_logo {
   display: inline-block;
   width: 45px;
   box-sizing: border-box;
 }
 
-.tabs_category_logo,
-.tabs_category_name {
+.tabs__category_logo,
+.tabs__category_name {
   padding: 0 3px;
+}
+
+.tabs__category_notif {
+  position: absolute;
+  font-size: 10px;
+  top: -5px;
+  right: -12px;
+  padding: 2px;
+  border-radius: 4px;
+  background: red;
+  color: white;
+  width: 2ch;
+  box-sizing: border-box;
 }
 </style>

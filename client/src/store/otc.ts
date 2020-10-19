@@ -69,6 +69,15 @@ export const getters: GetterTree<OTCState, RootState> = {
   otcs_accepted(state): OTC[] {
     return state.otcs.filter((otc) => otc.status === "accepted");
   },
+  n_pending_otcs(state, _, rootState): number {
+    const username = rootState.user.username;
+    const can_post_planning = rootState.session.can_post_planning;
+    return can_post_planning
+      ? state.otcs.filter(
+          (otc) => otc.status === "pending" && otc.user_to === username
+        ).length
+      : 0;
+  },
 };
 
 // ------------------------ MODULE -------------------------
