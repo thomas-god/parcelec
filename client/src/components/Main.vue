@@ -28,7 +28,7 @@
             <strong>{{ conso.toLocaleString("fr-FR") }} MWh</strong>
           </span>
         </div>
-        <TimersText />
+        <TimersText class="app__phase_infos_timers"/>
         <Btn
           class="ready__btn"
           font_size="1.1rem"
@@ -81,11 +81,19 @@
                 active_category === 'Marché'
             "
           />
+          <OTC
+            class="app__main_item"
+            v-if="session.multi_game"
+            v-show="
+              (!results_available && active_category === 'Home') ||
+                active_category === 'Marché'
+            "
+          />
+
           <Chatroom
             class="app__main_item"
             v-show="active_category === 'Chat'"
           />
-          <OTC v-show="active_category === 'Marché'" class="app__main_item" />
         </div>
       </div>
     </div>
@@ -214,6 +222,9 @@ function toTimeString(dt: number): string {
 .app__phase_infos {
   margin: 1rem;
   font-size: 1.15rem;
+}
+.app__phase_infos_timers {
+  margin-top: 1rem;
 }
 
 .app__grid_main {
