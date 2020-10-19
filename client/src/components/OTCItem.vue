@@ -65,7 +65,7 @@ export default class OTCItem extends Vue {
   get otc_status(): string {
     switch (this.item.status) {
       case "pending":
-        return "en cours";
+        return "en attente";
       case "accepted":
         return "accepté";
       case "rejected":
