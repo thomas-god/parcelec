@@ -10,17 +10,22 @@
 import { Component, Prop, Vue } from "vue-property-decorator";
 import { State, namespace } from "vuex-class";
 import { EnergyExchange } from "../store/bids";
+import { OTC } from "../store/otc";
 import { PowerPlant } from "../store/portfolio";
 
-const portfolioModule = namespace("portfolio");
-const bidsModule = namespace("bids");
+const portfolio_module = namespace("portfolio");
+const bids_module = namespace("bids");
+const otcs_module = namespace("otcs");
+const user_module = namespace("user");
 
 @Component
 export default class PlanningBilansSimple extends Vue {
-  @portfolioModule.State power_plants!: PowerPlant[];
-  @portfolioModule.State conso!: number;
-  @bidsModule.State buy!: EnergyExchange;
-  @bidsModule.State sell!: EnergyExchange;
+  @user_module.State username!: string;
+  @portfolio_module.State power_plants!: PowerPlant[];
+  @portfolio_module.State conso!: number;
+  @bids_module.State buy!: EnergyExchange;
+  @bids_module.State sell!: EnergyExchange;
+  @otcs_module.Getter otcs_accepted!: OTC[];
 
   /**
    * Total costs in euros
@@ -32,11 +37,32 @@ export default class PlanningBilansSimple extends Vue {
       })
       .reduce((a, b) => a + b, 0);
   }
+  get otcs_total(): { volume_mwh: number; cost_eur: number } {
+    const res = { volume_mwh: 0, cost_eur: 0 };
+    this.otcs_accepted.forEach(otc => {
+      if (
+        (otc.user_from === this.username && otc.type === "sell") ||
+        (otc.user_to === this.username && otc.type === "buy")
+      ) {
+        res.cost_eur += otc.volume_mwh * otc.price_eur_per_mwh;
+        res.volume_mwh -= otc.volume_mwh;
+      }
+      if (
+        (otc.user_from === this.username && otc.type === "buy") ||
+        (otc.user_to === this.username && otc.type === "sell")
+      ) {
+        res.cost_eur -= otc.volume_mwh * otc.price_eur_per_mwh;
+        res.volume_mwh += otc.volume_mwh;
+      }
+    });
+    return res;
+  }
   get cost_total(): number {
     return (
       this.cost_production +
       this.buy.price_eur_per_mwh -
-      this.sell.price_eur_per_mwh
+      this.sell.price_eur_per_mwh +
+      this.otcs_total.cost_eur
     );
   }
   get cost_total_string(): string {
@@ -54,7 +80,8 @@ export default class PlanningBilansSimple extends Vue {
       ) -
       this.conso -
       this.sell.volume_mwh +
-      this.buy.volume_mwh
+      this.buy.volume_mwh + 
+      this.otcs_total.volume_mwh
     );
   }
   get mwh_total_string(): string {
@@ -75,9 +102,8 @@ export default class PlanningBilansSimple extends Vue {
    * Dynamic styles
    */
   get style_bilans__mwh(): string {
-    let style = '';
-    if(this.planning_delta_mwh !== 0)
-      style += 'color: red;';
+    let style = "";
+    if (this.planning_delta_mwh !== 0) style += "color: red;";
     return style;
   }
 }

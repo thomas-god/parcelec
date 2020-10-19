@@ -65,7 +65,11 @@ export const mutations: MutationTree<OTCState> = {
 };
 
 // ------------------------ GETTERS -------------------------
-export const getters: GetterTree<OTCState, RootState> = {};
+export const getters: GetterTree<OTCState, RootState> = {
+  otcs_accepted(state): OTC[] {
+    return state.otcs.filter((otc) => otc.status === "accepted");
+  },
+};
 
 // ------------------------ MODULE -------------------------
 export const otcs: Module<OTCState, RootState> = {
