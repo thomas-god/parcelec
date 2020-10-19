@@ -1,6 +1,5 @@
 <template>
   <div>
-    <h3>Messages</h3>
     <ul class="message__messages">
       <li v-for="msg in messages" :key="msg.date" class="message__msg">
         <span class="message__msg_user">{{ msg.username }} :</span>

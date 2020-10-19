@@ -106,3 +106,5 @@ dist
 # DB dev data
 **/db/data
 /resources
+
+.env.development

@@ -139,6 +139,20 @@ CREATE TABLE exchanges
   price_eur_per_mwh REAL NOT NULL
 );
 
+CREATE TABLE otc_exchanges 
+(
+  id UUID PRIMARY KEY NOT NULL,
+  user_from_id UUID REFERENCES users (id) ON DELETE CASCADE,
+  user_to_id UUID REFERENCES users (id) ON DELETE CASCADE,
+  session_id UUID,
+  phase_no INT,
+  FOREIGN KEY (session_id, phase_no) REFERENCES phases (session_id, phase_no) ON DELETE CASCADE,
+  type TEXT CHECK (type IN ('buy', 'sell')),
+  volume_mwh REAL NOT NULL CHECK (volume_mwh > 0),
+  price_eur_per_mwh REAL NOT NULL,
+  status TEXT CHECK (status IN ('pending', 'accepted', 'rejected'))
+);
+
 CREATE TABLE production_plannings 
 (
   user_id UUID REFERENCES users (id) ON DELETE CASCADE,

@@ -49,7 +49,7 @@ export async function checkUserReadyAction(session_id: string): Promise<void> {
     }
     startNewGamePhase(session_id);
     resetUsersReady(session_id);
-  } else if (phase.bids_allowed === true && users_ready) {
+  } else if (phase !== null && phase.bids_allowed === true && users_ready) {
     const t0_sec = Date.now() / 1000;
     // Clear the timer and directly call the clearing callback
     logger.info("skipping to clearing", {
@@ -77,6 +77,7 @@ export async function checkUserReadyAction(session_id: string): Promise<void> {
       [t0_sec, t0_sec + dt_sec, session_id, phase.phase_no]
     );
   } else if (
+    phase !== null &&
     phase.clearing_available === true &&
     phase.plannings_allowed === true &&
     users_ready

@@ -98,3 +98,31 @@ export function sendUpdateToUsers(
     });
   }
 }
+
+/**
+ * Send an update/message to a specific user of the session, authored
+ * as the SERVER.
+ * @param session_id Session UUID
+ * @param user_id User UUID
+ * @param reason Reason of the message
+ * @param payload Content of the message
+ */
+export function notifyUser(
+  session_id: string,
+  user_id: string,
+  reason: string,
+  payload: any
+): void {
+  if (Object.keys(sessions).includes(session_id)) {
+    if(Object.keys(sessions[session_id]).includes(user_id)) {
+      sessions[session_id][user_id].send(
+        JSON.stringify({
+          username: 'SERVER',
+          date: new Date(),
+          reason: reason,
+          data: payload
+        })
+      )
+    }
+  }
+}
