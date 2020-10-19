@@ -1158,6 +1158,8 @@ export async function getUserOTCs(
   session_id: string,
   user_id: string
 ): Promise<OTCEnergyExchangeNoIDs[]> {
+  const phase_no = await getLastPhaseNo(session_id);
+  console.log(phase_no);
   return (
     await db.query(
       `SELECT
@@ -1178,8 +1180,9 @@ export async function getUserOTCs(
       WHERE 
         (otc.user_from_id=$1
         OR otc.user_to_id=$1)
-        AND otc.session_id=$2;`,
-      [user_id, session_id]
+        AND otc.session_id=$2
+        AND otc.phase_no=$3;`,
+      [user_id, session_id, phase_no]
     )
   ).rows as OTCEnergyExchangeNoIDs[];
 }
