@@ -11,15 +11,14 @@
           @click="getScenarioDetails(s.id)"
           :class="s.id === scenario_id ? 'scenario__selected' : ''"
         >
-          {{
-            s.name
-          }}
+          {{ s.name }}
         </li>
       </ul>
       <ScenarioIDCard
         :options="scneario_options"
         :portfolio="scenario_portfolio"
         class="scenario__ID"
+        v-if="scenario_id !== ''"
       />
     </div>
     <div class="session_open">
@@ -47,7 +46,7 @@ import { Component, Prop, Vue } from "vue-property-decorator";
 import { State, Action, Getter, namespace } from "vuex-class";
 import { Session } from "../store/session";
 import ScenarioIDCard from "./SessionSelectScenarioIDCard.vue";
-import Btn from './base/Button.vue'
+import Btn from "./base/Button.vue";
 
 const sessionModule = namespace("session");
 
@@ -64,7 +63,7 @@ export default class SessionSelectScenario extends Vue {
    */
   async getScenarios(): Promise<void> {
     const res = await fetch(`${this.api_url}/scenarios`, {
-      method: "GET",
+      method: "GET"
     });
     this.scenarios = await res.json();
   }
@@ -78,7 +77,7 @@ export default class SessionSelectScenario extends Vue {
   async getScenarioDetails(scenario_id: string): Promise<void> {
     this.scenario_id = scenario_id;
     const res = await fetch(`${this.api_url}/scenario/${this.scenario_id}`, {
-      method: "GET",
+      method: "GET"
     });
     if (res.status === 200) {
       const body = await res.json();
@@ -106,8 +105,8 @@ export default class SessionSelectScenario extends Vue {
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
           session_name: this.new_session_name,
-          scenario_id: this.scenario_id,
-        }),
+          scenario_id: this.scenario_id
+        })
       });
       if (res.status === 201) {
         this.new_session_name_err = false;
@@ -166,6 +165,9 @@ export default class SessionSelectScenario extends Vue {
     grid-template-rows: minmax(100px, auto) auto;
     gap: 1rem;
   }
+  .scenarios__list {
+    text-align: start;
+  }
 }
 
 .scenarios__list,
@@ -191,7 +193,7 @@ li {
   box-sizing: border-box;
 }
 
-li:hover{
+li:hover {
   background-color: rgb(0, 151, 98, 0.2);
 }
 .scenario__selected {
