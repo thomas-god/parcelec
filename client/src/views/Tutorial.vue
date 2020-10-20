@@ -4,14 +4,14 @@
       <Btn
         :background_color="'green'"
         @click="tuto_step -= 1"
-        :disabled="tuto_step === 0"
+        :disabled="tuto_step <= 0"
         >⬅️</Btn
       >
       <h2>{{ titles[tuto_step] }}</h2>
       <Btn
         :background_color="'green'"
         @click="tuto_step += 1"
-        :disabled="tuto_step === 5"
+        :disabled="tuto_step >= titles.length - 1"
         >➡️</Btn
       >
     </div>
@@ -55,7 +55,6 @@ export default class Tutorial extends Vue {
     "Vos centrales",
     "Le marché",
     "Les échanges directs",
-    "Résultats"
   ];
 }
 </script>

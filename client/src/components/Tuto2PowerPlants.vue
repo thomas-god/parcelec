@@ -124,11 +124,21 @@ export default class TutoPowerPlants extends Vue {
 
 <style scoped>
 .tuto__pplist {
-  width: 75%;
   max-width: 700px;
   margin: auto;
-  padding: 1rem;
   text-align: center;
+}
+@media screen and (min-width: 500px) {
+  .tuto__pplist {
+    width: 75%;
+  padding: 1rem;
+  }
+}
+@media screen and (max-width: 500px) {
+  .tuto__pplist {
+    width: 100%;
+  padding: 0rem;
+  }
 }
 .tuto__eod {
   width: 75%;

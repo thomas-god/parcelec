@@ -40,6 +40,7 @@ export default class TutoOTC extends Vue {
   width: 100%;
   max-width: 500px;
   box-sizing: border-box;
+  overflow: hidden;
   margin: auto;
 }
 </style>
