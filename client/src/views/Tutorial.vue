@@ -1,27 +1,29 @@
 <template>
   <div class="tuto">
-    <h2 class="tuto_title">Titre de l'étape du tuto</h2>
+    <h2 class="tuto_title">{{titles[tuto_step]}}</h2>
 
     <div class="tuto__nav">
-      <Btn :background_color="'green'">⬅️</Btn>
+      <Btn
+        :background_color="'green'"
+        @click="tuto_step -= 1"
+        :disabled="tuto_step === 0"
+        >⬅️</Btn
+      >
       {{ tuto_step }}/7
-      <Btn :background_color="'green'">➡️</Btn>
+      <Btn
+        :background_color="'green'"
+        @click="tuto_step += 1"
+        :disabled="tuto_step === 5"
+        >➡️</Btn
+      >
     </div>
 
-    <div class="tuto__content">
-      <p>
-        Lorem ipsum dolor sit, amet consectetur adipisicing elit. Saepe
-        accusamus nulla impedit atque temporibus, delectus non quod odit odio
-        laboriosam eius tenetur reiciendis iusto minima ducimus, est amet vitae
-        et!
-      </p>
-      <p>
-        Lorem, ipsum dolor sit amet consectetur adipisicing elit. A amet
-        reprehenderit sequi tempore dignissimos dolores laboriosam, impedit eum
-        eius blanditiis voluptate delectus ad. Ad officia ea, similique nulla
-        dolorum ducimus!
-      </p>
-    </div>
+    <TutoHome v-show="tuto_step === 0" class="tuto__content" />
+    <TutoEOD v-show="tuto_step === 1" class="tuto__content" />
+    <TutoPowerPlants v-show="tuto_step === 2" class="tuto__content" />
+    <TutoMarket v-show="tuto_step === 3" class="tuto__content" />
+    <TutoOTC v-show="tuto_step === 4" class="tuto__content" />
+    <TutoResults v-show="tuto_step === 5" class="tuto__content" />
   </div>
 </template>
 
@@ -48,7 +50,15 @@ import TutoResults from "../components/Tuto5Results.vue";
   }
 })
 export default class Home extends Vue {
-  @State tuto_step!: number;
+  tuto_step = 0;
+  titles = [
+    'Tutoriel',
+    'Equilibre offre-demande',
+    'Vos centrales',
+    'Le marché',
+    'Les échanges directs',
+    'Résultats'
+  ]
 }
 </script>
 
