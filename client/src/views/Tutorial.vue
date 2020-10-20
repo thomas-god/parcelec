@@ -5,14 +5,16 @@
         :background_color="'green'"
         @click="tuto_step -= 1"
         :disabled="tuto_step <= 0"
-        >⬅️</Btn
+        :font_size="'1rem'"
+        >⬅</Btn
       >
       <h2>{{ titles[tuto_step] }}</h2>
       <Btn
         :background_color="'green'"
         @click="tuto_step += 1"
         :disabled="tuto_step >= titles.length - 1"
-        >➡️</Btn
+        :font_size="'1rem'"
+        >➡</Btn
       >
     </div>
 
@@ -65,7 +67,7 @@ export default class Tutorial extends Vue {
   flex-direction: row;
   justify-content: center;
   align-items: center;
-  margin: 1rem auto 1.5rem;
+  margin: 1rem auto 0rem;
   padding: 0 1rem;
 }
 .tuto__nav h2 {
