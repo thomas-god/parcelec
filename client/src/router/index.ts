@@ -1,6 +1,7 @@
 import Vue from "vue";
 import VueRouter, { NavigationGuardNext, Route, RouteConfig } from "vue-router";
 import Home from "../views/Home.vue";
+import Tutorial from "../views/Tutorial.vue";
 import Main from "../components/Main.vue";
 import SessionSelectMulti from "../components/SessionSelectMulti.vue";
 import SessionSelectScenario from "../components/SessionSelectScenario.vue";
@@ -18,6 +19,11 @@ const routes: Array<RouteConfig> = [
     path: "/",
     name: "Home",
     component: Home,
+  },
+  {
+    path: "/tutorial",
+    name: "Tutorial",
+    component: Tutorial,
   },
   {
     path: "/join",
