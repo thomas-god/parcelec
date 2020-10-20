@@ -18,8 +18,8 @@
       >
     </div>
 
-    <TutoHome v-if="tuto_step === 0" class="tuto__content" />
-    <TutoEOD v-if="tuto_step === 1" class="tuto__content" />
+    <TutoEOD v-if="tuto_step === 0" class="tuto__content" />
+    <TutoHome v-if="tuto_step === 1" class="tuto__content" />
     <TutoPowerPlants v-if="tuto_step === 2" class="tuto__content" />
     <TutoMarket v-if="tuto_step === 3" class="tuto__content" />
     <TutoOTC v-if="tuto_step === 4" class="tuto__content" />
@@ -50,8 +50,8 @@ import TutoOTC from "../components/TutoOTC.vue";
 export default class Tutorial extends Vue {
   tuto_step = 0;
   titles = [
-    "Phases de jeu",
     "Equilibre offre-demande",
+    "Phases de jeu",
     "Vos centrales",
     "Le marché",
     "Les échanges directs",
