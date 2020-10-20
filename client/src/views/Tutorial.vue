@@ -29,12 +29,11 @@
 import { Component, Prop, Vue } from "vue-property-decorator";
 import { State, Action, Getter, namespace } from "vuex-class";
 import Btn from "../components/base/Button.vue";
-import TutoHome from "../components/Tuto0Home.vue";
-import TutoEOD from "../components/Tuto1EOD.vue";
-import TutoPowerPlants from "../components/Tuto2PowerPlants.vue";
-import TutoMarket from "../components/Tuto3Market.vue";
-import TutoOTC from "../components/Tuto4OTC.vue";
-import TutoResults from "../components/Tuto5Results.vue";
+import TutoHome from "../components/TutoHome.vue";
+import TutoEOD from "../components/TutoEOD.vue";
+import TutoPowerPlants from "../components/TutoPowerPlants.vue";
+import TutoMarket from "../components/TutoMarket.vue";
+import TutoOTC from "../components/TutoOTC.vue";
 
 @Component({
   components: {
@@ -44,7 +43,6 @@ import TutoResults from "../components/Tuto5Results.vue";
     TutoPowerPlants,
     TutoMarket,
     TutoOTC,
-    TutoResults
   }
 })
 export default class Tutorial extends Vue {
