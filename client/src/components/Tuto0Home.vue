@@ -10,26 +10,30 @@
       exécuter toutes vos actions : achats/ventes sur le marché, allumer vos
       centrales, etc. Si vous pensez n'avoir plus rien à faire vous pouvez
       passer une phase et le jeu passera à la phase suivante si les autres
-      joueurs sont prets à passer.
+      joueurs sont pret·es à passer.
     </p>
     <div class="tuto__timers">
       <div v-if="time_before_clearing_ms > 0" class="tuto__timers_item">
-        Fermeture du marché dans :
-        <span class="tuto__timers_timer">{{
-          toTimeString(time_before_clearing_ms)
-        }}</span>
+        <span
+          >Fermeture du marché dans
+          <span class="tuto__timers_timer">{{
+            toTimeString(time_before_clearing_ms)
+          }}</span></span
+        >
         <Btn @click="skipTime(bids_duration_s)">Passer</Btn>
       </div>
       <div v-else class="tuto__timers_closed">
-        Marché fermé
+        <span>Marché fermé</span>
       </div>
 
       <div v-if="time_before_planning_ms > 0" class="tuto__timers_item">
         <span>
-          Fin de la réception des plannings dans :
-          <span class="tuto__timers_timer">{{
-            toTimeString(time_before_planning_ms)
-          }}</span>
+          <span>
+            Fin de la réception des plannings dans
+            <span class="tuto__timers_timer">{{
+              toTimeString(time_before_planning_ms)
+            }}</span></span
+          >
         </span>
         <Btn
           @click="skipTime(planning_duration_s)"
@@ -38,13 +42,13 @@
         >
       </div>
       <div v-else class="tuto__timers_closed">
-        Reception des plannings fermée
+        <span>Reception des plannings fermée</span>
       </div>
     </div>
     <p>
       Quand une phase se termine, vous recevrez vos resultats
       technico-financiers qui vous aideront à prendre de meilleures décisions
-      dans les phases suivantes. Quand tous les joueurs sont prets, le jeu
+      dans les phases suivantes. Quand tous les joueurs sont pret·es, le jeu
       passera automatiquement à la phase suivante.
     </p>
   </div>
@@ -106,7 +110,7 @@ export default class TutoHome extends Vue {
 
 <style scoped>
 .tuto__timers {
-  width: 75%;
+  max-width: 400px;
   margin: auto;
   padding: 1rem;
   border: 1px solid gray;
@@ -115,12 +119,13 @@ export default class TutoHome extends Vue {
 
   display: grid;
   grid-auto-columns: 1fr;
-  grid-auto-rows: 1.7rem 1.7rem;
-  gap: 0.6rem
+  grid-auto-rows: 2rem 2rem;
+  gap: 0.6rem;
 }
 
 .tuto__timers_timer {
   display: inline-block;
+  padding-left: 0.7ch;
   width: 55px;
   font-weight: bold;
 }
@@ -132,7 +137,8 @@ export default class TutoHome extends Vue {
 .tuto__timers_closed {
   display: flex;
   flex-direction: row;
-  justify-content: start;
+  justify-content: flex-start;
   align-items: center;
+  text-align: start;
 }
 </style>
