@@ -14,6 +14,7 @@ export interface RootState {
   version: string;
   api_url: string;
   ws_url: string;
+  tuto_step: number;
   user: UserState;
   session: SessionState;
   ws: WebSocketState;
@@ -27,6 +28,7 @@ const state: RootState = {
   version: "0.1.0",
   api_url: process.env.VUE_APP_API_URL,
   ws_url: process.env.VUE_APP_WS_URL,
+  tuto_step: 0,
 } as RootState;
 
 const store: StoreOptions<RootState> = {
