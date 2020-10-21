@@ -169,7 +169,7 @@ export function computeClearing(
       if (sell[is].vol_end < buy[ib].vol_end) {
         const p = findPrice(sell[is].vol_end, buy);
         if (is + 1 < ns) {
-          if (sell[is].price <= p && p <= sell[is + 1].price) {
+          if (sell[is].price <= p && p < sell[is + 1].price) {
             // Clearing if sell curve intersects buy curve
             clearing.price = p;
             clearing.volume = sell[is].vol_end;
@@ -190,7 +190,7 @@ export function computeClearing(
       } else if (buy[ib].vol_end < sell[is].vol_end) {
         const p = findPrice(buy[ib].vol_end, sell);
         if (ib + 1 < nb) {
-          if (buy[ib + 1].price <= p && p <= buy[ib].price) {
+          if (buy[ib + 1].price < p && p <= buy[ib].price) {
             // Clearing if buy curve intersects sell curve
             clearing.price = p;
             clearing.volume = buy[ib].vol_end;

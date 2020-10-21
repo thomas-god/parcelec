@@ -155,6 +155,17 @@ describe("Compute correct clearing values for various bids scenarios", () => {
     expect(clearing_value.volume).toEqual(0);
     expect(clearing_value.price).toEqual(0);
   });
+
+  test("Bids scenario 8", () => {
+    const bids = [
+      { type: "sell", volume_mwh: 400, price_eur_per_mwh: 25 },
+      { type: "buy", volume_mwh: 200, price_eur_per_mwh: 25 },
+      { type: "buy", volume_mwh: 200, price_eur_per_mwh: 40 },
+    ];
+    const clearing_value = computeClearing(bids);
+    expect(clearing_value.volume).toEqual(400);
+    expect(clearing_value.price).toEqual(25);
+  });
 });
 
 /**
