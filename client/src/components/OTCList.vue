@@ -14,6 +14,7 @@
       :item="otc"
       :type="'received'"
     />
+    <h3 v-if="otcs.length === 0">Vous n'avez pas de contrats</h3>
   </div>
 </template>
 
