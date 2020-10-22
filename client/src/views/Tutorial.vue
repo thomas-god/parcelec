@@ -2,28 +2,31 @@
   <div class="tuto">
     <h2>{{ titles[tuto_step] }}</h2>
     <div class="tuto__nav">
-        <Btn
-          :background_color="'green'"
-          @click="tuto_step -= 1"
-          :disabled="tuto_step <= 0"
-          :font_size="'0.9rem'"
-          >Prec.</Btn
-        >
-        <Btn
-          :background_color="'green'"
-          @click="tuto_step += 1"
-          :disabled="tuto_step >= titles.length - 1"
-          :font_size="'0.9rem'"
-          >Suivant</Btn
-        >
+      <Btn
+        :background_color="'green'"
+        @click="tuto_step -= 1"
+        :disabled="tuto_step <= 0"
+        :font_size="'0.9rem'"
+        >Prec.</Btn
+      >
+      <Btn
+        :background_color="'green'"
+        @click="tuto_step += 1"
+        :disabled="tuto_step >= titles.length - 1"
+        :font_size="'0.9rem'"
+        >Suivant</Btn
+      >
     </div>
 
     <TutoEOD v-if="tuto_step === 0" class="tuto__content" />
     <TutoHome v-if="tuto_step === 1" class="tuto__content" />
     <TutoPowerPlants v-if="tuto_step === 2" class="tuto__content" />
-    <TutoMarket v-if="tuto_step === 3" class="tuto__content" />
-    <TutoOTC v-if="tuto_step === 4" class="tuto__content" />
-    <TutoResults v-if="tuto_step === 5" class="tuto__content" />
+    <TutoPlanning v-if="tuto_step === 3" class="tuto__content" />
+    <TutoMarket v-if="tuto_step === 4" class="tuto__content" />
+    <TutoOTC v-if="tuto_step === 5" class="tuto__content" />
+    <TutoResults v-if="tuto_step === 6" class="tuto__content" />
+
+    <BilanSimple class="tuto__footer_bilans" />
   </div>
 </template>
 
@@ -31,18 +34,22 @@
 import { Component, Prop, Vue } from "vue-property-decorator";
 import { State, Action, Getter, namespace } from "vuex-class";
 import Btn from "../components/base/Button.vue";
+import BilanSimple from "../components/BilansSimple.vue";
 import TutoHome from "../components/TutoHome.vue";
 import TutoEOD from "../components/TutoEOD.vue";
 import TutoPowerPlants from "../components/TutoPowerPlants.vue";
+import TutoPlanning from "../components/TutoPlanning.vue";
 import TutoMarket from "../components/TutoMarket.vue";
 import TutoOTC from "../components/TutoOTC.vue";
 
 @Component({
   components: {
     Btn,
+    BilanSimple,
     TutoHome,
     TutoEOD,
     TutoPowerPlants,
+    TutoPlanning,
     TutoMarket,
     TutoOTC
   }
@@ -53,6 +60,7 @@ export default class Tutorial extends Vue {
     "Equilibre offre-demande",
     "Phases de jeu",
     "Vos centrales",
+    "Votre planning",
     "Le marché",
     "Les échanges directs"
   ];
@@ -83,7 +91,7 @@ export default class Tutorial extends Vue {
   margin: 0 1rem;
 }
 .tuto__content {
-  margin: 0rem auto;
+  margin: 0rem auto 4rem;
   padding: 0 1.5rem;
   max-width: 600px;
 }
@@ -92,8 +100,23 @@ export default class Tutorial extends Vue {
   margin-top: 0;
 }
 
-.tuto__content >>> p {
+.tuto__content >>> p,
+.tuto__content >>> li {
   font-size: 1.2rem;
   text-align: start;
+}
+
+.tuto__footer_bilans {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background-color: rgb(204, 218, 250);
+  border-top: 1px solid black;
+  position: fixed;
+  bottom: 0;
+  z-index: 10;
+  font-size: 1.5rem;
+  height: 2.2rem;
 }
 </style>
