@@ -6,9 +6,14 @@
         <em>{{ session.name }}</em> !
       </h1>
       <p>
-        Vous pouvez discuter avec les autres joueurs connectés, prendre
-        connaissance de vos centrales, et quand vous serez prêt·e à démarrer la
-        partie, cliquez sur le bouton
+        Vous pouvez
+        {{
+          session.multi_game
+            ? "discuter avec les autres joueurs connectés,"
+            : ""
+        }}
+        prendre connaissance de vos centrales, et quand vous serez prêt·e à
+        démarrer la partie, cliquez sur le bouton
         <em>"Je suis prêt·e !"</em>
       </p>
       <Btn font_size="1.1rem" @click="setStatusReady" :disabled="ready">
