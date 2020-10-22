@@ -24,7 +24,7 @@
     <TutoPlanning v-if="tuto_step === 3" class="tuto__content" />
     <TutoMarket v-if="tuto_step === 4" class="tuto__content" />
     <TutoOTC v-if="tuto_step === 5" class="tuto__content" />
-    <TutoResults v-if="tuto_step === 6" class="tuto__content" />
+    <TutoEnd v-if="tuto_step === 6" class="tuto__content" />
 
     <BilanSimple class="tuto__footer_bilans" />
   </div>
@@ -41,6 +41,7 @@ import TutoPowerPlants from "../components/TutoPowerPlants.vue";
 import TutoPlanning from "../components/TutoPlanning.vue";
 import TutoMarket from "../components/TutoMarket.vue";
 import TutoOTC from "../components/TutoOTC.vue";
+import TutoEnd from "../components/TutoEnd.vue";
 
 @Component({
   components: {
@@ -51,7 +52,8 @@ import TutoOTC from "../components/TutoOTC.vue";
     TutoPowerPlants,
     TutoPlanning,
     TutoMarket,
-    TutoOTC
+    TutoOTC,
+    TutoEnd
   }
 })
 export default class Tutorial extends Vue {
@@ -62,7 +64,8 @@ export default class Tutorial extends Vue {
     "Vos centrales",
     "Votre planning",
     "Le marché",
-    "Les échanges directs"
+    "Les échanges directs",
+    "Commencer une partie !"
   ];
 }
 </script>
