@@ -232,8 +232,11 @@ export default class BidItem extends Vue {
   height: 1rem;
 }
 
-.bid__container_actions button {
-  margin: 0 1rem;
+.bid__container_actions button:first-of-type {
+  margin-right: 1rem;
+}
+.bid__container_actions button:last-of-type {
+  margin-left: 1rem;
 }
 
 /* Chrome, Safari, Edge, Opera */
