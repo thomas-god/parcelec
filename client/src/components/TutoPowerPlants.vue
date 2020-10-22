@@ -10,7 +10,12 @@
       centrale déplacez son curseur et observez comment votre position et votre
       coût varient.
     </p>
-    <BilanSimple class="tuto__eod" />
+    <PowerPlantsList
+      :show_actions="false"
+      :dummy="true"
+      :show_title="false"
+      class="tuto__pp"
+    />
     <p>
       Une centrale possède 2 caractéristiques importantes : son coût (en €/MWh)
       et son stock (en MWh). Le prix d'une centrale inlfuera directement sur
@@ -20,26 +25,31 @@
       production !
     </p>
     <p>
-      Il existe plusieurs types de centrales : les centrales nucléaires ☢️ ont
-      un coût de production faible et des puissances maximales importantes mais
-      ne peuvent fonctionner à faibles puissances, les centrales thermiques 🔥
-      coûtent cher à produire mais sont très flexibles, les centrales
-      hydrauliques 💧 ne coutent rien à produire mais on un stock limité, les
-      centrales de stockage 🔋 peuvent être rechargées si leur stock est trop
-      bas, et enfin les centrales renouvelables ☀️ ne coûtent rien à produire
-      mais vous ne pouvez pas choisir leur point de fonctionnement.
+      Il existe plusieurs types de centrales :
     </p>
-    <p>
-      L'ensemble des points de consigne de vos centrales constitue votre
-      programme d'appel. Une fois qu'un programme d'appel vous satisfait vous
-      devez l'envoyer en cliquant sur le bouton <em>Envoyer</em> en bas de la
-      liste de vos centrales. Attention, tant qu'un programme d'appel n'est pas
-      envoyé il ne sera pas pris en compte ! Votre position sera affichée en
-      rouge quand vous avez des modifications non envoyées. Vous pouvez modifier
-      autant de fois que vous le souhaitez votre programme d'appel avant la fin
-      d'une phase.
-    </p>
-    <PowerPlantsList class="tuto__pplist" :dummy="true" />
+    <ul>
+      <li>
+        ☢️ les centrales nucléaires ont un coût de production faible et des
+        puissances maximales importantes mais ne peuvent fonctionner à faibles
+        puissances,
+      </li>
+      <li>
+        🔥 les centrales thermiques coûtent cher à produire mais sont très
+        flexibles,
+      </li>
+      <li>
+        💧 les centrales hydrauliques ne coutent rien à produire mais on un
+        stock limité,
+      </li>
+      <li>
+        🔋 les centrales de stockage peuvent être rechargées si leur stock est
+        trop bas,
+      </li>
+      <li>
+        ☀️ enfin les centrales renouvelables ne coûtent rien à produire mais
+        vous ne pouvez pas choisir leur point de fonctionnement.
+      </li>
+    </ul>
   </div>
 </template>
 
@@ -60,7 +70,6 @@ export default class TutoPowerPlants extends Vue {
   @portfolio_module.State power_plants!: PowerPlant[];
 
   created() {
-    // Set dummy portfolio for demonstration purpose
     this.SET_POWER_PLANTS([
       {
         id: "1",
@@ -72,50 +81,6 @@ export default class TutoPowerPlants extends Vue {
         planning: 0,
         planning_modif: 0,
         stock_mwh: -1
-      },
-      {
-        id: "2",
-        type: "hydro",
-        p_min_mw: 50,
-        p_max_mw: 500,
-        stock_max_mwh: 1000,
-        price_eur_per_mwh: 0,
-        planning: 0,
-        planning_modif: 0,
-        stock_mwh: 1000
-      },
-      {
-        id: "3",
-        type: "therm",
-        p_min_mw: 150,
-        p_max_mw: 600,
-        stock_max_mwh: -1,
-        price_eur_per_mwh: 65,
-        planning: 0,
-        planning_modif: 0,
-        stock_mwh: -1
-      },
-      {
-        id: "4",
-        type: "ren",
-        p_min_mw: 0,
-        p_max_mw: 350,
-        stock_max_mwh: -1,
-        price_eur_per_mwh: 0,
-        planning: 150,
-        planning_modif: 0,
-        stock_mwh: -1
-      },
-      {
-        id: "5",
-        type: "storage",
-        p_min_mw: 100,
-        p_max_mw: 500,
-        stock_max_mwh: 1000,
-        price_eur_per_mwh: 0,
-        planning: 0,
-        planning_modif: 0,
-        stock_mwh: 500
       }
     ]);
   }
@@ -123,35 +88,15 @@ export default class TutoPowerPlants extends Vue {
 </script>
 
 <style scoped>
-.tuto__pplist {
-  max-width: 700px;
-  margin: auto;
-  text-align: center;
+.tuto__pp {
+  margin-top: 1rem;
 }
-@media screen and (min-width: 500px) {
-  .tuto__pplist {
-    width: 75%;
-  padding: 1rem;
-  }
+.tuto__pp :first-child {
+  margin-bottom: 0rem !important;
 }
-@media screen and (max-width: 500px) {
-  .tuto__pplist {
-    width: 100%;
-  padding: 0rem;
-  }
-}
-.tuto__eod {
-  width: 75%;
-  height: 2rem;
-  margin: auto;
-  display: flex;
-  flex-direction: row;
-  justify-content: center;
-  align-items: center;
-  font-size: 1.3rem;
 
-  border: 1px solid rgb(95, 95, 95);
-  border-radius: 1rem;
-  background-color: rgb(204, 218, 250);
+ul {
+  margin-top: 0;
+  padding-left: 1rem;
 }
 </style>
