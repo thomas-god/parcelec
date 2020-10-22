@@ -21,7 +21,7 @@
 
 <script lang="ts">
 import { Component, Prop, Vue } from "vue-property-decorator";
-import Btn from "../components/base/Button.vue";              
+import Btn from "../components/base/Button.vue";
 
 @Component({ components: { Btn } })
 export default class Home extends Vue {}
@@ -40,22 +40,8 @@ export default class Home extends Vue {}
   margin: 0 0rem 1rem;
   word-break: break-word;
   hyphens: auto;
-}
-
-.home p {
   max-width: 600px;
-}
-
-@media screen and (min-width: 900px) {
-  .home {
-    padding: 0 1.5rem;
-  }
-}
-@media screen and (max-width: 900px) {
-  .home p {
-    text-align: initial;
-    padding: 0 1.5rem;
-  }
+  padding: 0 1.5rem;
 }
 
 .home__actions button {
