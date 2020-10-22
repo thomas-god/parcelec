@@ -1,21 +1,21 @@
 <template>
   <div class="tuto">
+    <h2>{{ titles[tuto_step] }}</h2>
     <div class="tuto__nav">
-      <Btn
-        :background_color="'green'"
-        @click="tuto_step -= 1"
-        :disabled="tuto_step <= 0"
-        :font_size="'1rem'"
-        >⬅</Btn
-      >
-      <h2>{{ titles[tuto_step] }}</h2>
-      <Btn
-        :background_color="'green'"
-        @click="tuto_step += 1"
-        :disabled="tuto_step >= titles.length - 1"
-        :font_size="'1rem'"
-        >➡</Btn
-      >
+        <Btn
+          :background_color="'green'"
+          @click="tuto_step -= 1"
+          :disabled="tuto_step <= 0"
+          :font_size="'0.9rem'"
+          >Prec.</Btn
+        >
+        <Btn
+          :background_color="'green'"
+          @click="tuto_step += 1"
+          :disabled="tuto_step >= titles.length - 1"
+          :font_size="'0.9rem'"
+          >Suivant</Btn
+        >
     </div>
 
     <TutoEOD v-if="tuto_step === 0" class="tuto__content" />
@@ -44,7 +44,7 @@ import TutoOTC from "../components/TutoOTC.vue";
     TutoEOD,
     TutoPowerPlants,
     TutoMarket,
-    TutoOTC,
+    TutoOTC
   }
 })
 export default class Tutorial extends Vue {
@@ -54,31 +54,38 @@ export default class Tutorial extends Vue {
     "Phases de jeu",
     "Vos centrales",
     "Le marché",
-    "Les échanges directs",
+    "Les échanges directs"
   ];
 }
 </script>
 
 <style scoped>
+.tuto h2 {
+  display: inline-block;
+  padding: 0 1rem;
+  max-width: 300px;
+  margin: 1rem auto 0rem;
+}
 .tuto__nav {
   margin: 0rem auto;
-  height: 80px;
+  max-width: 600px;
+  box-sizing: border-box;
+  margin: 0.8rem auto 1.2rem;
+  padding: 0 1.5rem;
+
   display: flex;
   flex-direction: row;
   justify-content: center;
   align-items: center;
-  margin: 1rem auto 0rem;
-  padding: 0 1rem;
 }
-.tuto__nav h2 {
-  display: inline-block;
-  width: 200px;
-  padding: 0 1rem;
+.tuto__nav button {
+  width: 100px;
+  margin: 0 1rem;
 }
 .tuto__content {
   margin: 0rem auto;
-  padding: 0 1rem;
-  max-width: 700px;
+  padding: 0 1.5rem;
+  max-width: 600px;
 }
 
 .tuto__content > :first-child {
