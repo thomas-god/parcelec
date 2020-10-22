@@ -14,9 +14,6 @@
       Allumez des centrales ou achetez de l'énergie sur le marché pour passer à
       0 !
     </p>
-    <div class="tuto__bilan_eod">
-      -100 MWh / 5600 €
-    </div>
     <p>
       Une fois que vous êtes à l'équilibre il vous faudra encore produire au
       meilleure coût. Entre vos centrales et le marché il existera souvent
@@ -38,19 +35,5 @@ import { Component, Vue } from "vue-property-decorator";
 export default class TutoEOD extends Vue {}
 </script>
 
-<style scope>
-.tuto__bilan_eod {
-  width: 75%;
-  height: 2rem;
-  margin: auto;
-  display: flex;
-  flex-direction: row;
-  justify-content: center;
-  align-items: center;
-  font-size: 1.3rem;
-
-  border: 1px solid rgb(95, 95, 95);
-  border-radius: 1rem;
-  background-color: rgb(204, 218, 250);
-}
+<style scoped>
 </style>
