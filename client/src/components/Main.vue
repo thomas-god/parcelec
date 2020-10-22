@@ -28,7 +28,7 @@
             <strong>{{ conso.toLocaleString("fr-FR") }} MWh</strong>
           </span>
         </div>
-        <TimersText class="app__phase_infos_timers"/>
+        <TimersText class="app__phase_infos_timers" />
         <Btn
           class="ready__btn"
           font_size="1.1rem"
@@ -61,33 +61,21 @@
         <div class="app__main">
           <Bilans
             class="app__main_item"
-            v-show="
-              results_available &&
-                (active_category === 'Home' || active_category === 'Résultats')
-            "
+            v-show="results_available && active_category === 'Résultats'"
           />
           <PowerPlantsList
             class="app__main_item"
             :show_actions="!results_available"
-            v-show="
-              (!results_available && active_category === 'Home') ||
-                active_category === 'Centrales'
-            "
+            v-show="active_category === 'Centrales'"
           />
           <BidsList
             class="app__main_item"
-            v-show="
-              (!results_available && active_category === 'Home') ||
-                active_category === 'Marché'
-            "
+            v-show="active_category === 'Marché'"
           />
           <OTC
             class="app__main_item"
             v-if="session.multi_game"
-            v-show="
-              (!results_available && active_category === 'Home') ||
-                active_category === 'Marché'
-            "
+            v-show="active_category === 'Marché'"
           />
 
           <Chatroom
