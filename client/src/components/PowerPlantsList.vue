@@ -1,6 +1,6 @@
 <template>
   <div class="pp__list">
-    <h2>Vos centrales</h2>
+    <h2 v-if="show_title">Vos centrales</h2>
     <PowerPlantItem
       class="pp__list_item"
       v-for="(pp, id) in pp_sorted"
@@ -44,6 +44,7 @@ const portfolioModule = namespace("portfolio");
 export default class PowerPlantsList extends Vue {
   @Prop({ default: true }) show_actions!: boolean;
   @Prop({ default: false }) dummy!: boolean;
+  @Prop({ default: true}) show_title!: boolean;
   @portfolioModule.Getter power_plants!: PowerPlant[];
   @portfolioModule.Action resetPlanning!: () => {};
   @portfolioModule.Action onSuccessfulPlanningUpdate!: () => {};
