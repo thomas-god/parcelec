@@ -3,14 +3,14 @@
     <h2>{{ titles[tuto_step] }}</h2>
     <div class="tuto__nav">
       <Btn
-        :background_color="'green'"
+        :background_color="tuto_step > 0 ? 'green' : 'white'"
         @click="tuto_step -= 1"
         :disabled="tuto_step <= 0"
         :font_size="'0.9rem'"
-        >Prec.</Btn
+        >Préc.</Btn
       >
       <Btn
-        :background_color="'green'"
+        :background_color="tuto_step < titles.length - 1 ? 'green' : 'white'"
         @click="tuto_step += 1"
         :disabled="tuto_step >= titles.length - 1"
         :font_size="'0.9rem'"
