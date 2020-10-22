@@ -181,7 +181,7 @@ export default class NewOTC extends Vue {
             user_to: this.user_to,
             type: this.type as "sell" | "buy",
             volume_mwh: Number(this.volume_mwh),
-            price_eur_per_mwh: Number(this.price_eur_per_mwh),
+            price_eur_per_mwh: Number(this.price_eur_per_mwh)
           })
         }
       );
@@ -225,24 +225,60 @@ export default class NewOTC extends Vue {
 </script>
 
 <style scoped>
-.new_otc__inputs__container {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  margin-bottom: 1rem;
+@media screen and (min-width: 350px) {
+  .new_otc__inputs__container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-bottom: 1rem;
+  }
+  .new_otc__input_item {
+    display: grid;
+    grid-template-areas:
+      "label input"
+      "err err";
+    grid-template-columns: 130px 150px;
+    grid-template-rows: 1.7rem 1.4rem;
+    margin-bottom: 0rem;
+    column-gap: 1rem;
+    align-items: center;
+  }
+
+  .new_otc__input_item .err_msg {
+    text-align: end;
+  }
+}
+@media screen and (max-width: 350px) {
+  .new_otc__inputs__container {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    margin-bottom: 1rem;
+  }
+  .new_otc__input_item {
+    display: grid;
+    grid-template-areas:
+      "label"
+      "input"
+      "err";
+    grid-template-columns: 100%;
+    grid-template-rows: 1.7rem 1.7rem 1.4rem;
+    margin-bottom: 0rem;
+    column-gap: 1rem;
+    align-items: center;
+  }
+
+  .new_otc__input_item .err_msg {
+    text-align: start;
+  }
+  .new_otc__input_item label,
+  .new_otc__input_item input,
+  .new_otc__input_item select {
+    margin:auto;
+    text-align: center;
+  }
 }
 
-.new_otc__input_item {
-  display: grid;
-  grid-template-areas:
-    "label input"
-    "err err";
-  grid-template-columns: 130px 150px;
-  grid-template-rows: 1.7rem 1.4rem;
-  margin-bottom: 0rem;
-  column-gap: 1rem;
-  align-items: center;
-}
 .new_otc__input_item label {
   grid-area: label;
 }
@@ -251,7 +287,6 @@ export default class NewOTC extends Vue {
 }
 .new_otc__input_item .err_msg {
   grid-area: err;
-  text-align: end;
   font-style: italic;
   font-size: 0.9rem;
   color: red;
