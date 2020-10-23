@@ -5,7 +5,6 @@ import Vuex, {
   ActionTree,
   Commit,
 } from "vuex";
-import Vue from "vue";
 import { RootState } from "./index";
 
 export interface PowerPlant {
@@ -77,6 +76,11 @@ export const getters: GetterTree<PortfolioState, RootState> = {
   },
   conso(state): number {
     return state.conso;
+  },
+  delta_planning(state): number {
+    return state.power_plants
+      .map((pp) => pp.planning - pp.planning_modif)
+      .reduce((s, c) => s + c);
   },
 };
 

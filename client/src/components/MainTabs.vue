@@ -34,6 +34,7 @@ import { Notifications } from "../store";
 
 const session_module = namespace("session");
 const otc_module = namespace("otcs");
+const portfolio_module = namespace("portfolio");
 
 interface Category {
   name: string;
@@ -52,6 +53,7 @@ export default class MainTabs extends Vue {
   @Getter notification_market!: boolean;
   @Mutation SET_MARKET_NOTIFICATION!: (flag: boolean) => void;
   @Mutation SET_CHAT_NOTIFICATION!: (flag: boolean) => void;
+  @portfolio_module.Getter delta_planning!: number;
 
   update_category(cat: Category): void {
     (document.getElementById("main") as HTMLDivElement).scrollIntoView();
@@ -65,7 +67,7 @@ export default class MainTabs extends Vue {
   get categories(): Category[] {
     const categories = [
       { name: "Home", logo: "🏠" },
-      { name: "Centrales", logo: "⚡" },
+      { name: "Centrales", logo: "⚡", notif: this.delta_planning !== 0 },
       {
         name: "Marché",
         logo: "⚖️",
