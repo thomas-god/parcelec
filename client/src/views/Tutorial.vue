@@ -1,6 +1,6 @@
 <template>
   <div class="tuto">
-    <h2>{{ titles[tuto_step] }}</h2>
+    <h2>{{ tuto_steps[tuto_step].title }}</h2>
     <div class="tuto__nav">
       <Btn
         :background_color="tuto_step > 0 ? 'green' : 'white'"
@@ -10,21 +10,19 @@
         >Préc.</Btn
       >
       <Btn
-        :background_color="tuto_step < titles.length - 1 ? 'green' : 'white'"
+        :background_color="tuto_step < tuto_steps.length - 1 ? 'green' : 'white'"
         @click="tuto_step += 1"
-        :disabled="tuto_step >= titles.length - 1"
+        :disabled="tuto_step >= tuto_steps.length - 1"
         :font_size="'0.9rem'"
         >Suivant</Btn
       >
     </div>
-
-    <TutoEOD v-if="tuto_step === 0" class="tuto__content" />
-    <TutoHome v-if="tuto_step === 1" class="tuto__content" />
-    <TutoPowerPlants v-if="tuto_step === 2" class="tuto__content" />
-    <TutoPlanning v-if="tuto_step === 3" class="tuto__content" />
-    <TutoMarket v-if="tuto_step === 4" class="tuto__content" />
-    <TutoOTC v-if="tuto_step === 5" class="tuto__content" />
-    <TutoEnd v-if="tuto_step === 6" class="tuto__content" />
+    <keep-alive>
+      <component
+        v-bind:is="tuto_steps[tuto_step].component"
+        class="tuto__content"
+      ></component>
+    </keep-alive>
 
     <BilanSimple class="tuto__footer_bilans" />
   </div>
@@ -35,7 +33,6 @@ import { Component, Prop, Vue } from "vue-property-decorator";
 import { State, Action, Getter, namespace } from "vuex-class";
 import Btn from "../components/base/Button.vue";
 import BilanSimple from "../components/BilansSimple.vue";
-import TutoHome from "../components/TutoHome.vue";
 import TutoEOD from "../components/TutoEOD.vue";
 import TutoPowerPlants from "../components/TutoPowerPlants.vue";
 import TutoPlanning from "../components/TutoPlanning.vue";
@@ -47,7 +44,6 @@ import TutoEnd from "../components/TutoEnd.vue";
   components: {
     Btn,
     BilanSimple,
-    TutoHome,
     TutoEOD,
     TutoPowerPlants,
     TutoPlanning,
@@ -58,14 +54,13 @@ import TutoEnd from "../components/TutoEnd.vue";
 })
 export default class Tutorial extends Vue {
   tuto_step = 0;
-  titles = [
-    "Equilibre offre-demande",
-    "Phases de jeu",
-    "Vos centrales",
-    "Votre planning",
-    "Le marché",
-    "Les échanges directs",
-    "Commencer une partie !"
+  tuto_steps = [
+    { title: "But du jeu", component: TutoEOD },
+    { title: "Vos centrales", component: TutoPowerPlants },
+    { title: "Votre planning", component: TutoPlanning },
+    { title: "Le marché", component: TutoMarket },
+    { title: "Les échanges directs", component: TutoOTC },
+    { title: "Commencer une partie !", component: TutoEnd }
   ];
 }
 </script>
@@ -106,7 +101,7 @@ export default class Tutorial extends Vue {
 .tuto__content >>> p,
 .tuto__content >>> li {
   font-size: 1.2rem;
-  text-align: start;
+  text-align: justify;
 }
 
 .tuto__footer_bilans {
