@@ -2,13 +2,18 @@
   <div>
     <p>
       L'ensemble des points de consigne de vos centrales constitue votre
-      programme d'appel. Une fois qu'un programme d'appel vous satisfait vous
-      devez l'envoyer en cliquant sur le bouton <em>Envoyer</em> en bas de la
-      liste de vos centrales. Attention, tant qu'un programme d'appel n'est pas
-      envoyé il ne sera pas pris en compte ! Votre position sera affichée en
-      rouge quand vous avez des modifications non envoyées. Vous pouvez modifier
-      autant de fois que vous le souhaitez votre programme d'appel avant la fin
-      d'une phase.
+      <em>programme d'appel</em>.
+    </p>
+    <p>
+      Une fois qu'un programme d'appel vous satisfait vous devez l'envoyer en
+      cliquant sur le bouton <em>Envoyer</em> en bas de la liste de vos
+      centrales. Vous pouvez modifier autant de fois que vous le souhaitez votre
+      programme d'appel avant la fin d'une phase.
+    </p>
+    <p>
+      Attention, tant qu'un programme d'appel n'est pas envoyé il ne sera pas
+      pris en compte ! Si vous avez des modifications non envoyées votre
+      indicateur d'écart en bas de la page sera affiché en rouge.
     </p>
     <PowerPlantsList class="tuto__pplist" :dummy="true" />
   </div>
@@ -72,7 +77,7 @@ export default class TutoPlanning extends Vue {
         p_max_mw: 350,
         stock_max_mwh: -1,
         price_eur_per_mwh: 0,
-        planning: 150,
+        planning: 0,
         planning_modif: 0,
         stock_mwh: -1
       },
@@ -101,13 +106,13 @@ export default class TutoPlanning extends Vue {
 @media screen and (min-width: 500px) {
   .tuto__pplist {
     width: 75%;
-  padding: 1rem;
+    padding: 1rem;
   }
 }
 @media screen and (max-width: 500px) {
   .tuto__pplist {
     width: 100%;
-  padding: 0rem;
+    padding: 0rem;
   }
 }
 </style>

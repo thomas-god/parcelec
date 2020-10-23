@@ -1,22 +1,27 @@
 <template>
   <div>
     <p>
-      L'équilibre offre-demande est un aspect fondamental de parcélec : il
-      impose qu'à tout moment vous produisiez autant d'énergie que ce que vous
-      (et vos clients) consommez. Si vous produisez trop ou pas assez d'énergie
-      vous serez exposé·e à des pénalités financières ! Pour vous aider à être à
-      l'équilibre vous disposez d'un indicateur temps réel de votre écart :
-      actuellement vous êtes en déficit de 900 MWh, allumez des centrales ou
-      achetez de l'énergie sur le marché pour passer à 0 !
+      L'objectif de parcélec est simple : produire au
+      <em>meilleur coût</em> l'énergie que vos clients <em>consomment</em>. Mais
+      attention, si vous produisez trop ou pas assez vous vous exposez à des
+      pénalités financières !
     </p>
     <p>
-      Une fois que vous êtes à l'équilibre il vous faudra encore produire au
-      meilleure coût. Entre vos centrales et le marché il existera souvent
-      plusieurs façons de couvrir votre consomamtion avec des coûts pouvant être
-      très différents : à vous de trouver la combinaison optimale ! Pour vous
-      aider, le second chiffre, en €, correspond au coût actuel de votre
-      position : essayez d'avoir le chiffre le plus bas tout en gardant une
-      position à 0 !
+      Vous trouverez en bas de la page votre <em>écart actuel</em> (il vous
+      manque actuellement 900 MWh) et votre
+      <em>coût total de production</em> (0€ pour le moment). Allumez des
+      centrales ou achetez de l'énergie sur le marché pour être à 0 tout en
+      essayant d'avoir le coût de production le plus petit possible !
+    </p>
+    <p>
+      Une partie se compose de plusieurs phases au court desquelles vos clients
+      vont consommer différents volumes d'énergie. Le joeur qui l'emporte sera
+      celui qui aura les plus gros gains à la fin de le partie !
+    </p>
+    <p>
+      Les étapes suivantes du tutoriel vont vous montrer comment allumer et
+      piloter vos centrales, poster des enchères sur le marché et acheter ou
+      vendre de l'énergie directement aux autres joueurs.
     </p>
   </div>
 </template>

@@ -2,11 +2,12 @@
   <div>
     <p>
       En plus du marché il existe une autre façon d'échanger de l'énergie avec
-      les autres joueurs : les échanges directs ou contrats de grè à grè. De la
-      même façon que pour le marché vous pouvez faire une ou plusieurs offres à
-      un joueur en particulier (acheter ou vendre un volume d'énergie à un
-      prix). Le joueur peut alors accepter ou refuser votre offre, sans qu'il
-      n'y ait de règles comme pour le marché.
+      les autres joueurs : les <em>échanges directs</em>.
+    </p>
+    <p>
+      Vous pouvez faire une ou plusieurs offres à un joueur en particulier
+      (acheter ou vendre un volume d'énergie à un prix). Le joueur peut alors
+      accepter ou refuser votre offre.
     </p>
     <p>
       Les contrats directs peuvent être passés jusqu'à la fin d'une phase. Les

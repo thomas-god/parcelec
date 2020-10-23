@@ -7,23 +7,24 @@
       excédentaire.
     </p>
     <p>
-      Les joueurs peuvent faire une ou plusieurs offres : acheter ou vendre un
-      volume d'énergie (en MWh) à un certain prix (en €/MWh). Une fois le marché
-      fermé toutes les offres sont comparées pour mettre en relation un vendeur
-      et un acheteur : pour qu'un échange se fasse il faut un acheteur disposé à
-      payer le prix exigé par un vendeur.
+      Les joueurs peuvent faire une ou plusieurs offres : <em>acheter</em> ou
+      <em>vendre</em> un <em>volume</em> d'énergie (en MWh) à un certain
+      <em>prix</em> (en €/MWh).
     </p>
+
     <bids-list class="card" :dummy="true" />
 
     <p>
-      Une fois les enchères comparées vous saurez lesquelles de vos offres
-      auront été retenues. Attention, il vous faudra peut être ajuster votre
-      programme d'appel en conséquence !
+      Une fois le marché fermé toutes les offres sont comparées pour mettre en
+      relation un vendeur et un acheteur : pour qu'un échange se fasse il faut
+      un <em>acheteur disposé à payer le prix exigé par un vendeur</em>. Une
+      fois les enchères comparées vous saurez lesquelles de vos offres auront
+      été retenues. Attention, il vous faudra peut être ajuster votre programme
+      d'appel en conséquence !
     </p>
     <p>
-      A la fin d'une phase vous aurez accès à toutes les offres (anonymisées)
-      qui auront été faites lors de la partie. Même si la situation sera
-      différente lors de la phase suivante, étudier ces offres peut vous être
+      Une fois le marché fermé vous aurez accès à toutes les offres
+      (anonymisées) qui auront été faites : étudier ces offres peut vous être
       utile pour comprendre les stratégies de vos concurrents !
     </p>
     <AllBidsGraph class="chart card" />
