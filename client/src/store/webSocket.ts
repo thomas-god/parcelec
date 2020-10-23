@@ -150,6 +150,7 @@ function onMessageCallback(
           commit("session/SET_CLEARING_AVAILABLE", true, opts);
           dispatch("bids/loadClearingContent", {}, opts);
           commit("SET_MARKET_NOTIFICATION", true, opts);
+          dispatch("bids/loadMarketBids", {}, opts);
           break;
         case "plannings-closed":
           commit("session/SET_CAN_POST_PLANNING", false, opts);
@@ -158,7 +159,6 @@ function onMessageCallback(
         case "results-available":
           commit("session/SET_RESULTS_AVAILABLE", true, opts);
           dispatch("results/loadResultsContent", {}, opts);
-          dispatch("bids/loadMarketBids", {}, opts);
           break;
         case "new-otc":
           commit("otcs/PUSH_OTC", message.data, opts);

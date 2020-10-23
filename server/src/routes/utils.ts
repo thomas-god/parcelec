@@ -848,7 +848,7 @@ export async function getClearedPhaseBids(
         WHERE
           b.session_id=$2
           AND b.phase_no=$3
-          AND p.results_available=true;`,
+          AND p.clearing_available=true;`,
         [user_id, session_id, phase_no]
       )
     ).rows;

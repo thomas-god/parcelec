@@ -50,7 +50,7 @@
       </p>
     </div>
 
-    <div v-if="results_available">
+    <div v-if="clearing_available">
       <h3>Offres du marché</h3>
       <AllBidsChart class="chart" />
     </div>
