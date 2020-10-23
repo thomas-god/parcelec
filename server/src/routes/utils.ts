@@ -335,6 +335,7 @@ export async function getConsoForecast(
  * Get user's results for the last phase.
  * @param session_id Session ID
  * @param user_id User ID
+ * @param phase_no Optional, phase ID (int)
  */
 export async function getUserResults(
   session_id: string,
@@ -408,6 +409,60 @@ export async function getUserGameResults(
       [session_id, user_id]
     )
   ).rows as PhaseResults[];
+}
+
+/**
+ * Get the phase and overall rankings for the current phase.
+ * @param session_id Session ID
+ * @param phase_no Optional, phase ID (int)
+ */
+export async function getPhaseRankings(
+  session_id: string,
+  phase_no?: number
+): Promise<{
+  phase: { username: string; rank: number; balance_phase: number }[];
+  overall: { username: string; rank: number }[];
+}> {
+  if (phase_no === undefined) {
+    phase_no = await getLastPhaseNo(session_id);
+  }
+  const rankings = {
+    phase: [],
+    overall: [],
+  };
+  const rows = (
+    await db.query(
+      `SELECT
+      r.ranking_current AS rank_phase,
+      r.ranking_overall AS rank_overall,
+      r.balance_eur AS balance_phase,
+      u.name AS username
+    FROM results AS r
+    INNER JOIN users AS u
+      ON r.user_id=u.id
+    WHERE 
+      r.session_id=$1
+      AND r.phase_no=$2;`,
+      [session_id, phase_no]
+    )
+  ).rows as {
+    rank_phase: number;
+    rank_overall: number;
+    username: string;
+    balance_phase: number;
+  }[];
+  console.log(rows);
+  rankings.phase = rows.map((u) => {
+    return {
+      username: u.username,
+      rank: u.rank_phase,
+      balance: u.balance_phase,
+    };
+  });
+  rankings.overall = rows.map((u) => {
+    return { username: u.username, rank: u.rank_overall };
+  });
+  return rankings;
 }
 
 /**

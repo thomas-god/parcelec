@@ -25,6 +25,7 @@ import {
   getUserResults,
   CustomError,
   getUserGameResults,
+  getPhaseRankings,
 } from "./utils";
 
 // ---------------------- Routing Functions
@@ -171,7 +172,7 @@ export async function getUserPlanningRoute(
 }
 
 /**
- * Get the conso forecast for the last phase.
+ * Get user's results for the last phase.
  * @param req HTTP request
  * @param res HTTP response
  */
@@ -203,7 +204,7 @@ export async function getUserResultsRoute(
 }
 
 /**
- * Get the conso forecast for the current phase.
+ * Get user's game results.
  * @param req HTTP request
  * @param res HTTP response
  */
@@ -228,6 +229,36 @@ export async function getUserGameResultsRoute(
       const results = await getUserGameResults(session_id, user_id);
       res.json(results);
     }
+  } catch (error) {
+    if (error instanceof CustomError) {
+      res.status(error.code).end(error.msg);
+    } else {
+      res.status(400).end();
+      throw error;
+    }
+  }
+}
+
+/**
+ * Get the rankings for the current phase.
+ * @param req HTTP request
+ * @param res HTTP response
+ */
+export async function getRankings(
+  req: express.Request,
+  res: express.Response
+): Promise<void> {
+  try {
+    // DB checks
+    const session_id = req.params.session_id;
+    const session = await getSession(session_id);
+    if (session === null)
+      throw new CustomError("Error, no session found with this ID", 404);
+
+    console.log('rankings')
+    const results = await getPhaseRankings(session_id);
+    console.log(results)
+    res.json(results);
   } catch (error) {
     if (error instanceof CustomError) {
       res.status(error.code).end(error.msg);
@@ -264,5 +295,6 @@ router.get(
   `/session/:session_id(${uuid_regex})/user/:user_id(${uuid_regex})/game_results`,
   getUserGameResultsRoute
 );
+router.get(`/session/:session_id(${uuid_regex})/rankings`, getRankings);
 
 export default router;
