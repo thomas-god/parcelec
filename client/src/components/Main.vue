@@ -59,29 +59,15 @@
       -->
       <div class="app__grid_main">
         <div class="app__main">
-          <Bilans
-            class="app__main_item"
-            v-show="results_available && active_category === 'Résultats'"
-          />
           <PowerPlantsList
             class="app__main_item"
             :show_actions="!results_available"
-            v-show="active_category === 'Centrales'"
+            v-show="show_pp_list"
           />
-          <BidsList
-            class="app__main_item"
-            v-show="active_category === 'Marché'"
-          />
-          <OTC
-            class="app__main_item"
-            v-if="session.multi_game"
-            v-show="active_category === 'Marché'"
-          />
-
-          <Chatroom
-            class="app__main_item"
-            v-show="active_category === 'Chat'"
-          />
+          <BidsList class="app__main_item" v-show="show_bids_list" />
+          <OTC class="app__main_item" v-show="show_otcs" />
+          <Bilans class="app__main_item" v-show="show_results" />
+          <Chatroom class="app__main_item" v-show="show_chatroom" />
         </div>
       </div>
     </div>
@@ -147,6 +133,31 @@ export default class Main extends Vue {
 
   // Tabs
   active_category = "Home";
+
+  /**
+   * Component display flags
+   */
+  get show_pp_list(): boolean {
+    return (
+      this.active_category === "Centrales" ||
+      (!this.session.results_available && this.active_category === "Home")
+    );
+  }
+  get show_bids_list(): boolean {
+    return this.active_category === "Marché";
+  }
+  get show_otcs(): boolean {
+    return this.session.multi_game && this.active_category === "Marché";
+  }
+  get show_results(): boolean {
+    return (
+      this.results_available &&
+      ["Home", "Résultats"].includes(this.active_category)
+    );
+  }
+  get show_chatroom(): boolean {
+    return this.session.multi_game && this.active_category === "Chat";
+  }
 
   /**
    * Status ready and go to end game
