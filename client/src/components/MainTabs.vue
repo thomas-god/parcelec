@@ -4,7 +4,7 @@
       v-for="cat in categories"
       :key="cat.name"
       :class="cat.name === value ? 'tabs__category_active' : 'tabs__category'"
-      @click="update_category(cat.name)"
+      @click="update_category(cat)"
     >
       <span
         class="tabs__category_logo"
@@ -15,11 +15,13 @@
         "
         >{{ cat.logo }}</span
       >
-      <span class="tabs__category_name" v-if="display_tab_name">{{
-        cat.name
-      }}</span>
-      <span class="tabs__category_notif" v-if="cat.name === 'Marché' && n_pending_otcs > 0">
-        {{ n_pending_otcs }}
+      <span class="tabs__category_name" v-if="display_tab_name">
+        {{ cat.name }}
+      </span>
+      <span class="tabs__category_notif" v-if="cat.notif">
+        {{
+          cat.name === "Marché" ? (n_pending_otcs > 0 ? n_pending_otcs : 1) : 1
+        }}
       </span>
     </div>
   </div>
@@ -27,10 +29,18 @@
 
 <script lang='ts'>
 import { Component, Vue, Prop } from "vue-property-decorator";
-import { namespace } from "vuex-class";
+import { namespace, Getter, Mutation } from "vuex-class";
+import { Notifications } from "../store";
 
 const session_module = namespace("session");
-const otc_module = namespace("otcs")
+const otc_module = namespace("otcs");
+
+interface Category {
+  name: string;
+  logo: string;
+  notif?: boolean;
+  clear_notif?: () => void;
+}
 
 @Component
 export default class MainTabs extends Vue {
@@ -38,22 +48,38 @@ export default class MainTabs extends Vue {
   @session_module.Getter session_multi_game!: boolean;
   @session_module.State results_available!: boolean;
   @otc_module.Getter n_pending_otcs!: number;
+  @Getter notification_chat!: boolean;
+  @Getter notification_market!: boolean;
+  @Mutation SET_MARKET_NOTIFICATION!: (flag: boolean) => void;
+  @Mutation SET_CHAT_NOTIFICATION!: (flag: boolean) => void;
 
-  update_category(new_cat: string): void {
-    (document.getElementById('main') as HTMLDivElement).scrollIntoView();
-    this.$emit("input", new_cat);
+  update_category(cat: Category): void {
+    (document.getElementById("main") as HTMLDivElement).scrollIntoView();
+    this.$emit("input", cat.name);
+    if (cat.clear_notif) cat.clear_notif();
   }
 
   /**
    * Dynamic tabs depending on context
    */
-  get categories() {
+  get categories(): Category[] {
     const categories = [
       { name: "Home", logo: "🏠" },
       { name: "Centrales", logo: "⚡" },
-      { name: "Marché", logo: "⚖️" }
+      {
+        name: "Marché",
+        logo: "⚖️",
+        notif: this.notification_market,
+        clear_notif: () => this.SET_MARKET_NOTIFICATION(false)
+      }
     ];
-    if (this.session_multi_game) categories.push({ name: "Chat", logo: "💬" });
+    if (this.session_multi_game)
+      categories.push({
+        name: "Chat",
+        logo: "💬",
+        notif: this.notification_chat,
+        clear_notif: () => this.SET_CHAT_NOTIFICATION(false)
+      });
     if (this.results_available)
       categories.push({ name: "Résultats", logo: "🏆" });
     return categories;
@@ -151,7 +177,7 @@ export default class MainTabs extends Vue {
   position: absolute;
   font-size: 10px;
   top: -5px;
-  right: -12px;
+  right: -15px;
   padding: 2px;
   border-radius: 4px;
   background: red;

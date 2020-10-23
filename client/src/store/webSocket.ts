@@ -47,7 +47,7 @@ export const actions: ActionTree<WebSocketState, RootState> = {
       `${ws_url}/auction?auction_id=${session_id}&user_id=${user_id}&username=${username}`
     );
 
-    // Dirty hack to get the WS alive despite Nginx timeout
+    // To keep the WS alive despite Nginx timeout
     const inter = setInterval(() => socket.send("{}"), 30000);
     socket.addEventListener("close", () => {
       onCloseCallback(context.commit);
@@ -55,13 +55,17 @@ export const actions: ActionTree<WebSocketState, RootState> = {
     });
 
     socket.addEventListener("message", (event) =>
-      onMessageCallback(context.commit, context.dispatch, event)
+      onMessageCallback(
+        context.rootState.user.username,
+        context.commit,
+        context.dispatch,
+        event
+      )
     );
 
     context.commit("SET_WEBSOCKET", socket);
   },
   sendMsg(context, payload: string): void {
-    console.log(payload);
     if (payload) {
       const msg = JSON.stringify({
         username: context.rootState.user.username,
@@ -109,15 +113,18 @@ function onCloseCallback(commit: Commit): void {
 }
 
 function onMessageCallback(
+  username: string,
   commit: Commit,
   dispatch: Dispatch,
   event: any
 ): void {
   try {
     const message = JSON.parse(event.data);
-    console.log(message.reason);
+    if (process.env.NODE_ENV !== "production") console.log(message.reason);
     if (message.reason === "message") {
       commit("ADD_MESSAGE", message);
+      if (message.username !== username)
+        commit("SET_CHAT_NOTIFICATION", true, { root: true });
     } else if (message.username === "SERVER") {
       const opts = { root: true };
       switch (message.reason) {
@@ -142,6 +149,7 @@ function onMessageCallback(
         case "clearing-finished":
           commit("session/SET_CLEARING_AVAILABLE", true, opts);
           dispatch("bids/loadClearingContent", {}, opts);
+          commit("SET_MARKET_NOTIFICATION", true, opts);
           break;
         case "plannings-closed":
           commit("session/SET_CAN_POST_PLANNING", false, opts);
@@ -154,9 +162,11 @@ function onMessageCallback(
           break;
         case "new-otc":
           commit("otcs/PUSH_OTC", message.data, opts);
+          commit("SET_MARKET_NOTIFICATION", true, opts);
           break;
-        case 'otc-update':
+        case "otc-update":
           commit("otcs/UPDATE_OTC", message.data, opts);
+          commit("SET_MARKET_NOTIFICATION", true, opts);
           break;
       }
     }
