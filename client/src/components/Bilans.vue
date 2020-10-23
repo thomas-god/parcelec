@@ -1,14 +1,29 @@
 <template>
   <div class="bilans__main">
-    <div class="bilans_ranking">
-      <h2>Résultats</h2>
-      <p v-if="results_available && session_nb_users > 1">
-        Classement phase :
-        <strong>{{ user_rankings.current }}/{{ session_nb_users }} </strong>
-        (total :
-        <strong>{{ user_rankings.overall }}/{{ session_nb_users }} </strong>)
-      </p>
+    <h2>Résultats</h2>
+    <div
+      class="bilans__rankings"
+      v-if="results_available && session_nb_users > 1"
+    >
+      <div class="bilans__ranking">
+        <h3>Classement phase</h3>
+        <ol>
+          <li v-for="u in ranking_phase_sorted" :key="u.username">
+            <strong>{{ u.username }}</strong>
+            {{ `(${u.balance.toLocaleString("fr-FR")} €)` }}
+          </li>
+        </ol>
+      </div>
+      <div class="bilans__ranking">
+        <h3>Classement total</h3>
+        <ol>
+          <li v-for="u in ranking_overall_sorted" :key="u.username">
+            <strong>{{ u.username }}</strong>
+          </li>
+        </ol>
+      </div>
     </div>
+    <h3 v-if="results_available && session_nb_users > 1">Détails</h3>
     <div class="bilans__container">
       <div class="bilans__item">
         <span><em>Clients</em></span>
@@ -49,6 +64,7 @@ import { Component, Prop, Vue } from "vue-property-decorator";
 import { State, Action, Getter, namespace } from "vuex-class";
 import { BidsState, EnergyExchange } from "../store/bids";
 import { PowerPlant } from "../store/portfolio";
+import { ResultsState } from "../store/results";
 
 const portfolioModule = namespace("portfolio");
 const bidsModule = namespace("bids");
@@ -68,10 +84,21 @@ export default class Bilans extends Vue {
   @resultsModule.State buy_mwh!: number;
   @resultsModule.State imbalance_costs_eur!: number;
   @resultsModule.State balance_eur!: number;
+  @resultsModule.State rankings!: ResultsState["rankings"];
 
   // Ranking
   @sessionModule.Getter session_nb_users!: number;
   @resultsModule.Getter user_rankings!: number;
+
+  /**
+   * Sorted rankings
+   */
+  get ranking_phase_sorted() {
+    return this.rankings.phase.map(u => u).sort((a, b) => a.rank - b.rank);
+  }
+  get ranking_overall_sorted() {
+    return this.rankings.overall.map(u => u).sort((a, b) => a.rank - b.rank);
+  }
 
   get deficit_mwh() {
     return Number(
@@ -109,9 +136,21 @@ export default class Bilans extends Vue {
 .bilans__main h2 {
   margin-top: 0;
 }
-.bilans__main p {
+.bilans__main h3 {
+  margin-top: 0;
   margin-bottom: 0;
 }
+.bilans__rankings {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-around;
+}
+.bilans__ranking ol {
+  margin-top: 5px;
+  text-align: start;
+}
+
 .bilans__container {
   display: flex;
   flex-direction: row;
