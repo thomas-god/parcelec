@@ -159,6 +159,7 @@ function onMessageCallback(
         case "results-available":
           commit("session/SET_RESULTS_AVAILABLE", true, opts);
           dispatch("results/loadResultsContent", {}, opts);
+          dispatch("results/loadRankings", {}, opts);
           break;
         case "new-otc":
           commit("otcs/PUSH_OTC", message.data, opts);
