@@ -60,8 +60,8 @@ export default class PlanningBilansSimple extends Vue {
   get cost_total(): number {
     return (
       this.cost_production +
-      this.buy.price_eur_per_mwh -
-      this.sell.price_eur_per_mwh +
+      this.buy.price_eur_per_mwh * this.buy.volume_mwh -
+      this.sell.price_eur_per_mwh * this.sell.volume_mwh  +
       this.otcs_total.cost_eur
     );
   }
