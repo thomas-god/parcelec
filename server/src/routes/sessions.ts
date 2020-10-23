@@ -1,3 +1,11 @@
+/**
+ * GET /scenarios
+ * GET /scenario/:scenario_id
+ * GET /sessions/open
+ * PUT /session/
+ * GET /session/:session_id
+ */
+
 import { v4 as uuidv4 } from "uuid";
 import express from "express";
 import db from "../db/index";

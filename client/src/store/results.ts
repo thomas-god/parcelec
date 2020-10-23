@@ -67,14 +67,12 @@ export const actions: ActionTree<ResultsState, RootState> = {
     const api_url = rootState.api_url;
     const session_id = rootState.session.id;
     let results = {};
-    console.log("rankings");
 
     const res = await fetch(`${api_url}/session/${session_id}/rankings`, {
       method: "GET",
     });
     if (res.status === 200) {
       results = await res.json();
-      console.log(results);
     } else {
       console.log(await res.text());
     }

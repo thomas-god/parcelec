@@ -135,7 +135,6 @@ export const mutations: MutationTree<SessionState> = {
     state.can_post_planning = can_post_planning;
   },
   SET_CLEARING_AVAILABLE(state, clearing_available: boolean): void {
-    //console.log("clearing", state.clearing_available, clearing_available);
     state.clearing_available = clearing_available;
   },
   SET_RESULTS_AVAILABLE(state, results_available: boolean): void {
