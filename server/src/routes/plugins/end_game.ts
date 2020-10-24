@@ -174,6 +174,25 @@ async function computeResults(
         results.buy_eur +
         results.imbalance_costs_eur;
 
+      // Overall balance
+      results.balance_overall_eur = results.balance_eur;
+      if (phase_no > 0) {
+        const rows = (
+          await db.query(
+            `SELECT
+              balance_overall_eur
+            FROM results
+            WHERE 
+              session_id=$1
+              AND user_id=$2
+              AND phase_no=$3;`,
+            [session_id, user.id, phase_no - 1]
+          )
+        ).rows;
+        if (rows.length === 1)
+          results.balance_overall_eur += rows[0].balance_overall_eur;
+      }
+
       // Insert all into table
       await db.query(
         `
@@ -191,10 +210,11 @@ async function computeResults(
         buy_eur,
         imbalance_mwh,
         imbalance_costs_eur,
-        balance_eur
+        balance_eur,
+        balance_overall_eur
       )
       VALUES 
-      ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)`,
+      ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)`,
         [
           user.id,
           session_id,
@@ -210,6 +230,7 @@ async function computeResults(
           results.imbalance_mwh,
           results.imbalance_costs_eur,
           results.balance_eur,
+          results.balance_overall_eur,
         ]
       );
     })
