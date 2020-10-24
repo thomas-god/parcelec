@@ -183,6 +183,7 @@ CREATE TABLE results
   imbalance_mwh REAL NOT NULL,
   imbalance_costs_eur REAL NOT NULL,
   balance_eur REAL NOT NULL,
+  balance_overall_eur REAL NOT NULL,
   ranking_current INT NOT NULL DEFAULT -1,
   ranking_overall INT NOT NULL DEFAULT -1
 );

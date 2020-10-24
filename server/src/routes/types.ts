@@ -138,6 +138,7 @@ export interface PhaseResults {
   imbalance_mwh: number;
   imbalance_costs_eur: number;
   balance_eur: number;
+  balance_overall_eur: number;
   ranking_current: number;
   ranking_overall: number;
 }
