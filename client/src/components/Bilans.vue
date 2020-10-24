@@ -2,28 +2,31 @@
   <div class="bilans__main">
     <h2>Résultats</h2>
     <div
-      class="bilans__rankings"
+      class="bilans__ranking"
       v-if="results_available && session_nb_users > 1"
     >
-      <div class="bilans__ranking">
-        <h3>Classement phase</h3>
-        <ol>
-          <li v-for="u in ranking_phase_sorted" :key="u.username">
-            <strong>{{ u.username }}</strong>
-            {{ `(${u.balance.toLocaleString("fr-FR")} €)` }}
-          </li>
-        </ol>
-      </div>
-      <div class="bilans__ranking">
-        <h3>Classement total</h3>
-        <ol>
-          <li v-for="u in ranking_overall_sorted" :key="u.username">
-            <strong>{{ u.username }}</strong>
-          </li>
-        </ol>
-      </div>
+      <h3>
+        {{ ranking_title }}
+        <Btn
+          @click="toggleRankingType"
+          :font_size="'0.8rem'"
+          :background_color="'#e8e4dc'"
+          :text_color="'black'"
+          >Toggle</Btn
+        >
+      </h3>
+
+      <template v-for="user in ranking_current">
+        <div class="bilans__ranking__item" :key="`ranking-${user.username}`">
+          <span class="bilans__ranking__rank">{{ user.rank }}.</span>
+          <span class="bilans__ranking__username">{{ user.username }}</span>
+          <span class="bilans__ranking__balance"
+            >{{ user.balance.toLocaleString("fr-FR") }}€</span
+          >
+        </div>
+      </template>
     </div>
-    <h3 v-if="results_available && session_nb_users > 1">Détails</h3>
+    <h3 v-if="results_available && session_nb_users > 1">Vos détails</h3>
     <div class="bilans__container">
       <div class="bilans__item">
         <span><em>Clients</em></span>
@@ -65,13 +68,14 @@ import { State, Action, Getter, namespace } from "vuex-class";
 import { BidsState, EnergyExchange } from "../store/bids";
 import { PowerPlant } from "../store/portfolio";
 import { ResultsState } from "../store/results";
+import Btn from "./base/Button.vue";
 
 const portfolioModule = namespace("portfolio");
 const bidsModule = namespace("bids");
 const resultsModule = namespace("results");
 const sessionModule = namespace("session");
 
-@Component
+@Component({ components: { Btn } })
 export default class Bilans extends Vue {
   @sessionModule.State results_available!: boolean;
   @portfolioModule.State power_plants!: PowerPlant[];
@@ -93,19 +97,35 @@ export default class Bilans extends Vue {
   /**
    * Sorted rankings
    */
+  ranking_type: "phase" | "overall" = "phase";
   get ranking_phase_sorted() {
     return this.rankings.phase.map(u => u).sort((a, b) => a.rank - b.rank);
   }
   get ranking_overall_sorted() {
     return this.rankings.overall.map(u => u).sort((a, b) => a.rank - b.rank);
   }
+  get ranking_current() {
+    return this.ranking_type === "phase"
+      ? this.ranking_phase_sorted
+      : this.ranking_overall_sorted;
+  }
+  get ranking_title() {
+    return this.ranking_type === "phase"
+      ? "Classement phase"
+      : "Classement total";
+  }
+  toggleRankingType() {
+    this.ranking_type = this.ranking_type === "phase" ? "overall" : "phase";
+  }
 
+  /**
+   * Totals
+   */
   get deficit_mwh() {
     return Number(
       this.buy_mwh + this.prod_total_mwh - this.conso - this.sell_mwh
     );
   }
-
   get money() {
     return Number(
       Number(this.conso_eur) +
@@ -115,7 +135,6 @@ export default class Bilans extends Vue {
         Number(this.imbalance_costs_eur)
     );
   }
-
   get prod_total_mwh(): number {
     let prod = 0;
     if (this.power_plants.length > 0) {
@@ -138,17 +157,45 @@ export default class Bilans extends Vue {
 }
 .bilans__main h3 {
   margin-top: 0;
-  margin-bottom: 0;
+  margin-bottom: 10px;
 }
-.bilans__rankings {
+.bilans__ranking {
   display: flex;
-  flex-direction: row;
+  flex-direction: column;
   align-items: center;
-  justify-content: space-around;
+  margin-bottom: 1rem;
 }
-.bilans__ranking ol {
-  margin-top: 5px;
+
+.bilans__ranking__item {
+  width: 100%;
+  max-width: 300px;
+  box-sizing: border-box;
+  display: grid;
+  grid-template-areas: "rank username balance";
+  grid-template-columns: 20px auto 70px;
+  grid-template-rows: 2rem;
+  align-items: center;
+
+  margin: 0.3rem 1rem;
+  padding: 5px 1rem;
+  border: 1px solid rgb(214, 214, 214);
+  border-radius: 0.7rem;
+  -webkit-box-shadow: -4px 4px 10px -8px rgba(112, 112, 112, 1);
+  -moz-box-shadow: -4px 4px 10px -8px rgba(112, 112, 112, 1);
+  box-shadow: -4px 4px 10px -8px rgba(112, 112, 112, 1);
+}
+.bilans__ranking__rank {
+  grid-area: rank;
+}
+.bilans__ranking__username {
+  grid-area: username;
   text-align: start;
+  padding-left: 10px;
+  overflow: hidden;
+}
+.bilans__ranking__balance {
+  grid-area: balance;
+  text-align: end;
 }
 
 .bilans__container {
