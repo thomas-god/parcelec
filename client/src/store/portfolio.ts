@@ -80,7 +80,7 @@ export const getters: GetterTree<PortfolioState, RootState> = {
   delta_planning(state): number {
     return state.power_plants
       .map((pp) => pp.planning - pp.planning_modif)
-      .reduce((s, c) => s + c);
+      .reduce((s, c) => s + c, 0);
   },
 };
 
