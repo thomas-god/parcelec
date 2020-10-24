@@ -420,8 +420,8 @@ export async function getPhaseRankings(
   session_id: string,
   phase_no?: number
 ): Promise<{
-  phase: { username: string; rank: number; balance_phase: number }[];
-  overall: { username: string; rank: number }[];
+  phase: { username: string; rank: number; balance: number }[];
+  overall: { username: string; rank: number; balance: number }[];
 }> {
   if (phase_no === undefined) {
     phase_no = await getLastPhaseNo(session_id);
@@ -436,6 +436,7 @@ export async function getPhaseRankings(
       r.ranking_current AS rank_phase,
       r.ranking_overall AS rank_overall,
       r.balance_eur AS balance_phase,
+      r.balance_overall_eur AS balance_overall,
       u.name AS username
     FROM results AS r
     INNER JOIN users AS u
@@ -450,6 +451,7 @@ export async function getPhaseRankings(
     rank_overall: number;
     username: string;
     balance_phase: number;
+    balance_overall: number;
   }[];
   console.log(rows);
   rankings.phase = rows.map((u) => {
@@ -460,7 +462,11 @@ export async function getPhaseRankings(
     };
   });
   rankings.overall = rows.map((u) => {
-    return { username: u.username, rank: u.rank_overall };
+    return {
+      username: u.username,
+      rank: u.rank_overall,
+      balance: u.balance_overall,
+    };
   });
   return rankings;
 }
