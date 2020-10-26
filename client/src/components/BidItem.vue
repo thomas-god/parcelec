@@ -2,9 +2,12 @@
   <div class="bid">
     <span
       >Vous {{ bid.type === "sell" ? "vendez" : "achetez" }}
-      <strong>{{ bid.volume_mwh }}</strong>
+      <strong>{{ Math.floor(bid.volume_mwh).toLocaleString("fr-FR") }}</strong>
       MWh à
-      <strong>{{ bid.price_eur_per_mwh }}</strong> €/MWh</span
+      <strong>{{
+        Math.floor(bid.price_eur_per_mwh).toLocaleString("fr-FR")
+      }}</strong>
+      €/MWh</span
     >
     <button @click="deleteBid" :disabled="!dummy && !can_bid">🗑</button>
   </div>
@@ -36,7 +39,7 @@ export default class BidItem extends Vue {
       const res = await fetch(
         `${this.api_url}/session/${this.session_id}/user/${this.user_id}/bid/${this.bid.id}`,
         {
-          method: "DELETE",
+          method: "DELETE"
         }
       );
       if (res.status === 200) {

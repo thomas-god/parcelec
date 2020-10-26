@@ -21,7 +21,7 @@
           <span class="bilans__ranking__rank">{{ user.rank }}.</span>
           <span class="bilans__ranking__username">{{ user.username }}</span>
           <span class="bilans__ranking__balance"
-            >{{ user.balance.toLocaleString("fr-FR") }}€</span
+            >{{ Math.floor(user.balance).toLocaleString("fr-FR") }}€</span
           >
         </div>
       </template>
@@ -146,7 +146,7 @@ export default class Bilans extends Vue {
   }
 
   fmt(nb: number): string {
-    return nb.toLocaleString("fr-FR");
+    return Math.floor(nb).toLocaleString("fr-FR");
   }
 }
 </script>

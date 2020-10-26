@@ -28,10 +28,18 @@
     <div v-if="!dummy && clearing_available">
       <h3>Résultats des enchères</h3>
       <p style="font-size: 1.2rem;">
-        Prix du marché : <strong>{{ clearing.price_eur_per_mwh }}</strong> €/MWh
+        Prix du marché :
+        <strong>{{
+          Math.floor(clearing.price_eur_per_mwh).toLocaleString("fr-FR")
+        }}</strong>
+        €/MWh
       </p>
       <p style="font-size: 1.2rem;">
-        Volumes échangés : <strong>{{ clearing.volume_mwh }}</strong> MWh
+        Volumes échangés :
+        <strong>{{
+          Math.floor(clearing.volume_mwh).toLocaleString("fr-FR")
+        }}</strong>
+        MWh
       </p>
       <h3>Votre position sur le marché</h3>
       <p v-if="sell.volume_mwh > 0" style="font-size: 1.2rem;">
