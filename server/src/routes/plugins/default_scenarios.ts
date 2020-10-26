@@ -58,6 +58,7 @@ async function generateSoloScenario(): Promise<string> {
       p_min_mw: 400,
       p_max_mw: 1300,
       stock_max_mwh: -1,
+      stock_start_mwh: -1,
       price_eur_per_mwh: 17,
     },
     {
@@ -65,6 +66,7 @@ async function generateSoloScenario(): Promise<string> {
       p_min_mw: 150,
       p_max_mw: 600,
       stock_max_mwh: -1,
+      stock_start_mwh: -1,
       price_eur_per_mwh: 65,
     },
     {
@@ -72,6 +74,7 @@ async function generateSoloScenario(): Promise<string> {
       p_min_mw: 50,
       p_max_mw: 500,
       stock_max_mwh: 500,
+      stock_start_mwh: 250,
       price_eur_per_mwh: 0,
     },
   ];
@@ -86,15 +89,17 @@ async function generateSoloScenario(): Promise<string> {
           p_min_mw,
           p_max_mw,
           stock_max_mwh,
+          stock_start_mwh,
           price_eur_per_mwh
         )
-        VALUES ($1, $2, $3, $4, $5, $6)`,
+        VALUES ($1, $2, $3, $4, $5, $6, $7)`,
         [
           id,
           pp.type,
           pp.p_min_mw,
           pp.p_max_mw,
           pp.stock_max_mwh,
+          pp.stock_start_mwh,
           pp.price_eur_per_mwh,
         ]
       );
@@ -179,6 +184,7 @@ async function generateMultiScenario(): Promise<string> {
       p_min_mw: 400,
       p_max_mw: 1300,
       stock_max_mwh: -1,
+      stock_start_mwh: -1,
       price_eur_per_mwh: 17,
     },
     {
@@ -186,6 +192,7 @@ async function generateMultiScenario(): Promise<string> {
       p_min_mw: 150,
       p_max_mw: 600,
       stock_max_mwh: -1,
+      stock_start_mwh: -1,
       price_eur_per_mwh: 65,
     },
     {
@@ -193,6 +200,15 @@ async function generateMultiScenario(): Promise<string> {
       p_min_mw: 50,
       p_max_mw: 500,
       stock_max_mwh: 500,
+      stock_start_mwh: 500,
+      price_eur_per_mwh: 0,
+    },
+    {
+      type: "storage",
+      p_min_mw: 0,
+      p_max_mw: 500,
+      stock_max_mwh: 1000,
+      stock_start_mwh: 0,
       price_eur_per_mwh: 0,
     },
   ];
@@ -207,15 +223,17 @@ async function generateMultiScenario(): Promise<string> {
           p_min_mw,
           p_max_mw,
           stock_max_mwh,
+          stock_start_mwh,
           price_eur_per_mwh
         )
-        VALUES ($1, $2, $3, $4, $5, $6)`,
+        VALUES ($1, $2, $3, $4, $5, $6, $7)`,
         [
           id,
           pp.type,
           pp.p_min_mw,
           pp.p_max_mw,
           pp.stock_max_mwh,
+          pp.stock_start_mwh,
           pp.price_eur_per_mwh,
         ]
       );
