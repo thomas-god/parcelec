@@ -35,6 +35,7 @@ export interface PowerPlant {
   p_min_mw: number;
   p_max_mw: number;
   stock_max_mwh: number;
+  stock_start_mwh: number;
   price_eur_per_mwh: number;
 }
 

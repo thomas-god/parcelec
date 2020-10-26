@@ -21,6 +21,13 @@ CREATE TABLE scenarios_power_plants
   p_max_mw REAL NOT NULL,
   stock_max_mwh REAL NOT NULL CHECK (stock_max_mwh > 0 OR stock_max_mwh = -1),
   -- stock_max_mwh = -1 represents infinite stock
+  stock_start_mwh REAL NOT NULL CHECK (
+    CASE 
+      WHEN stock_max_mwh = -1 THEN stock_start_mwh = -1
+      WHEN type = 'storage' THEN stock_start_mwh >= -stock_max_mwh AND stock_start_mwh <= stock_max_mwh
+      ELSE stock_start_mwh >= 0 AND stock_start_mwh <= stock_max_mwh
+    END
+  ),
   price_eur_per_mwh REAL NOT NULL,
   CHECK (p_min_mw < p_max_mw)
 );
@@ -74,6 +81,12 @@ CREATE TABLE power_plants
   p_max_mw REAL NOT NULL,
   stock_max_mwh REAL NOT NULL CHECK (stock_max_mwh > 0 OR stock_max_mwh = -1),
   -- stock_max_mwh = -1 represents infinite stock
+  stock_start_mwh REAL NOT NULL CHECK (
+    CASE 
+      WHEN stock_max_mwh = -1 THEN stock_start_mwh = -1
+      ELSE stock_start_mwh >= 0 AND stock_start_mwh <= stock_max_mwh
+    END
+  ),
   price_eur_per_mwh REAL NOT NULL,
   CHECK (p_min_mw < p_max_mw)
 );
