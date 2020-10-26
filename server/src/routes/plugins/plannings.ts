@@ -36,12 +36,12 @@ export async function formatUserPlanning(
     user_planning.map(async (pp) => {
       let stock_start_mwh: number;
       if (phase_no === 0) {
-        // First phase, stock_start is taken equal to stock_max
+        // First phase, stock_start is taken equal to power plant stock_start
         stock_start_mwh = (
-          await db.query("SELECT stock_max_mwh FROM power_plants WHERE id=$1", [
+          await db.query("SELECT stock_start_mwh FROM power_plants WHERE id=$1", [
             pp.plant_id,
           ])
-        ).rows[0].stock_max_mwh as number;
+        ).rows[0].stock_start_mwh as number;
       } else {
         // Carry stock_end from previous phase
         stock_start_mwh = (
@@ -74,11 +74,11 @@ export async function checkPlanning(
   const portfolio = await getPortfolio(planning[0].user_id);
   // All plants must have a P0
   planning.map((dispatch) => {
-    const pp = portfolio.find((item) => item.id === dispatch.plant_id);
+    const pp = portfolio.find((item) => item.id === dispatch.plant_id);    
     if (dispatch.p_mw !== 0 && dispatch.p_mw > pp.p_max_mw)
       throw `Error, dispatch too big for plant ${dispatch.plant_id}`;
 
-    if (dispatch.p_mw !== 0 && dispatch.p_mw < pp.p_min_mw)
+    if (pp.p_min_mw > 0 && dispatch.p_mw !== 0 && dispatch.p_mw < pp.p_min_mw)
       throw `Error, dispatch too small for plant ${dispatch.plant_id}`;
 
     if (pp.stock_max_mwh !== -1 && dispatch.stock_end_mwh > pp.stock_max_mwh)
@@ -100,7 +100,15 @@ export async function insertPlanning(
     planning.map(async (dispatch) => {
       await db.query(
         `INSERT INTO production_plannings 
-          (user_id, session_id, phase_no, plant_id, p_mw, stock_start_mwh, stock_end_mwh)
+          (
+            user_id,
+            session_id,
+            phase_no,
+            plant_id,
+            p_mw,
+            stock_start_mwh,
+            stock_end_mwh
+          )
           VALUES ($1, $2, $3, $4, $5, $6, $7)
         ON CONFLICT (plant_id, phase_no) 
           DO UPDATE SET (p_mw, stock_start_mwh, stock_end_mwh)
@@ -134,12 +142,12 @@ export async function generateEmptyPlanning(
     portfolio.map(async (pp) => {
       let stock_start_mwh: number;
       if (phase_no === 0) {
-        // First phase, stock_start is taken equal to stock_max
+        // First phase, stock_start is taken equal to power plant stock_start
         stock_start_mwh = (
-          await db.query("SELECT stock_max_mwh FROM power_plants WHERE id=$1", [
+          await db.query("SELECT stock_start_mwh FROM power_plants WHERE id=$1", [
             pp.id,
           ])
-        ).rows[0].stock_max_mwh as number;
+        ).rows[0].stock_start_mwh as number;
       } else {
         // Carry stock_end from previous phase
         stock_start_mwh = (
