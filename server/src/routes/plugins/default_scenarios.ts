@@ -74,7 +74,7 @@ async function generateSoloScenario(): Promise<string> {
       p_min_mw: 50,
       p_max_mw: 500,
       stock_max_mwh: 500,
-      stock_start_mwh: 250,
+      stock_start_mwh: 500,
       price_eur_per_mwh: 0,
     },
   ];
@@ -141,10 +141,36 @@ async function generateMultiScenario(): Promise<string> {
     multi_game: true,
     bids_duration_sec: 120,
     plannings_duration_sec: 180,
-    phases_number: 3,
-    conso_forecast_mwh: [900, 1300, 2400],
-    conso_price_eur: [35, 35, 35],
-    imbalance_costs_factor: [1.08, 1.08, 1.08],
+    phases_number: 12,
+    conso_forecast_mwh: [
+      500,
+      400,
+      1300,
+      1700,
+      1200,
+      1100,
+      2100,
+      1200,
+      1400,
+      2300,
+      2500,
+      400,
+    ],
+    conso_price_eur: [35, 35, 35, 35, 35, 35, 35, 35, 35, 35, 35, 35],
+    imbalance_costs_factor: [
+      1.08,
+      1.08,
+      1.08,
+      1.08,
+      1.08,
+      1.08,
+      1.08,
+      1.08,
+      1.08,
+      1.08,
+      1.08,
+      1.08,
+    ],
   };
 
   await db.query(
@@ -181,15 +207,15 @@ async function generateMultiScenario(): Promise<string> {
   const default_power_plants = [
     {
       type: "nuc",
-      p_min_mw: 400,
+      p_min_mw: 500,
       p_max_mw: 1300,
       stock_max_mwh: -1,
       stock_start_mwh: -1,
-      price_eur_per_mwh: 17,
+      price_eur_per_mwh: 15,
     },
     {
       type: "therm",
-      p_min_mw: 150,
+      p_min_mw: 100,
       p_max_mw: 600,
       stock_max_mwh: -1,
       stock_start_mwh: -1,
@@ -199,8 +225,8 @@ async function generateMultiScenario(): Promise<string> {
       type: "hydro",
       p_min_mw: 50,
       p_max_mw: 500,
-      stock_max_mwh: 500,
-      stock_start_mwh: 500,
+      stock_max_mwh: 2000,
+      stock_start_mwh: 2000,
       price_eur_per_mwh: 0,
     },
     {
@@ -241,9 +267,10 @@ async function generateMultiScenario(): Promise<string> {
   );
 
   const bids = [
-    { phase_no: 0, type: "buy", volume_mwh: 200, price_eur_per_mwh: 25 },
-    { phase_no: 1, type: "buy", volume_mwh: 200, price_eur_per_mwh: 20 },
-    { phase_no: 2, type: "sell", volume_mwh: 500, price_eur_per_mwh: 70 },
+    { phase_no: 3, type: "sell", volume_mwh: 400, price_eur_per_mwh: 60 },
+    { phase_no: 6, type: "sell", volume_mwh: 400, price_eur_per_mwh: 60 },
+    { phase_no: 9, type: "sell", volume_mwh: 500, price_eur_per_mwh: 70 },
+    { phase_no: 10, type: "sell", volume_mwh: 500, price_eur_per_mwh: 70 },
   ];
   await Promise.all(
     bids.map(async (bid) => {
