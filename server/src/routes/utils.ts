@@ -208,6 +208,7 @@ async function getScenarioDefaultPortfolio(
         p_min_mw,
         p_max_mw,
         stock_max_mwh,
+        stock_start_mwh,
         price_eur_per_mwh
       FROM scenarios_power_plants
       WHERE scenario_id=$1`,
@@ -237,10 +238,11 @@ export async function setDefaultPortfolio(
             type, 
             p_min_mw, 
             p_max_mw, 
-            stock_max_mwh, 
+            stock_max_mwh,
+            stock_start_mwh,
             price_eur_per_mwh
           )
-          VALUES ($1, $2, $3, $4, $5, $6, $7, $8);`,
+          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9);`,
         [
           uuid(),
           session_id,
@@ -249,6 +251,7 @@ export async function setDefaultPortfolio(
           pp.p_min_mw,
           pp.p_max_mw,
           pp.stock_max_mwh,
+          pp.stock_start_mwh,
           pp.price_eur_per_mwh,
         ]
       );
@@ -269,7 +272,8 @@ export async function getPortfolio(user_id: string): Promise<PowerPlant[]> {
         user_id, type, 
         p_min_mw, 
         p_max_mw, 
-        stock_max_mwh, 
+        stock_max_mwh,
+        stock_start_mwh,
         price_eur_per_mwh
       FROM power_plants 
       WHERE user_id=$1;`,
@@ -294,7 +298,8 @@ export async function addPlanningToPortfolio(
       return {
         ...pp,
         planning: plan === undefined ? 0 : plan.p_mw,
-        stock_mwh: plan === undefined ? pp.stock_max_mwh : plan.stock_start_mwh,
+        stock_mwh:
+          plan === undefined ? pp.stock_start_mwh : plan.stock_start_mwh,
       };
     });
   }
