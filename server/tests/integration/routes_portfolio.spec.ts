@@ -222,11 +222,12 @@ describe("Should post a complete production planning", () => {
       );
       const portfolio = await getUserPortfolio(session_id, user_id_1);
       const planning = portfolio.map((pp) => {
+        const p_mw = Math.min(pp.p_max_mw, pp.stock_start_mwh);
         return {
           user_id: pp.user_id,
           session_id: pp.session_id,
           plant_id: pp.id,
-          p_mw: pp.p_max_mw,
+          p_mw: p_mw > pp.p_min_mw ? p_mw : 0,
         };
       });
 
@@ -259,11 +260,12 @@ describe("Should post a complete production planning", () => {
       );
       const portfolio = await getUserPortfolio(session_id, user_id_1);
       let planning = portfolio.map((pp) => {
+        const p_mw = Math.min(pp.p_max_mw, pp.stock_start_mwh);
         return {
           user_id: pp.user_id,
           session_id: pp.session_id,
           plant_id: pp.id,
-          p_mw: pp.p_max_mw,
+          p_mw: p_mw > pp.p_min_mw ? p_mw : 0,
         };
       });
 
