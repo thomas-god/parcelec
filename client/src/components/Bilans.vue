@@ -21,7 +21,9 @@
       <template v-for="user in ranking_current">
         <div class="bilans__ranking__item" :key="`ranking-${user.username}`">
           <span class="bilans__ranking__rank">{{ user.rank }}.</span>
-          <span class="bilans__ranking__username">{{ user.username }}</span>
+          <span class="bilans__ranking__username">
+            <strong>{{ user.username }}</strong>
+          </span>
           <span class="bilans__ranking__balance"
             >{{ Math.floor(user.balance).toLocaleString("fr-FR") }}€</span
           >
