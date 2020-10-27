@@ -6,15 +6,17 @@
       v-if="results_available && session_nb_users > 1"
     >
       <h3>
-        {{ ranking_title }}
-        <Btn
-          @click="toggleRankingType"
-          :font_size="'0.8rem'"
-          :background_color="'#e8e4dc'"
-          :text_color="'black'"
-          >Toggle</Btn
-        >
+        Classement
       </h3>
+
+      <ToggleSwitch
+        v-model="ranking_type"
+        :left_label="'Phase'"
+        :left_value="'phase'"
+        :right_label="'Total'"
+        :right_value="'overall'"
+        class="bilans__ranking__toggle"
+      />
 
       <template v-for="user in ranking_current">
         <div class="bilans__ranking__item" :key="`ranking-${user.username}`">
@@ -69,13 +71,14 @@ import { BidsState, EnergyExchange } from "../store/bids";
 import { PowerPlant } from "../store/portfolio";
 import { ResultsState } from "../store/results";
 import Btn from "./base/Button.vue";
+import ToggleSwitch from "./base/Toggle.vue";
 
 const portfolioModule = namespace("portfolio");
 const bidsModule = namespace("bids");
 const resultsModule = namespace("results");
 const sessionModule = namespace("session");
 
-@Component({ components: { Btn } })
+@Component({ components: { Btn, ToggleSwitch } })
 export default class Bilans extends Vue {
   @sessionModule.State results_available!: boolean;
   @portfolioModule.State power_plants!: PowerPlant[];
@@ -108,14 +111,6 @@ export default class Bilans extends Vue {
     return this.ranking_type === "phase"
       ? this.ranking_phase_sorted
       : this.ranking_overall_sorted;
-  }
-  get ranking_title() {
-    return this.ranking_type === "phase"
-      ? "Classement phase"
-      : "Classement total";
-  }
-  toggleRankingType() {
-    this.ranking_type = this.ranking_type === "phase" ? "overall" : "phase";
   }
 
   /**
@@ -165,7 +160,10 @@ export default class Bilans extends Vue {
   align-items: center;
   margin-bottom: 1rem;
 }
-
+.bilans__ranking__toggle {
+  width: 70%;
+  margin: 0 0 10px;
+}
 .bilans__ranking__item {
   width: 100%;
   max-width: 300px;
