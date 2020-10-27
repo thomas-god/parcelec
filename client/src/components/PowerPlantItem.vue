@@ -422,12 +422,15 @@ export default class PowerPlantItem extends Vue {
   }
   input[type="range"]::-webkit-slider-thumb {
     height: 60px;
+    width: 8px;
   }
   input[type="range"]::-moz-range-thumb {
     height: 60px;
+    width: 8px;
   }
   input[type="range"]::-ms-thumb {
     height: 60px;
+    width: 8px;
   }
 }
 @media screen and (min-width: 400px) {
@@ -437,12 +440,15 @@ export default class PowerPlantItem extends Vue {
   }
   input[type="range"]::-webkit-slider-thumb {
     height: 50px;
+    width: 4px;
   }
   input[type="range"]::-moz-range-thumb {
     height: 50px;
+    width: 4px;
   }
   input[type="range"]::-ms-thumb {
     height: 50px;
+    width: 4px;
   }
 }
 
@@ -483,7 +489,6 @@ input[type="range"]::-ms-track {
 /* Special styling for WebKit/Blink */
 input[type="range"]::-webkit-slider-thumb {
   -webkit-appearance: none;
-  width: 4px;
   box-sizing: content-box;
   border-radius: 3px;
   cursor: pointer;
@@ -492,7 +497,6 @@ input[type="range"]::-webkit-slider-thumb {
 
 /* All the same stuff for Firefox */
 input[type="range"]::-moz-range-thumb {
-  width: 4px;
   border-radius: 3px;
   box-sizing: content-box;
   cursor: pointer;
@@ -500,7 +504,6 @@ input[type="range"]::-moz-range-thumb {
 
 /* All the same stuff for IE */
 input[type="range"]::-ms-thumb {
-  width: 4px;
   border-radius: 3px;
   box-sizing: content-box;
   cursor: pointer;
