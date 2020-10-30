@@ -314,7 +314,7 @@ router.get(
 );
 router.get(
   `/session/:session_id(${uuid_regex})/user/:user_id(${uuid_regex})/conso_forecast`,
-  getUserConso
+  getUserConsoForecast
 );
 router.put(
   `/session/:session_id(${uuid_regex})/user/:user_id(${uuid_regex})/planning`,
