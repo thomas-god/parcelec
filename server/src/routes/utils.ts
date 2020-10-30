@@ -306,11 +306,12 @@ export async function addPlanningToPortfolio(
 }
 
 /**
- * Get the current conso forecast for a given user.
- * @param session_id Session ID
- * @param user_id User ID
+ * Get the current consumption value for a given user.
+ * @param session_id Session ID (UUID)
+ * @param user_id User ID (UUID)
+ * @param phase_no Optional, ID (int) of the current phase
  */
-export async function getConsoForecast(
+export async function getCurrentConsoValue(
   session_id: string,
   user_id: string,
   phase_no?: number
@@ -334,6 +335,38 @@ export async function getConsoForecast(
   } else {
     return 0;
   }
+}
+
+/**
+ * Get the consumption forecast for a given user. Data before the current phase
+ * (included) are actual data while data after the current phase are actual forecasts
+ * depending on the scenario forecast type.
+ * @param session_id Session ID
+ * @param user_id User ID
+ * @param phase_no Optional, ID (int) of the current phase
+ */
+export async function getConsoForecast(
+  session_id: string,
+  user_id: string,
+  phase_no?: number
+): Promise<number[]> {
+  if (phase_no === undefined) {
+    phase_no = await getLastPhaseNo(session_id);
+  }
+  const session_options = await getSessionOptions(session_id);
+  let forecast = [];
+  switch (session_options.conso_forecast_type) {
+    case "none":
+      forecast = [];
+      break;
+    case "perfect":
+      forecast = session_options.conso_forecast_mwh;
+      break;
+    default:
+      forecast = [];
+      break;
+  }
+  return forecast;
 }
 
 /**

@@ -5,7 +5,7 @@
 import db from "../../db";
 import { SessionOptions } from "../types";
 import {
-  getConsoForecast,
+  getCurrentConsoValue,
   getSession,
   getSessionOptions,
   getSessionUsers,
@@ -77,7 +77,11 @@ async function computeResults(
       };
 
       // Consumption
-      results.conso_mwh = await getConsoForecast(session_id, user.id, phase_no);
+      results.conso_mwh = await getCurrentConsoValue(
+        session_id,
+        user.id,
+        phase_no
+      );
       results.conso_eur = results.conso_mwh * options.conso_price_eur[phase_no];
 
       // Production
