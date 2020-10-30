@@ -46,6 +46,7 @@ interface Category {
 @Component
 export default class MainTabs extends Vue {
   @Prop({ default: "Home" }) value!: string;
+  @Prop() tabs!: string[];
   @session_module.Getter session_multi_game!: boolean;
   @session_module.State results_available!: boolean;
   @otc_module.Getter n_pending_otcs!: number;
@@ -64,27 +65,27 @@ export default class MainTabs extends Vue {
   /**
    * Dynamic tabs depending on context
    */
+  base_categories = [
+    { name: "Home", logo: "🏠" },
+    { name: "Centrales", logo: "⚡", notif: this.delta_planning !== 0 },
+    {
+      name: "Marché",
+      logo: "⚖️",
+      notif: this.notification_market,
+      clear_notif: () => this.SET_MARKET_NOTIFICATION(false)
+    },
+    {
+      name: "Chat",
+      logo: "💬",
+      notif: this.notification_chat,
+      clear_notif: () => this.SET_CHAT_NOTIFICATION(false)
+    },
+    { name: "Résultats", logo: "🏆" }
+  ];
   get categories(): Category[] {
-    const categories = [
-      { name: "Home", logo: "🏠" },
-      { name: "Centrales", logo: "⚡", notif: this.delta_planning !== 0 },
-      {
-        name: "Marché",
-        logo: "⚖️",
-        notif: this.notification_market,
-        clear_notif: () => this.SET_MARKET_NOTIFICATION(false)
-      }
-    ];
-    if (this.session_multi_game)
-      categories.push({
-        name: "Chat",
-        logo: "💬",
-        notif: this.notification_chat,
-        clear_notif: () => this.SET_CHAT_NOTIFICATION(false)
-      });
-    if (this.results_available)
-      categories.push({ name: "Résultats", logo: "🏆" });
-    return categories;
+    return this.tabs.map(tab =>
+      this.base_categories.find(cat => cat.name === tab)
+    );
   }
 
   /**

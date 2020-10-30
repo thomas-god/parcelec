@@ -1,78 +1,25 @@
 <template>
   <div class="main" id="main">
-    <!-- Open session -->
-    <Waitroom v-if="session_status === 'open'" />
+    <!-- Tabs -->
+    <MainTabs class="tabs" v-model="active_tab" :tabs="tabs" />
 
-    <!-- Running session -->
-    <MainTabs
-      v-if="session_status !== 'open'"
-      class="app__tabs"
-      v-model="active_category"
-    />
-    <div v-if="session_status !== 'open'" class="app__grid">
-      <!--
-        Grid head
-      -->
-      <div class="app__grid_head">
-        <div class="app__phase_infos" v-show="active_category === 'Home'">
-          <span>
-            Phase
-            <strong>{{
-              `${phase_infos.phase_no + 1}/${phase_infos.nb_phases}`
-            }}</strong>
-            {{ `${results_available ? "(terminée)" : ""}` }}
-          </span>
-          |
-          <span>
-            Consommation :
-            <strong>{{ conso.toLocaleString("fr-FR") }} MWh</strong>
-          </span>
-        </div>
-        <TimersText class="app__phase_infos_timers" />
-        <Btn
-          class="ready__btn"
-          font_size="1.1rem"
-          @click="setStatusReady"
-          :disabled="ready"
-          v-if="
-            results_available &&
-              phase_infos.phase_no + 1 < phase_infos.nb_phases &&
-              active_category === 'Home'
-          "
-        >
-          Passer à la phase suivante
-        </Btn>
-        <Btn
-          class="ready__btn"
-          font_size="1.1rem"
-          v-if="
-            results_available &&
-              phase_infos.phase_no + 1 === phase_infos.nb_phases
-          "
-          @click="goToGameResults"
-        >
-          Résultats de la partie
-        </Btn>
-      </div>
-      <!--
-        Grid main
-      -->
-      <div class="app__grid_main">
-        <div class="app__main">
-          <PowerPlantsList
-            class="app__main_item"
-            :show_actions="!results_available"
-            v-show="show_pp_list"
-          />
-          <BidsList class="app__main_item" v-show="show_bids_list" />
-          <OTC class="app__main_item" v-show="show_otcs" />
-          <Bilans class="app__main_item" v-show="show_results" />
-          <Chatroom class="app__main_item" v-show="show_chatroom" />
-        </div>
-      </div>
+    <!-- Content -->
+    <div class="content">
+      <MainWaitroom class="content_item wide" v-show="show_waitroom" />
+      <MainInfos class="content_item" v-show="show_phase_infos" />
+      <PowerPlantsList
+        class="content_item card"
+        :show_actions="!results_available"
+        v-show="show_pp_list"
+      />
+      <BidsList class="content_item card" v-show="show_bids" />
+      <OTC class="content_item card" v-show="show_otcs" />
+      <Bilans class="content_item card" v-show="show_results" />
+      <Chatroom class="content_item card" v-show="show_chatroom" />
     </div>
 
-    <BilansSimple class="app__footer_bilans" />
+    <!-- Footer -->
+    <BilansSimple class="footer" />
   </div>
 </template>
 
@@ -88,8 +35,8 @@ import BidsList from "./BidsList.vue";
 import BilansSimple from "./BilansSimple.vue";
 import Bilans from "./Bilans.vue";
 import Btn from "./base/Button.vue";
-import TimersText from "./TimersText.vue";
-import Waitroom from "./Waitroom.vue";
+import MainWaitroom from "./MainWaitroom.vue";
+import MainInfos from "./MainInfos.vue";
 import MainTabs from "./MainTabs.vue";
 import OTC from "./OTC.vue";
 
@@ -107,8 +54,8 @@ const resultsModule = namespace("results");
     BilansSimple,
     Bilans,
     Btn,
-    TimersText,
-    Waitroom,
+    MainWaitroom,
+    MainInfos,
     MainTabs,
     OTC
   }
@@ -131,32 +78,53 @@ export default class Main extends Vue {
   @sessionModule.Getter clearing_available!: boolean;
   @sessionModule.Getter results_available!: boolean;
 
-  // Tabs
-  active_category = "Home";
+  /**
+   * Dynamic tabs
+   */
+  active_tab = "Home";
+  get tabs(): string[] {
+    const tabs = ["Home"];
+    tabs.push("Centrales");
+    if (this.session.status !== "open") tabs.push("Marché");
+    if (this.session.multi_game) tabs.push("Chat");
+    if (this.session.results_available) tabs.push("Résultats");
+    return tabs;
+  }
 
   /**
-   * Component display flags
+   * Display flags
    */
+  get show_waitroom(): boolean {
+    return this.session.status === "open" && this.active_tab === "Home";
+  }
+  get show_phase_infos(): boolean {
+    return this.session.status !== "open";
+  }
   get show_pp_list(): boolean {
     return (
-      this.active_category === "Centrales" ||
-      (!this.session.results_available && this.active_category === "Home")
+      (this.session.status === "open" && this.active_tab === "Centrales") ||
+      (this.session.status !== "open" &&
+        (this.active_tab === "Centrales" ||
+          (!this.session.results_available && this.active_tab === "Home")))
     );
   }
-  get show_bids_list(): boolean {
-    return this.active_category === "Marché";
+  get show_bids(): boolean {
+    return this.session.status !== "open" && this.active_tab === "Marché";
   }
   get show_otcs(): boolean {
-    return this.session.multi_game && this.active_category === "Marché";
+    return (
+      this.session.status !== "open" &&
+      this.session.multi_game &&
+      this.active_tab === "Marché"
+    );
   }
   get show_results(): boolean {
     return (
-      this.results_available &&
-      ["Home", "Résultats"].includes(this.active_category)
+      this.results_available && ["Home", "Résultats"].includes(this.active_tab)
     );
   }
   get show_chatroom(): boolean {
-    return this.session.multi_game && this.active_category === "Chat";
+    return this.session.multi_game && this.active_tab === "Chat";
   }
 
   /**
@@ -192,106 +160,30 @@ function toTimeString(dt: number): string {
   margin-bottom: 4.5rem;
 }
 
-/**
-  Game mode
-*/
-.app__grid {
-  display: grid;
-  width: 100%;
-  height: 100%;
-  grid-template-areas:
-    "head head"
-    "main  main";
-  grid-template-rows: auto 1fr;
-  grid-template-columns: 2fr 1fr;
-}
-
-.app__grid_head {
-  grid-area: head;
-  margin-bottom: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
-
-.app__tabs {
+.tabs {
   max-width: 700px;
   margin: auto;
-}
-.app__phase_infos {
-  margin: 1rem;
-  font-size: 1.15rem;
-}
-.app__phase_infos_timers {
-  margin-top: 1rem;
+  margin-bottom: 2rem;
 }
 
-.app__grid_main {
-  grid-area: main;
+.content {
+  width: 100%;
+  max-width: 700px;
+  margin: auto;
   display: flex;
   flex-direction: column;
-}
-
-.app__grid_main h2 {
-  margin: 10px;
-}
-.app__grid_main h3 {
-  margin: 0.2rem;
-  font-weight: normal;
-}
-.app__grid_main button {
-  margin-left: 1rem;
-}
-
-.app__main {
-  display: flex;
-  flex-direction: row;
   flex-wrap: wrap;
-  align-items: stretch;
-  justify-content: center;
+  align-items: center;
+  justify-content: start;
 }
 
-.app__main_item {
-  flex-grow: 1;
-  max-width: 500px;
+.content_item {
+  width: 100%;
+  max-width: 600px;
+  box-sizing: border-box;
 }
 
-@media screen and (min-width: 400px) {
-  .app__main_item {
-    margin: 2rem;
-    border-radius: 2px;
-    border: 2px solid gray;
-    padding: 10px;
-  }
-  .app__footer_bilans {
-    font-size: 2rem;
-    height: 3rem;
-  }
-
-  .app__tabs {
-    width: 90%;
-  }
-}
-
-@media screen and (max-width: 400px) {
-  .app__main_item {
-    margin: 1rem 3px;
-    border: none;
-    padding: 4px;
-    position: relative;
-  }
-
-  .app__footer_bilans {
-    font-size: 1.5rem;
-    height: 2.5rem;
-  }
-
-  .app__tabs {
-    width: 100%;
-  }
-}
-
-.app__footer_bilans {
+.footer {
   width: 100%;
   display: flex;
   justify-content: center;
@@ -301,5 +193,47 @@ function toTimeString(dt: number): string {
   position: fixed;
   bottom: 0;
   z-index: 10;
+}
+
+@media screen and (min-width: 500px) {
+  .content_item {
+    margin-bottom: 1.5rem;
+    border-radius: 2px;
+    padding: 0 10px 10px 10px;
+  }
+  .card {
+    margin-top: 0rem;
+    max-width: 500px !important;
+    border: 2px solid gray;
+  }
+  .card:first-child {
+    margin-top: 2rem !important;
+  }
+  .wide {
+    max-width: 700px;
+  }
+  .footer {
+    font-size: 2rem;
+    height: 3rem;
+  }
+  .tabs {
+    width: 90%;
+  }
+}
+
+@media screen and (max-width: 500px) {
+  .content_item {
+    margin: 1rem 3px;
+    border: none;
+    padding: 4px;
+    position: relative;
+  }
+  .footer {
+    font-size: 1.5rem;
+    height: 2.5rem;
+  }
+  .tabs {
+    width: 100%;
+  }
 }
 </style>

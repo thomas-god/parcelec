@@ -46,7 +46,7 @@ const session_module = namespace("session");
 const user_module = namespace("user");
 
 @Component({ components: { Btn } })
-export default class TimersText extends Vue {
+export default class MainInfosTimersText extends Vue {
   // Session, user, and phase infos
   @State("api_url") api_url!: string;
   @session_module.Getter session!: Session;
