@@ -60,7 +60,7 @@
 
     <div v-if="clearing_available">
       <h3>Offres du marché</h3>
-      <AllBidsChart class="chart" />
+      <BidsGraphAll class="chart" />
     </div>
   </div>
 </template>
@@ -71,13 +71,13 @@ import { State, Action, Getter, namespace } from "vuex-class";
 import { Bid } from "../store/bids";
 import BidItemInput from "./BidItemInput.vue";
 import BidItem from "./BidItem.vue";
-import AllBidsChart from "../components/AllBidsGraph.vue";
+import BidsGraphAll from "../components/BidsGraphAll.vue";
 
 const userModule = namespace("user");
 const sessionModule = namespace("session");
 const bidsModule = namespace("bids");
 
-@Component({ components: { BidItemInput, BidItem, AllBidsChart } })
+@Component({ components: { BidItemInput, BidItem, BidsGraphAll } })
 export default class BidsList extends Vue {
   @Prop({ default: false }) dummy!: boolean;
   @bidsModule.Getter bids!: Bid[];
