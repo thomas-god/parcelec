@@ -19,13 +19,14 @@ import {
   getUser,
   getPortfolio,
   uuid_regex,
-  getConsoForecast,
+  getCurrentConsoValue,
   getPlanning,
   addPlanningToPortfolio,
   getUserResults,
   CustomError,
   getUserGameResults,
   getPhaseRankings,
+  getConsoForecast,
 } from "./utils";
 
 // ---------------------- Routing Functions
@@ -64,7 +65,7 @@ export async function getUserPortfolio(
 }
 
 /**
- * Get the conso forecast for the current phase.
+ * Get the consumption value for the current phase.
  * @param req HTTP request
  * @param res HTTP response
  */
@@ -83,8 +84,40 @@ export async function getUserConso(
     if (user === null)
       throw new CustomError("Error, no user found with this ID", 404);
 
-    const conso = await getConsoForecast(session_id, user_id);
+    const conso = await getCurrentConsoValue(session_id, user_id);
     res.json({ conso_mw: conso });
+  } catch (error) {
+    if (error instanceof CustomError) {
+      res.status(error.code).end(error.msg);
+    } else {
+      res.status(400).end();
+      throw error;
+    }
+  }
+}
+
+/**
+ * Get the consumption forecast.
+ * @param req HTTP request
+ * @param res HTTP response
+ */
+export async function getUserConsoForecast(
+  req: express.Request,
+  res: express.Response
+): Promise<void> {
+  try {
+    // DB checks
+    const session_id = req.params.session_id;
+    const user_id = req.params.user_id;
+    const session = await getSession(session_id);
+    if (session === null)
+      throw new CustomError("Error, no session found with this ID", 404);
+    const user = await getUser(session_id, user_id);
+    if (user === null)
+      throw new CustomError("Error, no user found with this ID", 404);
+
+    const conso = await getConsoForecast(session_id, user_id);
+    res.json(conso);
   } catch (error) {
     if (error instanceof CustomError) {
       res.status(error.code).end(error.msg);
@@ -255,9 +288,9 @@ export async function getRankings(
     if (session === null)
       throw new CustomError("Error, no session found with this ID", 404);
 
-    console.log('rankings')
+    console.log("rankings");
     const results = await getPhaseRankings(session_id);
-    console.log(results)
+    console.log(results);
     res.json(results);
   } catch (error) {
     if (error instanceof CustomError) {
@@ -277,6 +310,10 @@ router.get(
 );
 router.get(
   `/session/:session_id(${uuid_regex})/user/:user_id(${uuid_regex})/conso`,
+  getUserConso
+);
+router.get(
+  `/session/:session_id(${uuid_regex})/user/:user_id(${uuid_regex})/conso_forecast`,
   getUserConso
 );
 router.put(
