@@ -1,11 +1,11 @@
 <template>
-  <div class="pp__grid">
+  <div class="pp__item">
     <div class="pp__logo">{{ logo }}</div>
     <div :style="style_barre" ref="barre">
       <input
         type="range"
         class="pp__barre__slider slider__active"
-        v-model="power_plant.planning_modif"
+        v-model.number="power_plant.planning_modif"
         :min="p_min"
         :max="power_plant.p_max_mw"
         step="10"
@@ -34,6 +34,7 @@
         {{ power_plant.p_max_mw }} MW
       </div>
     </div>
+      <NumberInput style="gird-area: p_current;" v-model="power_plant.planning_modif" :show_btns="true"/>
     <div class="pp__infos">
       <span>
         Coût :
@@ -55,8 +56,9 @@
 import { Component, Prop, Vue, Watch } from "vue-property-decorator";
 import { State, Action, Getter, namespace } from "vuex-class";
 import { PowerPlant } from "../store/portfolio";
+import NumberInput from './base/NumberInput.vue'
 
-@Component
+@Component({components: {NumberInput}})
 export default class PowerPlantItem extends Vue {
   @Prop() power_plant!: PowerPlant;
   @Prop() power_max_mw!: number;
@@ -90,6 +92,10 @@ export default class PowerPlantItem extends Vue {
   }
   @Watch("power_plant.planning_modif")
   onValueUpdate(new_val: number, old_val: number): void {
+    console.log(new_val, typeof new_val)
+    if (isNaN(new_val)) {
+      this.power_plant.planning_modif = 0;
+    }
     if (Math.abs(new_val) < this.power_plant.p_min_mw) {
       this.power_plant.planning_modif = 0;
     }
@@ -312,7 +318,7 @@ export default class PowerPlantItem extends Vue {
 
 <style scoped>
 @media screen and (max-width: 400px) {
-  .pp__grid {
+  .pp__item {
     display: grid;
     grid-template-areas:
       "logo infos"
@@ -331,12 +337,13 @@ export default class PowerPlantItem extends Vue {
   }
 }
 @media screen and (min-width: 400px) {
-  .pp__grid {
+  .pp__item {
     display: grid;
     grid-template-areas:
-      "vide infos"
-      "logo barre"
-      "X legend";
+      "logo p_current"
+      "legend legend"
+      "barre barre"
+      "infos infos";
     grid-template-columns: 50px 1fr;
     grid-template-rows: auto 50px 30px;
   }
