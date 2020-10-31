@@ -12,6 +12,7 @@
         :show_actions="!results_available"
         v-show="show_pp_list"
       />
+      <Forecast class="content_item card" v-show="show_forecast" />
       <BidsList class="content_item card" v-show="show_bids" />
       <OTC class="content_item card" v-show="show_otcs" />
       <Bilans class="content_item card" v-show="show_results" />
@@ -38,12 +39,13 @@ import Btn from "./base/Button.vue";
 import MainWaitroom from "./MainWaitroom.vue";
 import MainInfos from "./MainInfos.vue";
 import MainTabs from "./MainTabs.vue";
+import Forecast from './Forecast.vue'
 import OTC from "./OTC.vue";
 
-const userModule = namespace("user");
-const sessionModule = namespace("session");
-const portfolioModule = namespace("portfolio");
-const resultsModule = namespace("results");
+const user_module = namespace("user");
+const session_module = namespace("session");
+const portfolio_module = namespace("portfolio");
+const results_module = namespace("results");
 
 @Component({
   components: {
@@ -57,26 +59,28 @@ const resultsModule = namespace("results");
     MainWaitroom,
     MainInfos,
     MainTabs,
+    Forecast,
     OTC
   }
 })
 export default class Main extends Vue {
   @State("api_url") api_url!: string;
-  @userModule.Getter username!: string;
-  @userModule.Getter user_id!: string;
-  @userModule.State ready!: boolean;
-  @userModule.Mutation SET_GAME_READY!: (game_ready: boolean) => void;
-  @sessionModule.Getter session!: Session;
-  @sessionModule.Getter session_status!: string;
-  @sessionModule.Getter phase_infos!: Session["phase_infos"];
-  @sessionModule.Getter session_id!: string;
-  @portfolioModule.Getter conso!: number;
+  @user_module.Getter username!: string;
+  @user_module.Getter user_id!: string;
+  @user_module.State ready!: boolean;
+  @user_module.Mutation SET_GAME_READY!: (game_ready: boolean) => void;
+  @session_module.Getter session!: Session;
+  @session_module.Getter session_status!: string;
+  @session_module.Getter phase_infos!: Session["phase_infos"];
+  @session_module.Getter session_id!: string;
+  @portfolio_module.Getter conso!: number;
+  @portfolio_module.Getter conso_forecast!: number[];
 
   // Abilities booleans
-  @sessionModule.Getter can_bid!: boolean;
-  @sessionModule.Getter can_post_planning!: boolean;
-  @sessionModule.Getter clearing_available!: boolean;
-  @sessionModule.Getter results_available!: boolean;
+  @session_module.Getter can_bid!: boolean;
+  @session_module.Getter can_post_planning!: boolean;
+  @session_module.Getter clearing_available!: boolean;
+  @session_module.Getter results_available!: boolean;
 
   /**
    * Dynamic tabs
@@ -86,6 +90,7 @@ export default class Main extends Vue {
     const tabs = ["Home"];
     tabs.push("Centrales");
     if (this.session.status !== "open") tabs.push("Marché");
+    if (this.conso_forecast.length > 0) tabs.push('Prévisions');
     if (this.session.multi_game) tabs.push("Chat");
     if (this.session.results_available) tabs.push("Résultats");
     return tabs;
@@ -107,6 +112,9 @@ export default class Main extends Vue {
         (this.active_tab === "Centrales" ||
           (!this.session.results_available && this.active_tab === "Home")))
     );
+  }
+  get show_forecast(): boolean {
+    return this.active_tab === "Prévisions";
   }
   get show_bids(): boolean {
     return this.session.status !== "open" && this.active_tab === "Marché";
@@ -174,7 +182,7 @@ function toTimeString(dt: number): string {
   flex-direction: column;
   flex-wrap: wrap;
   align-items: center;
-  justify-content: start;
+  justify-content: flex-start;
 }
 
 .content_item {
@@ -203,6 +211,7 @@ function toTimeString(dt: number): string {
   }
   .card {
     margin-top: 0rem;
+    padding-top: 10px;
     max-width: 500px !important;
     border: 2px solid gray;
   }
