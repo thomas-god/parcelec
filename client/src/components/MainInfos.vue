@@ -92,7 +92,7 @@ export default class MainInfos extends Vue {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: start;
+  justify-content: flex-start;
 }
 .phase_infos {
   margin: 0 1rem;
