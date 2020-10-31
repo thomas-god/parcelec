@@ -65,27 +65,29 @@ export default class MainTabs extends Vue {
   /**
    * Dynamic tabs depending on context
    */
-  base_categories: Category[] = [
-    { name: "Home", logo: "🏠" },
-    { name: "Centrales", logo: "⚡", notif: this.delta_planning !== 0 },
-    {
-      name: "Marché",
-      logo: "⚖️",
-      notif: this.notification_market,
-      clear_notif: () => this.SET_MARKET_NOTIFICATION(false)
-    },
-    {
-      name: "Chat",
-      logo: "💬",
-      notif: this.notification_chat,
-      clear_notif: () => this.SET_CHAT_NOTIFICATION(false)
-    },
-    { name: "Prévisions", logo: "📊" },
-    { name: "Résultats", logo: "🏆" }
-  ];
+  get base_categories(): Category[] {
+    return [
+      { name: "Home", logo: "🏠" },
+      { name: "Centrales", logo: "⚡", notif: this.delta_planning !== 0 },
+      {
+        name: "Marché",
+        logo: "⚖️",
+        notif: this.notification_market,
+        clear_notif: () => this.SET_MARKET_NOTIFICATION(false)
+      },
+      {
+        name: "Chat",
+        logo: "💬",
+        notif: this.notification_chat,
+        clear_notif: () => this.SET_CHAT_NOTIFICATION(false)
+      },
+      { name: "Prévisions", logo: "📊" },
+      { name: "Résultats", logo: "🏆" }
+    ];
+  }
   get categories(): Category[] {
-    return this.tabs.map(tab =>
-      this.base_categories.find(cat => cat.name === tab) as Category
+    return this.tabs.map(
+      tab => this.base_categories.find(cat => cat.name === tab) as Category
     );
   }
 
