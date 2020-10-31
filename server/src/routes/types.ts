@@ -16,6 +16,7 @@ export interface SessionOptions {
   plannings_duration_sec: number;
   phases_number: number;
   conso_forecast_mwh: number[];
+  conso_forecast_type: "none" | "perfect";
   conso_price_eur: number[];
   imbalance_costs_factor: number[];
 }
@@ -165,6 +166,7 @@ export interface ScenarioOptions {
   plannings_duration_sec: number;
   phases_number: number;
   conso_forecast_mwh: number[];
+  conso_forecast_type: "none" | "perfect";
   conso_price_eur: number[];
   imbalance_costs_factor: number[];
 }

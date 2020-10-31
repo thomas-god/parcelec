@@ -27,7 +27,7 @@
       (anonymisées) qui auront été faites : étudier ces offres peut vous être
       utile pour comprendre les stratégies de vos concurrents !
     </p>
-    <AllBidsGraph class="chart card" />
+    <BidsGraphAll class="chart card" />
   </div>
 </template>
 
@@ -35,11 +35,11 @@
 import { Component, Vue } from "vue-property-decorator";
 import { namespace } from "vuex-class";
 import BidsList from "../components/BidsList.vue";
-import AllBidsGraph from "./AllBidsGraph.vue";
+import BidsGraphAll from "./BidsGraphAll.vue";
 
 const bids_module = namespace("bids");
 
-@Component({ components: { BidsList, AllBidsGraph } })
+@Component({ components: { BidsList, BidsGraphAll } })
 export default class TutoMarket extends Vue {
   @bids_module.Mutation SET_ALL_MARKET_BIDS!: (bids: any[]) => void;
   created() {

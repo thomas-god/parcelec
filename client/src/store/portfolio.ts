@@ -22,6 +22,7 @@ export interface PowerPlant {
 export interface Portfolio {
   power_plants: PowerPlant[];
   conso: number;
+  conso_forecast: number[];
 }
 
 export interface PortfolioState extends Portfolio {}
@@ -30,6 +31,7 @@ export interface PortfolioState extends Portfolio {}
 export const state: PortfolioState = {
   power_plants: [],
   conso: 0,
+  conso_forecast: [],
 };
 
 // ------------------------ ACTIONS -------------------------
@@ -40,6 +42,7 @@ export const actions: ActionTree<PortfolioState, RootState> = {
    */
   async loadPortfolioContent({ commit, rootState }): Promise<void> {
     loadPowerPlants(commit, rootState.session.id, rootState.user.user_id);
+    loadCurrentConsoValue(commit, rootState.session.id, rootState.user.user_id);
     loadConsoForecast(commit, rootState.session.id, rootState.user.user_id);
   },
   resetPlanning({ state }): void {
@@ -67,6 +70,9 @@ export const mutations: MutationTree<PortfolioState> = {
   SET_CONSO(state, conso: number): void {
     state.conso = conso;
   },
+  SET_CONSO_FORECAST(state, conso_forecast: number[]): void {
+    state.conso_forecast = conso_forecast;
+  },
 };
 
 // ------------------------ GETTERS -------------------------
@@ -76,6 +82,9 @@ export const getters: GetterTree<PortfolioState, RootState> = {
   },
   conso(state): number {
     return state.conso;
+  },
+  conso_forecast(state): number[] {
+    return state.conso_forecast;
   },
   delta_planning(state): number {
     return state.power_plants
@@ -94,6 +103,12 @@ export const portfolio: Module<PortfolioState, RootState> = {
 };
 
 // ------------------------ Helper functions ---------------
+/**
+ * Load the list of the user's power plants.
+ * @param commit Vuex commit
+ * @param session_id Session ID (UUID)
+ * @param user_id User ID (UUID)
+ */
 async function loadPowerPlants(
   commit: Commit,
   session_id: string,
@@ -112,7 +127,13 @@ async function loadPowerPlants(
   commit("SET_POWER_PLANTS", power_plants);
 }
 
-async function loadConsoForecast(
+/**
+ * Load the current consumption value
+ * @param commit Vuex commit
+ * @param session_id Session ID (UUID)
+ * @param user_id User ID (UUID)
+ */
+async function loadCurrentConsoValue(
   commit: Commit,
   session_id: string,
   user_id: string
@@ -128,4 +149,28 @@ async function loadConsoForecast(
     conso = (await res.json()).conso_mw;
   }
   commit("SET_CONSO", conso);
+}
+
+/**
+ * Load the current consumption value
+ * @param commit Vuex commit
+ * @param session_id Session ID (UUID)
+ * @param user_id User ID (UUID)
+ */
+async function loadConsoForecast(
+  commit: Commit,
+  session_id: string,
+  user_id: string
+): Promise<void> {
+  let conso = [];
+  const res = await fetch(
+    `${process.env.VUE_APP_API_URL}/session/${session_id}/user/${user_id}/conso_forecast`,
+    {
+      method: "GET",
+    }
+  );
+  if (res.status === 200) {
+    conso = await res.json();
+  }
+  commit("SET_CONSO_FORECAST", conso);
 }

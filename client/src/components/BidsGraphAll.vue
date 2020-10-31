@@ -67,7 +67,7 @@ const options: ChartOptions = {
 @Component({
   extends: Line // this is important to add the functionality to your component
 })
-export default class CommitChart extends Vue {
+export default class BidsGraphAll extends Vue {
   public renderChart!: (chartData: ChartData, options?: ChartOptions) => void;
   @bids_module.Getter all_market_bids!: Bid[];
   options = options;

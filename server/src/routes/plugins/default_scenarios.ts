@@ -3,10 +3,11 @@
  */
 import { v4 as uuid } from "uuid";
 import db from "../../db/index";
+import { ScenarioOptions } from "../types";
 
 async function generateSoloScenario(): Promise<string> {
   const id = uuid();
-  const default_options = {
+  const default_options: ScenarioOptions = {
     id: id,
     name: "Scénario de base (solo)",
     difficulty: "easy",
@@ -17,6 +18,7 @@ async function generateSoloScenario(): Promise<string> {
     plannings_duration_sec: 180,
     phases_number: 3,
     conso_forecast_mwh: [900, 1300, 2400],
+    conso_forecast_type: "perfect",
     conso_price_eur: [35, 35, 35],
     imbalance_costs_factor: [1.08, 1.08, 1.08],
   };
@@ -33,10 +35,11 @@ async function generateSoloScenario(): Promise<string> {
       plannings_duration_sec,
       phases_number,
       conso_forecast_mwh,
+      conso_forecast_type,
       conso_price_eur,
       imbalance_costs_factor
     )
-    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11);`,
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12);`,
     [
       default_options.id,
       default_options.name,
@@ -47,6 +50,7 @@ async function generateSoloScenario(): Promise<string> {
       default_options.plannings_duration_sec,
       default_options.phases_number,
       default_options.conso_forecast_mwh,
+      default_options.conso_forecast_type,
       default_options.conso_price_eur,
       default_options.imbalance_costs_factor,
     ]
@@ -132,7 +136,7 @@ async function generateSoloScenario(): Promise<string> {
 
 async function generateMultiScenario(): Promise<string> {
   const id = uuid();
-  const default_options = {
+  const default_options: ScenarioOptions = {
     id: id,
     name: "Scénario de base (multi)",
     difficulty: "easy",
@@ -156,6 +160,7 @@ async function generateMultiScenario(): Promise<string> {
       2500,
       400,
     ],
+    conso_forecast_type: "perfect",
     conso_price_eur: [35, 35, 35, 35, 35, 35, 35, 35, 35, 35, 35, 35],
     imbalance_costs_factor: [
       1.08,
@@ -185,10 +190,11 @@ async function generateMultiScenario(): Promise<string> {
       plannings_duration_sec,
       phases_number,
       conso_forecast_mwh,
+      conso_forecast_type,
       conso_price_eur,
       imbalance_costs_factor
     )
-    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11);`,
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12);`,
     [
       default_options.id,
       default_options.name,
@@ -199,6 +205,7 @@ async function generateMultiScenario(): Promise<string> {
       default_options.plannings_duration_sec,
       default_options.phases_number,
       default_options.conso_forecast_mwh,
+      default_options.conso_forecast_type,
       default_options.conso_price_eur,
       default_options.imbalance_costs_factor,
     ]

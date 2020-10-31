@@ -12,7 +12,8 @@ The following describes the various routes composing the parcelec API.
 - [PUT /session/:session_id/user/:user_id/ready](#Set-a-user-a-ready-to-start-a-game)
 - [GET /session/:session_id/user/:user_id](#Get-informations-about-an-user)
 - [GET /session/:session_id/user/:user_id/portfolio](#Get-a-user's-portfolio)
-- [GET /session/:session_id/user/:user_id/conso](#Get-the-consumption-forecast)
+- [GET /session/:session_id/user/:user_id/conso](#Get-the-consumption-value)
+- [GET /session/:session_id/user/:user_id/conso_forecast](#Get-the-consumption-forecast)
 - [POST /session/:session_id/user/:user_id/bid](#Put-a-bid-to-the-market)
 - [GET /session/:session_id/user/:user_id/bids](#Get-all-user's-bids)
 - [DELETE /session/:session_id/user/:user_id/bid/:bid_id](#Delete-a-bid)
@@ -178,7 +179,7 @@ The following describes the various routes composing the parcelec API.
       }
     ```
 
-### Get the consumption forecast
+### Get the consumption value
 - Route : `GET /session/:session_id/user/:user_id/conso`
 - Response :
     - Code : `200` on success
@@ -186,6 +187,15 @@ The following describes the various routes composing the parcelec API.
     - Body : 
     ``` js
       { conso_mw: number }
+    ```
+### Get the consumption forecast
+- Route : `GET /session/:session_id/user/:user_id/conso_forecast`
+- Response :
+    - Code : `200` on success
+    - Type : `application/json`,
+    - Body : 
+    ``` js
+      { number[] }
     ```
 
 ### Put a bid to the market

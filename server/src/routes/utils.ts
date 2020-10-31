@@ -306,11 +306,12 @@ export async function addPlanningToPortfolio(
 }
 
 /**
- * Get the current conso forecast for a given user.
- * @param session_id Session ID
- * @param user_id User ID
+ * Get the current consumption value for a given user.
+ * @param session_id Session ID (UUID)
+ * @param user_id User ID (UUID)
+ * @param phase_no Optional, ID (int) of the current phase
  */
-export async function getConsoForecast(
+export async function getCurrentConsoValue(
   session_id: string,
   user_id: string,
   phase_no?: number
@@ -334,6 +335,38 @@ export async function getConsoForecast(
   } else {
     return 0;
   }
+}
+
+/**
+ * Get the consumption forecast for a given user. Data before the current phase
+ * (included) are actual data while data after the current phase are actual forecasts
+ * depending on the scenario forecast type.
+ * @param session_id Session ID
+ * @param user_id User ID
+ * @param phase_no Optional, ID (int) of the current phase
+ */
+export async function getConsoForecast(
+  session_id: string,
+  user_id: string,
+  phase_no?: number
+): Promise<number[]> {
+  if (phase_no === undefined) {
+    phase_no = await getLastPhaseNo(session_id);
+  }
+  const session_options = await getSessionOptions(session_id);
+  let forecast = [];
+  switch (session_options.conso_forecast_type) {
+    case "none":
+      forecast = [];
+      break;
+    case "perfect":
+      forecast = session_options.conso_forecast_mwh;
+      break;
+    default:
+      forecast = [];
+      break;
+  }
+  return forecast;
 }
 
 /**
@@ -993,6 +1026,7 @@ export async function getSessionOptions(
     plannings_duration_sec: 0,
     phases_number: 0,
     conso_forecast_mwh: [],
+    conso_forecast_type: "none" as SessionOptions["conso_forecast_type"],
     conso_price_eur: [],
     imbalance_costs_factor: [],
   };
@@ -1006,6 +1040,7 @@ export async function getSessionOptions(
         plannings_duration_sec,
         phases_number,
         conso_forecast_mwh,
+        conso_forecast_type,
         conso_price_eur,
         imbalance_costs_factor
       FROM options
@@ -1062,10 +1097,11 @@ export async function createNewSession(session: Session): Promise<void> {
         plannings_duration_sec,
         phases_number,
         conso_forecast_mwh,
+        conso_forecast_type,
         conso_price_eur,
         imbalance_costs_factor
       )
-    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
     [
       session.id,
       session.scenario_id,
@@ -1074,6 +1110,7 @@ export async function createNewSession(session: Session): Promise<void> {
       scenario_options.plannings_duration_sec,
       scenario_options.phases_number,
       scenario_options.conso_forecast_mwh,
+      scenario_options.conso_forecast_type,
       scenario_options.conso_price_eur,
       scenario_options.imbalance_costs_factor,
     ]
@@ -1122,6 +1159,7 @@ export async function getScenarioOptions(
         plannings_duration_sec,
         phases_number,
         conso_forecast_mwh,
+        conso_forecast_type,
         conso_price_eur,
         imbalance_costs_factor
       FROM scenarios_options
