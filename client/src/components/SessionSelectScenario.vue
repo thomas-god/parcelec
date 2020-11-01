@@ -66,6 +66,7 @@ export default class SessionSelectScenario extends Vue {
       method: "GET"
     });
     this.scenarios = await res.json();
+    if(this.scenarios.length > 0) this.getScenarioDetails(this.scenarios[0].id)
   }
 
   scenario_id = "";
