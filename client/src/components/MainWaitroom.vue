@@ -9,7 +9,11 @@
       {{
         session.multi_game ? "discuter avec les autres joueurs connectés," : ""
       }}
-      prendre connaissance de vos centrales, et quand vous serez prêt·e à
+      prendre connaissance de vos centrales 
+      {{
+        conso_forecast.length > 0 ? " et des prévisions," : ","
+      }}
+      et quand vous serez prêt·e à
       démarrer la partie, cliquez sur le bouton
       <em>"Je suis prêt·e !"</em>
     </p>
@@ -25,8 +29,9 @@ import { State, namespace } from "vuex-class";
 import { Session } from "../store/session";
 import Btn from "./base/Button.vue";
 
-const userModule = namespace("user");
-const sessionModule = namespace("session");
+const user_module = namespace("user");
+const session_module = namespace("session");
+const portfolio_module = namespace("portfolio");
 
 @Component({
   components: {
@@ -35,11 +40,12 @@ const sessionModule = namespace("session");
 })
 export default class MainWaitroom extends Vue {
   @State("api_url") api_url!: string;
-  @userModule.Getter username!: string;
-  @userModule.Getter user_id!: string;
-  @userModule.State ready!: boolean;
-  @userModule.Mutation SET_GAME_READY!: (game_ready: boolean) => void;
-  @sessionModule.Getter session!: Session;
+  @user_module.Getter username!: string;
+  @user_module.Getter user_id!: string;
+  @user_module.State ready!: boolean;
+  @user_module.Mutation SET_GAME_READY!: (game_ready: boolean) => void;
+  @session_module.Getter session!: Session;
+  @portfolio_module.Getter conso_forecast!: number[];
 
   async setStatusReady(): Promise<void> {
     const res = await fetch(
