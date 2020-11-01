@@ -15,7 +15,7 @@
         </li>
       </ul>
       <ScenarioIDCard
-        :options="scneario_options"
+        :options="scenario_options"
         :portfolio="scenario_portfolio"
         class="scenario__ID"
         v-if="scenario_id !== ''"
@@ -69,7 +69,7 @@ export default class SessionSelectScenario extends Vue {
   }
 
   scenario_id = "";
-  scneario_options = {};
+  scenario_options = {};
   scenario_portfolio = [];
   /** Get details (options, default portofolio of a scenario)
    * @param scenario_id ID of the scenario
@@ -81,11 +81,11 @@ export default class SessionSelectScenario extends Vue {
     });
     if (res.status === 200) {
       const body = await res.json();
-      this.scneario_options = body.options;
+      this.scenario_options = body.options;
       this.scenario_portfolio = body.portfolio;
     } else {
       console.log(await res.text());
-      this.scneario_options = {};
+      this.scenario_options = {};
       this.scenario_portfolio = [];
     }
   }
