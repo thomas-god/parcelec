@@ -16,7 +16,11 @@
       <BidsList class="content_item card" v-show="show_bids" />
       <OTC class="content_item card" v-show="show_otcs" />
       <Bilans class="content_item card" v-show="show_results" />
-      <Chatroom class="content_item card" v-show="show_chatroom" />
+      <Chatroom
+        class="content_item card"
+        v-show="show_chatroom"
+        :display_ready="session.status === 'open'"
+      />
     </div>
 
     <!-- Footer -->
@@ -39,7 +43,7 @@ import Btn from "./base/Button.vue";
 import MainWaitroom from "./MainWaitroom.vue";
 import MainInfos from "./MainInfos.vue";
 import MainTabs from "./MainTabs.vue";
-import Forecast from './Forecast.vue'
+import Forecast from "./Forecast.vue";
 import OTC from "./OTC.vue";
 
 const user_module = namespace("user");
@@ -90,7 +94,7 @@ export default class Main extends Vue {
     const tabs = ["Home"];
     tabs.push("Centrales");
     if (this.session.status !== "open") tabs.push("Marché");
-    if (this.conso_forecast.length > 0) tabs.push('Prévisions');
+    if (this.conso_forecast.length > 0) tabs.push("Prévisions");
     if (this.session.multi_game) tabs.push("Chat");
     if (this.session.results_available) tabs.push("Résultats");
     return tabs;
