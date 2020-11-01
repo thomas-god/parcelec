@@ -11,6 +11,7 @@
         <li>Difficulté : {{ difficulty }}</li>
         <li>Nombre de phases : {{ options.conso_forecast_mwh.length }}</li>
         <li>Multijoueur : {{ options.multi_game ? "Oui" : "Non" }}</li>
+        <li>Prévisions : {{ forecast }}</li>
       </ul>
     </div>
   </div>
@@ -33,6 +34,13 @@ export default class ScenarioIDCard extends Vue {
     if (this.options.difficulty === "easy") str = "Facile";
     if (this.options.difficulty === "medium") str = "Moyenne";
     if (this.options.difficulty === "hard") str = "Difficile";
+    return str;
+  }
+
+  get forecast(): string {
+    let str = "";
+    if (this.options.conso_forecast_type === "none") str = "Pas de prévisions";
+    if (this.options.conso_forecast_type === "perfect") str = "Parfaites";
     return str;
   }
 }
