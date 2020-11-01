@@ -38,6 +38,7 @@ import TutoPowerPlants from "../components/TutoPowerPlants.vue";
 import TutoPlanning from "../components/TutoPlanning.vue";
 import TutoMarket from "../components/TutoMarket.vue";
 import TutoOTC from "../components/TutoOTC.vue";
+import TutoForecast from '../components/TutoForecast.vue'
 import TutoEnd from "../components/TutoEnd.vue";
 
 @Component({
@@ -49,6 +50,7 @@ import TutoEnd from "../components/TutoEnd.vue";
     TutoPlanning,
     TutoMarket,
     TutoOTC,
+    TutoForecast,
     TutoEnd
   }
 })
@@ -60,6 +62,7 @@ export default class Tutorial extends Vue {
     { title: "Votre planning", component: TutoPlanning },
     { title: "Le marché", component: TutoMarket },
     { title: "Les échanges directs", component: TutoOTC },
+    { title: "Les prévisions", component: TutoForecast },
     { title: "Commencer une partie !", component: TutoEnd }
   ];
 }
