@@ -50,6 +50,14 @@ import Btn from "./base/Button.vue";
 
 const sessionModule = namespace("session");
 
+interface Scenario {
+  id: string;
+  name: string;
+  description: string;
+  difficulty: 'easy' | 'medium' |'hard';
+  multi_game: boolean;
+}
+
 @Component({ components: { ScenarioIDCard, Btn } })
 export default class SessionSelectScenario extends Vue {
   // Store related stuff
@@ -57,7 +65,7 @@ export default class SessionSelectScenario extends Vue {
   @sessionModule.Action setSessionID!: (session_id: string) => void;
   @State("api_url") api_url!: string;
 
-  scenarios = [];
+  scenarios: Scenario[] = [];
   /**
    * Query the API to get the list of available scenarios.
    */
