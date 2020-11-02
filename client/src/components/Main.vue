@@ -15,7 +15,7 @@
       <MainData class="content_item wide" v-show="show_forecast" />
       <BidsList class="content_item card" v-show="show_bids" />
       <OTC class="content_item card" v-show="show_otcs" />
-      <Bilans class="content_item card" v-show="show_results" />
+      <Bilans class="content_item wide" v-show="show_results" />
       <Chatroom
         class="content_item card"
         v-show="show_chatroom"

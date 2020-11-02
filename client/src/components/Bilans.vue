@@ -1,6 +1,5 @@
 <template>
   <div class="bilans__main">
-    <h2>Résultats de la phase</h2>
     <div
       class="bilans__ranking"
       v-if="results_available && session_nb_users > 1"
@@ -30,38 +29,14 @@
         </div>
       </template>
     </div>
-    <h3 v-if="results_available && session_nb_users > 1">Vos détails</h3>
-    <div class="bilans__container">
-      <div class="bilans__item">
-        <span><em>Clients</em></span>
-        <span> {{ fmt(conso) }} MWh </span>
-        <span> {{ fmt(conso_eur) }} € </span>
-      </div>
-      <div class="bilans__item">
-        <span><em>Production</em></span>
-        <span> {{ fmt(prod_total_mwh) }} MWh </span>
-        <span> {{ fmt(-1 * prod_eur) }} € </span>
-      </div>
-      <div class="bilans__item">
-        <span><em>Ventes</em></span>
-        <span> {{ fmt(sell_mwh) }} MWh </span>
-        <span> {{ fmt(sell_eur) }} € </span>
-      </div>
-      <div class="bilans__item">
-        <span><em>Achats</em></span>
-        <span> {{ fmt(buy_mwh) }} MWh </span>
-        <span> {{ fmt(-1 * buy_eur) }} € </span>
-      </div>
-      <div class="bilans__item">
-        <span><em>Écarts</em></span>
-        <span> {{ fmt(deficit_mwh) }} MWh </span>
-        <span> {{ fmt(imbalance_costs_eur) }} € </span>
-      </div>
-      <div class="bilans__item">
-        <span>Total</span>
-        <span>-</span>
-        <span> {{ fmt(money) }} € </span>
-      </div>
+
+    <div v-else>
+      <h3>Gains nets</h3>
+      <span class="balance">{{ Math.floor(balance_eur).toLocaleString('fr-FR') }} €</span>
+    </div>
+    <div class="graph">
+      <h3>Détails de vos résultats</h3>
+      <MainDataFinances :display_title="false" />
     </div>
   </div>
 </template>
@@ -74,13 +49,14 @@ import { PowerPlant } from "../store/portfolio";
 import { ResultsState } from "../store/results";
 import Btn from "./base/Button.vue";
 import ToggleSwitch from "./base/Toggle.vue";
+import MainDataFinances from "./MainDataFinances.vue";
 
 const portfolioModule = namespace("portfolio");
 const bidsModule = namespace("bids");
 const resultsModule = namespace("results");
 const sessionModule = namespace("session");
 
-@Component({ components: { Btn, ToggleSwitch } })
+@Component({ components: { Btn, ToggleSwitch, MainDataFinances } })
 export default class Bilans extends Vue {
   @sessionModule.State results_available!: boolean;
   @portfolioModule.State power_plants!: PowerPlant[];
@@ -163,6 +139,7 @@ export default class Bilans extends Vue {
   margin-bottom: 1rem;
 }
 .bilans__ranking__toggle {
+  max-width: 400px;
   width: 70%;
   margin: 0 0 10px;
 }
@@ -221,5 +198,12 @@ export default class Bilans extends Vue {
   justify-self: start;
   text-align: center;
   white-space: nowrap;
+}
+
+.graph {
+  margin-top: 2rem;
+}
+.balance {
+  font-size: 2rem;
 }
 </style>
