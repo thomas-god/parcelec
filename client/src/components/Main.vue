@@ -29,7 +29,7 @@
 </template>
 
 <script lang="ts">
-import { Component, Prop, Vue } from "vue-property-decorator";
+import { Component, Prop, Vue, Watch } from "vue-property-decorator";
 import { State, Action, Getter, namespace } from "vuex-class";
 import { Session } from "../store/session";
 import Chatroom from "./Chatroom.vue";
@@ -130,14 +130,19 @@ export default class Main extends Vue {
     );
   }
   get show_results(): boolean {
-    return (
-      this.results_available && ["Home"].includes(this.active_tab)
-    );
+    return this.results_available && this.active_tab === "Home";
   }
   get show_chatroom(): boolean {
     return this.session.multi_game && this.active_tab === "Chat";
   }
 
+  /**
+   * Switch to home tab on phase start/end
+   */
+  @Watch("results_available")
+  goToHome(): void {
+    this.active_tab = "Home";
+  }
   /**
    * Status ready and go to end game
    */
