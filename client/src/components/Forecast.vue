@@ -3,9 +3,9 @@
     <h2>Prévison de consommation</h2>
     <ForecastGraph
       class="chart"
-      :data="conso_forecast"
-      :line_title="'Consommation'"
-      :y_title="'Consommation (MWh)'"
+      :conso="conso_forecast"
+      :plannings_by_type="plannings_by_type"
+      :current_phase="phase_no"
     />
   </div>
 </template>
@@ -13,13 +13,61 @@
 <script lang='ts'>
 import { Component, Vue } from "vue-property-decorator";
 import { namespace } from "vuex-class";
+import { PhasePlanning } from "../store/results";
 import ForecastGraph from "./ForecastGraph.vue";
 
+const session_module = namespace("session");
 const portfolio_module = namespace("portfolio");
+const results_module = namespace("results");
 
 @Component({ components: { ForecastGraph } })
 export default class Forecast extends Vue {
   @portfolio_module.Getter conso_forecast!: number[];
+  @results_module.Getter plannings!: PhasePlanning[];
+  @session_module.Getter phase_no!: number;
+
+  get plannings_by_type(): {
+    type: string;
+    name: string;
+    color: string;
+    values: number[];
+  }[] {
+    const plannings = [
+      {
+        type: "nuc",
+        name: "Nucléaire",
+        color: "#fce100",
+        values: [] as number[]
+      },
+      {
+        type: "hydro",
+        name: "Hydraulique",
+        color: "#00bcf2",
+        values: [] as number[]
+      },
+      {
+        type: "therm",
+        name: "Thermique",
+        color: "#f7630c",
+        values: [] as number[]
+      },
+      {
+        type: "storage",
+        name: "Stockage",
+        color: "#16c60c",
+        values: [] as number[]
+      }
+    ];
+
+    plannings.forEach(type => {
+      type.values = this.plannings.map(phase => {
+        return phase.planning
+          .filter(item => item.type === type.type)
+          .reduce((prev, cur) => prev + cur.p_dispatch_mw, 0);
+      });
+    });
+    return plannings;
+  }
 }
 </script>
 

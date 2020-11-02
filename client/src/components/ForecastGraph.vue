@@ -1,6 +1,15 @@
 <script lang="ts">
-import { ChartData, ChartOptions, ChartPoint } from "chart.js";
-import { Line } from "vue-chartjs";
+import {
+  Chart,
+  ChartColor,
+  ChartData,
+  ChartDataSets,
+  ChartOptions,
+  ChartPoint,
+  Point,
+  Scriptable
+} from "chart.js";
+import { Line, Bar } from "vue-chartjs";
 import { Component, Vue, Watch, Prop } from "vue-property-decorator";
 import { State, Action, Getter, namespace } from "vuex-class";
 import { Bid } from "../store/bids";
@@ -12,48 +21,49 @@ const options: ChartOptions = {
   responsive: true,
   tooltips: {
     intersect: false,
-    mode: "nearest",
-    axis: "y",
-    position: "nearest",
+    mode: "index",
+    axis: "x",
+    position: "average",
     filter: (item: Chart.ChartTooltipItem, data: ChartData): boolean => {
       return item.index! > 0;
     },
     callbacks: {
       title: (item: Chart.ChartTooltipItem[], data: ChartData): string => {
         return "";
-      },
-      label: (tooltipItem: Chart.ChartTooltipItem, data: ChartData): string => {
-        if (tooltipItem.index! > 0) {
-          const val = data!.datasets![tooltipItem!.datasetIndex!].data![
-            tooltipItem!.index!
-          ] as ChartPoint;
-          return `${val.y} MWh`;
-        } else return "";
       }
     }
   },
   scales: {
     xAxes: [
       {
-        type: "linear",
+        scaleLabel: { labelString: "Phase", display: true },
         ticks: {
-          suggestedMin: 1,
-          stepSize: 1
-        },
-        scaleLabel: {
-          display: true,
-          labelString: "Phase"
+          suggestedMin: 1
         }
       }
     ],
     yAxes: [
       {
+        type: "linear",
+        id: "yc",
+        display: true,
+        scaleLabel: { labelString: "Puissance (MW)", display: true },
         ticks: {
-          suggestedMin: 0
+          suggestedMin: 0,
+          suggestedMax: 2500
+        }
+      },
+      {
+        type: "linear",
+        id: "yp",
+        display: false,
+        stacked: true,
+        gridLines: {
+          drawOnChartArea: false
         },
-        scaleLabel: {
-          display: true,
-          labelString: ""
+        ticks: {
+          suggestedMin: 0,
+          suggestedMax: 2500
         }
       }
     ]
@@ -64,54 +74,97 @@ const options: ChartOptions = {
   extends: Line
 })
 export default class ForecastGraph extends Vue {
-  @Prop() data!: number[];
-  @Prop() line_title!: string;
-  @Prop() y_title!: string;
+  @Prop() conso!: number[];
+  @Prop() plannings_by_type!: {
+    type: string;
+    name: string;
+    color: string;
+    values: number[];
+  }[];
+  @Prop() current_phase!: number;
   public renderChart!: (chartData: ChartData, options?: ChartOptions) => void;
   options = options;
 
   get max_value(): number {
     return (
-      Math.ceil(this.data.reduce((max, val) => Math.max(max, val), 0) / 500) *
-      500
+      Math.ceil(
+        Math.max(
+          this.conso.reduce((max, val) => Math.max(max, val), 0),
+          this.plannings_by_type
+            .map(type =>
+              type.values.reduce(
+                (prev, cur) => Math.max(prev, cur),
+                Number.NEGATIVE_INFINITY
+              )
+            )
+            .reduce(
+              (prev, cur) => Math.max(prev, cur),
+              Number.NEGATIVE_INFINITY
+            )
+        ) / 500
+      ) * 500
     );
   }
-  get data_fmt(): { x: number; y: number }[] {
-    return [{ x: 1, y: this.data[0] }].concat(
-      this.data.map((val, id) => {
+  get conso_fmt(): { x: number; y: number }[] {
+    return [{ x: 1, y: this.conso[0] }].concat(
+      this.conso.map((val, id) => {
         return { x: id + 2, y: val };
       })
     );
   }
+  get plannings_fmt(): ChartDataSets[] {
+    return this.plannings_by_type.map(type => {
+      return {
+        label: type.name,
+        stack: "Prod",
+        borderColor: "rgba(0, 0, 0, 0)",
+        backgroundColor: type.color,
+        pointRadius: 0,
+        steppedLine: "after",
+        data: [type.values[0]].concat(type.values),
+        order: 1,
+        yAxisID: "yp"
+      };
+    });
+  }
 
   plot(): void {
-    options!.scales!.xAxes![0].ticks!.min = 1;
-    options!.scales!.xAxes![0].ticks!.maxTicksLimit = this.data.length + 1;
-    options!.scales!.yAxes![0].ticks!.suggestedMax! = this.max_value;
-    options!.scales!.yAxes![0].scaleLabel!.labelString! = this.y_title;
+    this.options!.scales!.xAxes![0].ticks!.min = 1;
+    this.options!.scales!.xAxes![0].ticks!.maxTicksLimit =
+      this.conso.length + 1;
+    this.options!.scales!.yAxes![0].ticks!.suggestedMax! = this.max_value;
+    this.options!.scales!.yAxes![0].ticks!.min = 0;
     this.renderChart(
       {
         datasets: [
+          ...this.plannings_fmt,
           {
-            label: this.line_title,
+            label: "Consommation",
+            stack: "Conso",
             backgroundColor: "rgba(0, 0, 0, 0)",
             borderColor: "rgb(0, 132, 255)",
-            data: this.data_fmt,
+            data: this.conso_fmt,
             steppedLine: "after",
-            pointRadius: 0
+            pointRadius: 0,
+            order: 2,
+            yAxisID: "yc"
           }
-        ]
+        ],
+        labels: ["1", "2", "3", "4"]
       },
-      options
+      this.options
     );
   }
 
   mounted() {
-    // Overwriting base render method with actual data.
     this.plot();
   }
-  @Watch("data_fmt")
-  watchBids(): void {
+  @Watch("conso_fmt")
+  watchConso(): void {
+    this.plot();
+  }
+  @Watch("plannings_fmt")
+  watchPlannings(): void {
     this.plot();
   }
 }
