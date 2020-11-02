@@ -2,7 +2,22 @@ import Vuex, { Module, GetterTree, MutationTree, ActionTree } from "vuex";
 import Vue from "vue";
 import { RootState } from "./index";
 
-export interface ResultsState {
+interface PlantDispatch {
+  phase_no: number;
+  plant_id: string;
+  p_dispatch_mw: number;
+  stock_start_mwh: number;
+  stock_end_mwh: number;
+  type: "nuc" | "therm" | "hydro" | "ren" | "storage";
+}
+
+export interface PhasePlanning {
+  phase_no: number;
+  planning: PlantDispatch[];
+}
+
+export interface ResultsPhase {
+  phase_no: number;
   conso_mwh: number;
   conso_eur: number;
   prod_mwh: number;
@@ -16,14 +31,20 @@ export interface ResultsState {
   balance_eur: number;
   ranking_current: number;
   ranking_overall: number;
+}
+
+export interface ResultsState extends ResultsPhase {
   rankings: {
     phase: { username: string; rank: number; balance: number }[];
     overall: { username: string; rank: number }[];
   };
+  previous_plannings: PlantDispatch[];
+  previous_results: ResultsPhase[];
 }
 
 // ------------------------ STATE -------------------------
 export const state: ResultsState = {
+  phase_no: -1,
   conso_mwh: 0,
   conso_eur: 0,
   prod_mwh: 0,
@@ -41,6 +62,8 @@ export const state: ResultsState = {
     phase: [],
     overall: [],
   },
+  previous_plannings: [],
+  previous_results: [],
 };
 
 // ------------------------ ACTIONS -------------------------
@@ -49,7 +72,11 @@ export const actions: ActionTree<ResultsState, RootState> = {
     const api_url = rootState.api_url;
     const session_id = rootState.session.id;
     const user_id = rootState.user.user_id;
-    let results = {};
+    let data = {
+      current_results: {},
+      previous_results: {},
+      previous_plannings: {},
+    };
     const res = await fetch(
       `${api_url}/session/${session_id}/user/${user_id}/results`,
       {
@@ -57,11 +84,13 @@ export const actions: ActionTree<ResultsState, RootState> = {
       }
     );
     if (res.status === 200) {
-      results = await res.json();
+      data = await res.json();
     } else {
       console.log(await res.text());
     }
-    commit("SET_RESULTS", results);
+    commit("SET_RESULTS", data.current_results);
+    commit("SET_PREVIOUS_RESULTS", data.previous_results);
+    commit("SET_PREVIOUS_PLANNINGS", data.previous_plannings);
   },
   async loadRankings({ commit, rootState }): Promise<void> {
     const api_url = rootState.api_url;
@@ -87,6 +116,14 @@ export const mutations: MutationTree<ResultsState> = {
       Vue.set(state, k, v);
     });
   },
+  SET_PREVIOUS_RESULTS(state, previous_results: ResultsPhase[]): void {
+    state.previous_results = previous_results.sort(
+      (a, b) => a.phase_no - b.phase_no
+    );
+  },
+  SET_PREVIOUS_PLANNINGS(state, previous_plannings: PlantDispatch[]): void {
+    state.previous_plannings = previous_plannings;
+  },
   SET_RANKINGS(state, rankings: ResultsState["rankings"]): void {
     state.rankings.phase = rankings.phase;
     state.rankings.overall = rankings.overall;
@@ -100,6 +137,23 @@ export const getters: GetterTree<ResultsState, RootState> = {
       current: state.ranking_current,
       overall: state.ranking_overall,
     };
+  },
+  previous_plannings(state): PhasePlanning[] {
+    const res: { phase_no: number; planning: PlantDispatch[] }[] = [];
+    for (let i = 0; i < state.previous_plannings.length; i++) {
+      const idx = res.findIndex(
+        (r) => r.phase_no === state.previous_plannings[i].phase_no
+      );
+      if (idx === -1) {
+        res.push({
+          phase_no: state.previous_plannings[i].phase_no,
+          planning: [state.previous_plannings[i]],
+        });
+      } else {
+        res[idx].planning.push(state.previous_plannings[i]);
+      }
+    }
+    return res.sort((a, b) => a.phase_no - b.phase_no);
   },
 };
 

@@ -1,7 +1,7 @@
 <template>
   <div>
-    <h2>Prévison de consommation</h2>
-    <ForecastGraph
+    <h2>Prévision de consommation</h2>
+    <MainDataForecastGraph
       class="chart"
       :data="conso_forecast"
       :line_title="'Consommation'"
@@ -13,12 +13,12 @@
 <script lang='ts'>
 import { Component, Vue } from "vue-property-decorator";
 import { namespace } from "vuex-class";
-import ForecastGraph from "./ForecastGraph.vue";
+import MainDataForecastGraph from "./MainDataForecastGraph.vue";
 
 const portfolio_module = namespace("portfolio");
 
-@Component({ components: { ForecastGraph } })
-export default class Forecast extends Vue {
+@Component({ components: { MainDataForecastGraph } })
+export default class MainDataForecast extends Vue {
   @portfolio_module.Getter conso_forecast!: number[];
 }
 </script>

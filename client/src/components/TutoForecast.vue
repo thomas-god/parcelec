@@ -6,13 +6,16 @@
     </p>
     <p>
       Pour vous aider à prendre des décisions sur le long terme, vous disposez
-      d'un onglet <em>Prévisions</em> 📊 qui vous indique les volumes de
-      consommation susceptibles de se produire dans le futur.
+      d'un onglet <em>Données</em> 📊 qui regroupe les prévisions de
+      consommation ainsi que vos plannings précédents.
     </p>
     <p>
-      Suivant le scénario choisi les prévisions pourront être <em>parfaites</em> (vous savez exactement ce qui va se produire), <em>incertaines</em> (vous savez ce qui va se produire à une erreur prés) ou bien vous n'aurz <em>pas de prévisions</em>.
+      Suivant le scénario choisi les prévisions pourront être
+      <em>parfaites</em> (vous savez exactement ce qui va se produire),
+      <em>incertaines</em> (vous savez ce qui va se produire à une erreur prés)
+      ou bien vous n'aurz <em>pas de prévisions</em>.
     </p>
-    <ForecastGraph
+    <MainDataForecastGraph
       class="chart card"
       :data="conso_forecast"
       :line_title="'Consommation'"
@@ -24,11 +27,11 @@
 <script lang='ts'>
 import { Component, Vue } from "vue-property-decorator";
 import { namespace } from "vuex-class";
-import ForecastGraph from "./ForecastGraph.vue";
+import MainDataForecastGraph from "./MainDataForecastGraph.vue";
 
 const bids_module = namespace("bids");
 
-@Component({ components: { ForecastGraph } })
+@Component({ components: { MainDataForecastGraph } })
 export default class TutoForecast extends Vue {
   conso_forecast = [500, 900, 600, 1500, 2300, 1200];
 }

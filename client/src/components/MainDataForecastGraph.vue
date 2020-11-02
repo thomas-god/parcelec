@@ -4,16 +4,17 @@ import { Line } from "vue-chartjs";
 import { Component, Vue, Watch, Prop } from "vue-property-decorator";
 import { State, Action, Getter, namespace } from "vuex-class";
 import { Bid } from "../store/bids";
-
 const bids_module = namespace("bids");
-
 const options: ChartOptions = {
   maintainAspectRatio: false,
   responsive: true,
+  legend: {
+    display: false
+  },
   tooltips: {
     intersect: false,
-    mode: "nearest",
-    axis: "y",
+    mode: "index",
+    axis: "x",
     position: "nearest",
     filter: (item: Chart.ChartTooltipItem, data: ChartData): boolean => {
       return item.index! > 0;
@@ -59,17 +60,15 @@ const options: ChartOptions = {
     ]
   }
 };
-
 @Component({
   extends: Line
 })
-export default class ForecastGraph extends Vue {
+export default class MainDataForecastGraph extends Vue {
   @Prop() data!: number[];
   @Prop() line_title!: string;
   @Prop() y_title!: string;
   public renderChart!: (chartData: ChartData, options?: ChartOptions) => void;
   options = options;
-
   get max_value(): number {
     return (
       Math.ceil(this.data.reduce((max, val) => Math.max(max, val), 0) / 500) *
@@ -83,7 +82,6 @@ export default class ForecastGraph extends Vue {
       })
     );
   }
-
   plot(): void {
     options!.scales!.xAxes![0].ticks!.min = 1;
     options!.scales!.xAxes![0].ticks!.maxTicksLimit = this.data.length + 1;
@@ -105,7 +103,6 @@ export default class ForecastGraph extends Vue {
       options
     );
   }
-
   mounted() {
     // Overwriting base render method with actual data.
     this.plot();

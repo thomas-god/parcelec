@@ -12,10 +12,10 @@
         :show_actions="!results_available"
         v-show="show_pp_list"
       />
-      <Forecast class="content_item card" v-show="show_forecast" />
+      <MainData class="content_item wide" v-show="show_forecast" />
       <BidsList class="content_item card" v-show="show_bids" />
       <OTC class="content_item card" v-show="show_otcs" />
-      <Bilans class="content_item card" v-show="show_results" />
+      <Bilans class="content_item wide" v-show="show_results" />
       <Chatroom
         class="content_item card"
         v-show="show_chatroom"
@@ -29,7 +29,7 @@
 </template>
 
 <script lang="ts">
-import { Component, Prop, Vue } from "vue-property-decorator";
+import { Component, Prop, Vue, Watch } from "vue-property-decorator";
 import { State, Action, Getter, namespace } from "vuex-class";
 import { Session } from "../store/session";
 import Chatroom from "./Chatroom.vue";
@@ -43,7 +43,7 @@ import Btn from "./base/Button.vue";
 import MainWaitroom from "./MainWaitroom.vue";
 import MainInfos from "./MainInfos.vue";
 import MainTabs from "./MainTabs.vue";
-import Forecast from "./Forecast.vue";
+import MainData from "./MainData.vue";
 import OTC from "./OTC.vue";
 
 const user_module = namespace("user");
@@ -63,7 +63,7 @@ const results_module = namespace("results");
     MainWaitroom,
     MainInfos,
     MainTabs,
-    Forecast,
+    MainData,
     OTC
   }
 })
@@ -94,9 +94,8 @@ export default class Main extends Vue {
     const tabs = ["Home"];
     tabs.push("Centrales");
     if (this.session.status !== "open") tabs.push("Marché");
-    if (this.conso_forecast.length > 0) tabs.push("Prévisions");
+    tabs.push("Données");
     if (this.session.multi_game) tabs.push("Chat");
-    if (this.session.results_available) tabs.push("Résultats");
     return tabs;
   }
 
@@ -118,7 +117,7 @@ export default class Main extends Vue {
     );
   }
   get show_forecast(): boolean {
-    return this.active_tab === "Prévisions";
+    return this.active_tab === "Données";
   }
   get show_bids(): boolean {
     return this.session.status !== "open" && this.active_tab === "Marché";
@@ -131,14 +130,19 @@ export default class Main extends Vue {
     );
   }
   get show_results(): boolean {
-    return (
-      this.results_available && ["Home", "Résultats"].includes(this.active_tab)
-    );
+    return this.results_available && this.active_tab === "Home";
   }
   get show_chatroom(): boolean {
     return this.session.multi_game && this.active_tab === "Chat";
   }
 
+  /**
+   * Switch to home tab on phase start/end
+   */
+  @Watch("results_available")
+  goToHome(): void {
+    this.active_tab = "Home";
+  }
   /**
    * Status ready and go to end game
    */

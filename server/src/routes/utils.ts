@@ -292,7 +292,7 @@ export async function addPlanningToPortfolio(
   if (portfolio.length > 0) {
     const session_id = portfolio[0].session_id;
     const user_id = portfolio[0].user_id;
-    const planning = await getPlanning(session_id, user_id);
+    const planning = await getUserLastPhasePlanning(session_id, user_id);
     return portfolio.map((pp) => {
       const plan = planning.find((p) => p.plant_id === pp.id);
       return {
@@ -375,7 +375,7 @@ export async function getConsoForecast(
  * @param user_id User ID
  * @param phase_no Optional, phase ID (int)
  */
-export async function getUserResults(
+export async function getUserPhaseResults(
   session_id: string,
   user_id: string,
   phase_no?: number
@@ -418,7 +418,7 @@ export async function getUserResults(
  * @param session_id Session ID
  * @param user_id User ID
  */
-export async function getUserGameResults(
+export async function getUserAllPhasesResults(
   session_id: string,
   user_id: string
 ): Promise<PhaseResults[]> {
@@ -660,7 +660,7 @@ export async function getAllBids(sessions_id: string): Promise<Bid[]> {
  * @param session_id Session ID
  * @param user_id User ID
  */
-export async function getPlanning(
+export async function getUserLastPhasePlanning(
   session_id: string,
   user_id: string
 ): Promise<ProductionPlanning> {
@@ -687,6 +687,53 @@ export async function getPlanning(
   } else {
     return [];
   }
+}
+
+/**
+ * Returns the production plannings (list of power plants dispatch) of a user
+ * for all previous phases.
+ * @param session_id Session ID
+ * @param user_id User ID
+ */
+export async function getUserAllPhasesPlanning(
+  session_id: string,
+  user_id: string
+): Promise<
+  {
+    phase_no: number;
+    plant_id: string;
+    p_dispatch_mw: number;
+    stock_start_mwh: number;
+    stock_end_mwh: number;
+    type: PowerPlant["type"];
+  }[]
+> {
+  return (
+    await db.query(
+      `SELECT
+        plannings.phase_no AS phase_no, 
+        plannings.plant_id AS plant_id, 
+        plannings.p_mw AS p_dispatch_mw, 
+        plannings.stock_start_mwh AS stock_start_mwh, 
+        plannings.stock_end_mwh AS stock_end_mwh,
+        pp.type AS type
+      FROM production_plannings AS plannings
+      INNER JOIN power_plants AS pp
+        ON pp.id = plannings.plant_id
+      WHERE  
+        plannings.session_id=$1 
+        AND plannings.user_id=$2
+      ORDER BY plannings.phase_no;`,
+      [session_id, user_id]
+    )
+  ).rows as {
+    phase_no: number;
+    plant_id: string;
+    p_dispatch_mw: number;
+    stock_start_mwh: number;
+    stock_end_mwh: number;
+    type: PowerPlant["type"];
+  }[];
 }
 
 /**

@@ -81,8 +81,7 @@ export default class MainTabs extends Vue {
         notif: this.notification_chat,
         clear_notif: () => this.SET_CHAT_NOTIFICATION(false)
       },
-      { name: "Prévisions", logo: "📊" },
-      { name: "Résultats", logo: "🏆" }
+      { name: "Données", logo: "📊" },
     ];
   }
   get categories(): Category[] {
