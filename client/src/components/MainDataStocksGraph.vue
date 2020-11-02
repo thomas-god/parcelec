@@ -51,7 +51,9 @@ const options: ChartOptions = {
         display: true,
         scaleLabel: { labelString: "Energie (MWh)", display: true },
         ticks: {
-          suggestedMin: 0
+          suggestedMin: 0,
+          maxTicksLimit: 8,
+          autoSkip: true
         }
       }
     ]
