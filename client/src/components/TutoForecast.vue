@@ -6,11 +6,14 @@
     </p>
     <p>
       Pour vous aider à prendre des décisions sur le long terme, vous disposez
-      d'un onglet <em>Données</em> 📊 qui vous indique les volumes de
-      consommation susceptibles de se produire dans le futur.
+      d'un onglet <em>Données</em> 📊 qui regroupe les prévisions de
+      consommation ainsi que vos plannings précédents.
     </p>
     <p>
-      Suivant le scénario choisi les prévisions pourront être <em>parfaites</em> (vous savez exactement ce qui va se produire), <em>incertaines</em> (vous savez ce qui va se produire à une erreur prés) ou bien vous n'aurz <em>pas de prévisions</em>.
+      Suivant le scénario choisi les prévisions pourront être
+      <em>parfaites</em> (vous savez exactement ce qui va se produire),
+      <em>incertaines</em> (vous savez ce qui va se produire à une erreur prés)
+      ou bien vous n'aurz <em>pas de prévisions</em>.
     </p>
     <MainDataForecastGraph
       class="chart card"

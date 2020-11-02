@@ -149,12 +149,8 @@ export default class MainDataStocksGraph extends Vue {
   mounted() {
     this.plot();
   }
-  @Watch("conso_fmt")
-  watchConso(): void {
-    this.plot();
-  }
-  @Watch("plannings_fmt")
-  watchPlannings(): void {
+  @Watch("stocks_fmt")
+  watchStocks(): void {
     this.plot();
   }
 }

@@ -91,7 +91,6 @@ export const actions: ActionTree<ResultsState, RootState> = {
     commit("SET_RESULTS", data.current_results);
     commit("SET_PREVIOUS_RESULTS", data.previous_results);
     commit("SET_PREVIOUS_PLANNINGS", data.previous_plannings);
-    console.log(data.previous_results);
   },
   async loadRankings({ commit, rootState }): Promise<void> {
     const api_url = rootState.api_url;

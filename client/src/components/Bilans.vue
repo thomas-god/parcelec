@@ -1,6 +1,6 @@
 <template>
   <div class="bilans__main">
-    <h2>Résultats</h2>
+    <h2>Résultats de la phase</h2>
     <div
       class="bilans__ranking"
       v-if="results_available && session_nb_users > 1"
