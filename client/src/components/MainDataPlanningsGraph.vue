@@ -28,7 +28,7 @@ const options: ChartOptions = {
     axis: "x",
     position: "average",
     filter: (item: Chart.ChartTooltipItem, data: ChartData): boolean => {
-      return item.yLabel! !== 0 && item.index > 0;
+      return item.yLabel! !== 0 && item.index! > 0;
     },
     callbacks: {
       title: (item: Chart.ChartTooltipItem[], data: ChartData): string => {
