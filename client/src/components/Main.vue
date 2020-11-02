@@ -94,7 +94,7 @@ export default class Main extends Vue {
     const tabs = ["Home"];
     tabs.push("Centrales");
     if (this.session.status !== "open") tabs.push("Marché");
-    if (this.conso_forecast.length > 0) tabs.push("Données");
+    tabs.push("Données");
     if (this.session.multi_game) tabs.push("Chat");
     return tabs;
   }
