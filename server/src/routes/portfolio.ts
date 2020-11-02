@@ -225,9 +225,13 @@ export async function getUserResultsRoute(
     if (user === null)
       throw new CustomError("Error, no user found with this ID", 404);
 
-    const results = await getUserPhaseResults(session_id, user_id);
-    const plannings = await getUserAllPhasesPlanning(session_id, user_id);
-    res.json({ results, plannings });
+    const current_results = await getUserPhaseResults(session_id, user_id);
+    const previous_results = await getUserAllPhasesResults(session_id, user_id);
+    const previous_plannings = await getUserAllPhasesPlanning(
+      session_id,
+      user_id
+    );
+    res.json({ current_results, previous_results, previous_plannings });
   } catch (error) {
     if (error instanceof CustomError) {
       res.status(error.code).end(error.msg);
