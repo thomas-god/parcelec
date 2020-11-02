@@ -1,7 +1,7 @@
 <template>
   <div>
-    <h2>Prévison de consommation</h2>
-    <ForecastGraph
+    <h2>Précédents plannings</h2>
+    <MainDataPlanningsGraph
       class="chart"
       :conso="conso_forecast"
       :plannings_by_type="plannings_by_type"
@@ -14,14 +14,14 @@
 import { Component, Vue } from "vue-property-decorator";
 import { namespace } from "vuex-class";
 import { PhasePlanning } from "../store/results";
-import ForecastGraph from "./ForecastGraph.vue";
+import MainDataPlanningsGraph from "./MainDataPlanningsGraph.vue";
 
 const session_module = namespace("session");
 const portfolio_module = namespace("portfolio");
 const results_module = namespace("results");
 
-@Component({ components: { ForecastGraph } })
-export default class Forecast extends Vue {
+@Component({ components: { MainDataPlanningsGraph } })
+export default class MainDataPlannings extends Vue {
   @portfolio_module.Getter conso_forecast!: number[];
   @results_module.Getter plannings!: PhasePlanning[];
   @session_module.Getter phase_no!: number;

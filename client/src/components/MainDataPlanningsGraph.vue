@@ -73,7 +73,7 @@ const options: ChartOptions = {
 @Component({
   extends: Line
 })
-export default class ForecastGraph extends Vue {
+export default class MainDataPlanningsGraph extends Vue {
   @Prop() conso!: number[];
   @Prop() plannings_by_type!: {
     type: string;
