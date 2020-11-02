@@ -19,13 +19,16 @@ const bids_module = namespace("bids");
 const options: ChartOptions = {
   maintainAspectRatio: false,
   responsive: true,
+  legend: {
+    position: "bottom"
+  },
   tooltips: {
     intersect: false,
     mode: "index",
     axis: "x",
     position: "average",
     filter: (item: Chart.ChartTooltipItem, data: ChartData): boolean => {
-      return item.index! > 0;
+      return item.yLabel! > 0;
     },
     callbacks: {
       title: (item: Chart.ChartTooltipItem[], data: ChartData): string => {
@@ -120,6 +123,7 @@ export default class MainDataPlanningsGraph extends Vue {
         borderColor: "rgba(0, 0, 0, 0)",
         backgroundColor: type.color,
         pointRadius: 0,
+        borderJoinStyle: "round",
         steppedLine: "after",
         data: [type.values[0]].concat(type.values),
         order: 1,
@@ -142,8 +146,13 @@ export default class MainDataPlanningsGraph extends Vue {
             label: "Consommation",
             stack: "Conso",
             backgroundColor: "rgba(0, 0, 0, 0)",
-            borderColor: "rgb(0, 132, 255)",
-            data: this.conso_fmt,
+            borderColor: "rgb(0, 0, 255)",
+            borderWidth: 4,
+            borderJoinStyle: "round",
+            data: this.conso_fmt.slice(
+              0,
+              this.plannings_by_type[0].values.length + 1
+            ),
             steppedLine: "after",
             pointRadius: 0,
             order: 2,
