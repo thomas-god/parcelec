@@ -13,6 +13,7 @@
 <script lang='ts'>
 import { Component, Vue } from "vue-property-decorator";
 import { namespace } from "vuex-class";
+import { PhaseResults } from "../../../server/src/routes/types";
 import { PhasePlanning } from "../store/results";
 import MainDataPlanningsGraph from "./MainDataPlanningsGraph.vue";
 
@@ -22,9 +23,10 @@ const results_module = namespace("results");
 
 @Component({ components: { MainDataPlanningsGraph } })
 export default class MainDataPlannings extends Vue {
-  @portfolio_module.Getter conso_forecast!: number[];
-  @results_module.Getter plannings!: PhasePlanning[];
   @session_module.Getter phase_no!: number;
+  @portfolio_module.Getter conso_forecast!: number[];
+  @results_module.Getter previous_plannings!: PhasePlanning[];
+  @results_module.State previous_results!: PhaseResults[];
 
   get plannings_by_type(): {
     type: string;
@@ -60,11 +62,23 @@ export default class MainDataPlannings extends Vue {
     ];
 
     plannings.forEach(type => {
-      type.values = this.plannings.map(phase => {
+      type.values = this.previous_plannings.map(phase => {
         return phase.planning
           .filter(item => item.type === type.type)
           .reduce((prev, cur) => prev + cur.p_dispatch_mw, 0);
       });
+    });
+    plannings.push({
+      type: "sell",
+      name: "Ventes",
+      color: "green",
+      values: this.previous_results.map(res => -res.sell_mwh) as number[]
+    });
+    plannings.push({
+      type: "buy",
+      name: "Achats",
+      color: "red",
+      values: this.previous_results.map(res => res.buy_mwh) as number[]
     });
     return plannings;
   }

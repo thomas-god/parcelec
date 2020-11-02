@@ -28,7 +28,7 @@ const options: ChartOptions = {
     axis: "x",
     position: "average",
     filter: (item: Chart.ChartTooltipItem, data: ChartData): boolean => {
-      return item.yLabel! > 0;
+      return item.yLabel! !== 0;
     },
     callbacks: {
       title: (item: Chart.ChartTooltipItem[], data: ChartData): string => {
@@ -108,6 +108,26 @@ export default class MainDataPlanningsGraph extends Vue {
       ) * 500
     );
   }
+  get min_value(): number {
+    return (
+      Math.floor(
+        Math.min(
+          this.conso.reduce((min, val) => Math.min(min, val), 0),
+          this.plannings_by_type
+            .map(type =>
+              type.values.reduce(
+                (prev, cur) => Math.min(prev, cur),
+                Number.POSITIVE_INFINITY
+              )
+            )
+            .reduce(
+              (prev, cur) => Math.min(prev, cur),
+              Number.POSITIVE_INFINITY
+            )
+        ) / 500
+      ) * 500
+    );
+  }
   get conso_fmt(): { x: number; y: number }[] {
     return [{ x: 1, y: this.conso[0] }].concat(
       this.conso.map((val, id) => {
@@ -136,8 +156,8 @@ export default class MainDataPlanningsGraph extends Vue {
     this.options!.scales!.xAxes![0].ticks!.min = 1;
     this.options!.scales!.xAxes![0].ticks!.maxTicksLimit =
       this.conso.length + 1;
+    this.options!.scales!.yAxes![0].ticks!.suggestedMin! = this.min_value;
     this.options!.scales!.yAxes![0].ticks!.suggestedMax! = this.max_value;
-    this.options!.scales!.yAxes![0].ticks!.min = 0;
     this.renderChart(
       {
         datasets: [
