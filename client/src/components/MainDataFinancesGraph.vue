@@ -16,7 +16,6 @@ import { Bid } from "../store/bids";
 
 const bids_module = namespace("bids");
 
-
 const options: ChartOptions = {
   maintainAspectRatio: false,
   responsive: true,
@@ -34,6 +33,21 @@ const options: ChartOptions = {
     callbacks: {
       title: (item: Chart.ChartTooltipItem[], data: ChartData): string => {
         return "";
+      },
+      label: (item: Chart.ChartTooltipItem, data: ChartData): string => {
+        return (
+          data.datasets![item.datasetIndex!].label +
+          ": " +
+          item.yLabel!.toLocaleString("fr-FR") +
+          " €"
+        );
+      },
+      footer: (item: Chart.ChartTooltipItem[], data: ChartData): string => {
+        return item.length > 0 && item[0].index! > 0
+          ? `Total: ${Math.floor(
+              item.reduce((sum, val) => sum + Number(val.yLabel), 0)
+            ).toLocaleString("fr-FR")} €`
+          : "";
       }
     }
   },
@@ -42,7 +56,7 @@ const options: ChartOptions = {
       {
         scaleLabel: { labelString: "Phase", display: true },
         ticks: {
-          suggestedMin: 1,
+          suggestedMin: 1
         }
       }
     ],
@@ -56,7 +70,7 @@ const options: ChartOptions = {
         scaleLabel: { labelString: "€", display: true },
         ticks: {
           autoSkip: true,
-          maxTicksLimit: 8,
+          maxTicksLimit: 8
         }
       }
     ]
@@ -78,7 +92,6 @@ export default class MainDataFinancesGraph extends Vue {
   public renderChart!: (chartData: ChartData, options?: ChartOptions) => void;
   options = options;
 
-  
   get results_fmt(): ChartDataSets[] {
     return this.results_by_type.map(type => {
       return {
@@ -90,23 +103,22 @@ export default class MainDataFinancesGraph extends Vue {
         borderJoinStyle: "round",
         steppedLine: "after",
         data: [type.values[0]].concat(type.values),
-        order: 1,
+        order: 1
       };
     });
   }
   get labels(): string[] {
-    const labels = []
-    for(let i = 0; i <= this.n_phases; i ++) {
-      labels.push(String(i + 1))
+    const labels = [];
+    for (let i = 0; i <= this.n_phases; i++) {
+      labels.push(String(i + 1));
     }
-    return labels
+    return labels;
   }
 
   plot(): void {
     this.options!.scales!.xAxes![0].ticks!.min = 1;
     this.options!.scales!.xAxes![0].ticks!.max = this.n_phases;
-    this.options!.scales!.xAxes![0].ticks!.maxTicksLimit =
-      this.n_phases + 1;
+    this.options!.scales!.xAxes![0].ticks!.maxTicksLimit = this.n_phases + 1;
     this.renderChart(
       {
         datasets: this.results_fmt,
