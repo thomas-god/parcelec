@@ -1,6 +1,6 @@
 <template>
-  <div>
-    <h2>Précédents plannings</h2>
+  <div v-if="previous_plannings.length > 0">
+    <h2>Plannings des phase précédentes</h2>
     <MainDataPlanningsGraph
       class="chart"
       :conso="conso_forecast"

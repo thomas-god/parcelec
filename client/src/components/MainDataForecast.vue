@@ -1,6 +1,6 @@
 <template>
   <div>
-    <h2>Prévison de consommation</h2>
+    <h2>Prévision de consommation</h2>
     <MainDataForecastGraph
       class="chart"
       :data="conso_forecast"

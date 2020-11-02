@@ -8,10 +8,13 @@ const bids_module = namespace("bids");
 const options: ChartOptions = {
   maintainAspectRatio: false,
   responsive: true,
+  legend: {
+    display: false
+  },
   tooltips: {
     intersect: false,
-    mode: "nearest",
-    axis: "y",
+    mode: "index",
+    axis: "x",
     position: "nearest",
     filter: (item: Chart.ChartTooltipItem, data: ChartData): boolean => {
       return item.index! > 0;

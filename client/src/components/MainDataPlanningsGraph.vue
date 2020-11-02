@@ -28,7 +28,7 @@ const options: ChartOptions = {
     axis: "x",
     position: "average",
     filter: (item: Chart.ChartTooltipItem, data: ChartData): boolean => {
-      return item.yLabel! !== 0;
+      return item.yLabel! !== 0 && item.index > 0;
     },
     callbacks: {
       title: (item: Chart.ChartTooltipItem[], data: ChartData): string => {
@@ -151,9 +151,15 @@ export default class MainDataPlanningsGraph extends Vue {
       };
     });
   }
+  get labels(): string[] {
+    return this.conso
+      .map((val, id) => String(id + 1))
+      .concat([String(this.conso.length + 1)]);
+  }
 
   plot(): void {
     this.options!.scales!.xAxes![0].ticks!.min = 1;
+    this.options!.scales!.xAxes![0].ticks!.max = this.conso.length;
     this.options!.scales!.xAxes![0].ticks!.maxTicksLimit =
       this.conso.length + 1;
     this.options!.scales!.yAxes![0].ticks!.suggestedMin! = this.min_value;
@@ -179,7 +185,7 @@ export default class MainDataPlanningsGraph extends Vue {
             yAxisID: "yc"
           }
         ],
-        labels: ["1", "2", "3", "4"]
+        labels: this.labels
       },
       this.options
     );
