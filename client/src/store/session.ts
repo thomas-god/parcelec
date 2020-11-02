@@ -189,6 +189,9 @@ export const getters: GetterTree<SessionState, RootState> = {
   nb_phases(state): number {
     return state.phase_infos ? state.phase_infos.nb_phases : -1;
   },
+  phase_no(state): number {
+    return state.phase_infos ? state.phase_infos.phase_no : -1;
+  },
 };
 
 // ------------------------ MODULE -------------------------
