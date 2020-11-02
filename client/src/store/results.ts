@@ -2,6 +2,20 @@ import Vuex, { Module, GetterTree, MutationTree, ActionTree } from "vuex";
 import Vue from "vue";
 import { RootState } from "./index";
 
+interface PlantDispatch {
+  phase_no: number;
+  plant_id: string;
+  p_dispatch_mw: number;
+  stock_start_mwh: number;
+  stock_end_mwh: number;
+  type: "nuc" | "therm" | "hydro" | "ren" | "storage";
+}
+
+export interface PhasePlanning {
+  phase_no: number;
+  planning: PlantDispatch[];
+}
+
 export interface ResultsState {
   conso_mwh: number;
   conso_eur: number;
@@ -20,6 +34,7 @@ export interface ResultsState {
     phase: { username: string; rank: number; balance: number }[];
     overall: { username: string; rank: number }[];
   };
+  plannings: PlantDispatch[];
 }
 
 // ------------------------ STATE -------------------------
@@ -41,6 +56,7 @@ export const state: ResultsState = {
     phase: [],
     overall: [],
   },
+  plannings: [],
 };
 
 // ------------------------ ACTIONS -------------------------
@@ -49,7 +65,7 @@ export const actions: ActionTree<ResultsState, RootState> = {
     const api_url = rootState.api_url;
     const session_id = rootState.session.id;
     const user_id = rootState.user.user_id;
-    let results = {};
+    let data = { results: {}, plannings: {} };
     const res = await fetch(
       `${api_url}/session/${session_id}/user/${user_id}/results`,
       {
@@ -57,11 +73,12 @@ export const actions: ActionTree<ResultsState, RootState> = {
       }
     );
     if (res.status === 200) {
-      results = await res.json();
+      data = await res.json();
     } else {
       console.log(await res.text());
     }
-    commit("SET_RESULTS", results);
+    commit("SET_RESULTS", data.results);
+    commit("SET_PLANNINGS", data.plannings);
   },
   async loadRankings({ commit, rootState }): Promise<void> {
     const api_url = rootState.api_url;
@@ -87,6 +104,9 @@ export const mutations: MutationTree<ResultsState> = {
       Vue.set(state, k, v);
     });
   },
+  SET_PLANNINGS(state, plannings: PlantDispatch[]): void {
+    state.plannings = plannings;
+  },
   SET_RANKINGS(state, rankings: ResultsState["rankings"]): void {
     state.rankings.phase = rankings.phase;
     state.rankings.overall = rankings.overall;
@@ -100,6 +120,23 @@ export const getters: GetterTree<ResultsState, RootState> = {
       current: state.ranking_current,
       overall: state.ranking_overall,
     };
+  },
+  plannings(state): PhasePlanning[] {
+    const res: { phase_no: number; planning: PlantDispatch[] }[] = [];
+    for (let i = 0; i < state.plannings.length; i++) {
+      const idx = res.findIndex(
+        (r) => r.phase_no === state.plannings[i].phase_no
+      );
+      if (idx === -1) {
+        res.push({
+          phase_no: state.plannings[i].phase_no,
+          planning: [state.plannings[i]],
+        });
+      } else {
+        res[idx].planning.push(state.plannings[i]);
+      }
+    }
+    return res.sort((a, b) => a.phase_no - b.phase_no);
   },
 };
 
