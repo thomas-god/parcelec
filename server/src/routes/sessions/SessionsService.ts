@@ -1,9 +1,9 @@
-import { container, Dependencies } from '../../di.context'
+import { Dependencies } from '../../di.context'
 
 export class SessionsService {
     private SessionsDAO : Dependencies["SessionsDAO"];
 
-    constructor() {
-        this.SessionsDAO = container.resolve("SessionsDAO");
+    constructor({ SessionsDAO }: { SessionsDAO: Dependencies["SessionsDAO"]}) {
+        this.SessionsDAO = SessionsDAO
     }
 }

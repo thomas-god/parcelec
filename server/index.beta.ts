@@ -1,39 +1,10 @@
-import express from "express";
-//import ws from "ws";
-import cors from "cors";
-import morgan from "morgan";
-import { middleware as OpenAPIMiddleware} from 'express-openapi-validator';
+import { createServer } from './src/server'
+import getContext from './src/di.context'
 
-import routes from './src/routes/index'
-import context from './src/di.context'
+const container = getContext()
 
-const app = express();
+const app = createServer(container);
 const port = 3000;
-
-context()
-
-app.use(cors());
-app.use(express.json());
-app.use(morgan("common"));
-
-app.use(
-  OpenAPIMiddleware({
-    apiSpec: './openapi.yaml',
-    validateRequests: true, // (default)
-    validateResponses: true, // false by default
-  }),
-);
-
-app.use((err, req, res, next) => {
-  // format error
-  res.status(err.status || 500).json({
-    message: err.message,
-    errors: err.errors,
-  });
-});
-
-routes(app)
-
 
 // const wsServer = new ws.Server({ noServer: true, clientTracking: true });
 // wsServer.on("connection", onConnectionCallback);

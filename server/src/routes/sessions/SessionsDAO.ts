@@ -1,9 +1,10 @@
-import { container, Dependencies } from '../../di.context'
+import { Database } from '../../db'
+import { Dependencies } from '../../di.context'
 
 export class SessionsDAO {
   private db: Dependencies["db"]
 
-  constructor() {
-    this.db = container.resolve("db")
+  constructor({ db }: { db: Database}) {
+    this.db = db
   }
 }

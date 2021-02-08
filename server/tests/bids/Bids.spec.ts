@@ -1,7 +1,13 @@
 import chai from 'chai';
 import chaiHttp from 'chai-http';
-import server from '../../index.beta'
+import getContext from '../../src/di.context'
+import { createServer } from '../../src/server'
 import { v4 as uuid, validate as validateUuid } from 'uuid'
+
+const context = getContext()
+// Can mock part of context
+const app = createServer(context)
+const server = app.listen(3000, (err) => {});
 
 chai.use(chaiHttp);
 const expect = chai.expect;

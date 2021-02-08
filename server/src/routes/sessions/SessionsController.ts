@@ -1,12 +1,11 @@
-import { Application, Request, Response } from 'express';
-import { container, Dependencies } from '../../di.context'
-import { uuid_regex } from '../utils';
+import { Application } from 'express';
+import { Dependencies } from '../../di.context'
 
 export class SessionsController {
 	private SessionsService: Dependencies["SessionsService"];
 
-	constructor() {
-		this.SessionsService = container.resolve("SessionsService");
+	constructor({ SessionsService }: { SessionsService: Dependencies["SessionsService"]}) {
+		this.SessionsService = SessionsService;
 	}
 
 	init(app: Application): void {
