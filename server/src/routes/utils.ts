@@ -39,9 +39,9 @@ export const uuid_regex =
 export async function getSession(session_id: string): Promise<Session> {
   const session: Session[] = (
     await db.query(
-      `SELECT 
+      `SELECT
         id, name, status, scenario_id
-      FROM sessions 
+      FROM sessions
       WHERE id=$1;`,
       [session_id]
     )

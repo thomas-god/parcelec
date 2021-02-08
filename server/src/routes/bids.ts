@@ -20,7 +20,7 @@ import {
   deleteUserBid,
   getClearing,
   getUserEnergyExchanges,
-  CustomError, 
+  CustomError,
   getClearedPhaseBids
 } from "./utils";
 
