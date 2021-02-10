@@ -32,24 +32,6 @@ export const uuid_regex =
   "[A-F0-9]{8}-[A-F0-9]{4}-4[A-F0-9]{3}-[89AB][A-F0-9]{3}-[A-F0-9]{12}";
 
 /**
- * Get a session from the DB by its UUID. Returns `null` if no
- * session is found.
- * @param session_id Session UUID
- */
-export async function getSession(session_id: string): Promise<Session> {
-  const session: Session[] = (
-    await db.query(
-      `SELECT
-        id, name, status, scenario_id
-      FROM sessions
-      WHERE id=$1;`,
-      [session_id]
-    )
-  ).rows;
-  return session.length === 1 ? session[0] : null;
-}
-
-/**
  * Get the list of registered users to a session. Returns an empty list if
  * no users are found.
  * @param session_id Session UUID

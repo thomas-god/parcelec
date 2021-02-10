@@ -1,16 +1,16 @@
 import { Application, Request, Response } from 'express';
 import { Dependencies } from '../../di.context'
 import { BidInput } from './BidsService';
-//import { uuid_regex } from '../utils';
+import { uuid_regex } from '../utils';
 
 export class BidsController {
-	private BidsService: Dependencies["BidsService"];
+  private BidsService: Dependencies["BidsService"];
 
-	constructor({ BidsService }: { BidsService: Dependencies["BidsService"]}) {
-		this.BidsService = BidsService;
-	}
+  constructor({ BidsService }: { BidsService: Dependencies["BidsService"] }) {
+    this.BidsService = BidsService;
+  }
 
-	init(app: Application): void {
+  init(app: Application): void {
 
     /**
      * @swagger
@@ -83,21 +83,19 @@ export class BidsController {
      *            schema:
      *              $ref: '#/components/schemas/BidId'
      */
-		//app.post(`/beta/session/:session_id(${uuid_regex})/user/:user_id(${uuid_regex})/bid`, async (req: Request, res: Response) => {
-    app.post(`/beta/session/:session_id/user/:user_id/bid`, async (req: Request, res: Response) => {
+    app.post(`/beta/session/:session_id(${uuid_regex})/user/:user_id(${uuid_regex})/bid`, async (req: Request, res: Response) => {
 
-    // Validate request against openAPI specification
-		const sessionId = req.params.session_id;
-		const userId = req.params.user_id;
+      const sessionId = req.params.session_id;
+      const userId = req.params.user_id;
+      const bidBody = req.body.bid as BidInput
 
-    try {
-      // Custom business validation may happend within the service
-      const bid = await this.BidsService.postUserBid(sessionId, userId, req.body.bid as BidInput)
-      res.status(201).json({id: bid.id})
-    } catch(error) {
+      try {
+        const bid = await this.BidsService.postUserBid(sessionId, userId, bidBody)
+        res.status(201).json({ id: bid.id })
+      } catch (error) {
 
-    }
+      }
 
-		})
-	}
+    })
+  }
 }
