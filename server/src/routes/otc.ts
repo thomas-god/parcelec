@@ -7,8 +7,8 @@
  */
 import express from "express";
 import { v4 as uuid } from "uuid";
-import { OTCEnergyExchange } from "./types";
 import db from "../db";
+import { OTCEnergyExchange } from "./types";
 import {
   uuid_regex,
   CustomError,
@@ -35,11 +35,13 @@ export async function getUserOTCsRoute(
     const session_id = req.params.session_id;
     const user_id = req.params.user_id;
     const session = await getSession(session_id);
-    if (session === null)
+    if (session === null) {
       throw new CustomError("Error, no session found with this ID", 404);
+    }
     const user = await getUser(session_id, user_id);
-    if (user === null)
+    if (user === null) {
       throw new CustomError("Error, no user found with this ID", 404);
+    }
 
     // Getting the OTCs from the DB
     const otcs = await getUserOTCs(session_id, user_id);
@@ -71,51 +73,62 @@ export async function postOTC(
     /**
      * DB checks
      */
-    if (session === null)
+    if (session === null) {
       throw new CustomError("Error, no session found with this ID", 404);
+    }
     const user = await getUser(session_id, user_id);
-    if (user === null)
+    if (user === null) {
       throw new CustomError("Error, no user found with this ID", 404);
+    }
     const phase_infos = await getLastPhaseInfos(session_id);
-    if (!phase_infos.plannings_allowed)
+    if (!phase_infos.plannings_allowed) {
       throw new CustomError("Error, cannot post new OTC exchange");
+    }
 
     /**
      * Payload checks
      */
-    if (req.body.type === undefined || !["sell", "buy"].includes(req.body.type))
+    if (
+      req.body.type === undefined ||
+      !["sell", "buy"].includes(req.body.type)
+    ) {
       throw new CustomError(
         "Error, must provide a valid OTC type (sell or buy)."
       );
+    }
     if (
       req.body.user_to === undefined ||
       (await checkUserInSessionByName(session_id, req.body.user_to)) === null
-    )
+    ) {
       throw new CustomError(
         "Error, must provide a valid username within the session."
       );
+    }
     const user_to_id = await checkUserInSessionByName(
       session_id,
       req.body.user_to
     );
-    if (req.body.user_to === undefined || user_to_id === null)
+    if (req.body.user_to === undefined || user_to_id === null) {
       if (
         req.body.volume_mwh === undefined ||
         req.body.volume_mwh === "" ||
         isNaN(Number(req.body.volume_mwh)) ||
         Number(req.body.volume_mwh <= 0)
-      )
+      ) {
         throw new CustomError(
           "Error, please provide a positive numeric value for the bid volume_mwh"
         );
+      }
+    }
     if (
       req.body.price_eur_per_mwh === undefined ||
       req.body.price_eur_per_mwh === "" ||
       isNaN(Number(req.body.price_eur_per_mwh))
-    )
+    ) {
       throw new CustomError(
         "Error, please provide a numeric value for the bid price_eur_per_mwh"
       );
+    }
 
     /**
      * Insertion into DB
@@ -203,25 +216,31 @@ export async function acceptOTC(
      * DB checks
      */
     const session = await getSession(session_id);
-    if (session === null)
+    if (session === null) {
       throw new CustomError("Error, no session found with this ID", 404);
+    }
     const user = await getUser(session_id, user_id);
-    if (user === null)
+    if (user === null) {
       throw new CustomError("Error, no user found with this ID", 404);
+    }
     const phase_infos = await getLastPhaseInfos(session_id);
-    if (!phase_infos.plannings_allowed)
+    if (!phase_infos.plannings_allowed) {
       throw new CustomError("Error, cannot update an OTC exchange");
+    }
 
     /**
      * OTC specific validation
      */
     const otc = await getOTCByID(otc_id);
-    if (otc === null)
+    if (otc === null) {
       throw new CustomError("Error, no OTC found with this ID", 404);
-    if (otc.user_to_id !== user_id)
+    }
+    if (otc.user_to_id !== user_id) {
       throw new CustomError("Error, not allowed to modify this OTC", 403);
-    if (otc.status === "accepted" || otc.status === "rejected")
+    }
+    if (otc.status === "accepted" || otc.status === "rejected") {
       throw new CustomError("Error, OTC has already been accepted/rejected");
+    }
 
     /**
      * Update DB and notify user_from and user_to
@@ -267,25 +286,31 @@ export async function rejectOTC(
      * DB checks
      */
     const session = await getSession(session_id);
-    if (session === null)
+    if (session === null) {
       throw new CustomError("Error, no session found with this ID", 404);
+    }
     const user = await getUser(session_id, user_id);
-    if (user === null)
+    if (user === null) {
       throw new CustomError("Error, no user found with this ID", 404);
+    }
     const phase_infos = await getLastPhaseInfos(session_id);
-    if (!phase_infos.plannings_allowed)
+    if (!phase_infos.plannings_allowed) {
       throw new CustomError("Error, cannot update an OTC exchange");
+    }
 
     /**
      * OTC specific validation
      */
     const otc = await getOTCByID(otc_id);
-    if (otc === null)
+    if (otc === null) {
       throw new CustomError("Error, no OTC found with this ID", 404);
-    if (otc.user_to_id !== user_id)
+    }
+    if (otc.user_to_id !== user_id) {
       throw new CustomError("Error, not allowed to modify this OTC", 403);
-    if (otc.status === "accepted" || otc.status === "rejected")
+    }
+    if (otc.status === "accepted" || otc.status === "rejected") {
       throw new CustomError("Error, OTC has already been accepted/rejected");
+    }
 
     /**
      * Update DB and notify user_from and user_to

@@ -1,41 +1,40 @@
 import express from "express";
-import { Application } from 'express';
+import { Application } from "express";
 //import ws from "ws";
 import cors from "cors";
 import morgan from "morgan";
-import { middleware as OpenAPIMiddleware} from 'express-openapi-validator';
+import { middleware as OpenAPIMiddleware } from "express-openapi-validator";
 
-import routes from './routes/index'
 import { AwilixContainer } from "awilix";
+import routes from "./routes/index";
 
 export function createServer(container: AwilixContainer): Application {
-    const app = express();
+  const app = express();
 
-    app.use(cors());
-    app.use(express.json());
-    app.use(morgan("common"));
+  app.use(cors());
+  app.use(express.json());
+  app.use(morgan("common"));
 
-    app.use(
-      OpenAPIMiddleware({
-        apiSpec: './openapi.yaml',
-        validateRequests: true, // (default)
-        validateResponses: true, // false by default
-      }),
-    );
+  app.use(
+    OpenAPIMiddleware({
+      apiSpec: "./openapi.yaml",
+      validateRequests: true, // (default)
+      validateResponses: true, // false by default
+    })
+  );
 
-    app.use((err, req, res, next) => {
-      // format error
-      res.status(err.status || 500).json({
-        message: err.message,
-        errors: err.errors,
-      });
+  app.use((err, req, res, next) => {
+    // format error
+    res.status(err.status || 500).json({
+      message: err.message,
+      errors: err.errors,
     });
+  });
 
-    routes(container, app)
+  routes(container, app);
 
-    return app
+  return app;
 }
-
 
 // // const wsServer = new ws.Server({ noServer: true, clientTracking: true });
 // // wsServer.on("connection", onConnectionCallback);

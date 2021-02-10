@@ -1,14 +1,16 @@
-import { Application } from 'express';
-import { Dependencies } from '../../di.context'
+import { Application } from "express";
+import { Dependencies } from "../../di.context";
 
 export class SessionsController {
-	private SessionsService: Dependencies["SessionsService"];
+  private SessionsService: Dependencies["SessionsService"];
 
-	constructor({ SessionsService }: { SessionsService: Dependencies["SessionsService"]}) {
-		this.SessionsService = SessionsService;
-	}
+  constructor({
+    SessionsService,
+  }: {
+    SessionsService: Dependencies["SessionsService"];
+  }) {
+    this.SessionsService = SessionsService;
+  }
 
-	init(app: Application): void {
-
-	}
+  init(app: Application): void {}
 }

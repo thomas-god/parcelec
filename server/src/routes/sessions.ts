@@ -109,8 +109,9 @@ export async function getScenarioOptionsRoute(
   res: express.Response
 ): Promise<void> {
   const scenario_id: string = req.params.scenario_id;
-  if (!(await checkScenarioID(scenario_id)))
+  if (!(await checkScenarioID(scenario_id))) {
     throw new CustomError("Error, no scenario found with this ID.");
+  }
 
   const scenario_options = await getScenarioOptions(scenario_id);
   const scenario_portfolio = await getScenarioPortfolio(scenario_id);
@@ -133,17 +134,20 @@ export async function openNewSession(
     const session_name: string = req.body.session_name;
     const scenario_id: string = req.body.scenario_id;
     // Checks
-    if (session_name === undefined)
+    if (session_name === undefined) {
       throw new CustomError("Error, please provide a valid game session name");
+    }
 
-    if (!(await checkSessionName(session_name)))
+    if (!(await checkSessionName(session_name))) {
       throw new CustomError(
         "Error, a session already exists with this name",
         409
       );
+    }
 
-    if (scenario_id === undefined || !(await checkScenarioID(scenario_id)))
+    if (scenario_id === undefined || !(await checkScenarioID(scenario_id))) {
       throw new CustomError("Error, please provide a valid scenario ID");
+    }
 
     // Insertion
     const session: Session = {
@@ -173,11 +177,12 @@ export async function getSessionInfos(
     // DB checks
     const session_id = req.params.session_id;
     const session = await getSession(session_id);
-    if (session === null)
+    if (session === null) {
       throw new CustomError(
         "Error, the session_id does not correspond to an existing session",
         404
       );
+    }
 
     // Base infos
     let body: any = {

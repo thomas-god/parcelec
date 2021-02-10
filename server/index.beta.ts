@@ -1,7 +1,7 @@
-import { createServer } from './src/server'
-import getContext from './src/di.context'
+import { createServer } from "./src/server";
+import getContext from "./src/di.context";
 
-const container = getContext()
+const container = getContext();
 
 const app = createServer(container);
 const port = 3000;

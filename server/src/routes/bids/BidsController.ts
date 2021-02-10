@@ -1,7 +1,7 @@
-import { Application, Request, Response } from 'express';
-import { Dependencies } from '../../di.context'
-import { BidInput } from './BidsService';
-import { uuid_regex } from '../utils';
+import { Application, Request, Response } from "express";
+import { Dependencies } from "../../di.context";
+import { uuid_regex } from "../utils";
+import { BidInput } from "./BidsService";
 
 export class BidsController {
   private BidsService: Dependencies["BidsService"];
@@ -11,7 +11,6 @@ export class BidsController {
   }
 
   init(app: Application): void {
-
     /**
      * @swagger
      * components:
@@ -71,7 +70,7 @@ export class BidsController {
      *          schema:
      *            type: object
      *            required:
-    *             - bid
+     *             - bid
      *            properties:
      *              bid:
      *                $ref: '#/components/schemas/NewBidBody'
@@ -83,19 +82,22 @@ export class BidsController {
      *            schema:
      *              $ref: '#/components/schemas/BidId'
      */
-    app.post(`/beta/session/:session_id(${uuid_regex})/user/:user_id(${uuid_regex})/bid`, async (req: Request, res: Response) => {
+    app.post(
+      `/beta/session/:session_id(${uuid_regex})/user/:user_id(${uuid_regex})/bid`,
+      async (req: Request, res: Response) => {
+        const sessionId = req.params.session_id;
+        const userId = req.params.user_id;
+        const bidBody = req.body.bid as BidInput;
 
-      const sessionId = req.params.session_id;
-      const userId = req.params.user_id;
-      const bidBody = req.body.bid as BidInput
-
-      try {
-        const bid = await this.BidsService.postUserBid(sessionId, userId, bidBody)
-        res.status(201).json({ id: bid.id })
-      } catch (error) {
-
+        try {
+          const bid = await this.BidsService.postUserBid(
+            sessionId,
+            userId,
+            bidBody
+          );
+          res.status(201).json({ id: bid.id });
+        } catch (error) {}
       }
-
-    })
+    );
   }
 }

@@ -1,12 +1,12 @@
-import { Database } from '../../db'
-import { Dependencies } from '../../di.context'
-import { User } from '../types'
+import { Database } from "../../db";
+import { Dependencies } from "../../di.context";
+import { User } from "../types";
 
 export class UsersDAO {
-  private db: Dependencies["db"]
+  private db: Dependencies["db"];
 
   constructor({ db }: { db: Database }) {
-    this.db = db
+    this.db = db;
   }
 
   /**
@@ -27,8 +27,8 @@ export class UsersDAO {
           id=$1
           AND session_id=$2;`,
         [userID, sessionID]
-        )
+      )
     ).rows;
-    return rows.length === 1 ? rows[0] as User : null;
+    return rows.length === 1 ? (rows[0] as User) : null;
   }
 }

@@ -14,10 +14,10 @@ import {
 import db from "../../db";
 import logger from "../../utils/log";
 import { sendUpdateToUsers } from "../websocket";
+import { Bid, Session } from "../types";
 import clearing from "./clearing";
 import { endGame } from "./end_game";
 import { generateEmptyPlanning, insertPlanning } from "./plannings";
-import { Bid, Session } from "../types";
 
 /**
  * Hold the callbacks and timers IDs for the current phases.

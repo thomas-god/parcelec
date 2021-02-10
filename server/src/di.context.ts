@@ -1,22 +1,26 @@
-import { createContainer, AwilixContainer, asValue, asClass, InjectionMode } from 'awilix';
+import {
+  createContainer,
+  AwilixContainer,
+  asValue,
+  asClass,
+  InjectionMode,
+} from "awilix";
 
-import { Database } from './db'
+import { Database } from "./db";
 
-import { BidsDAO } from './routes/bids/BidsDAO'
-import { BidsService } from './routes/bids/BidsService'
-import { BidsController } from './routes/bids/BidsController'
+import { BidsDAO } from "./routes/bids/BidsDAO";
+import { BidsService } from "./routes/bids/BidsService";
+import { BidsController } from "./routes/bids/BidsController";
 
-import { SessionsDAO } from './routes/sessions/SessionsDAO'
-import { SessionsService } from './routes/sessions/SessionsService'
-import { SessionsController } from './routes/sessions/SessionsController'
+import { SessionsDAO } from "./routes/sessions/SessionsDAO";
+import { SessionsService } from "./routes/sessions/SessionsService";
+import { SessionsController } from "./routes/sessions/SessionsController";
 
-import { UsersDAO } from './routes/users/UsersDAO'
-
-
+import { UsersDAO } from "./routes/users/UsersDAO";
 
 export default function getContext(): AwilixContainer {
   const container: AwilixContainer = createContainer({
-    injectionMode: InjectionMode.PROXY
+    injectionMode: InjectionMode.PROXY,
   });
 
   container.register({
@@ -28,12 +32,10 @@ export default function getContext(): AwilixContainer {
     SessionsService: asClass(SessionsService),
     SessionsController: asClass(SessionsController),
     UsersDAO: asClass(UsersDAO),
-  })
+  });
 
-  return container
+  return container;
 }
-
-
 
 export interface Dependencies {
   db: Database;
@@ -45,4 +47,3 @@ export interface Dependencies {
   SessionsController: SessionsController;
   UsersDAO: UsersDAO;
 }
-

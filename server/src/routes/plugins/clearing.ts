@@ -317,9 +317,8 @@ export async function computeAndInsertEnergyExchanges(
               bid.price_eur_per_mwh === clearing_infos.sell_last_bid_price
             ) {
               return bid.volume_mwh * clearing_infos.sell_last_bid_frac_volume;
-            } else {
-              return 0;
             }
+            return 0;
           })
           .reduce((a, b) => a + b, 0);
         if (sell_ok_vol > 0) {
@@ -342,9 +341,8 @@ export async function computeAndInsertEnergyExchanges(
               bid.price_eur_per_mwh === clearing_infos.buy_last_bid_price
             ) {
               return bid.volume_mwh * clearing_infos.buy_last_bid_frac_volume;
-            } else {
-              return 0;
             }
+            return 0;
           })
           .reduce((a, b) => a + b, 0);
         if (buy_ok_vol > 0) {
