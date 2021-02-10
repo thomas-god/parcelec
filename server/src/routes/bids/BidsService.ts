@@ -65,5 +65,6 @@ export class BidsService {
       volume_mwh: Number(body.volume_mwh),
       price_eur_per_mwh: Number(body.price_eur_per_mwh),
     };
+    return { ...bid, phase_no: 0 };
   }
 }

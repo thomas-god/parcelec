@@ -15,7 +15,7 @@ const expect = chai.expect;
 const url = `/beta/session/${uuid()}/user/${uuid()}/bid`;
 
 describe("Bids route", () => {
-  afterAll(async () => {
+  after(async () => {
     await server.close();
   });
 

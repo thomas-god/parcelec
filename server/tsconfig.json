@@ -4,15 +4,16 @@
     "allowJs": true,
     "target": "es6",
     "esModuleInterop": true,
-    "noImplicitAny": true,
-    "noUnusedLocals": true,
+    "noImplicitAny": false, // true
+    "noUnusedLocals": false, // true
     "noUnusedParameters": false,
     "removeComments": true,
     "module": "commonjs",
     "moduleResolution": "node",
     "sourceMap": true,
     "experimentalDecorators": false,
-    "emitDecoratorMetadata": false
+    "emitDecoratorMetadata": false,
+    "skipLibCheck": true
   },
   "include": [
     "./src/**/*"
