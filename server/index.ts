@@ -8,6 +8,7 @@ import bids from "./src/routes/bids";
 import otc from "./src/routes/otc";
 import portfolio from "./src/routes/portfolio";
 import { onConnectionCallback } from "./src/routes/websocket";
+import query from './src/db'
 
 const app = express();
 const port = Number(process.env.PORT) || 3000;
