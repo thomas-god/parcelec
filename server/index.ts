@@ -8,15 +8,16 @@ import bids from "./src/routes/bids";
 import otc from "./src/routes/otc";
 import portfolio from "./src/routes/portfolio";
 import { onConnectionCallback } from "./src/routes/websocket";
-import db from './src/db'
+import db, { buildDefaultDB } from './src/db'
 
 const app = express();
 const port = Number(process.env.PORT) || 3000;
 
 (async () => {
+  await buildDefaultDB()
   console.log((await db.query(`
-    SELECT oid, typname
-    FROM pg_catalog.pg_type;
+    SELECT *
+    FROM films;
    `, [])).rows)
 })();
 
