@@ -12,6 +12,10 @@ pool.on("error", (err, client) => {
   console.log(err);
 });
 
+pool.on("connect", (client) => {
+  console.log("Connected to database")
+})
+
 export default {
   query: (text: string, params: any): Promise<QueryResult> =>
     pool.query(text, params),
