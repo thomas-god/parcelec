@@ -4,6 +4,7 @@
   "description": "Server for the parcélec project",
   "main": "index.js",
   "scripts": {
+    "build": "tsc",
     "start": "node dist/index.js",
     "serve": "sudo docker-compose -f docker-compose.yml -f docker-compose.dev.yml up --build",
     "start:development": "nodemon index.ts",
