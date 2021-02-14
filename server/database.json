@@ -1,0 +1,13 @@
+{
+  "defaultEnv": {"ENV": "NODE_ENV"},
+  "production": {
+    "driver": "pg",
+    "url": { "ENV": "DATABASE_URL" },
+    "addIfNotExists": {
+      "sslmode": "require"
+    },
+    "overwrite": {
+      "native": true
+    }
+  }
+}

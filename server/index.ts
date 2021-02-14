@@ -14,7 +14,7 @@ import { onConnectionCallback } from "./src/routes/websocket";
 const app = express();
 const port = Number(process.env.PORT) || 3000;
 
-const dbm = dbmigrate.getInstance(true, {env: 'all'});
+const dbm = dbmigrate.getInstance(true, {env: 'production', config:"database.json"});
 
 (async () => {
   await dbm.up();
