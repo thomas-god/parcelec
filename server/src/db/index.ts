@@ -1,7 +1,8 @@
 import { Pool, QueryResult } from "pg";
 
 const databaseConfig = {
-  connectionString: "postgres://docker:docker@db:5432/docker",
+  connectionString: process.env.DATABASE_URL,
+  ssl: { rejectUnauthorized: false }
 };
 const pool = new Pool(databaseConfig);
 
