@@ -1,0 +1,7 @@
+{
+  "defaultEnv": "all",
+  "all": {
+    "driver": "postgres",
+    "multipleStatements": true
+  }
+}
