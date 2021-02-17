@@ -95,8 +95,12 @@ export class BidsController {
             userId,
             bidBody
           );
+          console.log(bid)
           res.status(201).json({ id: bid.id });
-        } catch (error) {}
+        } catch (error) {
+          console.log(error.message)
+          res.status(500).send(error.message)
+        }
       }
     );
   }
