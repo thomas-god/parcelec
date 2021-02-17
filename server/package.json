@@ -11,13 +11,11 @@
     "start:production": "node dist/index.js",
     "lint": "eslint . --ext .ts",
     "lint-fix": "eslint . --ext .ts --fix",
-    "test": "mocha -r ts-node/register ./tests/**/*.spec.ts --recursive --exit",
-    "test:unit": "npx jest -c jest.unit.config.js",
-    "test:integration": "sudo docker-compose -f docker-compose.yml -f docker-compose.test.yml up --build --abort-on-container-exit",
-    "test-docker": "docker-compose down && docker-compose up --force-recreate --build --abort-on-container-exit",
-    "openapi": "npx ts-node ./src/routes/swagger.ts",
     "format-fix": "prettier --write src",
-    "format-check": "prettier --check src"
+    "format-check": "prettier --check src",
+    "test": "mocha -r ts-node/register ./tests/**/*.spec.ts --recursive --exit",
+    "test-docker": "docker-compose down && docker-compose up --force-recreate --build --abort-on-container-exit",
+    "openapi": "npx ts-node ./src/routes/swagger.ts"
   },
   "repository": {
     "type": "git",
@@ -48,8 +46,8 @@
     "js-yaml": "^4.0.0",
     "morgan": "^1.10.0",
     "pg": "^8.3.3",
-    "swagger-jsdoc": "^6.0.2",
     "pg-native": "^3.0.0",
+    "swagger-jsdoc": "^6.0.2",
     "typescript": "^4.0.2",
     "uuid": "^8.3.0",
     "winston": "^3.3.3",
