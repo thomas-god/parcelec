@@ -11,7 +11,8 @@
     "start:production": "node dist/index.js",
     "lint": "eslint . --ext .ts",
     "test:unit": "npx jest -c jest.unit.config.js",
-    "test:integration": "sudo docker-compose -f docker-compose.yml -f docker-compose.test.yml up --build --abort-on-container-exit"
+    "test:integration": "sudo docker-compose -f docker-compose.yml -f docker-compose.test.yml up --build --abort-on-container-exit",
+    "test-docker": "docker-compose down && docker-compose up --force-recreate --build --abort-on-container-exit"
   },
   "repository": {
     "type": "git",

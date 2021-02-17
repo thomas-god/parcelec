@@ -3,10 +3,20 @@ services:
   server:
     build:
       context: .
+      dockerfile: ./e2e/Dockerfile
       args:
         - NODE_ENV=production
+    environment:
+      - DATABASE_URL=postgres://user:password@db:5432/parcelec
     ports:
       - "3000:3000"
+    links:
+      - db
   db:
-    build:
-      context: ./db
+    image: postgres:13
+    environment:
+      - POSTGRES_PASSWORD=password
+      - POSTGRES_DB=parcelec
+      - POSTGRES_USER=user
+    expose:
+      - '5432'
