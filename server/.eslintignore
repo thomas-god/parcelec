@@ -1,0 +1,4 @@
+tests/*
+coverage/*
+.nyc_output/*
+dist/*

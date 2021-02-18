@@ -1,11 +1,24 @@
 {
   "compilerOptions": {
-    "module": "commonjs",
-    "esModuleInterop": true,
+    "outDir": "./dist",
+    "allowJs": true,
     "target": "es6",
+    "esModuleInterop": true,
+    "noImplicitAny": false, // true
+    "noUnusedLocals": false, // true
+    "noUnusedParameters": false,
+    "removeComments": true,
+    "module": "commonjs",
     "moduleResolution": "node",
     "sourceMap": true,
-    "outDir": "dist"
+    "experimentalDecorators": false,
+    "emitDecoratorMetadata": false,
+    "skipLibCheck": true
   },
-  "lib": ["es2015"]
+  "include": [
+    "./src/**/*"
+  ],
+  "types": [
+    "./src/app/types/*"
+  ]
 }

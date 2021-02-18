@@ -20,8 +20,8 @@ import {
   deleteUserBid,
   getClearing,
   getUserEnergyExchanges,
-  CustomError, 
-  getClearedPhaseBids
+  CustomError,
+  getClearedPhaseBids,
 } from "./utils";
 
 // ---------------------- Routing Functions
@@ -40,39 +40,49 @@ export async function postUserBid(
     const session_id = req.params.session_id;
     const user_id = req.params.user_id;
     const session = await getSession(session_id);
-    if (session === null)
+    if (session === null) {
       throw new CustomError("Error, no session found with this ID", 404);
+    }
     const user = await getUser(session_id, user_id);
-    if (user === null)
+    if (user === null) {
       throw new CustomError("Error, no user found with this ID", 404);
-    if (session.status !== "running")
+    }
+    if (session.status !== "running") {
       throw new CustomError("Error, the session is not running");
+    }
 
     // Payload checks
-    if (req.body.bid === undefined)
+    if (req.body.bid === undefined) {
       throw new CustomError("Error, no bid payload provided");
-    if (req.body.bid.type === undefined)
+    }
+    if (req.body.bid.type === undefined) {
       throw new CustomError("Error, no bid type provided");
-    if (req.body.bid.type !== "buy" && req.body.bid.type !== "sell")
+    }
+    if (req.body.bid.type !== "buy" && req.body.bid.type !== "sell") {
       throw new CustomError("Error, no bid type must be `sell` or `buy`");
-    if (req.body.bid.volume_mwh === undefined)
+    }
+    if (req.body.bid.volume_mwh === undefined) {
       throw new CustomError("Error, no bid volume_mwh provided");
+    }
     if (
       req.body.bid.volume_mwh === "" ||
       isNaN(Number(req.body.bid.volume_mwh))
-    )
+    ) {
       throw new CustomError(
         "Error, please provide a numeric value for the bid volume_mwh"
       );
-    if (req.body.bid.price_eur_per_mwh === undefined)
+    }
+    if (req.body.bid.price_eur_per_mwh === undefined) {
       throw new CustomError("Error, no bid price_eur_per_mwh provided");
+    }
     if (
       req.body.bid.price_eur_per_mwh === "" ||
       isNaN(Number(req.body.bid.price_eur_per_mwh))
-    )
+    ) {
       throw new CustomError(
         "Error, please provide a numeric value for the bid price_eur_per_mwh"
       );
+    }
 
     // Bid insertion
     const bid = {
@@ -109,11 +119,13 @@ export async function getUserBidsRoute(
     const session_id = req.params.session_id;
     const user_id = req.params.user_id;
     const session = await getSession(session_id);
-    if (session === null)
+    if (session === null) {
       throw new CustomError("Error, no session found with this ID", 404);
+    }
     const user = await getUser(session_id, user_id);
-    if (user === null)
+    if (user === null) {
       throw new CustomError("Error, no user found with this ID", 404);
+    }
 
     // Getting the bids from the DB
     const bids = await getUserBids(session_id, user_id);
@@ -143,14 +155,17 @@ export async function deleteUserBidRoute(
     const user_id = req.params.user_id;
     const bid_id = req.params.bid_id;
     const session = await getSession(session_id);
-    if (session === null)
+    if (session === null) {
       throw new CustomError("Error, no session found with this ID", 404);
+    }
     const user = await getUser(session_id, user_id);
-    if (user === null)
+    if (user === null) {
       throw new CustomError("Error, no user found with this ID", 404);
+    }
     const bid = await getUserBid(session_id, bid_id);
-    if (bid === null)
+    if (bid === null) {
       throw new CustomError("Error, no bid found with this ID", 404);
+    }
 
     // Deleting the bids
     await deleteUserBid(session_id, bid_id);
@@ -178,8 +193,9 @@ export async function getClearingRoute(
     // DB checks
     const session_id = req.params.session_id;
     const session = await getSession(session_id);
-    if (session === null)
+    if (session === null) {
       throw new CustomError("Error, no session found with this ID", 404);
+    }
 
     const clearing = await getClearing(session_id);
     res.status(200).json(clearing);
@@ -209,13 +225,15 @@ export async function getUserEnergyExchangesRoute(
     const session = await getSession(session_id);
 
     // Session exists and is running
-    if (session === null)
+    if (session === null) {
       throw new CustomError("Error, no session found with this ID", 404);
+    }
 
     // User exists
     const user = await getUser(session_id, user_id);
-    if (user === null)
+    if (user === null) {
       throw new CustomError("Error, no user found with this ID", 404);
+    }
 
     // Getting and sending the exchanges
     const exchanges = await getUserEnergyExchanges(session_id, user_id);
@@ -243,8 +261,9 @@ export async function getClearingAllBids(
     // DB checks
     const session_id = req.params.session_id;
     const session = await getSession(session_id);
-    if (session === null)
+    if (session === null) {
       throw new CustomError("Error, no session found with this ID", 404);
+    }
 
     const user_id = req.query.user_id as string;
     const bids = await getClearedPhaseBids(session_id, user_id);
@@ -278,6 +297,9 @@ router.get(
   `/session/:session_id(${uuid_regex})/user/:user_id(${uuid_regex})/clearing`,
   getUserEnergyExchangesRoute
 );
-router.get(`/session/:session_id(${uuid_regex})/clearing/all_bids`, getClearingAllBids);
+router.get(
+  `/session/:session_id(${uuid_regex})/clearing/all_bids`,
+  getClearingAllBids
+);
 
 export default router;

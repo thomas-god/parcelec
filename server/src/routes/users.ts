@@ -27,31 +27,36 @@ export async function registerNewUser(
 ): Promise<void> {
   try {
     // Payload checks
-    if (req.body.username === null)
+    if (req.body.username === null) {
       throw new CustomError("Error, no username provided");
+    }
     const username = req.body.username;
 
     // DB checks
     const session_id = req.params.session_id;
     const session = await getSession(session_id);
-    if (session === null)
+    if (session === null) {
       throw new CustomError(
         "Error, the session_id does not correspond to an existing session",
         404
       );
-    if (session.status !== "open")
+    }
+    if (session.status !== "open") {
       throw new CustomError("Error, the session is not open for registration");
+    }
     const canInsertUsername = await checkUsername(session_id, username);
-    if (canInsertUsername === -2)
+    if (canInsertUsername === -2) {
       throw new CustomError(
         "Error, a user with this username is already registered to the session",
         409
       );
-    if (canInsertUsername === -1)
+    }
+    if (canInsertUsername === -1) {
       throw new CustomError(
         "Error, cannot register new user to this session",
         409
       );
+    }
 
     // Insertion
     const user_id = await insertNewUser(session_id, username);
@@ -83,8 +88,9 @@ export async function getUserInfos(
     const user_id = req.params.user_id;
     const user = await getUser(session_id, user_id);
 
-    if (user === null)
+    if (user === null) {
       throw new CustomError("Error, cannot find an user with these IDs", 404);
+    }
     res.status(200).json({
       session_id: session_id,
       name: user.name,
@@ -114,14 +120,17 @@ export async function setUserReady(
     const session_id = req.params.session_id;
     const user_id = req.params.user_id;
     const sessions = await getSession(session_id);
-    if (sessions === null)
+    if (sessions === null) {
       throw new CustomError("Error, no session found with this ID", 404);
-    if (sessions.status === "closed")
+    }
+    if (sessions.status === "closed") {
       throw new CustomError("Error, the session is closed");
+    }
 
     const user = await getUser(session_id, user_id);
-    if (user === null)
+    if (user === null) {
       throw new CustomError("Error, no user found with this ID");
+    }
 
     // Set user status to ready
     await db.query(

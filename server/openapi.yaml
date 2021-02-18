@@ -1,0 +1,66 @@
+openapi: 3.0.0
+info:
+  title: Parcelec API
+  version: 1.0.0
+paths:
+  /beta/session/{session_id}/user/{user_id}/bid:
+    post:
+      summary: post a new bid
+      parameters:
+        - in: path
+          name: session_id
+          schema:
+            type: string
+          required: true
+          description: Session UUID
+        - in: path
+          name: user_id
+          schema:
+            type: string
+          required: true
+          description: User UUID
+      requestBody:
+        description: Bid to post
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - bid
+              properties:
+                bid:
+                  $ref: '#/components/schemas/NewBidBody'
+      responses:
+        '201':
+          description: bid inserted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BidId'
+components:
+  schemas:
+    NewBidBody:
+      type: object
+      required:
+        - type
+        - volume_mwh
+        - price_eur_per_mwh
+      properties:
+        type:
+          type: string
+          enum:
+            - sell
+            - buy
+        volume_mwh:
+          type: integer
+        price_eur_per_mwh:
+          type: integer
+    BidId:
+      type: object
+      required:
+        - id
+      properties:
+        id:
+          type: string
+tags: []

@@ -19,4 +19,4 @@ ENV TZ=Europe/Paris
 
 # Wait for DB and run test
 CMD /root/wait-for-it.sh -t 90 db:5432 \
-   && npm run test:unit
+   && npm run test

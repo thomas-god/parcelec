@@ -1,5 +1,5 @@
-import db from "../db/index";
 import { v4 as uuid, validate } from "uuid";
+import db from "../db/index";
 import {
   Session,
   User,
@@ -140,20 +140,19 @@ export async function checkUsername(
       )
     ).rows[0].n_users;
     return n_users > 0 ? -1 : 1;
-  } else {
-    // Check username
-    const users_same_name = (
-      await db.query(
-        `SELECT 1
+  }
+  // Check username
+  const users_same_name = (
+    await db.query(
+      `SELECT 1
       FROM users 
       WHERE 
         name=$1 
         AND session_id=$2;`,
-        [username, session_id]
-      )
-    ).rows;
-    return users_same_name.length === 0 ? 1 : -2;
-  }
+      [username, session_id]
+    )
+  ).rows;
+  return users_same_name.length === 0 ? 1 : -2;
 }
 
 /**
@@ -332,9 +331,8 @@ export async function getCurrentConsoValue(
       )
     ).rows;
     return rows.length === 1 ? rows[0].value_mw : 0;
-  } else {
-    return 0;
   }
+  return 0;
 }
 
 /**
@@ -408,7 +406,9 @@ export async function getUserPhaseResults(
         [phase_no, user_id]
       )
     ).rows;
-    if (rows.length === 1) results = rows[0];
+    if (rows.length === 1) {
+      results = rows[0];
+    }
   }
   return results;
 }
@@ -684,9 +684,8 @@ export async function getUserLastPhasePlanning(
         [session_id, user_id, phase_no]
       )
     ).rows as ProductionPlanning;
-  } else {
-    return [];
   }
+  return [];
 }
 
 /**
@@ -766,8 +765,10 @@ export async function getPhaseInfos(
       [session_id, phase_no]
     )
   ).rows as GamePhase[];
-  if (rows.length > 0) return rows[0];
-  else return null;
+  if (rows.length > 0) {
+    return rows[0];
+  }
+  return null;
 }
 
 /**
@@ -797,8 +798,10 @@ export async function getLastPhaseInfos(
       [session_id]
     )
   ).rows as GamePhase[];
-  if (rows.length > 0) return rows[0];
-  else return null;
+  if (rows.length > 0) {
+    return rows[0];
+  }
+  return null;
 }
 
 /**
@@ -1003,9 +1006,8 @@ export async function getClearedPhaseBids(
       volume_mwh: number;
       price_eur_per_mwh: number;
     }[];
-  } else {
-    return [];
   }
+  return [];
 }
 
 /**
@@ -1054,9 +1056,8 @@ export async function getUserEnergyExchanges(
           price_eur_per_mwh: number;
         }[])
       : [];
-  } else {
-    return [];
   }
+  return [];
 }
 
 /**
@@ -1095,7 +1096,9 @@ export async function getSessionOptions(
       [session_id]
     )
   ).rows;
-  if (query.length === 1) options = query[0];
+  if (query.length === 1) {
+    options = query[0];
+  }
   return options;
 }
 
@@ -1214,7 +1217,9 @@ export async function getScenarioOptions(
       [scenario_id]
     )
   ).rows;
-  if (res.length === 1) scenario_options = res[0];
+  if (res.length === 1) {
+    scenario_options = res[0];
+  }
   return scenario_options;
 }
 

@@ -18,14 +18,17 @@ type UserPlanning = Omit<
 export async function formatUserPlanning(
   user_planning: UserPlanning
 ): Promise<ProductionPlanning> {
-  if (user_planning.length === 0)
+  if (user_planning.length === 0) {
     throw "Error, user production planning is empty";
+  }
 
   // session_id, user_id must be the same across all planning items
-  if (!user_planning.every((v, i, a) => v.session_id === a[0].session_id))
+  if (!user_planning.every((v, i, a) => v.session_id === a[0].session_id)) {
     throw "Error, session_id is not consistent across the planning";
-  if (!user_planning.every((v, i, a) => v.user_id === a[0].user_id))
+  }
+  if (!user_planning.every((v, i, a) => v.user_id === a[0].user_id)) {
     throw "Error, user_id is not consistent across the planning";
+  }
 
   // Get IDs and phase_no
   const session_id = user_planning[0].session_id;
@@ -38,9 +41,10 @@ export async function formatUserPlanning(
       if (phase_no === 0) {
         // First phase, stock_start is taken equal to power plant stock_start
         stock_start_mwh = (
-          await db.query("SELECT stock_start_mwh FROM power_plants WHERE id=$1", [
-            pp.plant_id,
-          ])
+          await db.query(
+            "SELECT stock_start_mwh FROM power_plants WHERE id=$1",
+            [pp.plant_id]
+          )
         ).rows[0].stock_start_mwh as number;
       } else {
         // Carry stock_end from previous phase
@@ -74,21 +78,26 @@ export async function checkPlanning(
   const portfolio = await getPortfolio(planning[0].user_id);
   // All plants must have a P0
   planning.map((dispatch) => {
-    const pp = portfolio.find((item) => item.id === dispatch.plant_id);    
-    if (dispatch.p_mw !== 0 && dispatch.p_mw > pp.p_max_mw)
+    const pp = portfolio.find((item) => item.id === dispatch.plant_id);
+    if (dispatch.p_mw !== 0 && dispatch.p_mw > pp.p_max_mw) {
       throw `Error, dispatch too big for plant ${dispatch.plant_id}`;
+    }
 
-    if (pp.p_min_mw > 0 && dispatch.p_mw !== 0 && dispatch.p_mw < pp.p_min_mw)
+    if (pp.p_min_mw > 0 && dispatch.p_mw !== 0 && dispatch.p_mw < pp.p_min_mw) {
       throw `Error, dispatch too small for plant ${dispatch.plant_id}`;
+    }
 
-    if (pp.stock_max_mwh !== -1 && dispatch.stock_end_mwh > pp.stock_max_mwh)
+    if (pp.stock_max_mwh !== -1 && dispatch.stock_end_mwh > pp.stock_max_mwh) {
       throw `Error, dispatch will exceed max storage for plant ${dispatch.plant_id}`;
+    }
 
-    if (pp.stock_max_mwh !== -1 && dispatch.stock_end_mwh < 0)
+    if (pp.stock_max_mwh !== -1 && dispatch.stock_end_mwh < 0) {
       throw `Error, not enough energy left for plant ${dispatch.plant_id}`;
+    }
 
-    if (dispatch.p_mw === null)
+    if (dispatch.p_mw === null) {
       throw `Error, no set-point for plant ${dispatch.plant_id}`;
+    }
   });
   return true;
 }
@@ -144,9 +153,10 @@ export async function generateEmptyPlanning(
       if (phase_no === 0) {
         // First phase, stock_start is taken equal to power plant stock_start
         stock_start_mwh = (
-          await db.query("SELECT stock_start_mwh FROM power_plants WHERE id=$1", [
-            pp.id,
-          ])
+          await db.query(
+            "SELECT stock_start_mwh FROM power_plants WHERE id=$1",
+            [pp.id]
+          )
         ).rows[0].stock_start_mwh as number;
       } else {
         // Carry stock_end from previous phase

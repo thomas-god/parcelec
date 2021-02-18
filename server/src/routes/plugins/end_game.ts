@@ -193,8 +193,9 @@ async function computeResults(
             [session_id, user.id, phase_no - 1]
           )
         ).rows;
-        if (rows.length === 1)
+        if (rows.length === 1) {
           results.balance_overall_eur += rows[0].balance_overall_eur;
+        }
       }
 
       // Insert all into table
