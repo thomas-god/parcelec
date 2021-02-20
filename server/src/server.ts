@@ -34,7 +34,7 @@ export async function createServer(
   });
 
   const dbm = dbmigrate.getInstance(true, {
-    env: "test",
+    env: process.env.NODE_ENV,
     config: "database.json",
   });
   await dbm.up();
