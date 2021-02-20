@@ -1,9 +1,9 @@
 import { Pool, QueryResult, QueryResultRow } from "pg";
 
 function getConnectionString(): string {
-  const sslMode = process.env.NODE_ENV === 'production' ? 'no-verify' : 'disable'
-  return process.env.DATABASE_URL + '?sslmode=' + sslMode;
-
+  const sslMode =
+    process.env.NODE_ENV === "production" ? "no-verify" : "disable";
+  return process.env.DATABASE_URL + "?sslmode=" + sslMode;
 }
 
 export type DBResult = {
@@ -38,7 +38,6 @@ export class Database {
     return { rows: result.rows, count: result.rowCount };
   }
 }
-
 
 // OLD
 let databaseConfig: any = {

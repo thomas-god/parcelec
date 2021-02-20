@@ -16,6 +16,8 @@ import { SessionsDAO } from "./routes/sessions/SessionsDAO";
 import { SessionsService } from "./routes/sessions/SessionsService";
 import { SessionsController } from "./routes/sessions/SessionsController";
 
+import { UsersController } from "./routes/users/UsersController";
+import { UsersService } from "./routes/users/UsersService";
 import { UsersDAO } from "./routes/users/UsersDAO";
 
 export default function getContext(): AwilixContainer {
@@ -32,6 +34,8 @@ export default function getContext(): AwilixContainer {
     SessionsService: asClass(SessionsService),
     SessionsController: asClass(SessionsController),
     UsersDAO: asClass(UsersDAO),
+    UsersService: asClass(UsersService),
+    UsersController: asClass(UsersController),
   });
 
   return container;
@@ -46,4 +50,6 @@ export interface Dependencies {
   SessionsService: SessionsService;
   SessionsController: SessionsController;
   UsersDAO: UsersDAO;
+  UsersService: UsersService;
+  UsersController: UsersController;
 }
