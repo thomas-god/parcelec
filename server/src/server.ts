@@ -4,11 +4,14 @@ import { Application } from "express";
 import cors from "cors";
 import morgan from "morgan";
 import { middleware as OpenAPIMiddleware } from "express-openapi-validator";
+import dbmigrate from "db-migrate";
 
 import { AwilixContainer } from "awilix";
 import routes from "./routes/index";
 
-export function createServer(container: AwilixContainer): Application {
+export async function createServer(
+  container: AwilixContainer
+): Promise<Application> {
   const app = express();
 
   app.use(cors());
@@ -18,8 +21,8 @@ export function createServer(container: AwilixContainer): Application {
   app.use(
     OpenAPIMiddleware({
       apiSpec: "./openapi.yaml",
-      validateRequests: true, // (default)
-      validateResponses: true, // false by default
+      validateRequests: true,
+      validateResponses: false,
     })
   );
 
@@ -27,9 +30,14 @@ export function createServer(container: AwilixContainer): Application {
     // format error
     res.status(err.status || 500).json({
       message: err.message,
-      errors: err.errors,
     });
   });
+
+  const dbm = dbmigrate.getInstance(true, {
+    env: process.env.NODE_ENV,
+    config: "database.json",
+  });
+  await dbm.up();
 
   routes(container, app);
 

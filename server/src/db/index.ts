@@ -1,25 +1,11 @@
 import { Pool, QueryResult, QueryResultRow } from "pg";
 
-const databaseConfig = {
-  connectionString: process.env.DATABASE_URL,
-  ssl: { rejectUnauthorized: false }
-};
+function getConnectionString(): string {
+  const sslMode = process.env.NODE_ENV === 'production' ? 'no-verify' : 'disable'
+  return process.env.DATABASE_URL + '?sslmode=' + sslMode;
 
-// OLD
-const pool = new Pool(databaseConfig);
+}
 
-pool.on("error", (err, client) => {
-  console.log("#########################################");
-  console.log("######## Error with the database ########");
-  console.log(client);
-  console.log(err);
-});
-
-export default {
-  query: (text: string, params: any): Promise<QueryResult> =>
-    pool.query(text, params),
-};
-// OLD
 export type DBResult = {
   rows: QueryResultRow;
   count: number;
@@ -28,7 +14,7 @@ export class Database {
   private pool: Pool;
 
   constructor() {
-    this.pool = new Pool(databaseConfig);
+    this.pool = new Pool({ connectionString: getConnectionString() });
   }
 
   /**
@@ -52,3 +38,23 @@ export class Database {
     return { rows: result.rows, count: result.rowCount };
   }
 }
+
+
+// OLD
+let databaseConfig: any = {
+  connectionString: process.env.DATABASE_URL,
+};
+const pool = new Pool(databaseConfig);
+
+pool.on("error", (err, client) => {
+  console.log("#########################################");
+  console.log("######## Error with the database ########");
+  console.log(client);
+  console.log(err);
+});
+
+export default {
+  query: (text: string, params: any): Promise<QueryResult> =>
+    pool.query(text, params),
+};
+// OLD

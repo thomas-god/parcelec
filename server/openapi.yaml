@@ -38,6 +38,29 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/BidId'
+  /session:
+    put:
+      tags:
+        - session
+      summary: Create a new game session
+      operationId: putSession
+      parameters:
+        - in: query
+          name: sessionName
+          schema:
+            type: string
+          required: true
+          description: New session name
+      responses:
+        '201':
+          description: session created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  sessionId:
+                    type: uuid
 components:
   schemas:
     NewBidBody:
