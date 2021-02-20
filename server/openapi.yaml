@@ -61,6 +61,34 @@ paths:
                 properties:
                   sessionId:
                     type: uuid
+  /session/{sessionID}/user:
+    put:
+      tags: '-user'
+      summary: Register a new user to a session.
+      operationId: putUser
+      parameters:
+        - in: path
+          name: sessionID
+          schema:
+            type: string
+          required: true
+          description: Session UUID.
+        - in: query
+          name: username
+          schema:
+            type: string
+          required: true
+          description: Username (must be unique within the session).
+      responses:
+        '201':
+          description: User registered.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  userId:
+                    type: uuid
 components:
   schemas:
     NewBidBody:

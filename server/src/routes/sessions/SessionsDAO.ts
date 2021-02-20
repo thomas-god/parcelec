@@ -15,17 +15,22 @@ export class SessionsDAO {
    * Return a session object from its ID
    * @param sessionID Session UUID
    */
-  async getSession(sessionID: string): Promise<Session> {
-    const rows = (
+  async getSession(sessionID: string): Promise<Session[]> {
+    return (
       await this.db.execute(
         `SELECT
-          id, name, status, scenario_id
-        FROM sessions
+          id, name, status
+        FROM t_sessions
         WHERE id=$1;`,
         [sessionID]
       )
-    ).rows;
-    return rows.length === 1 ? (rows[0] as Session) : null;
+    ).rows.map((row: QueryResultRow) => {
+      return <Session>{
+        id: row["id"],
+        name: row["name"],
+        status: row["status"],
+      };
+    });
   }
 
   async createSession(sessionName: string): Promise<Session> {

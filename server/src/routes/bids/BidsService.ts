@@ -7,6 +7,7 @@ import {
   SessionIsNotRunningError,
 } from "../../errors/sessions.errors";
 import { UserDoesNotExistError } from "../../errors/users.errors";
+import { Session } from "../sessions/types";
 
 export interface BidInput {
   type: "sell" | "buy";
@@ -44,7 +45,7 @@ export class BidsService {
     userId: string,
     body: BidInput
   ): Promise<Bid> {
-    const session = await this.SessionsDAO.getSession(sessionId);
+    const session: Session = (await this.SessionsDAO.getSession(sessionId))[0];
     if (session === null) {
       throw new SessionDoesNotExistError("Session does not exist");
     }

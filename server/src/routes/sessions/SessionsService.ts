@@ -8,7 +8,7 @@ export class SessionsService {
     this.SessionsDAO = SessionsDAO;
   }
 
-  async createSession(sessionName: string) {
+  async createSession(sessionName: string): Promise<string> {
     const session: Session = await this.SessionsDAO.createSession(sessionName);
     return session.id;
   }
