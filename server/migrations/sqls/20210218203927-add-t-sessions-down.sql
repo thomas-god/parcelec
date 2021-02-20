@@ -1,2 +1,2 @@
 /* Replace with your SQL commands */
-DROP TABLE IF EXISTS films;
+DROP TABLE t_sessions;

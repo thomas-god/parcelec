@@ -6,4 +6,7 @@ export default function (container: AwilixContainer, app: Application) {
   (container.resolve("BidsController") as Dependencies["BidsController"]).init(
     app
   );
+  (container.resolve(
+    "SessionsController"
+  ) as Dependencies["SessionsController"]).init(app);
 }

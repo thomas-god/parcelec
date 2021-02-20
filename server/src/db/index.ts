@@ -1,9 +1,11 @@
 import { Pool, QueryResult, QueryResultRow } from "pg";
 
-const databaseConfig = {
+let databaseConfig: any = {
   connectionString: process.env.DATABASE_URL,
-  ssl: { rejectUnauthorized: false }
 };
+// if (process.env.NODE_ENV !== 'test'){
+//   databaseConfig.ssl = { rejectUnauthorized: false }
+// }
 
 // OLD
 const pool = new Pool(databaseConfig);

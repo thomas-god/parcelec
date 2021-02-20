@@ -16,7 +16,8 @@ RUN npm install mocha-jenkins-reporter
 COPY . /usr/app/
 
 ENV TZ=Europe/Paris
+ENV NODE_ENV=test
 
 # Wait for DB and run test
 CMD /root/wait-for-it.sh -t 90 db:5432 \
-   && npm run test
+   && node node_modules/mocha/bin/mocha -r ts-node/register e2e/**/*.test.e2e.ts --recursive --exit --colors
