@@ -17,7 +17,7 @@ function getRoute(sessionId: string, userId: string): string {
   return `/session/${sessionId}/user/${userId}/ready`
 }
 
-describe("Registering a new user", () => {
+describe("Mark a user ready", () => {
   before(async () => {
     const context = getContext();
     const app = await createServer(context);

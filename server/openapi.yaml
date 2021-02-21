@@ -73,7 +73,33 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/SessionItem'
+                type: array
+                items:
+                  type:
+                    $ref: '#/components/schemas/SessionItem'
+  /session/{sessionID}/users:
+    get:
+      tags:
+        - session
+      summary: Get a list of session's users.
+      operationId: getSessionUsers
+      parameters:
+        - in: path
+          name: sessionID
+          schema:
+            type: string
+          required: true
+          description: Session ID.
+      responses:
+        '200':
+          description: List of users.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type:
+                    $ref: '#/components/schemas/UserItem'
   /session/{sessionID}/user:
     put:
       tags: '-user'
@@ -157,4 +183,13 @@ components:
         name:
           type: string
           description: Session name.
+    UserItem:
+      type: object
+      properties:
+        name:
+          schema: string
+          description: Username.
+        status:
+          schema: boolean
+          description: User ready or not.
 tags: []

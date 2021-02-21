@@ -69,6 +69,30 @@ export class UsersDAO {
     )[0];
   }
 
+  async getUsers(sessionID: string): Promise<User[]> {
+    return (
+      await this.db.execute(
+        `SELECT
+          id,
+          session_id,
+          name,
+          is_ready
+        FROM t_users
+        WHERE session_id=$1::uuid;`,
+        [sessionID]
+      )
+    ).rows.map(
+      (row: QueryResultRow): User => {
+        return <User>{
+          id: row["id"],
+          sessionId: row["session_id"],
+          name: row["name"],
+          isReady: row["is_ready"],
+        };
+      }
+    );
+  }
+
   async markUserReady(sessionId: string, userId: string): Promise<void> {
     await this.db.execute(
       `UPDATE t_users

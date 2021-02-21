@@ -13,7 +13,7 @@ chai.use(chaiHttp);
 let server;
 const route = '/session';
 
-describe("Create a new session", () => {
+describe("Get open sessions list", () => {
   before(async () => {
     const context = getContext();
     const app = await createServer(context);
@@ -30,7 +30,7 @@ describe("Create a new session", () => {
     const res = await chai.request(server).get('/sessions')
 
     expect(res.status).to.eql(200)
-    expect(res.body.sessions).to.deep.equal([{
+    expect(res.body).to.deep.equal([{
       id: 'a19bc943-4599-4782-a650-806b015f209a',
       name: 'Open session'
     }])
