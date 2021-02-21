@@ -20,7 +20,7 @@ export class UsersController {
      *    tags:
      *      -user
      *    summary: Register a new user to a session.
-     *    operationId: putUser
+     *    operationId: registerUser
      *    parameters:
      *      - in: path
      *        name: sessionID
@@ -60,5 +60,42 @@ export class UsersController {
         res.status(400).send({ message: err.message });
       }
     });
+
+    /**
+     * @swagger
+     * /session/{sessionID}/user/{userID}/ready:
+     *  put:
+     *    tags:
+     *      -user
+     *    summary: Mark a user ready.
+     *    operationId: markUserReady
+     *    parameters:
+     *      - in: path
+     *        name: sessionID
+     *        schema:
+     *          type: string
+     *        required: true
+     *        description: Session ID.
+     *      - in: path
+     *        name: userID
+     *        schema:
+     *          type: string
+     *        required: true
+     *        description: User ID.
+     *    responses:
+     *      '200':
+     *        description: User marked ready.
+     */
+    app.put("/session/:sessionID/user/:userID/ready", async( req: Request, res: Response) => {
+      try {
+        const sessionId = req.params.sessionID as string;
+        const userId = req.params.userID as string;
+
+        await this.UsersService.markUserReady(sessionId, userId)
+        res.status(200).end();
+      } catch (err) {
+        res.status(400).send({ message: err.message });
+      }
+    })
   }
 }

@@ -18,10 +18,10 @@ export class UsersService {
 
   async registerUser(sessionId: string, username: string): Promise<string> {
     const session = await this.SessionsDAO.getSession(sessionId);
-    if (session.length !== 1) {
+    if (session === undefined) {
       throw new Error(`Cannot find a session with ID ${sessionId}.`);
     }
-    if (session[0].status !== "open") {
+    if (session.status !== "open") {
       throw new Error(`Session is not open for registration.`);
     }
 
@@ -31,5 +31,19 @@ export class UsersService {
     } catch (err) {
       throw new Error(`Could not create user.`);
     }
+  }
+
+  async markUserReady(sessionId: string, userId: string): Promise<void> {
+    const session = await this.SessionsDAO.getSession(sessionId);
+    if (session === undefined) {
+      throw new Error(`Cannot find a session with ID ${sessionId}.`);
+    }
+
+    const user = await this.UsersDAO.getUser(sessionId, userId);
+    if (user === undefined) {
+      throw new Error(`Cannot find a user with ID ${userId}.`);
+    }
+
+    await this.UsersDAO.markUserReady(sessionId, userId)
   }
 }
