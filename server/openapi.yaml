@@ -65,7 +65,7 @@ paths:
     put:
       tags: '-user'
       summary: Register a new user to a session.
-      operationId: putUser
+      operationId: registerUser
       parameters:
         - in: path
           name: sessionID
@@ -89,6 +89,27 @@ paths:
                 properties:
                   userId:
                     type: uuid
+  /session/{sessionID}/user/{userID}/ready:
+    put:
+      tags: '-user'
+      summary: Mark a user ready.
+      operationId: markUserReady
+      parameters:
+        - in: path
+          name: sessionID
+          schema:
+            type: string
+          required: true
+          description: Session ID.
+        - in: path
+          name: userID
+          schema:
+            type: string
+          required: true
+          description: User ID.
+      responses:
+        '200':
+          description: User marked ready.
 components:
   schemas:
     NewBidBody:

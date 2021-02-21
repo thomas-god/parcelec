@@ -15,7 +15,7 @@ export class SessionsDAO {
    * Return a session object from its ID
    * @param sessionID Session UUID
    */
-  async getSession(sessionID: string): Promise<Session[]> {
+  async getSession(sessionID: string): Promise<Session> {
     return (
       await this.db.execute(
         `SELECT
@@ -30,7 +30,7 @@ export class SessionsDAO {
         name: row["name"],
         status: row["status"],
       };
-    });
+    })[0];
   }
 
   async createSession(sessionName: string): Promise<Session> {
