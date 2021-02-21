@@ -46,4 +46,20 @@ export class UsersService {
 
     await this.UsersDAO.markUserReady(sessionId, userId);
   }
+
+  async getSessionUsers(
+    sessionId: string
+  ): Promise<Pick<User, "name" | "isReady">[]> {
+    const session = await this.SessionsDAO.getSession(sessionId);
+    if (session === undefined) {
+      throw new Error(`Cannot find a session with ID ${sessionId}.`);
+    }
+
+    return (await this.UsersDAO.getUsers(sessionId)).map((user: User) => {
+      return <Pick<User, "name" | "isReady">>{
+        name: user.name,
+        isReady: user.isReady,
+      };
+    });
+  }
 }
