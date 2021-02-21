@@ -86,16 +86,19 @@ export class UsersController {
      *      '200':
      *        description: User marked ready.
      */
-    app.put("/session/:sessionID/user/:userID/ready", async( req: Request, res: Response) => {
-      try {
-        const sessionId = req.params.sessionID as string;
-        const userId = req.params.userID as string;
+    app.put(
+      "/session/:sessionID/user/:userID/ready",
+      async (req: Request, res: Response) => {
+        try {
+          const sessionId = req.params.sessionID as string;
+          const userId = req.params.userID as string;
 
-        await this.UsersService.markUserReady(sessionId, userId)
-        res.status(200).end();
-      } catch (err) {
-        res.status(400).send({ message: err.message });
+          await this.UsersService.markUserReady(sessionId, userId);
+          res.status(200).end();
+        } catch (err) {
+          res.status(400).send({ message: err.message });
+        }
       }
-    })
+    );
   }
 }

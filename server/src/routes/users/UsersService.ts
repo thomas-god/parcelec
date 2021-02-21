@@ -44,6 +44,6 @@ export class UsersService {
       throw new Error(`Cannot find a user with ID ${userId}.`);
     }
 
-    await this.UsersDAO.markUserReady(sessionId, userId)
+    await this.UsersDAO.markUserReady(sessionId, userId);
   }
 }

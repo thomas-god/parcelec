@@ -2,7 +2,7 @@ import { v4 as uuid } from "uuid";
 import { QueryResultRow } from "pg";
 import { Database } from "../../db";
 import { Dependencies } from "../../di.context";
-import { Session } from "./types";
+import { Session, SessionStatus } from "./types";
 
 export class SessionsDAO {
   private db: Dependencies["db"];
@@ -53,5 +53,23 @@ export class SessionsDAO {
         status: row["status"],
       };
     })[0];
+  }
+
+  async getSessionsList(status: SessionStatus): Promise<Session[]> {
+    return (
+      await this.db.execute(
+        `SELECT
+          id, name, status
+        FROM t_sessions
+        WHERE status=$1;`,
+        [status]
+      )
+    ).rows.map((row: QueryResultRow) => {
+      return <Session>{
+        id: row["id"],
+        name: row["name"],
+        status: row["status"],
+      };
+    });
   }
 }

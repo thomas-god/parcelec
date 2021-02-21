@@ -1,5 +1,6 @@
 import { Application, Request, Response } from "express";
 import { Dependencies } from "../../di.context";
+import { SessionStatus } from "./types";
 
 export class SessionsController {
   private SessionsService: Dependencies["SessionsService"];
@@ -46,6 +47,48 @@ export class SessionsController {
         res.status(201).json({ sessionId: sessionId });
       } catch (err) {
         res.status(500).send(err.message);
+      }
+    });
+
+    /**
+     * @swagger
+     * components:
+     *  schemas:
+     *    SessionItem:
+     *      type: object
+     *      properties:
+     *        id:
+     *          type: string
+     *          description: Session ID.
+     *        name:
+     *          type: string
+     *          description: Session name.
+     */
+
+    /**
+     * @swagger
+     * /sessions:
+     *  get:
+     *    tags:
+     *      - session
+     *    summary: Get a list of current open games.
+     *    operationId: getOpenSessionsList
+     *    responses:
+     *      '200':
+     *        description: List of open sessions.
+     *        content:
+     *          application/json:
+     *            schema:
+     *              $ref: '#/components/schemas/SessionItem'
+     */
+    app.get("/sessions", async (req: Request, res: Response) => {
+      try {
+        const sessions = await this.SessionsService.getSessionList(
+          SessionStatus.open
+        );
+        res.status(200).json({ sessions: sessions });
+      } catch (err) {
+        res.status(400).send(err.message);
       }
     });
   }
