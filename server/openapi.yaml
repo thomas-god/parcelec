@@ -61,6 +61,19 @@ paths:
                 properties:
                   sessionId:
                     type: uuid
+  /sessions:
+    get:
+      tags:
+        - session
+      summary: Get a list of current open games.
+      operationId: getOpenSessionsList
+      responses:
+        '200':
+          description: List of open sessions.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionItem'
   /session/{sessionID}/user:
     put:
       tags: '-user'
@@ -135,4 +148,13 @@ components:
       properties:
         id:
           type: string
+    SessionItem:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Session ID.
+        name:
+          type: string
+          description: Session name.
 tags: []

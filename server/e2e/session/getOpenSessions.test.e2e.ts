@@ -26,17 +26,14 @@ describe("Create a new session", () => {
     await clearDB()
   })
 
-  it("should create a new session", async () => {
-    const res = await chai.request(server).put(route).query({ sessionName: 'toto' });
+  it("should get a list of open sessions", async () => {
+    const res = await chai.request(server).get('/sessions')
 
-    expect(res.status).to.be.eql(201);
-    expect(uuidValidate(res.body.sessionId)).to.be.true;
+    expect(res.status).to.eql(200)
+    expect(res.body.sessions).to.deep.equal([{
+      id: 'a19bc943-4599-4782-a650-806b015f209a',
+      name: 'Open session'
+    }])
   })
 
-  it("should fail with no session name", async () => {
-    const res = await chai.request(server).put(route).query({});
-
-    expect(res.status).to.be.eql(400);
-    expect(res.body.message).to.eql('request.query should have required property \'sessionName\'')
-  })
 })

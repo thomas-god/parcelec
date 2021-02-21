@@ -3,3 +3,9 @@ export interface Session {
   name: string;
   status: "open" | "running" | "closed";
 }
+
+export enum SessionStatus {
+  open = "open",
+  running = "running",
+  closed = "closed",
+}

@@ -76,6 +76,6 @@ export class UsersDAO {
       WHERE session_id = $1::uuid
         AND id = $2::uuid;`,
       [sessionId, userId]
-    )
+    );
   }
 }
