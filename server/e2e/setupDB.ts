@@ -19,5 +19,6 @@ export async function clearDB(): Promise<void> {
   await db.execute(`
     TRUNCATE t_sessions CASCADE;
     TRUNCATE t_users CASCADE;
+    TRUNCATE t_bids CASCADE;
   `, []);
 }

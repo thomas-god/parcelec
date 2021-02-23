@@ -3,18 +3,18 @@ info:
   title: Parcelec API
   version: 1.0.0
 paths:
-  /beta/session/{session_id}/user/{user_id}/bid:
+  /session/{sessionID}/user/{userID}/bid:
     post:
       summary: post a new bid
       parameters:
         - in: path
-          name: session_id
+          name: sessionID
           schema:
             type: string
           required: true
           description: Session UUID
         - in: path
-          name: user_id
+          name: userID
           schema:
             type: string
           required: true
@@ -37,7 +37,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/BidId'
+                $ref: '#/components/schemas/BidResponse'
   /session:
     put:
       tags:
@@ -155,19 +155,19 @@ components:
       type: object
       required:
         - type
-        - volume_mwh
-        - price_eur_per_mwh
+        - volume
+        - price
       properties:
         type:
           type: string
           enum:
             - sell
             - buy
-        volume_mwh:
+        volume:
           type: integer
-        price_eur_per_mwh:
+        price:
           type: integer
-    BidId:
+    BidResponse:
       type: object
       required:
         - id

@@ -2,18 +2,8 @@ import { v4 as uuid } from "uuid";
 import { Dependencies } from "../../di.context";
 import { Bid } from "../types";
 
-import {
-  SessionDoesNotExistError,
-  SessionIsNotRunningError,
-} from "../../errors/sessions.errors";
-import { UserDoesNotExistError } from "../../errors/users.errors";
-import { Session } from "../sessions/types";
+import { BidTypes } from "./types";
 
-export interface BidInput {
-  type: "sell" | "buy";
-  volume_mwh: number;
-  price_eur_per_mwh: number;
-}
 
 export class BidsService {
   private BidsDAO: Dependencies["BidsDAO"];
@@ -43,29 +33,24 @@ export class BidsService {
   async postUserBid(
     sessionId: string,
     userId: string,
-    body: BidInput
-  ): Promise<Bid> {
-    const session: Session = (await this.SessionsDAO.getSession(sessionId))[0];
-    if (session === null) {
-      throw new SessionDoesNotExistError("Session does not exist");
+    type: BidTypes,
+    volume: number,
+    price: number
+  ): Promise<string> {
+    const session = await this.SessionsDAO.getSession(sessionId);
+    if (session === undefined) {
+      throw new Error(`Cannot find a session with ID ${sessionId}.`);
     }
     if (session.status !== "running") {
-      throw new SessionIsNotRunningError("Session is not running");
+      throw new Error(`Session is not running.`);
     }
 
-    const user = await this.UsersDAO.getUser(userId, sessionId);
-    if (user === null) {
-      throw new UserDoesNotExistError("User does not exist");
+    const user = await this.UsersDAO.getUser(sessionId, userId);
+    if (user === undefined) {
+      throw new Error(`Cannot find a user with ID ${userId}.`);
     }
 
-    const bid = {
-      user_id: userId,
-      session_id: sessionId,
-      id: uuid(),
-      type: body.type,
-      volume_mwh: Number(body.volume_mwh),
-      price_eur_per_mwh: Number(body.price_eur_per_mwh),
-    };
-    return { ...bid, phase_no: 0 };
+    const bid = await this.BidsDAO.createBid(sessionId, userId, type, volume, price);
+    return bid.id;
   }
 }

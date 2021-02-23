@@ -1,7 +1,6 @@
 import { Application, Request, Response } from "express";
 import { Dependencies } from "../../di.context";
-import { uuid_regex } from "../utils";
-import { BidInput } from "./BidsService";
+import { BidTypes } from "./types";
 
 export class BidsController {
   private BidsService: Dependencies["BidsService"];
@@ -19,15 +18,15 @@ export class BidsController {
      *      type: object
      *      required:
      *      - type
-     *      - volume_mwh
-     *      - price_eur_per_mwh
+     *      - volume
+     *      - price
      *      properties:
      *        type:
      *          type: string
      *          enum: [sell, buy]
-     *        volume_mwh:
+     *        volume:
      *          type: integer
-     *        price_eur_per_mwh:
+     *        price:
      *          type: integer
      */
 
@@ -35,7 +34,7 @@ export class BidsController {
      * @swagger
      * components:
      *  schemas:
-     *    BidId:
+     *    BidResponse:
      *      type: object
      *      required:
      *      - id
@@ -46,18 +45,18 @@ export class BidsController {
 
     /**
      * @swagger
-     * /beta/session/{session_id}/user/{user_id}/bid:
+     * /session/{sessionID}/user/{userID}/bid:
      *  post:
      *    summary: post a new bid
      *    parameters:
      *      - in: path
-     *        name: session_id
+     *        name: sessionID
      *        schema:
      *          type: string
      *        required: true
      *        description: Session UUID
      *      - in: path
-     *        name: user_id
+     *        name: userID
      *        schema:
      *          type: string
      *        required: true
@@ -80,24 +79,28 @@ export class BidsController {
      *        content:
      *          application/json:
      *            schema:
-     *              $ref: '#/components/schemas/BidId'
+     *              $ref: '#/components/schemas/BidResponse'
      */
     app.post(
-      `/beta/session/:session_id(${uuid_regex})/user/:user_id(${uuid_regex})/bid`,
+      `/session/:sessionID/user/:userID/bid`,
       async (req: Request, res: Response) => {
-        const sessionId = req.params.session_id;
-        const userId = req.params.user_id;
-        const bidBody = req.body.bid as BidInput;
-
         try {
-          const bid = await this.BidsService.postUserBid(
+          const sessionId = req.params.sessionID;
+          const userId = req.params.userID;
+          const type: BidTypes = req.body.bid.type as BidTypes
+          const price = Number(req.body.bid.price)
+          const volume = Number(req.body.bid.volume)
+
+          const bidId = await this.BidsService.postUserBid(
             sessionId,
             userId,
-            bidBody
+            type,
+            volume,
+            price
           );
-          res.status(201).json({ id: bid.id });
-        } catch (error) {
-          res.status(400).send(error.message);
+          res.status(201).json({ id: bidId });
+        } catch (err) {
+          res.status(400).send({ message: err.message });
         }
       }
     );
