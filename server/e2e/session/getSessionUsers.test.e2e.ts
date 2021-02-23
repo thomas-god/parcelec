@@ -39,7 +39,7 @@ describe("Create a new session", () => {
   })
 
   it("should get a empty list if no users", async () => {
-    const res = await chai.request(server).get(`/session/04c92e13-a42f-4381-aa67-94875798082e/users`)
+    const res = await chai.request(server).get(`/session/a196d524-ab6d-4adc-bcab-42e96f5ce547/users`)
 
     expect(res.status).to.eql(200)
     expect(res.body).to.deep.equal([])
