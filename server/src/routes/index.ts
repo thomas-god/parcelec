@@ -14,4 +14,8 @@ export default function (container: AwilixContainer, app: Application) {
   (container.resolve(
     "UsersController"
   ) as Dependencies["UsersController"]).init(app);
+
+  (container.resolve(
+    "PhasesController"
+  ) as Dependencies["PhasesController"]).init(app);
 }

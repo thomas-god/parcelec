@@ -38,6 +38,27 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/BidResponse'
+  /session/{sessionID}/phase:
+    get:
+      tags:
+        - phase
+      summary: Get the last phase of the current session
+      operationId: getPhase
+      parameters:
+        - in: path
+          name: sessionID
+          schema:
+            type: string
+          required: true
+          description: SessionID
+      responses:
+        '200':
+          description: Phase information
+          content:
+            application/json:
+              schema:
+                type:
+                  $ref: '#/components/schemas/PhaseInfos'
   /session:
     put:
       tags:
@@ -174,6 +195,18 @@ components:
       properties:
         id:
           type: string
+    PhaseInfos:
+      type: object
+      properties:
+        phase_no:
+          schema: integer
+          description: Phase number.
+        status:
+          schema: string
+          enum:
+            - open
+            - closed
+          description: Phase status
     SessionItem:
       type: object
       properties:

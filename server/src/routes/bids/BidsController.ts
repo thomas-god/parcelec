@@ -87,9 +87,9 @@ export class BidsController {
         try {
           const sessionId = req.params.sessionID;
           const userId = req.params.userID;
-          const type: BidTypes = req.body.bid.type as BidTypes
-          const price = Number(req.body.bid.price)
-          const volume = Number(req.body.bid.volume)
+          const type: BidTypes = req.body.bid.type as BidTypes;
+          const price = Number(req.body.bid.price);
+          const volume = Number(req.body.bid.volume);
 
           const bidId = await this.BidsService.postUserBid(
             sessionId,

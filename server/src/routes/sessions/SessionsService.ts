@@ -25,4 +25,20 @@ export class SessionsService {
       }
     );
   }
+
+  async getSession(sessionID: string): Promise<Session> {
+    const session = await this.SessionsDAO.getSession(sessionID);
+    if (session === undefined) {
+      throw new Error(`Cannot find a session with ID ${sessionID}.`);
+    }
+    return session;
+  }
+
+  async getSessionIfOpen(sessionID: string): Promise<Session> {
+    const session = await this.getSession(sessionID);
+    if (session.status !== "open") {
+      throw new Error(`Session ${sessionID} is not open for registration.`);
+    }
+    return session;
+  }
 }
