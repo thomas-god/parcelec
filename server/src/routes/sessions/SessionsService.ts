@@ -1,10 +1,10 @@
-import { Dependencies } from "../../di.context";
-import { Session, SessionStatus } from "./types";
+import { Dependencies } from '../../di.context';
+import { Session, SessionStatus } from './types';
 
 export class SessionsService {
-  private SessionsDAO: Dependencies["SessionsDAO"];
+  private SessionsDAO: Dependencies['SessionsDAO'];
 
-  constructor({ SessionsDAO }: { SessionsDAO: Dependencies["SessionsDAO"] }) {
+  constructor({ SessionsDAO }: { SessionsDAO: Dependencies['SessionsDAO'] }) {
     this.SessionsDAO = SessionsDAO;
   }
 
@@ -15,10 +15,10 @@ export class SessionsService {
 
   async getSessionList(
     status: SessionStatus
-  ): Promise<Omit<Session, "status">[]> {
+  ): Promise<Omit<Session, 'status'>[]> {
     return (await this.SessionsDAO.getSessionsList(status)).map(
       (session: Session) => {
-        return <Omit<Session, "status">>{
+        return <Omit<Session, 'status'>>{
           id: session.id,
           name: session.name,
         };
@@ -36,7 +36,7 @@ export class SessionsService {
 
   async getSessionIfOpen(sessionID: string): Promise<Session> {
     const session = await this.getSession(sessionID);
-    if (session.status !== "open") {
+    if (session.status !== 'open') {
       throw new Error(`Session ${sessionID} is not open for registration.`);
     }
     return session;

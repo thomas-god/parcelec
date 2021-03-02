@@ -8,12 +8,12 @@
  *  GET /session/:session_id/user/:user_id/game_results
  */
 
-import express from "express";
+import express from 'express';
 import {
   checkPlanning,
   formatUserPlanning,
   insertPlanning,
-} from "./plugins/plannings";
+} from './plugins/plannings';
 import {
   getSession,
   getUser,
@@ -28,7 +28,7 @@ import {
   getPhaseRankings,
   getConsoForecast,
   getUserAllPhasesPlanning,
-} from "./utils";
+} from './utils';
 
 // ---------------------- Routing Functions
 
@@ -47,11 +47,11 @@ export async function getUserPortfolio(
     const user_id = req.params.user_id;
     const session = await getSession(session_id);
     if (session === null) {
-      throw new CustomError("Error, no session found with this ID", 404);
+      throw new CustomError('Error, no session found with this ID', 404);
     }
     const user = await getUser(session_id, user_id);
     if (user === null) {
-      throw new CustomError("Error, no user found with this ID", 404);
+      throw new CustomError('Error, no user found with this ID', 404);
     }
 
     const portfolio = await getPortfolio(user_id);
@@ -82,11 +82,11 @@ export async function getUserConso(
     const user_id = req.params.user_id;
     const session = await getSession(session_id);
     if (session === null) {
-      throw new CustomError("Error, no session found with this ID", 404);
+      throw new CustomError('Error, no session found with this ID', 404);
     }
     const user = await getUser(session_id, user_id);
     if (user === null) {
-      throw new CustomError("Error, no user found with this ID", 404);
+      throw new CustomError('Error, no user found with this ID', 404);
     }
 
     const conso = await getCurrentConsoValue(session_id, user_id);
@@ -116,11 +116,11 @@ export async function getUserConsoForecast(
     const user_id = req.params.user_id;
     const session = await getSession(session_id);
     if (session === null) {
-      throw new CustomError("Error, no session found with this ID", 404);
+      throw new CustomError('Error, no session found with this ID', 404);
     }
     const user = await getUser(session_id, user_id);
     if (user === null) {
-      throw new CustomError("Error, no user found with this ID", 404);
+      throw new CustomError('Error, no user found with this ID', 404);
     }
 
     const conso = await getConsoForecast(session_id, user_id);
@@ -150,14 +150,14 @@ export async function putUserPlanningRoute(
     const user_id = req.params.user_id;
     const session = await getSession(session_id);
     if (session === null) {
-      throw new CustomError("Error, no session found with this ID", 404);
+      throw new CustomError('Error, no session found with this ID', 404);
     }
-    if (session.status !== "running") {
-      throw new CustomError("Error, the session is not running");
+    if (session.status !== 'running') {
+      throw new CustomError('Error, the session is not running');
     }
     const user = await getUser(session_id, user_id);
     if (user === null) {
-      throw new CustomError("Error, no user found with this ID", 404);
+      throw new CustomError('Error, no user found with this ID', 404);
     }
 
     const planning = await formatUserPlanning(req.body);
@@ -189,11 +189,11 @@ export async function getUserPlanningRoute(
     const user_id = req.params.user_id;
     const session = await getSession(session_id);
     if (session === null) {
-      throw new CustomError("Error, no session found with this ID", 404);
+      throw new CustomError('Error, no session found with this ID', 404);
     }
     const user = await getUser(session_id, user_id);
     if (user === null) {
-      throw new CustomError("Error, no user found with this ID", 404);
+      throw new CustomError('Error, no user found with this ID', 404);
     }
 
     const planning = await getUserLastPhasePlanning(session_id, user_id);
@@ -231,11 +231,11 @@ export async function getUserResultsRoute(
     const user_id = req.params.user_id;
     const session = await getSession(session_id);
     if (session === null) {
-      throw new CustomError("Error, no session found with this ID", 404);
+      throw new CustomError('Error, no session found with this ID', 404);
     }
     const user = await getUser(session_id, user_id);
     if (user === null) {
-      throw new CustomError("Error, no user found with this ID", 404);
+      throw new CustomError('Error, no user found with this ID', 404);
     }
 
     const current_results = await getUserPhaseResults(session_id, user_id);
@@ -270,14 +270,14 @@ export async function getUserGameResultsRoute(
     const user_id = req.params.user_id;
     const session = await getSession(session_id);
     if (session === null) {
-      throw new CustomError("Error, no session found with this ID", 404);
+      throw new CustomError('Error, no session found with this ID', 404);
     }
     const user = await getUser(session_id, user_id);
     if (user === null) {
-      throw new CustomError("Error, no user found with this ID", 404);
+      throw new CustomError('Error, no user found with this ID', 404);
     }
 
-    if (session.status !== "closed") {
+    if (session.status !== 'closed') {
       res.json([]);
     } else {
       const results = await getUserAllPhasesResults(session_id, user_id);
@@ -307,10 +307,10 @@ export async function getRankings(
     const session_id = req.params.session_id;
     const session = await getSession(session_id);
     if (session === null) {
-      throw new CustomError("Error, no session found with this ID", 404);
+      throw new CustomError('Error, no session found with this ID', 404);
     }
 
-    console.log("rankings");
+    console.log('rankings');
     const results = await getPhaseRankings(session_id);
     console.log(results);
     res.json(results);

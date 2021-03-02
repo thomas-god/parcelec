@@ -1,11 +1,11 @@
-import { v4 as uuid } from "uuid";
-import { QueryResultRow } from "pg";
-import { Database } from "../../db";
-import { Dependencies } from "../../di.context";
-import { User } from "./types";
+import { v4 as uuid } from 'uuid';
+import { QueryResultRow } from 'pg';
+import { Database } from '../../db';
+import { Dependencies } from '../../di.context';
+import { User } from './types';
 
 export class UsersDAO {
-  private db: Dependencies["db"];
+  private db: Dependencies['db'];
 
   constructor({ db }: { db: Database }) {
     this.db = db;
@@ -29,10 +29,10 @@ export class UsersDAO {
     ).rows.map(
       (row: QueryResultRow): User => {
         return <User>{
-          id: row["id"],
-          sessionId: row["session_id"],
-          name: row["name"],
-          isReady: row["is_ready"],
+          id: row['id'],
+          sessionId: row['session_id'],
+          name: row['name'],
+          isReady: row['is_ready'],
         };
       }
     )[0];
@@ -60,10 +60,10 @@ export class UsersDAO {
     ).rows.map(
       (row: QueryResultRow): User => {
         return <User>{
-          id: row["id"],
-          sessionId: row["session_id"],
-          name: row["name"],
-          isReady: row["is_ready"],
+          id: row['id'],
+          sessionId: row['session_id'],
+          name: row['name'],
+          isReady: row['is_ready'],
         };
       }
     )[0];
@@ -84,10 +84,10 @@ export class UsersDAO {
     ).rows.map(
       (row: QueryResultRow): User => {
         return <User>{
-          id: row["id"],
-          sessionId: row["session_id"],
-          name: row["name"],
-          isReady: row["is_ready"],
+          id: row['id'],
+          sessionId: row['session_id'],
+          name: row['name'],
+          isReady: row['is_ready'],
         };
       }
     );

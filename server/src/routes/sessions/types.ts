@@ -5,7 +5,7 @@ export interface Session {
 }
 
 export enum SessionStatus {
-  open = "open",
-  running = "running",
-  closed = "closed",
+  open = 'open',
+  running = 'running',
+  closed = 'closed',
 }

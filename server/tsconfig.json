@@ -4,8 +4,8 @@
     "allowJs": true,
     "target": "es6",
     "esModuleInterop": true,
-    "noImplicitAny": false, // true
-    "noUnusedLocals": false, // true
+    "noImplicitAny": false, // true when refactor is done,
+    "noUnusedLocals": false,
     "noUnusedParameters": false,
     "removeComments": true,
     "module": "commonjs",
@@ -16,7 +16,8 @@
     "skipLibCheck": true
   },
   "include": [
-    "./src/**/*"
+    "./src/**/*",
+    "./e2e/**/*"
   ],
   "types": [
     "./src/app/types/*"

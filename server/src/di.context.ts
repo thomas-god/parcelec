@@ -4,25 +4,25 @@ import {
   asValue,
   asClass,
   InjectionMode,
-} from "awilix";
+} from 'awilix';
 
-import { Database } from "./db";
+import { Database } from './db';
 
-import { BidsDAO } from "./routes/bids/BidsDAO";
-import { BidsService } from "./routes/bids/BidsService";
-import { BidsController } from "./routes/bids/BidsController";
+import { BidsDAO } from './routes/bids/BidsDAO';
+import { BidsService } from './routes/bids/BidsService';
+import { BidsController } from './routes/bids/BidsController';
 
-import { SessionsDAO } from "./routes/sessions/SessionsDAO";
-import { SessionsService } from "./routes/sessions/SessionsService";
-import { SessionsController } from "./routes/sessions/SessionsController";
+import { SessionsDAO } from './routes/sessions/SessionsDAO';
+import { SessionsService } from './routes/sessions/SessionsService';
+import { SessionsController } from './routes/sessions/SessionsController';
 
-import { UsersController } from "./routes/users/UsersController";
-import { UsersService } from "./routes/users/UsersService";
-import { UsersDAO } from "./routes/users/UsersDAO";
+import { UsersController } from './routes/users/UsersController';
+import { UsersService } from './routes/users/UsersService';
+import { UsersDAO } from './routes/users/UsersDAO';
 
-import { PhasesController } from "./routes/phases/PhasesController";
-import { PhasesService } from "./routes/phases/PhasesService";
-import { PhasesDAO } from "./routes/phases/PhasesDAO";
+import { PhasesController } from './routes/phases/PhasesController';
+import { PhasesService } from './routes/phases/PhasesService';
+import { PhasesDAO } from './routes/phases/PhasesDAO';
 
 export default function getContext(): AwilixContainer {
   const container: AwilixContainer = createContainer({

@@ -2,15 +2,15 @@
  * The exported function holds all the logic when starting a new game
  * phase.
  */
-import db from "../../db";
-import { SessionOptions } from "../types";
+import db from '../../db';
+import { SessionOptions } from '../types';
 import {
   getCurrentConsoValue,
   getSession,
   getSessionOptions,
   getSessionUsers,
-} from "../utils";
-import { sendUpdateToUsers } from "../websocket";
+} from '../utils';
+import { sendUpdateToUsers } from '../websocket';
 
 export async function endGame(
   session_id: string,
@@ -19,11 +19,11 @@ export async function endGame(
   const session = await getSession(session_id);
   const options = await getSessionOptions(session_id);
   // Notify users that session is finished
-  sendUpdateToUsers(session_id, "plannings-closed", {});
+  sendUpdateToUsers(session_id, 'plannings-closed', {});
 
   // Mark plannings_allowed to false
   await db.query(
-    "UPDATE phases SET plannings_allowed=false WHERE session_id=$1 AND phase_no=$2",
+    'UPDATE phases SET plannings_allowed=false WHERE session_id=$1 AND phase_no=$2',
     [session_id, phase_no]
   );
 
@@ -35,25 +35,25 @@ export async function endGame(
     "UPDATE phases SET status='closed' WHERE session_id=$1 AND phase_no=$2",
     [session_id, phase_no]
   );
-  await db.query("UPDATE users SET game_ready=false WHERE session_id=$1", [
+  await db.query('UPDATE users SET game_ready=false WHERE session_id=$1', [
     session_id,
   ]);
 
   // When results are computed, notify the users and mark it the phase table
   await db.query(
-    "UPDATE phases SET results_available=true WHERE session_id=$1 AND phase_no=$2",
+    'UPDATE phases SET results_available=true WHERE session_id=$1 AND phase_no=$2',
     [session_id, phase_no]
   );
-  sendUpdateToUsers(session_id, "results-available", {});
+  sendUpdateToUsers(session_id, 'results-available', {});
 
   // If its the last phase, close the session
   if (phase_no === options.phases_number - 1) {
-    await db.query("UPDATE sessions SET status=$1 WHERE id=$2", [
-      "closed",
+    await db.query('UPDATE sessions SET status=$1 WHERE id=$2', [
+      'closed',
       session.id,
     ]);
-    session.status = "closed";
-    sendUpdateToUsers(session_id, "game-session-ended", {});
+    session.status = 'closed';
+    sendUpdateToUsers(session_id, 'game-session-ended', {});
   }
 }
 
@@ -113,10 +113,10 @@ async function computeResults(
           [session_id, user.id, phase_no]
         )
       ).rows;
-      const buy = exchanges.find((e) => e.type === "buy");
+      const buy = exchanges.find((e) => e.type === 'buy');
       results.buy_mwh = buy !== undefined ? buy.volume_mwh : 0;
       results.buy_eur = buy !== undefined ? buy.price_eur : 0;
-      const sell = exchanges.find((e) => e.type === "sell");
+      const sell = exchanges.find((e) => e.type === 'sell');
       results.sell_mwh = sell !== undefined ? sell.volume_mwh : 0;
       results.sell_eur = sell !== undefined ? sell.price_eur : 0;
 
@@ -141,15 +141,15 @@ async function computeResults(
       ).rows;
       otcs.forEach((otc) => {
         if (
-          (otc.user_from_id === user.id && otc.type === "buy") ||
-          (otc.user_to_id === user.id && otc.type === "sell")
+          (otc.user_from_id === user.id && otc.type === 'buy') ||
+          (otc.user_to_id === user.id && otc.type === 'sell')
         ) {
           results.buy_mwh += otc.volume_mwh;
           results.buy_eur += otc.price_eur;
         }
         if (
-          (otc.user_from_id === user.id && otc.type === "sell") ||
-          (otc.user_to_id === user.id && otc.type === "buy")
+          (otc.user_from_id === user.id && otc.type === 'sell') ||
+          (otc.user_to_id === user.id && otc.type === 'buy')
         ) {
           results.sell_mwh += otc.volume_mwh;
           results.sell_eur += otc.price_eur;
@@ -243,7 +243,7 @@ async function computeResults(
 
   // All players' results have been computed, compute current phase and overall
   // ranking for each player
-  console.log("computing ranking");
+  console.log('computing ranking');
   const rankings = (
     await db.query(
       `WITH r AS (

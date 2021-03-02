@@ -1,7 +1,7 @@
 export interface Phase {
   sessionId: string;
   phaseNo: number;
-  status: "open" | "closed";
+  status: 'open' | 'closed';
   startTime: Date;
   clearingTime: Date;
   planningTime: Date;

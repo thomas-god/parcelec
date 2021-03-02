@@ -1,11 +1,11 @@
-import { v4 as uuid } from "uuid";
-import { QueryResultRow } from "pg";
-import { Database } from "../../db";
-import { Dependencies } from "../../di.context";
-import { Session, SessionStatus } from "./types";
+import { v4 as uuid } from 'uuid';
+import { QueryResultRow } from 'pg';
+import { Database } from '../../db';
+import { Dependencies } from '../../di.context';
+import { Session, SessionStatus } from './types';
 
 export class SessionsDAO {
-  private db: Dependencies["db"];
+  private db: Dependencies['db'];
 
   constructor({ db }: { db: Database }) {
     this.db = db;
@@ -26,9 +26,9 @@ export class SessionsDAO {
       )
     ).rows.map((row: QueryResultRow) => {
       return <Session>{
-        id: row["id"],
-        name: row["name"],
-        status: row["status"],
+        id: row['id'],
+        name: row['name'],
+        status: row['status'],
       };
     })[0];
   }
@@ -48,9 +48,9 @@ export class SessionsDAO {
       )
     ).rows.map((row: QueryResultRow) => {
       return <Session>{
-        id: row["id"],
-        name: row["name"],
-        status: row["status"],
+        id: row['id'],
+        name: row['name'],
+        status: row['status'],
       };
     })[0];
   }
@@ -66,9 +66,9 @@ export class SessionsDAO {
       )
     ).rows.map((row: QueryResultRow) => {
       return <Session>{
-        id: row["id"],
-        name: row["name"],
-        status: row["status"],
+        id: row['id'],
+        name: row['name'],
+        status: row['status'],
       };
     });
   }
