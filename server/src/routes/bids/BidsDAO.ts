@@ -10,7 +10,13 @@ export class BidsDAO {
     this.db = db;
   }
 
-  async createBid(sessionId: string, userId: string, type: BidTypes, volume: number, price: number): Promise<Bid> {
+  async createBid(
+    sessionId: string,
+    userId: string,
+    type: BidTypes,
+    volume: number,
+    price: number
+  ): Promise<Bid> {
     return (
       await this.db.execute(
         `INSERT INTO t_bids (
@@ -38,8 +44,8 @@ export class BidsDAO {
         userId: row["user_id"],
         type: row["type"],
         volume: row["volume"],
-        price: row["price"]
-      }
+        price: row["price"],
+      };
     })[0];
   }
 }

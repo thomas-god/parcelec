@@ -1,7 +1,6 @@
-
 export enum BidTypes {
-  SELL = 'sell',
-  BUY = 'BUY'
+  SELL = "sell",
+  BUY = "BUY",
 }
 
 export interface Bid {
@@ -11,4 +10,4 @@ export interface Bid {
   type: BidTypes;
   volume: number;
   price: number;
-  }
+}

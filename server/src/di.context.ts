@@ -20,6 +20,10 @@ import { UsersController } from "./routes/users/UsersController";
 import { UsersService } from "./routes/users/UsersService";
 import { UsersDAO } from "./routes/users/UsersDAO";
 
+import { PhasesController } from "./routes/phases/PhasesController";
+import { PhasesService } from "./routes/phases/PhasesService";
+import { PhasesDAO } from "./routes/phases/PhasesDAO";
+
 export default function getContext(): AwilixContainer {
   const container: AwilixContainer = createContainer({
     injectionMode: InjectionMode.PROXY,
@@ -36,6 +40,9 @@ export default function getContext(): AwilixContainer {
     UsersDAO: asClass(UsersDAO),
     UsersService: asClass(UsersService),
     UsersController: asClass(UsersController),
+    PhasesDAO: asClass(PhasesDAO),
+    PhasesService: asClass(PhasesService),
+    PhasesController: asClass(PhasesController),
   });
 
   return container;
@@ -52,4 +59,7 @@ export interface Dependencies {
   UsersDAO: UsersDAO;
   UsersService: UsersService;
   UsersController: UsersController;
+  PhasesDAO: PhasesDAO;
+  PhasesService: PhasesService;
+  PhasesController: PhasesController;
 }

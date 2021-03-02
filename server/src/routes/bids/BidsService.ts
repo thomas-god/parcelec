@@ -4,7 +4,6 @@ import { Bid } from "../types";
 
 import { BidTypes } from "./types";
 
-
 export class BidsService {
   private BidsDAO: Dependencies["BidsDAO"];
   private SessionsDAO: Dependencies["SessionsDAO"];
@@ -50,7 +49,13 @@ export class BidsService {
       throw new Error(`Cannot find a user with ID ${userId}.`);
     }
 
-    const bid = await this.BidsDAO.createBid(sessionId, userId, type, volume, price);
+    const bid = await this.BidsDAO.createBid(
+      sessionId,
+      userId,
+      type,
+      volume,
+      price
+    );
     return bid.id;
   }
 }
