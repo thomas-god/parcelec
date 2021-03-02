@@ -1,17 +1,17 @@
-import { Application, Request, Response } from "express";
-import { Dependencies } from "../../di.context";
-import { SessionStatus } from "./types";
+import { Application, Request, Response } from 'express';
+import { Dependencies } from '../../di.context';
+import { SessionStatus } from './types';
 
 export class SessionsController {
-  private SessionsService: Dependencies["SessionsService"];
-  private UsersService: Dependencies["UsersService"];
+  private SessionsService: Dependencies['SessionsService'];
+  private UsersService: Dependencies['UsersService'];
 
   constructor({
     SessionsService,
     UsersService,
   }: {
-    SessionsService: Dependencies["SessionsService"];
-    UsersService: Dependencies["UsersService"];
+    SessionsService: Dependencies['SessionsService'];
+    UsersService: Dependencies['UsersService'];
   }) {
     this.SessionsService = SessionsService;
     this.UsersService = UsersService;
@@ -44,7 +44,7 @@ export class SessionsController {
      *                sessionId:
      *                  type: uuid
      */
-    app.put("/session", async (req: Request, res: Response) => {
+    app.put('/session', async (req: Request, res: Response) => {
       try {
         const sessionName: string = req.query.sessionName as string;
         const sessionId = await this.SessionsService.createSession(sessionName);
@@ -88,7 +88,7 @@ export class SessionsController {
      *                type:
      *                  $ref: '#/components/schemas/SessionItem'
      */
-    app.get("/sessions", async (req: Request, res: Response) => {
+    app.get('/sessions', async (req: Request, res: Response) => {
       try {
         const sessions = await this.SessionsService.getSessionList(
           SessionStatus.open
@@ -141,7 +141,7 @@ export class SessionsController {
      *                  $ref: '#/components/schemas/UserItem'
      */
     app.get(
-      "/session/:sessionID/users",
+      '/session/:sessionID/users',
       async (req: Request, res: Response) => {
         try {
           const sessionId = req.params.sessionID as string;

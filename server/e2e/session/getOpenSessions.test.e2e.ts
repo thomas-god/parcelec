@@ -1,39 +1,41 @@
-import { validate as uuidValidate } from "uuid";
+import { validate as uuidValidate } from 'uuid';
 import chai from 'chai';
 import chaiHttp from 'chai-http';
-import getContext from "../../src/di.context";
-import { createServer } from "../../src/server";
-import { clearDB, setUpDB } from '../setupDB'
-
+import getContext from '../../src/di.context';
+import { createServer } from '../../src/server';
+import { clearDB, setUpDB } from '../setupDB';
+import { Server } from 'http';
 
 const expect = chai.expect;
 
 chai.use(chaiHttp);
 
-let server;
+let server: Server;
+
 const route = '/session';
 
-describe("Get open sessions list", () => {
+describe('Get open sessions list', () => {
   before(async () => {
     const context = getContext();
     const app = await createServer(context);
-    server = app.listen(3000, (err) => { });
-    await setUpDB()
-  })
+    server = app.listen(3000, () => {});
+    await setUpDB();
+  });
 
   after(async () => {
-    server.close()
-    await clearDB()
-  })
+    server.close();
+    await clearDB();
+  });
 
-  it("should get a list of open sessions", async () => {
-    const res = await chai.request(server).get('/sessions')
+  it('should get a list of open sessions', async () => {
+    const res = await chai.request(server).get('/sessions');
 
-    expect(res.status).to.eql(200)
-    expect(res.body).to.deep.equal([{
-      id: 'a19bc943-4599-4782-a650-806b015f209a',
-      name: 'Open session'
-    }])
-  })
-
-})
+    expect(res.status).to.eql(200);
+    expect(res.body).to.deep.equal([
+      {
+        id: 'a19bc943-4599-4782-a650-806b015f209a',
+        name: 'Open session',
+      },
+    ]);
+  });
+});

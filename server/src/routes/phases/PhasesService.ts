@@ -1,19 +1,19 @@
-import { Dependencies } from "../../di.context";
-import { Phase } from "./types";
+import { Dependencies } from '../../di.context';
+import { Phase } from './types';
 
 export class PhasesService {
-  private PhasesDAO: Dependencies["PhasesDAO"];
-  private SessionsDAO: Dependencies["SessionsDAO"];
-  private SessionsService: Dependencies["SessionsService"];
+  private PhasesDAO: Dependencies['PhasesDAO'];
+  private SessionsDAO: Dependencies['SessionsDAO'];
+  private SessionsService: Dependencies['SessionsService'];
 
   constructor({
     PhasesDAO,
     SessionsDAO,
     SessionsService,
   }: {
-    PhasesDAO: Dependencies["PhasesDAO"];
-    SessionsDAO: Dependencies["SessionsDAO"];
-    SessionsService: Dependencies["SessionsService"];
+    PhasesDAO: Dependencies['PhasesDAO'];
+    SessionsDAO: Dependencies['SessionsDAO'];
+    SessionsService: Dependencies['SessionsService'];
   }) {
     this.PhasesDAO = PhasesDAO;
     this.SessionsDAO = SessionsDAO;

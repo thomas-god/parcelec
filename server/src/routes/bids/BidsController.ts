@@ -1,11 +1,11 @@
-import { Application, Request, Response } from "express";
-import { Dependencies } from "../../di.context";
-import { BidTypes } from "./types";
+import { Application, Request, Response } from 'express';
+import { Dependencies } from '../../di.context';
+import { BidTypes } from './types';
 
 export class BidsController {
-  private BidsService: Dependencies["BidsService"];
+  private BidsService: Dependencies['BidsService'];
 
-  constructor({ BidsService }: { BidsService: Dependencies["BidsService"] }) {
+  constructor({ BidsService }: { BidsService: Dependencies['BidsService'] }) {
     this.BidsService = BidsService;
   }
 

@@ -1,14 +1,14 @@
-import db from "../../db";
+import db from '../../db';
 /**
  * Set of functions to work with production plannings.
  */
 
-import { PowerPlantDispatch, ProductionPlanning, User } from "../types";
-import { getCurrentPhaseNo, getPortfolio } from "../utils";
+import { PowerPlantDispatch, ProductionPlanning, User } from '../types';
+import { getCurrentPhaseNo, getPortfolio } from '../utils';
 
 type UserPlanning = Omit<
   PowerPlantDispatch,
-  "phase_no" | "stock_start_mwh" | "stock_end_mwh"
+  'phase_no' | 'stock_start_mwh' | 'stock_end_mwh'
 >[];
 
 /**
@@ -19,15 +19,15 @@ export async function formatUserPlanning(
   user_planning: UserPlanning
 ): Promise<ProductionPlanning> {
   if (user_planning.length === 0) {
-    throw "Error, user production planning is empty";
+    throw 'Error, user production planning is empty';
   }
 
   // session_id, user_id must be the same across all planning items
   if (!user_planning.every((v, i, a) => v.session_id === a[0].session_id)) {
-    throw "Error, session_id is not consistent across the planning";
+    throw 'Error, session_id is not consistent across the planning';
   }
   if (!user_planning.every((v, i, a) => v.user_id === a[0].user_id)) {
-    throw "Error, user_id is not consistent across the planning";
+    throw 'Error, user_id is not consistent across the planning';
   }
 
   // Get IDs and phase_no
@@ -42,7 +42,7 @@ export async function formatUserPlanning(
         // First phase, stock_start is taken equal to power plant stock_start
         stock_start_mwh = (
           await db.query(
-            "SELECT stock_start_mwh FROM power_plants WHERE id=$1",
+            'SELECT stock_start_mwh FROM power_plants WHERE id=$1',
             [pp.plant_id]
           )
         ).rows[0].stock_start_mwh as number;
@@ -50,7 +50,7 @@ export async function formatUserPlanning(
         // Carry stock_end from previous phase
         stock_start_mwh = (
           await db.query(
-            "SELECT stock_end_mwh FROM production_plannings WHERE plant_id=$1 AND phase_no=$2",
+            'SELECT stock_end_mwh FROM production_plannings WHERE plant_id=$1 AND phase_no=$2',
             [pp.plant_id, phase_no - 1]
           )
         ).rows[0].stock_end_mwh as number;
@@ -154,7 +154,7 @@ export async function generateEmptyPlanning(
         // First phase, stock_start is taken equal to power plant stock_start
         stock_start_mwh = (
           await db.query(
-            "SELECT stock_start_mwh FROM power_plants WHERE id=$1",
+            'SELECT stock_start_mwh FROM power_plants WHERE id=$1',
             [pp.id]
           )
         ).rows[0].stock_start_mwh as number;
@@ -162,7 +162,7 @@ export async function generateEmptyPlanning(
         // Carry stock_end from previous phase
         stock_start_mwh = (
           await db.query(
-            "SELECT stock_end_mwh FROM production_plannings WHERE plant_id=$1 AND phase_no=$2",
+            'SELECT stock_end_mwh FROM production_plannings WHERE plant_id=$1 AND phase_no=$2',
             [pp.id, phase_no - 1]
           )
         ).rows[0].stock_end_mwh as number;

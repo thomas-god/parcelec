@@ -1,16 +1,16 @@
-import { Dependencies } from "../../di.context";
-import { User } from "./types";
+import { Dependencies } from '../../di.context';
+import { User } from './types';
 
 export class UsersService {
-  private UsersDAO: Dependencies["UsersDAO"];
-  private SessionsDAO: Dependencies["SessionsDAO"];
+  private UsersDAO: Dependencies['UsersDAO'];
+  private SessionsDAO: Dependencies['SessionsDAO'];
 
   constructor({
     UsersDAO,
     SessionsDAO,
   }: {
-    UsersDAO: Dependencies["UsersDAO"];
-    SessionsDAO: Dependencies["SessionsDAO"];
+    UsersDAO: Dependencies['UsersDAO'];
+    SessionsDAO: Dependencies['SessionsDAO'];
   }) {
     this.UsersDAO = UsersDAO;
     this.SessionsDAO = SessionsDAO;
@@ -21,7 +21,7 @@ export class UsersService {
     if (session === undefined) {
       throw new Error(`Cannot find a session with ID ${sessionId}.`);
     }
-    if (session.status !== "open") {
+    if (session.status !== 'open') {
       throw new Error(`Session is not open for registration.`);
     }
 
@@ -49,14 +49,14 @@ export class UsersService {
 
   async getSessionUsers(
     sessionId: string
-  ): Promise<Pick<User, "name" | "isReady">[]> {
+  ): Promise<Pick<User, 'name' | 'isReady'>[]> {
     const session = await this.SessionsDAO.getSession(sessionId);
     if (session === undefined) {
       throw new Error(`Cannot find a session with ID ${sessionId}.`);
     }
 
     return (await this.UsersDAO.getUsers(sessionId)).map((user: User) => {
-      return <Pick<User, "name" | "isReady">>{
+      return <Pick<User, 'name' | 'isReady'>>{
         name: user.name,
         isReady: user.isReady,
       };

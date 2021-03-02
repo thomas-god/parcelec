@@ -1,13 +1,13 @@
-import express from "express";
-import { Application } from "express";
+import express from 'express';
+import { Application, Request, Response, NextFunction } from 'express';
 //import ws from "ws";
-import cors from "cors";
-import morgan from "morgan";
-import { middleware as OpenAPIMiddleware } from "express-openapi-validator";
-import dbmigrate from "db-migrate";
+import cors from 'cors';
+import morgan from 'morgan';
+import { middleware as OpenAPIMiddleware } from 'express-openapi-validator';
+import dbmigrate from 'db-migrate';
 
-import { AwilixContainer } from "awilix";
-import routes from "./routes/index";
+import { AwilixContainer } from 'awilix';
+import routes from './routes/index';
 
 export async function createServer(
   container: AwilixContainer
@@ -16,17 +16,17 @@ export async function createServer(
 
   app.use(cors());
   app.use(express.json());
-  app.use(morgan("common"));
+  app.use(morgan('common'));
 
   app.use(
     OpenAPIMiddleware({
-      apiSpec: "./openapi.yaml",
+      apiSpec: './openapi.yaml',
       validateRequests: true,
       validateResponses: false,
     })
   );
 
-  app.use((err, req, res, next) => {
+  app.use((err: any, req: Request, res: Response, next: NextFunction) => {
     // format error
     res.status(err.status || 500).json({
       message: err.message,
@@ -35,7 +35,7 @@ export async function createServer(
 
   const dbm = dbmigrate.getInstance(true, {
     env: process.env.NODE_ENV,
-    config: "database.json",
+    config: 'database.json',
   });
   await dbm.up();
 

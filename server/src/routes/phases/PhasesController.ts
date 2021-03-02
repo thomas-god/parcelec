@@ -1,13 +1,13 @@
-import { Application, Request, Response } from "express";
-import { Dependencies } from "../../di.context";
+import { Application, Request, Response } from 'express';
+import { Dependencies } from '../../di.context';
 
 export class PhasesController {
-  private PhasesService: Dependencies["PhasesService"];
+  private PhasesService: Dependencies['PhasesService'];
 
   constructor({
     PhasesService,
   }: {
-    PhasesService: Dependencies["PhasesService"];
+    PhasesService: Dependencies['PhasesService'];
   }) {
     this.PhasesService = PhasesService;
   }
@@ -54,7 +54,7 @@ export class PhasesController {
      *                $ref: '#/components/schemas/PhaseInfos'
      */
     app.get(
-      "/session/:sessionID/phase",
+      '/session/:sessionID/phase',
       async (req: Request, res: Response) => {
         try {
           const sessionId = req.params.sessionID as string;

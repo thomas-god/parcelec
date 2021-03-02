@@ -1,12 +1,12 @@
-import { QueryResultRow } from "pg";
-import { v4 as uuid } from "uuid";
-import { Dependencies } from "../../di.context";
-import { BidTypes, Bid } from "./types";
+import { QueryResultRow } from 'pg';
+import { v4 as uuid } from 'uuid';
+import { Dependencies } from '../../di.context';
+import { BidTypes, Bid } from './types';
 
 export class BidsDAO {
-  private db: Dependencies["db"];
+  private db: Dependencies['db'];
 
-  constructor({ db }: { db: Dependencies["db"] }) {
+  constructor({ db }: { db: Dependencies['db'] }) {
     this.db = db;
   }
 
@@ -39,12 +39,12 @@ export class BidsDAO {
       )
     ).rows.map((row: QueryResultRow) => {
       return <Bid>{
-        id: row["id"],
-        sessionId: row["session_id"],
-        userId: row["user_id"],
-        type: row["type"],
-        volume: row["volume"],
-        price: row["price"],
+        id: row['id'],
+        sessionId: row['session_id'],
+        userId: row['user_id'],
+        type: row['type'],
+        volume: row['volume'],
+        price: row['price'],
       };
     })[0];
   }

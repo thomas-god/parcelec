@@ -1,22 +1,22 @@
-import { v4 as uuid } from "uuid";
-import { Dependencies } from "../../di.context";
-import { Bid } from "../types";
+import { v4 as uuid } from 'uuid';
+import { Dependencies } from '../../di.context';
+import { Bid } from '../types';
 
-import { BidTypes } from "./types";
+import { BidTypes } from './types';
 
 export class BidsService {
-  private BidsDAO: Dependencies["BidsDAO"];
-  private SessionsDAO: Dependencies["SessionsDAO"];
-  private UsersDAO: Dependencies["UsersDAO"];
+  private BidsDAO: Dependencies['BidsDAO'];
+  private SessionsDAO: Dependencies['SessionsDAO'];
+  private UsersDAO: Dependencies['UsersDAO'];
 
   constructor({
     BidsDAO,
     SessionsDAO,
     UsersDAO,
   }: {
-    BidsDAO: Dependencies["BidsDAO"];
-    SessionsDAO: Dependencies["SessionsDAO"];
-    UsersDAO: Dependencies["UsersDAO"];
+    BidsDAO: Dependencies['BidsDAO'];
+    SessionsDAO: Dependencies['SessionsDAO'];
+    UsersDAO: Dependencies['UsersDAO'];
   }) {
     this.BidsDAO = BidsDAO;
     this.SessionsDAO = SessionsDAO;
@@ -40,7 +40,7 @@ export class BidsService {
     if (session === undefined) {
       throw new Error(`Cannot find a session with ID ${sessionId}.`);
     }
-    if (session.status !== "running") {
+    if (session.status !== 'running') {
       throw new Error(`Session is not running.`);
     }
 

@@ -1,9 +1,9 @@
-import { Pool, QueryResult, QueryResultRow } from "pg";
+import { Pool, QueryResult, QueryResultRow } from 'pg';
 
 function getConnectionString(): string {
   const sslMode =
-    process.env.NODE_ENV === "production" ? "no-verify" : "disable";
-  return process.env.DATABASE_URL + "?sslmode=" + sslMode;
+    process.env.NODE_ENV === 'production' ? 'no-verify' : 'disable';
+  return process.env.DATABASE_URL + '?sslmode=' + sslMode;
 }
 
 export type DBResult = {
@@ -26,11 +26,11 @@ export class Database {
     const client = await this.pool.connect();
     let result: QueryResult | null = null;
     try {
-      await client.query("BEGIN");
+      await client.query('BEGIN');
       result = await client.query(query, subs);
-      await client.query("COMMIT");
+      await client.query('COMMIT');
     } catch (e) {
-      client.query("ROLLBACK");
+      client.query('ROLLBACK');
       throw e;
     } finally {
       client.release();
@@ -45,9 +45,9 @@ let databaseConfig: any = {
 };
 const pool = new Pool(databaseConfig);
 
-pool.on("error", (err, client) => {
-  console.log("#########################################");
-  console.log("######## Error with the database ########");
+pool.on('error', (err, client) => {
+  console.log('#########################################');
+  console.log('######## Error with the database ########');
   console.log(client);
   console.log(err);
 });

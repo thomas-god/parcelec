@@ -1,13 +1,13 @@
-import { Application, Request, Response } from "express";
-import { Dependencies } from "../../di.context";
+import { Application, Request, Response } from 'express';
+import { Dependencies } from '../../di.context';
 
 export class UsersController {
-  private UsersService: Dependencies["UsersService"];
+  private UsersService: Dependencies['UsersService'];
 
   constructor({
     UsersService,
   }: {
-    UsersService: Dependencies["UsersService"];
+    UsersService: Dependencies['UsersService'];
   }) {
     this.UsersService = UsersService;
   }
@@ -45,7 +45,7 @@ export class UsersController {
      *                userId:
      *                  type: uuid
      */
-    app.put("/session/:sessionID/user", async (req: Request, res: Response) => {
+    app.put('/session/:sessionID/user', async (req: Request, res: Response) => {
       try {
         const sessionId = req.params.sessionID as string;
         const username = req.query.username as string;
@@ -87,7 +87,7 @@ export class UsersController {
      *        description: User marked ready.
      */
     app.put(
-      "/session/:sessionID/user/:userID/ready",
+      '/session/:sessionID/user/:userID/ready',
       async (req: Request, res: Response) => {
         try {
           const sessionId = req.params.sessionID as string;

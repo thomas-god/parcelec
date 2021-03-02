@@ -5,10 +5,10 @@
  *  PUT /session/:session_id/user/:user_id/otc/:otc_id/accept
  *  PUT /session/:session_id/user/:user_id/otc/:otc_id/reject
  */
-import express from "express";
-import { v4 as uuid } from "uuid";
-import db from "../db";
-import { OTCEnergyExchange } from "./types";
+import express from 'express';
+import { v4 as uuid } from 'uuid';
+import db from '../db';
+import { OTCEnergyExchange } from './types';
 import {
   uuid_regex,
   CustomError,
@@ -18,8 +18,8 @@ import {
   checkUserInSessionByName,
   getUserOTCs,
   getOTCByID,
-} from "./utils";
-import { notifyUser } from "./websocket";
+} from './utils';
+import { notifyUser } from './websocket';
 
 /**
  * Get list of OTCs involving the user (from or to).
@@ -36,11 +36,11 @@ export async function getUserOTCsRoute(
     const user_id = req.params.user_id;
     const session = await getSession(session_id);
     if (session === null) {
-      throw new CustomError("Error, no session found with this ID", 404);
+      throw new CustomError('Error, no session found with this ID', 404);
     }
     const user = await getUser(session_id, user_id);
     if (user === null) {
-      throw new CustomError("Error, no user found with this ID", 404);
+      throw new CustomError('Error, no user found with this ID', 404);
     }
 
     // Getting the OTCs from the DB
@@ -74,15 +74,15 @@ export async function postOTC(
      * DB checks
      */
     if (session === null) {
-      throw new CustomError("Error, no session found with this ID", 404);
+      throw new CustomError('Error, no session found with this ID', 404);
     }
     const user = await getUser(session_id, user_id);
     if (user === null) {
-      throw new CustomError("Error, no user found with this ID", 404);
+      throw new CustomError('Error, no user found with this ID', 404);
     }
     const phase_infos = await getLastPhaseInfos(session_id);
     if (!phase_infos.plannings_allowed) {
-      throw new CustomError("Error, cannot post new OTC exchange");
+      throw new CustomError('Error, cannot post new OTC exchange');
     }
 
     /**
@@ -90,10 +90,10 @@ export async function postOTC(
      */
     if (
       req.body.type === undefined ||
-      !["sell", "buy"].includes(req.body.type)
+      !['sell', 'buy'].includes(req.body.type)
     ) {
       throw new CustomError(
-        "Error, must provide a valid OTC type (sell or buy)."
+        'Error, must provide a valid OTC type (sell or buy).'
       );
     }
     if (
@@ -101,7 +101,7 @@ export async function postOTC(
       (await checkUserInSessionByName(session_id, req.body.user_to)) === null
     ) {
       throw new CustomError(
-        "Error, must provide a valid username within the session."
+        'Error, must provide a valid username within the session.'
       );
     }
     const user_to_id = await checkUserInSessionByName(
@@ -111,22 +111,22 @@ export async function postOTC(
     if (req.body.user_to === undefined || user_to_id === null) {
       if (
         req.body.volume_mwh === undefined ||
-        req.body.volume_mwh === "" ||
+        req.body.volume_mwh === '' ||
         isNaN(Number(req.body.volume_mwh)) ||
         Number(req.body.volume_mwh <= 0)
       ) {
         throw new CustomError(
-          "Error, please provide a positive numeric value for the bid volume_mwh"
+          'Error, please provide a positive numeric value for the bid volume_mwh'
         );
       }
     }
     if (
       req.body.price_eur_per_mwh === undefined ||
-      req.body.price_eur_per_mwh === "" ||
+      req.body.price_eur_per_mwh === '' ||
       isNaN(Number(req.body.price_eur_per_mwh))
     ) {
       throw new CustomError(
-        "Error, please provide a numeric value for the bid price_eur_per_mwh"
+        'Error, please provide a numeric value for the bid price_eur_per_mwh'
       );
     }
 
@@ -142,7 +142,7 @@ export async function postOTC(
       type: req.body.type,
       volume_mwh: Number(req.body.volume_mwh),
       price_eur_per_mwh: Number(req.body.price_eur_per_mwh),
-      status: "pending",
+      status: 'pending',
     };
 
     await db.query(
@@ -177,7 +177,7 @@ export async function postOTC(
      * Send response and notify user_to of the new OTC
      */
     res.status(201).json({ otc_id: otc.id });
-    notifyUser(session_id, user_to_id, "new-otc", {
+    notifyUser(session_id, user_to_id, 'new-otc', {
       id: otc.id,
       user_from: user.name,
       user_to: req.body.user_to,
@@ -217,15 +217,15 @@ export async function acceptOTC(
      */
     const session = await getSession(session_id);
     if (session === null) {
-      throw new CustomError("Error, no session found with this ID", 404);
+      throw new CustomError('Error, no session found with this ID', 404);
     }
     const user = await getUser(session_id, user_id);
     if (user === null) {
-      throw new CustomError("Error, no user found with this ID", 404);
+      throw new CustomError('Error, no user found with this ID', 404);
     }
     const phase_infos = await getLastPhaseInfos(session_id);
     if (!phase_infos.plannings_allowed) {
-      throw new CustomError("Error, cannot update an OTC exchange");
+      throw new CustomError('Error, cannot update an OTC exchange');
     }
 
     /**
@@ -233,13 +233,13 @@ export async function acceptOTC(
      */
     const otc = await getOTCByID(otc_id);
     if (otc === null) {
-      throw new CustomError("Error, no OTC found with this ID", 404);
+      throw new CustomError('Error, no OTC found with this ID', 404);
     }
     if (otc.user_to_id !== user_id) {
-      throw new CustomError("Error, not allowed to modify this OTC", 403);
+      throw new CustomError('Error, not allowed to modify this OTC', 403);
     }
-    if (otc.status === "accepted" || otc.status === "rejected") {
-      throw new CustomError("Error, OTC has already been accepted/rejected");
+    if (otc.status === 'accepted' || otc.status === 'rejected') {
+      throw new CustomError('Error, OTC has already been accepted/rejected');
     }
 
     /**
@@ -254,10 +254,10 @@ export async function acceptOTC(
     res.end();
     const update = {
       otc_id: otc.id,
-      status: "accepted",
+      status: 'accepted',
     };
-    notifyUser(session_id, otc.user_from_id, "otc-update", update);
-    notifyUser(session_id, otc.user_to_id, "otc-update", update);
+    notifyUser(session_id, otc.user_from_id, 'otc-update', update);
+    notifyUser(session_id, otc.user_to_id, 'otc-update', update);
   } catch (error) {
     if (error instanceof CustomError) {
       res.status(error.code).end(error.msg);
@@ -287,15 +287,15 @@ export async function rejectOTC(
      */
     const session = await getSession(session_id);
     if (session === null) {
-      throw new CustomError("Error, no session found with this ID", 404);
+      throw new CustomError('Error, no session found with this ID', 404);
     }
     const user = await getUser(session_id, user_id);
     if (user === null) {
-      throw new CustomError("Error, no user found with this ID", 404);
+      throw new CustomError('Error, no user found with this ID', 404);
     }
     const phase_infos = await getLastPhaseInfos(session_id);
     if (!phase_infos.plannings_allowed) {
-      throw new CustomError("Error, cannot update an OTC exchange");
+      throw new CustomError('Error, cannot update an OTC exchange');
     }
 
     /**
@@ -303,13 +303,13 @@ export async function rejectOTC(
      */
     const otc = await getOTCByID(otc_id);
     if (otc === null) {
-      throw new CustomError("Error, no OTC found with this ID", 404);
+      throw new CustomError('Error, no OTC found with this ID', 404);
     }
     if (otc.user_to_id !== user_id) {
-      throw new CustomError("Error, not allowed to modify this OTC", 403);
+      throw new CustomError('Error, not allowed to modify this OTC', 403);
     }
-    if (otc.status === "accepted" || otc.status === "rejected") {
-      throw new CustomError("Error, OTC has already been accepted/rejected");
+    if (otc.status === 'accepted' || otc.status === 'rejected') {
+      throw new CustomError('Error, OTC has already been accepted/rejected');
     }
 
     /**
@@ -324,10 +324,10 @@ export async function rejectOTC(
     res.end();
     const update = {
       otc_id: otc.id,
-      status: "rejected",
+      status: 'rejected',
     };
-    notifyUser(session_id, otc.user_from_id, "otc-update", update);
-    notifyUser(session_id, otc.user_to_id, "otc-update", update);
+    notifyUser(session_id, otc.user_from_id, 'otc-update', update);
+    notifyUser(session_id, otc.user_to_id, 'otc-update', update);
   } catch (error) {
     if (error instanceof CustomError) {
       res.status(error.code).end(error.msg);

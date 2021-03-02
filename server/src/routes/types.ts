@@ -6,7 +6,7 @@ export interface Session {
   id: string;
   scenario_id?: string;
   name: string;
-  status: "open" | "running" | "closed";
+  status: 'open' | 'running' | 'closed';
 }
 
 export interface SessionOptions {
@@ -16,7 +16,7 @@ export interface SessionOptions {
   plannings_duration_sec: number;
   phases_number: number;
   conso_forecast_mwh: number[];
-  conso_forecast_type: "none" | "perfect";
+  conso_forecast_type: 'none' | 'perfect';
   conso_price_eur: number[];
   imbalance_costs_factor: number[];
 }
@@ -32,7 +32,7 @@ export interface PowerPlant {
   id: string;
   session_id: string;
   user_id: string;
-  type: "nuc" | "therm" | "hydro" | "ren" | "storage";
+  type: 'nuc' | 'therm' | 'hydro' | 'ren' | 'storage';
   p_min_mw: number;
   p_max_mw: number;
   stock_max_mwh: number;
@@ -46,13 +46,13 @@ export interface PowerPlantWithPlanning extends PowerPlant {
 
 export type PowerPlantTemplate = Omit<
   PowerPlant,
-  "session_id" | "user_id" | "id"
+  'session_id' | 'user_id' | 'id'
 >;
 
 export interface GamePhase {
   session_id: string;
   phase_no: number;
-  status: "open" | "closed";
+  status: 'open' | 'closed';
   start_time: Date;
   clearing_time: Date;
   planning_time: Date;
@@ -74,7 +74,7 @@ export interface Bid {
   user_id: string;
   session_id: string;
   phase_no: number;
-  type: "buy" | "sell";
+  type: 'buy' | 'sell';
   volume_mwh: number;
   price_eur_per_mwh: number;
 }
@@ -90,7 +90,7 @@ export interface EnergyExchange {
   user_id: string;
   session_id: string;
   phase_no: number;
-  type: "buy" | "sell";
+  type: 'buy' | 'sell';
   volume_mwh: number;
   price_eur_per_mwh: number;
 }
@@ -101,14 +101,14 @@ export interface OTCEnergyExchange {
   user_to_id: string;
   session_id: string;
   phase_no: number;
-  type: "buy" | "sell";
+  type: 'buy' | 'sell';
   volume_mwh: number;
   price_eur_per_mwh: number;
-  status: "pending" | "accepted" | "rejected";
+  status: 'pending' | 'accepted' | 'rejected';
 }
 
 export interface OTCEnergyExchangeNoIDs
-  extends Omit<OTCEnergyExchange, "user_from_id" | "user_to_id"> {
+  extends Omit<OTCEnergyExchange, 'user_from_id' | 'user_to_id'> {
   user_from: string;
   user_to: string;
 }
@@ -148,7 +148,7 @@ export interface PhaseResults {
 export interface ClientMessage {
   username: string;
   date: Date;
-  reason: "message" | "handshake";
+  reason: 'message' | 'handshake';
   credentials: {
     session_id: string;
     user_id: string;
@@ -160,20 +160,20 @@ export interface ScenarioOptions {
   id: string;
   name: string;
   description: string;
-  difficulty: "easy" | "medium" | "hard";
+  difficulty: 'easy' | 'medium' | 'hard';
   multi_game: boolean;
   bids_duration_sec: number;
   plannings_duration_sec: number;
   phases_number: number;
   conso_forecast_mwh: number[];
-  conso_forecast_type: "none" | "perfect";
+  conso_forecast_type: 'none' | 'perfect';
   conso_price_eur: number[];
   imbalance_costs_factor: number[];
 }
 
 export interface ScenarioPowerPlant {
   scenario_id: string;
-  type: "nuc" | "therm" | "hydro" | "ren" | "storage";
+  type: 'nuc' | 'therm' | 'hydro' | 'ren' | 'storage';
   p_min_mw: number;
   p_max_mw: number;
   stock_max_mwh: number;

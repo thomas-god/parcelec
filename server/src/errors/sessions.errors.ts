@@ -1,13 +1,13 @@
 export class SessionDoesNotExistError extends Error {
-  constructor(message) {
+  constructor(message: string) {
     super(message);
-    this.name = "SessionDoesNotExistError";
+    this.name = 'SessionDoesNotExistError';
   }
 }
 
 export class SessionIsNotRunningError extends Error {
-  constructor(message) {
+  constructor(message: string) {
     super(message);
-    this.name = "SessionIsNotRunningError";
+    this.name = 'SessionIsNotRunningError';
   }
 }
