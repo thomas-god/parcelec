@@ -1,10 +1,10 @@
+import { Server } from 'http';
 import { v4 as uuid, validate as uuidValidate } from 'uuid';
 import chai from 'chai';
 import chaiHttp from 'chai-http';
 import getContext from '../../src/di.context';
 import { createServer } from '../../src/server';
 import { clearDB, setUpDB } from '../setupDB';
-import { Server } from 'http';
 
 const expect = chai.expect;
 
@@ -129,7 +129,9 @@ describe('Post a new bid', () => {
       .send({ bid: { type: 'sell', price: 4, volume: 50 } });
 
     expect(res.status).to.eql(400);
-    expect(res.body.message).to.eql('Session is not running.');
+    expect(res.body.message).to.eql(
+      `Session ${notRunningSessionID} is not running.`
+    );
   });
 
   it('should failed with not existing user', async () => {

@@ -41,4 +41,12 @@ export class SessionsService {
     }
     return session;
   }
+
+  async getSessionIfRunning(sessionID: string): Promise<Session> {
+    const session = await this.getSession(sessionID);
+    if (session.status !== 'running') {
+      throw new Error(`Session ${sessionID} is not running.`);
+    }
+    return session;
+  }
 }

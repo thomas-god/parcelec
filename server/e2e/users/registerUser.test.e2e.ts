@@ -1,3 +1,4 @@
+import { Server } from 'http';
 import { v4 as uuid, validate as uuidValidate } from 'uuid';
 import chai from 'chai';
 import chaiHttp from 'chai-http';
@@ -5,7 +6,6 @@ import { createServer } from '../../src/server';
 import getContext from '../../src/di.context';
 
 import { clearDB, setUpDB } from '../setupDB';
-import { Server } from 'http';
 
 const expect = chai.expect;
 chai.use(chaiHttp);
@@ -47,7 +47,9 @@ describe('Registering a new user', () => {
       .query({ username: 'toto' });
 
     expect(res.status).to.eql(400);
-    expect(res.body.message).to.eql('Session is not open for registration.');
+    expect(res.body.message).to.eql(
+      `Session ${runningSessionID} is not open for registration.`
+    );
   });
 
   it('should not register a new user to closed session', async () => {
@@ -57,7 +59,9 @@ describe('Registering a new user', () => {
       .query({ username: 'toto' });
 
     expect(res.status).to.eql(400);
-    expect(res.body.message).to.eql('Session is not open for registration.');
+    expect(res.body.message).to.eql(
+      `Session ${closedSessionID} is not open for registration.`
+    );
   });
 
   it('should not register a new user to sessions that does not exist', async () => {
