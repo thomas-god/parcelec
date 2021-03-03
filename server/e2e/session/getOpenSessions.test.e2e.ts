@@ -1,10 +1,10 @@
+import { Server } from 'http';
 import { validate as uuidValidate } from 'uuid';
 import chai from 'chai';
 import chaiHttp from 'chai-http';
 import getContext from '../../src/di.context';
 import { createServer } from '../../src/server';
 import { clearDB, setUpDB } from '../setupDB';
-import { Server } from 'http';
 
 const expect = chai.expect;
 

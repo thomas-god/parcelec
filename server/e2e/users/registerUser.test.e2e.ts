@@ -1,3 +1,4 @@
+import { Server } from 'http';
 import { v4 as uuid, validate as uuidValidate } from 'uuid';
 import chai from 'chai';
 import chaiHttp from 'chai-http';
@@ -5,7 +6,6 @@ import { createServer } from '../../src/server';
 import getContext from '../../src/di.context';
 
 import { clearDB, setUpDB } from '../setupDB';
-import { Server } from 'http';
 
 const expect = chai.expect;
 chai.use(chaiHttp);

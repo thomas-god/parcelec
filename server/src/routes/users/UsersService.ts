@@ -62,4 +62,12 @@ export class UsersService {
       };
     });
   }
+
+  async getUser(sessionId: string, userId: string): Promise<User> {
+    const user = await this.UsersDAO.getUser(sessionId, userId);
+    if (user === undefined) {
+      throw new Error(`Cannot find a user with ID ${userId}.`);
+    }
+    return user;
+  }
 }

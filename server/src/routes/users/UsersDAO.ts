@@ -40,8 +40,8 @@ export class UsersDAO {
 
   /**
    * Return a user object from its ID
-   * @param userID User UUID
    * @param sessionID Session UUID
+   * @param userID User UUID
    */
   async getUser(sessionID: string, userID: string): Promise<User> {
     return (

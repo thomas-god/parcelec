@@ -6,21 +6,21 @@ import { BidTypes } from './types';
 
 export class BidsService {
   private BidsDAO: Dependencies['BidsDAO'];
-  private SessionsDAO: Dependencies['SessionsDAO'];
-  private UsersDAO: Dependencies['UsersDAO'];
+  private UsersService: Dependencies['UsersService'];
+  private SessionsService: Dependencies['SessionsService'];
 
   constructor({
     BidsDAO,
-    SessionsDAO,
-    UsersDAO,
+    UsersService,
+    SessionsService,
   }: {
     BidsDAO: Dependencies['BidsDAO'];
-    SessionsDAO: Dependencies['SessionsDAO'];
-    UsersDAO: Dependencies['UsersDAO'];
+    UsersService: Dependencies['UsersService'];
+    SessionsService: Dependencies['SessionsService'];
   }) {
     this.BidsDAO = BidsDAO;
-    this.SessionsDAO = SessionsDAO;
-    this.UsersDAO = UsersDAO;
+    this.UsersService = UsersService;
+    this.SessionsService = SessionsService;
   }
 
   /**
@@ -36,18 +36,8 @@ export class BidsService {
     volume: number,
     price: number
   ): Promise<string> {
-    const session = await this.SessionsDAO.getSession(sessionId);
-    if (session === undefined) {
-      throw new Error(`Cannot find a session with ID ${sessionId}.`);
-    }
-    if (session.status !== 'running') {
-      throw new Error(`Session is not running.`);
-    }
-
-    const user = await this.UsersDAO.getUser(sessionId, userId);
-    if (user === undefined) {
-      throw new Error(`Cannot find a user with ID ${userId}.`);
-    }
+    await this.SessionsService.getSessionIfRunning(sessionId);
+    await this.UsersService.getUser(sessionId, userId);
 
     const bid = await this.BidsDAO.createBid(
       sessionId,
