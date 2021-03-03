@@ -3,27 +3,21 @@ import { User } from './types';
 
 export class UsersService {
   private UsersDAO: Dependencies['UsersDAO'];
-  private SessionsDAO: Dependencies['SessionsDAO'];
+  private SessionsService: Dependencies['SessionsService'];
 
   constructor({
     UsersDAO,
-    SessionsDAO,
+    SessionsService,
   }: {
     UsersDAO: Dependencies['UsersDAO'];
-    SessionsDAO: Dependencies['SessionsDAO'];
+    SessionsService: Dependencies['SessionsService'];
   }) {
     this.UsersDAO = UsersDAO;
-    this.SessionsDAO = SessionsDAO;
+    this.SessionsService = SessionsService;
   }
 
   async registerUser(sessionId: string, username: string): Promise<string> {
-    const session = await this.SessionsDAO.getSession(sessionId);
-    if (session === undefined) {
-      throw new Error(`Cannot find a session with ID ${sessionId}.`);
-    }
-    if (session.status !== 'open') {
-      throw new Error(`Session is not open for registration.`);
-    }
+    await this.SessionsService.getSessionIfOpen(sessionId);
 
     try {
       const user = await this.UsersDAO.createUser(sessionId, username);
@@ -34,15 +28,8 @@ export class UsersService {
   }
 
   async markUserReady(sessionId: string, userId: string): Promise<void> {
-    const session = await this.SessionsDAO.getSession(sessionId);
-    if (session === undefined) {
-      throw new Error(`Cannot find a session with ID ${sessionId}.`);
-    }
-
-    const user = await this.UsersDAO.getUser(sessionId, userId);
-    if (user === undefined) {
-      throw new Error(`Cannot find a user with ID ${userId}.`);
-    }
+    await this.SessionsService.getSession(sessionId);
+    await this.getUser(sessionId, userId);
 
     await this.UsersDAO.markUserReady(sessionId, userId);
   }
@@ -50,10 +37,7 @@ export class UsersService {
   async getSessionUsers(
     sessionId: string
   ): Promise<Pick<User, 'name' | 'isReady'>[]> {
-    const session = await this.SessionsDAO.getSession(sessionId);
-    if (session === undefined) {
-      throw new Error(`Cannot find a session with ID ${sessionId}.`);
-    }
+    await this.SessionsService.getSession(sessionId);
 
     return (await this.UsersDAO.getUsers(sessionId)).map((user: User) => {
       return <Pick<User, 'name' | 'isReady'>>{
