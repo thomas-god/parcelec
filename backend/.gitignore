@@ -1,0 +1,8 @@
+# Python
+*.pyc
+/settings.py
+*.egg-info/
+.cache
+.pytest_cache
+.mypy_cache
+__pycache__
