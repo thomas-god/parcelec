@@ -1,4 +1,4 @@
-locations=backend tests
+locations=parcelec tests
 
 install:
 	poetry install -v --no-root
