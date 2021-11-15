@@ -22,7 +22,6 @@ jobs:
 
       - name: Cache Poetry virtualenv
         uses: actions/cache@v1
-        working-directory: api
         id: cache
         with:
           path: ~/.virtualenvs
@@ -37,9 +36,9 @@ jobs:
 
       - name: Install Dependencies
         run: poetry install
-        if: steps.cache.outputs.cache-hit != 'true'
         working-directory: api
+        if: steps.cache.outputs.cache-hit != 'true'
 
       - name: Test with pytest
-        working-directory: api
         run: make test
+        working-directory: api
