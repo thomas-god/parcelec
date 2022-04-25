@@ -3,8 +3,8 @@
  * with the DB.
  */
 
+import 'dotenv/config'
 import db from "../../src/db/index";
-import { v4 as uuid } from "uuid";
 import superagent from "superagent";
 import {
   PowerPlantWithPlanning,
@@ -23,8 +23,8 @@ export async function clearDB(): Promise<void> {
 /**
  * Initialize the default scenarios by calling the GET /scenarios route,
  * and return the default scenario ID.
- * 
- * @param multi_game Boolean, default true, return the multi default scenario if 
+ *
+ * @param multi_game Boolean, default true, return the multi default scenario if
  * true, else the solo default scenario
  */
 export async function getDefaultScenarioID(multi_game = true): Promise<string> {

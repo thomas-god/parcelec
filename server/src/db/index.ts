@@ -1,8 +1,8 @@
+import 'dotenv/config'
 import { Pool, QueryResult } from "pg";
 
 const databaseConfig = {
   connectionString: process.env.DATABASE_URL,
-  ssl: { rejectUnauthorized: false }
 };
 const pool = new Pool(databaseConfig);
 

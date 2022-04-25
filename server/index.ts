@@ -1,8 +1,8 @@
+import 'dotenv/config'
 import express from "express";
 import ws from "ws";
 import cors from "cors";
 import morgan from "morgan";
-import dbmigrate from 'db-migrate';
 
 import sessions from "./src/routes/sessions";
 import users from "./src/routes/users";
@@ -13,12 +13,6 @@ import { onConnectionCallback } from "./src/routes/websocket";
 
 const app = express();
 const port = Number(process.env.PORT) || 3000;
-
-const dbm = dbmigrate.getInstance(true, {env: 'production', config:"database.json"});
-
-(async () => {
-  await dbm.up();
-})();
 
 app.use(cors());
 app.use(express.json());

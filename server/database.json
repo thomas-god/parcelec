@@ -9,5 +9,9 @@
     "overwrite": {
       "native": true
     }
+  },
+  "test": {
+    "driver": "pg",
+    "url": { "ENV": "DATABASE_URL" }
   }
 }

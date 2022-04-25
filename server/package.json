@@ -6,12 +6,13 @@
   "scripts": {
     "build": "tsc",
     "start": "node dist/index.js",
-    "serve": "sudo docker-compose -f docker-compose.yml -f docker-compose.dev.yml up --build",
-    "start:development": "nodemon index.ts",
-    "start:production": "node dist/index.js",
+    "dev": "ts-node-dev --inspect=7000 --respawn --transpile-only index.ts",
     "lint": "eslint . --ext .ts",
-    "test:unit": "npx jest -c jest.unit.config.js",
-    "test:integration": "sudo docker-compose -f docker-compose.yml -f docker-compose.test.yml up --build --abort-on-container-exit"
+    "test-unit": "jest --runInBand --colors --verbose --coverage",
+    "test-docker": "docker-compose down --remove-orphans && docker-compose up --force-recreate --build --abort-on-container-exit",
+    "local-env": "docker-compose -f docker-compose.local.yml down --remove-orphans && docker-compose -f docker-compose.local.yml up --force-recreate --build",
+    "db-migrate-up": "node node_modules/db-migrate/bin/db-migrate up -v",
+    "db-migrate-down": "node node_modules/db-migrate/bin/db-migrate down -v"
   },
   "repository": {
     "type": "git",
@@ -33,11 +34,12 @@
     "@types/winston": "^2.4.4",
     "@types/ws": "^7.2.6",
     "cors": "^2.8.5",
-    "db-migrate": "^0.11.12",
+    "db-migrate": "^0.11.13",
     "db-migrate-pg": "^1.2.2",
+    "dotenv": "^16.0.0",
     "express": "^4.17.1",
     "morgan": "^1.10.0",
-    "pg": "^8.3.3",
+    "pg": "^8.7.3",
     "pg-native": "^3.0.0",
     "typescript": "^4.0.2",
     "uuid": "^8.3.0",
@@ -53,6 +55,7 @@
     "nodemon": "^2.0.4",
     "superagent": "^6.1.0",
     "ts-jest": "^26.3.0",
-    "ts-node": "^9.0.0"
+    "ts-node": "^9.0.0",
+    "ts-node-dev": "^1.1.8"
   }
 }
