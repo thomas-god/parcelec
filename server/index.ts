@@ -14,7 +14,7 @@ import { onConnectionCallback } from "./src/routes/websocket";
 const app = express();
 const port = Number(process.env.PORT) || 3000;
 
-const dbm = dbmigrate.getInstance(true, {env: process.env.NODE_ENV, config:"database.json"});
+const dbm = dbmigrate.getInstance(true, {env: 'production', config:"database.json"});
 
 (async () => {
   await dbm.up();
@@ -44,5 +44,3 @@ server.on("upgrade", (request, socket, head) => {
     wsServer.emit("connection", socket, request);
   });
 });
-
-export default server;

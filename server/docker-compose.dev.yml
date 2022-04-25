@@ -1,0 +1,13 @@
+version: "3"
+services:
+  server:
+    build:
+      args:
+        - NODE_ENV=development
+    volumes:
+      - .:/usr/src/app
+  db:
+    volumes:
+      - ./db/data:/var/lib/postgresql/data
+    ports:
+      - 5432:5432

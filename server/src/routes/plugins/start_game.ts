@@ -3,21 +3,21 @@
  * phase.
  */
 
-import { v4 as uuid } from 'uuid';
+import { v4 as uuid } from "uuid";
 import {
   getLastPhaseInfos,
   getLastPhaseNo,
   getSession,
   getSessionOptions,
   getSessionUsers,
-} from '../utils';
-import db from '../../db';
-import logger from '../../utils/log';
-import { sendUpdateToUsers } from '../websocket';
-import { Bid, Session } from '../types';
-import clearing from './clearing';
-import { endGame } from './end_game';
-import { generateEmptyPlanning, insertPlanning } from './plannings';
+} from "../utils";
+import db from "../../db";
+import logger from "../../utils/log";
+import { sendUpdateToUsers } from "../websocket";
+import clearing from "./clearing";
+import { endGame } from "./end_game";
+import { generateEmptyPlanning, insertPlanning } from "./plannings";
+import { Bid, Session } from "../types";
 
 /**
  * Hold the callbacks and timers IDs for the current phases.
@@ -41,18 +41,18 @@ export async function checkUserReadyAction(session_id: string): Promise<void> {
     (!options.multi_game || users.length >= 2) &&
     users.filter((u) => u.game_ready).length === users.length;
 
-  if ((session.status === 'open' || phase.status === 'closed') && users_ready) {
-    if (session.status === 'open') {
+  if ((session.status === "open" || phase.status === "closed") && users_ready) {
+    if (session.status === "open") {
       // Update session status to prevent new users registration
-      logger.info('session started', { session_id });
-      await setSessionStatus(session, 'running');
+      logger.info("session started", { session_id });
+      await setSessionStatus(session, "running");
     }
     startNewGamePhase(session_id);
     resetUsersReady(session_id);
   } else if (phase !== null && phase.bids_allowed === true && users_ready) {
     const t0_sec = Date.now() / 1000;
     // Clear the timer and directly call the clearing callback
-    logger.info('skipping to clearing', {
+    logger.info("skipping to clearing", {
       session_id,
       phase_no: phase.phase_no,
     });
@@ -82,7 +82,7 @@ export async function checkUserReadyAction(session_id: string): Promise<void> {
     phase.plannings_allowed === true &&
     users_ready
   ) {
-    logger.info('skipping to results', {
+    logger.info("skipping to results", {
       session_id,
       phase_no: phase.phase_no,
     });
@@ -116,8 +116,8 @@ export async function startNewGamePhase(session_id: string): Promise<void> {
 
   // Insert a new phase item
   await db.query(
-    'INSERT INTO phases (session_id, phase_no, status) VALUES ($1, $2, $3)',
-    [session_id, next_phase_no, 'open']
+    "INSERT INTO phases (session_id, phase_no, status) VALUES ($1, $2, $3)",
+    [session_id, next_phase_no, "open"]
   );
 
   // Generate conso forecast for each user
@@ -125,7 +125,7 @@ export async function startNewGamePhase(session_id: string): Promise<void> {
   await Promise.all(
     users.map(async (user) => {
       await db.query(
-        'INSERT INTO conso (user_id, session_id, phase_no, value_mw) VALUES ($1, $2, $3, $4)',
+        "INSERT INTO conso (user_id, session_id, phase_no, value_mw) VALUES ($1, $2, $3, $4)",
         [user.id, user.session_id, next_phase_no, conso_value]
       );
     })
@@ -215,10 +215,10 @@ export async function startNewGamePhase(session_id: string): Promise<void> {
     [t_start, t_clearing, t_end, session_id, next_phase_no]
   );
 
-  logger.info('phase started', { session_id, phase_no: next_phase_no });
+  logger.info("phase started", { session_id, phase_no: next_phase_no });
 
   // Notify users that a new phase has started
-  sendUpdateToUsers(session_id, 'new-game-phase', {});
+  sendUpdateToUsers(session_id, "new-game-phase", {});
 }
 
 /**
@@ -229,9 +229,9 @@ export async function startNewGamePhase(session_id: string): Promise<void> {
  */
 async function setSessionStatus(
   session: Session,
-  status: Session['status']
+  status: Session["status"]
 ): Promise<void> {
-  await db.query('UPDATE sessions SET status=$1 WHERE id=$2', [
+  await db.query("UPDATE sessions SET status=$1 WHERE id=$2", [
     status,
     session.id,
   ]);
@@ -249,5 +249,5 @@ async function resetUsersReady(session_id: string): Promise<void> {
     WHERE session_id=$1;`,
     [session_id]
   );
-  sendUpdateToUsers(session_id, 'reset-game-ready', {});
+  sendUpdateToUsers(session_id, "reset-game-ready", {});
 }

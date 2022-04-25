@@ -3,10 +3,12 @@
  * with the DB.
  */
 
+import db from "../../src/db/index";
 import { v4 as uuid } from "uuid";
 import superagent from "superagent";
-import db from "../../src/db/index";
-import { PowerPlantWithPlanning } from "../../src/routes/types";
+import {
+  PowerPlantWithPlanning,
+} from "../../src/routes/types";
 
 const url = process.env.API_URL;
 
@@ -21,13 +23,13 @@ export async function clearDB(): Promise<void> {
 /**
  * Initialize the default scenarios by calling the GET /scenarios route,
  * and return the default scenario ID.
- *
- * @param multi_game Boolean, default true, return the multi default scenario if
+ * 
+ * @param multi_game Boolean, default true, return the multi default scenario if 
  * true, else the solo default scenario
  */
 export async function getDefaultScenarioID(multi_game = true): Promise<string> {
   const res = await superagent.get(`${url}/scenarios`);
-  return res.body.find((s) => s.multi_game === multi_game).id;
+  return res.body.find(s => s.multi_game === multi_game).id;
 }
 
 /**
@@ -36,11 +38,10 @@ export async function getDefaultScenarioID(multi_game = true): Promise<string> {
 export async function insertNewSession(
   session_name: string,
   scenario_id?: string,
-  multi_game = true
+  multi_game=true
 ): Promise<string> {
-  if (scenario_id === undefined) {
-    scenario_id = await getDefaultScenarioID(multi_game);
-  }
+  if(scenario_id === undefined)
+    scenario_id = await getDefaultScenarioID(multi_game)
   const res = await superagent
     .put(`${url}/session`)
     .send({ session_name: session_name, scenario_id: scenario_id });

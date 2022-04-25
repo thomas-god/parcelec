@@ -8,7 +8,6 @@
  */
 import { v4 as uuid, validate as uuidValidate } from "uuid";
 import superagent from "superagent";
-import { PowerPlant, PowerPlantDispatch } from "../../src/routes/types";
 import {
   clearDB,
   getDefaultScenarioID,
@@ -17,6 +16,7 @@ import {
   insertNewUser,
   insertRunningSession,
 } from "./db_utils_new";
+import { PowerPlant, PowerPlantDispatch } from "../../src/routes/types";
 
 const url = process.env.API_URL;
 

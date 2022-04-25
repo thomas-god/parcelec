@@ -1,5 +1,5 @@
-import { v4 as uuid, validate } from 'uuid';
-import db from '../db/index';
+import db from "../db/index";
+import { v4 as uuid, validate } from "uuid";
 import {
   Session,
   User,
@@ -15,7 +15,7 @@ import {
   ScenarioOptions,
   OTCEnergyExchangeNoIDs,
   OTCEnergyExchange,
-} from './types';
+} from "./types";
 
 export class CustomError extends Error {
   msg: string;
@@ -29,7 +29,7 @@ export class CustomError extends Error {
 }
 
 export const uuid_regex =
-  '[A-F0-9]{8}-[A-F0-9]{4}-4[A-F0-9]{3}-[89AB][A-F0-9]{3}-[A-F0-9]{12}';
+  "[A-F0-9]{8}-[A-F0-9]{4}-4[A-F0-9]{3}-[89AB][A-F0-9]{3}-[A-F0-9]{12}";
 
 /**
  * Get a session from the DB by its UUID. Returns `null` if no
@@ -140,19 +140,20 @@ export async function checkUsername(
       )
     ).rows[0].n_users;
     return n_users > 0 ? -1 : 1;
-  }
-  // Check username
-  const users_same_name = (
-    await db.query(
-      `SELECT 1
+  } else {
+    // Check username
+    const users_same_name = (
+      await db.query(
+        `SELECT 1
       FROM users 
       WHERE 
         name=$1 
         AND session_id=$2;`,
-      [username, session_id]
-    )
-  ).rows;
-  return users_same_name.length === 0 ? 1 : -2;
+        [username, session_id]
+      )
+    ).rows;
+    return users_same_name.length === 0 ? 1 : -2;
+  }
 }
 
 /**
@@ -331,8 +332,9 @@ export async function getCurrentConsoValue(
       )
     ).rows;
     return rows.length === 1 ? rows[0].value_mw : 0;
+  } else {
+    return 0;
   }
-  return 0;
 }
 
 /**
@@ -354,10 +356,10 @@ export async function getConsoForecast(
   const session_options = await getSessionOptions(session_id);
   let forecast = [];
   switch (session_options.conso_forecast_type) {
-    case 'none':
+    case "none":
       forecast = [];
       break;
-    case 'perfect':
+    case "perfect":
       forecast = session_options.conso_forecast_mwh;
       break;
     default:
@@ -406,9 +408,7 @@ export async function getUserPhaseResults(
         [phase_no, user_id]
       )
     ).rows;
-    if (rows.length === 1) {
-      results = rows[0];
-    }
+    if (rows.length === 1) results = rows[0];
   }
   return results;
 }
@@ -513,7 +513,7 @@ export async function getPhaseRankings(
  * Post a user user bit to the current open phase.
  * @param bid Bid object (without the phase_no)
  */
-export async function postBid(bid: Omit<Bid, 'phase_no'>): Promise<void> {
+export async function postBid(bid: Omit<Bid, "phase_no">): Promise<void> {
   const phase_no = await getCurrentPhaseNo(bid.session_id);
   await db.query(
     `INSERT INTO bids 
@@ -684,8 +684,9 @@ export async function getUserLastPhasePlanning(
         [session_id, user_id, phase_no]
       )
     ).rows as ProductionPlanning;
+  } else {
+    return [];
   }
-  return [];
 }
 
 /**
@@ -704,7 +705,7 @@ export async function getUserAllPhasesPlanning(
     p_dispatch_mw: number;
     stock_start_mwh: number;
     stock_end_mwh: number;
-    type: PowerPlant['type'];
+    type: PowerPlant["type"];
   }[]
 > {
   return (
@@ -731,7 +732,7 @@ export async function getUserAllPhasesPlanning(
     p_dispatch_mw: number;
     stock_start_mwh: number;
     stock_end_mwh: number;
-    type: PowerPlant['type'];
+    type: PowerPlant["type"];
   }[];
 }
 
@@ -765,10 +766,8 @@ export async function getPhaseInfos(
       [session_id, phase_no]
     )
   ).rows as GamePhase[];
-  if (rows.length > 0) {
-    return rows[0];
-  }
-  return null;
+  if (rows.length > 0) return rows[0];
+  else return null;
 }
 
 /**
@@ -798,10 +797,8 @@ export async function getLastPhaseInfos(
       [session_id]
     )
   ).rows as GamePhase[];
-  if (rows.length > 0) {
-    return rows[0];
-  }
-  return null;
+  if (rows.length > 0) return rows[0];
+  else return null;
 }
 
 /**
@@ -960,7 +957,7 @@ export async function getClearedPhaseBids(
   phase_no?: number
 ): Promise<
   {
-    type: 'buy' | 'sell';
+    type: "buy" | "sell";
     volume_mwh: number;
     price_eur_per_mwh: number;
   }[]
@@ -1002,12 +999,13 @@ export async function getClearedPhaseBids(
       )
     ).rows;
     return bids as {
-      type: 'buy' | 'sell';
+      type: "buy" | "sell";
       volume_mwh: number;
       price_eur_per_mwh: number;
     }[];
+  } else {
+    return [];
   }
-  return [];
 }
 
 /**
@@ -1019,7 +1017,7 @@ export async function getUserEnergyExchanges(
   user_id: string
 ): Promise<
   {
-    type: 'buy' | 'sell';
+    type: "buy" | "sell";
     volume_mwh: number;
     price_eur_per_mwh: number;
   }[]
@@ -1051,13 +1049,14 @@ export async function getUserEnergyExchanges(
     ).rows;
     return exchanges.length > 0
       ? (exchanges as {
-          type: 'buy' | 'sell';
+          type: "buy" | "sell";
           volume_mwh: number;
           price_eur_per_mwh: number;
         }[])
       : [];
+  } else {
+    return [];
   }
-  return [];
 }
 
 /**
@@ -1068,13 +1067,13 @@ export async function getSessionOptions(
   session_id: string
 ): Promise<SessionOptions> {
   let options = {
-    scenario_id: '',
+    scenario_id: "",
     multi_game: false,
     bids_duration_sec: 0,
     plannings_duration_sec: 0,
     phases_number: 0,
     conso_forecast_mwh: [],
-    conso_forecast_type: 'none' as SessionOptions['conso_forecast_type'],
+    conso_forecast_type: "none" as SessionOptions["conso_forecast_type"],
     conso_price_eur: [],
     imbalance_costs_factor: [],
   };
@@ -1096,9 +1095,7 @@ export async function getSessionOptions(
       [session_id]
     )
   ).rows;
-  if (query.length === 1) {
-    options = query[0];
-  }
+  if (query.length === 1) options = query[0];
   return options;
 }
 
@@ -1169,7 +1166,7 @@ export async function createNewSession(session: Session): Promise<void> {
 
 type ScenarioInfos = Pick<
   ScenarioOptions,
-  'id' | 'name' | 'description' | 'difficulty' | 'multi_game'
+  "id" | "name" | "description" | "difficulty" | "multi_game"
 >;
 /**
  * Return a list of base informations on available scenarios.
@@ -1217,9 +1214,7 @@ export async function getScenarioOptions(
       [scenario_id]
     )
   ).rows;
-  if (res.length === 1) {
-    scenario_options = res[0];
-  }
+  if (res.length === 1) scenario_options = res[0];
   return scenario_options;
 }
 
