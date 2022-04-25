@@ -28,7 +28,7 @@ services:
     command: >
       sh -c "/root/wait-for-it.sh -t 90 db:5432
       && npm run db-migrate-up
-      && npx jest --ci --runInBand --coverage --forceExit"
+      && npx jest --ci --colors --runInBand --coverage --forceExit"
     links:
       - db
       - server
