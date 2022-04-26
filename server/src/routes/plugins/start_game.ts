@@ -114,6 +114,8 @@ export async function startNewGamePhase(session_id: string): Promise<void> {
   const current_phase_no = await getLastPhaseNo(session_id);
   const next_phase_no = current_phase_no === null ? 0 : current_phase_no + 1;
 
+  console.log(next_phase_no)
+
   // Insert a new phase item
   await db.query(
     "INSERT INTO phases (session_id, phase_no, status) VALUES ($1, $2, $3)",

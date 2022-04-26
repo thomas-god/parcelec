@@ -1,5 +1,5 @@
 
-name: API Integration tests
+name: API tests
 
 on: [push, pull_request]
 
