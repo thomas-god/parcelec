@@ -3,11 +3,11 @@
  * the corresponding energy exchanges.
  */
 
-import db from '../../db';
-import { Bid } from '../types';
-import { getSessionUsers, getUserBids } from '../utils';
-import { sendUpdateToUsers } from '../websocket';
-import logger from '../../utils/log';
+import db from "../../db";
+import { Bid } from "../types";
+import { getSessionUsers, getUserBids } from "../utils";
+import { sendUpdateToUsers } from "../websocket";
+import logger from "../../utils/log";
 
 // Gather all bids
 // Sort the bids, desc. for the buyers and asc. for the sellers
@@ -56,7 +56,7 @@ export function sortBids(bids: Bid[]): Bid[][] {
 
   // Split bids depending on type
   bids.forEach((bid) => {
-    if (bid.type === 'buy') {
+    if (bid.type === "buy") {
       bids_buy.push(bid);
     } else {
       bids_sell.push(bid);
@@ -276,7 +276,7 @@ export async function doClearingProcedure(
   session_id: string,
   phase_no: number
 ): Promise<[Clearing, ClearingInternalInfos]> {
-  logger.info('starting clearing procedure', {
+  logger.info("starting clearing procedure", {
     session_id,
     phase_no,
   });
@@ -317,8 +317,9 @@ export async function computeAndInsertEnergyExchanges(
               bid.price_eur_per_mwh === clearing_infos.sell_last_bid_price
             ) {
               return bid.volume_mwh * clearing_infos.sell_last_bid_frac_volume;
+            } else {
+              return 0;
             }
-            return 0;
           })
           .reduce((a, b) => a + b, 0);
         if (sell_ok_vol > 0) {
@@ -341,8 +342,9 @@ export async function computeAndInsertEnergyExchanges(
               bid.price_eur_per_mwh === clearing_infos.buy_last_bid_price
             ) {
               return bid.volume_mwh * clearing_infos.buy_last_bid_frac_volume;
+            } else {
+              return 0;
             }
-            return 0;
           })
           .reduce((a, b) => a + b, 0);
         if (buy_ok_vol > 0) {
@@ -370,11 +372,11 @@ export default async function clearing(
   phase_no: number
 ): Promise<void> {
   // Notify users that auction is closing
-  sendUpdateToUsers(session_id, 'clearing-started', {});
+  sendUpdateToUsers(session_id, "clearing-started", {});
 
   // Mark bids_allowed to false
   await db.query(
-    'UPDATE phases SET bids_allowed=false WHERE session_id=$1 AND phase_no=$2',
+    "UPDATE phases SET bids_allowed=false WHERE session_id=$1 AND phase_no=$2",
     [session_id, phase_no]
   );
 
@@ -419,8 +421,8 @@ export default async function clearing(
 
   // When clearing is done, notify the users and mark clearing available as true
   await db.query(
-    'UPDATE phases SET clearing_available=true WHERE session_id=$1 AND phase_no=$2',
+    "UPDATE phases SET clearing_available=true WHERE session_id=$1 AND phase_no=$2",
     [session_id, phase_no]
   );
-  sendUpdateToUsers(session_id, 'clearing-finished', {});
+  sendUpdateToUsers(session_id, "clearing-finished", {});
 }

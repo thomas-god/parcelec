@@ -1,7 +1,5 @@
 FROM node:12-alpine
 
-RUN apk add g++ make python postgresql-dev
-
 WORKDIR /usr/src/app
 
 ARG NODE_ENV=development

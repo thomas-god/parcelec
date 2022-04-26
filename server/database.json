@@ -1,9 +1,5 @@
 {
   "defaultEnv": {"ENV": "NODE_ENV"},
-  "test": {
-    "driver": "pg",
-    "url": { "ENV": "DATABASE_URL" }
-  },
   "production": {
     "driver": "pg",
     "url": { "ENV": "DATABASE_URL" },
@@ -13,5 +9,9 @@
     "overwrite": {
       "native": true
     }
+  },
+  "test": {
+    "driver": "pg",
+    "url": { "ENV": "DATABASE_URL" }
   }
 }

@@ -6,29 +6,17 @@ services:
       - POSTGRES_PASSWORD=password
       - POSTGRES_USER=user
       - POSTGRES_DB=parcelec
-    expose:
-      - "5432"
-  server:
+    ports:
+      - "10100:5432"
+  init:
     build:
       context: .
       dockerfile: ./tests/Dockerfile
     environment:
       - ENV=test
       - DATABASE_URL=postgresql://user:password@db/parcelec
-    expose:
-      - "3000"
-  run-tests:
-    build:
-      context: .
-      dockerfile: ./tests/Dockerfile
-    environment:
-      - ENV=test
-      - DATABASE_URL=postgresql://user:password@db/parcelec
-      - API_URL=server:3000
     command: >
       sh -c "/root/wait-for-it.sh -t 90 db:5432
-      && npm run db-migrate-up
-      && npx jest --ci --colors --runInBand --coverage --forceExit"
+      && npm run db-migrate-up"
     links:
       - db
-      - server
