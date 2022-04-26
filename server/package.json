@@ -9,8 +9,8 @@
     "dev": "ts-node-dev --inspect=7000 --respawn --transpile-only index.ts",
     "lint": "eslint . --ext .ts",
     "test-unit": "jest --runInBand --colors --verbose --coverage",
-    "test-docker": "docker-compose down --remove-orphans && docker-compose up --force-recreate --build --abort-on-container-exit",
-    "local-env": "docker-compose -f docker-compose.local.yml down --remove-orphans && docker-compose -f docker-compose.local.yml up --force-recreate --build",
+    "test-docker": "DOCKER_BUILDKIT=1 docker-compose down --remove-orphans && docker-compose up --force-recreate --build --abort-on-container-exit",
+    "local-env": "DOCKER_BUILDKIT=1 docker-compose -f docker-compose.local.yml down --remove-orphans && docker-compose -f docker-compose.local.yml up --force-recreate --build",
     "db-migrate-up": "node node_modules/db-migrate/bin/db-migrate up -v",
     "db-migrate-down": "node node_modules/db-migrate/bin/db-migrate down -v"
   },

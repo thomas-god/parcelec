@@ -9,7 +9,7 @@ import superagent from "superagent";
 import { PowerPlantWithPlanning } from "../../src/routes/types";
 
 const url = process.env.API_URL;
-console.log(url);
+
 /**
  * Remove all records from the DB using the property that `scenarios_options`
  * table is referenced with ON DELETE CASCADE clauses by all other tables.

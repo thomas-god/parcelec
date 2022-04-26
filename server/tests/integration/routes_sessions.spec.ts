@@ -18,7 +18,7 @@ import {
 } from "./db_utils_new";
 
 const url = process.env.API_URL;
-console.log(url)
+
 /**
  * GET /scenarios
  */

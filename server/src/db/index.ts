@@ -5,8 +5,6 @@ const databaseConfig = {
   connectionString: process.env.DATABASE_URL,
 };
 
-console.log(process.env.DATABASE_URL + '');
-
 const pool = new Pool(databaseConfig);
 pool.on("error", (err, client) => {
   console.log("#########################################");
