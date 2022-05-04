@@ -1,17 +1,16 @@
-FROM node:12-alpine
+FROM node:16-alpine
 
 WORKDIR /usr/src/app
 
 ARG NODE_ENV=development
 ENV NODE_ENV=${NODE_ENV}
 
-COPY package.json ./package.json
-COPY package-lock.json ./package-lock.json
+COPY package*.json /usr/src/app/
 
-RUN npm install
+RUN npm ci
 RUN echo $NODE_ENV
 
-COPY . .
+COPY . /usr/src/app
 
 RUN npx tsc
 
