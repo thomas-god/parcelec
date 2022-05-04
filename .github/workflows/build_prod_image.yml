@@ -26,6 +26,6 @@ jobs:
         name: Build and push
         uses: docker/build-push-action@v2
         with:
-          file: ./server/Dockerfile
+          context: "{{defaultContext}}:server"
           push: true
           tags: ${{ secrets.DOCKERHUB_USERNAME }}/parcelec:latest
