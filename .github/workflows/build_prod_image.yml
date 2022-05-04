@@ -1,7 +1,6 @@
 name: Build production Docker image and publish it to Docker Hub
 
 on:
-  pull_request:
   push:
     branches:
       - 'develop'
