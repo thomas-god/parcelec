@@ -108,3 +108,5 @@ dist
 /resources
 
 .env.development
+
+target/
