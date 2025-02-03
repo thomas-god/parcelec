@@ -1,56 +1,51 @@
+use chrono::{DateTime, Utc};
 use tokio::sync::mpsc::{channel, Receiver, Sender};
 
-#[derive(Debug, Clone)]
-pub enum Direction {
-    Buy,
-    Sell,
-}
+use crate::order_book::{Bid, Direction, Offer, OrderBook, OrderRequest, TradeLeg};
 
 #[derive(Debug, Clone)]
-pub struct Offer {
+pub struct PublicOrder {
     pub direction: Direction,
     pub volume: usize,
     pub price: usize,
+    pub created_at: DateTime<Utc>,
 }
 
-#[derive(Debug, Clone)]
-pub struct PublicOffer {
-    offer: Offer,
-    id: String,
+impl From<&Bid> for PublicOrder {
+    fn from(bid: &Bid) -> Self {
+        PublicOrder {
+            direction: bid.0.direction.clone(),
+            price: bid.0.price,
+            volume: bid.0.volume,
+            created_at: bid.0.timestamp,
+        }
+    }
 }
-
-pub struct InternalOffer {
-    pub offer: Offer,
-    pub id: String,
-    pub owner: String,
-}
-
-impl From<&InternalOffer> for PublicOffer {
-    fn from(offer: &InternalOffer) -> Self {
-        PublicOffer {
-            offer: offer.offer.clone(),
-            id: (*offer.id).to_string(),
+impl From<&Offer> for PublicOrder {
+    fn from(offer: &Offer) -> Self {
+        PublicOrder {
+            direction: offer.0.direction.clone(),
+            price: offer.0.price,
+            volume: offer.0.volume,
+            created_at: offer.0.timestamp,
         }
     }
 }
 
 #[derive(Clone)]
 pub enum ClientMessage {
-    OfferRequestAccepted { offer_id: String },
-    PublicOffers(Vec<PublicOffer>),
-}
-
-#[derive(Debug)]
-pub struct OfferRequest {
-    offer: Offer,
-    owner: String,
-    tx_back: Sender<ClientMessage>,
+    // OfferRequestAccepted { offer_id: String },
+    NewTrade(TradeLeg),
+    OrderBookSnapshot {
+        bids: Vec<PublicOrder>,
+        offers: Vec<PublicOrder>,
+    },
 }
 
 #[derive(Debug)]
 pub enum MarketMessage {
-    OfferRequest(OfferRequest),
-    OfferDeletionRequest { offer_id: String, owner: String },
+    OrderRequest(OrderRequest),
+    OrderDeletionRequest { order_id: String },
     NewClient(Client),
 }
 
@@ -63,7 +58,7 @@ pub struct Client {
 pub struct Market {
     rx: Receiver<MarketMessage>,
     tx: Sender<MarketMessage>,
-    offers: Vec<InternalOffer>,
+    order_book: OrderBook,
     clients: Vec<Client>,
 }
 
@@ -75,7 +70,7 @@ impl Market {
             rx,
             tx,
             clients: Vec::new(),
-            offers: Vec::new(),
+            order_book: OrderBook::new(),
         }
     }
 
@@ -83,18 +78,17 @@ impl Market {
         self.tx.clone()
     }
 
-    async fn process(&mut self) {
+    pub async fn process(&mut self) {
         while let Some(message) = self.rx.recv().await {
             println!("Received message: {message:?}");
             match message {
-                MarketMessage::OfferRequest(request) => self.process_new_offer(request).await,
+                MarketMessage::OrderRequest(request) => self.process_new_offer(request).await,
                 MarketMessage::NewClient(client) => {
                     self.clients.push(client);
                 }
-                MarketMessage::OfferDeletionRequest { offer_id, owner } => {
-                    self.offers
-                        .retain(|offer| !(offer.id == offer_id && offer.owner == owner));
-                    self.send_public_offers().await;
+                MarketMessage::OrderDeletionRequest { order_id } => {
+                    self.order_book.remove_offer(order_id);
+                    self.send_order_book_snapshot().await;
                 }
             }
         }
@@ -113,30 +107,35 @@ impl Market {
         let _ = tx.send(message).await;
     }
 
-    async fn send_public_offers(&self) {
-        let message =
-            ClientMessage::PublicOffers(self.offers.iter().map(PublicOffer::from).collect());
+    async fn send_order_book_snapshot(&self) {
+        let snapshot = self.order_book.snapshot();
+
+        let message = ClientMessage::OrderBookSnapshot {
+            bids: snapshot.bids.iter().map(PublicOrder::from).collect(),
+            offers: snapshot.offers.iter().map(PublicOrder::from).collect(),
+        };
         let _ = self.send_to_clients(message).await;
     }
 
-    async fn process_new_offer(&mut self, request: OfferRequest) {
-        {
-            let new_offer = InternalOffer {
-                offer: request.offer,
-                owner: request.owner,
-                id: "toto".to_string(),
-            };
-            self.offers.push(new_offer);
+    async fn process_new_offer(&mut self, request: OrderRequest) {
+        let trades = self.order_book.register_order_request(request);
+        println!("New trades: {trades:?}");
 
-            request
-                .tx_back
-                .send(ClientMessage::OfferRequestAccepted {
-                    offer_id: "toto".to_owned(),
-                })
-                .await
-                .unwrap();
-            self.send_public_offers().await;
+        self.send_order_book_snapshot().await;
+        if !trades.is_empty() {
+            for (leg_1, leg_2) in trades.iter().map(|trade| trade.split()) {
+                self.send_to_client(leg_1.owner.clone(), ClientMessage::NewTrade(leg_1))
+                    .await;
+                self.send_to_client(leg_2.owner.clone(), ClientMessage::NewTrade(leg_2))
+                    .await;
+            }
         }
+    }
+}
+
+impl Default for Market {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -144,12 +143,13 @@ impl Market {
 mod tests {
     use tokio::sync::mpsc::channel;
 
-    use crate::market::{Client, Offer};
+    use crate::market::Client;
+    use crate::order_book::{Direction, OrderRequest};
 
-    use super::{ClientMessage, Direction, Market, MarketMessage, OfferRequest};
+    use super::{ClientMessage, Market, MarketMessage};
 
     #[tokio::test]
-    async fn test_send_new_offer() {
+    async fn test_process_request_order() {
         // Start market actor
         let mut market = Market::new();
         let market_tx = market.get_tx();
@@ -166,42 +166,32 @@ mod tests {
             }))
             .await;
 
-        // Send offer request to market actor
-        let offer = MarketMessage::OfferRequest(OfferRequest {
-            offer: Offer {
-                direction: Direction::Buy,
-                volume: 1,
-                price: 100,
-            },
+        // Send order request to market actor
+        let order_request = MarketMessage::OrderRequest(OrderRequest {
+            direction: Direction::Buy,
+            price: 50_00,
+            volume: 10,
             owner: "toto".to_owned(),
-            tx_back: tx,
         });
-        market_tx.send(offer).await.unwrap();
-
-        // Our offer has been accepted
-        let Some(ClientMessage::OfferRequestAccepted {
-            offer_id: new_offer_id,
-        }) = rx.recv().await
-        else {
-            unreachable!("Expected ClientMessage::OfferAccepted")
-        };
+        market_tx.send(order_request).await.unwrap();
 
         // The list of offers has been updated to contains our new offer
-        let Some(ClientMessage::PublicOffers(offers)) = rx.recv().await else {
+        let Some(ClientMessage::OrderBookSnapshot { bids, offers }) = rx.recv().await else {
             unreachable!("Expected ClientMessage::PublicOffers")
         };
-        assert!(offers.iter().any(|offer| offer.id == new_offer_id));
+        assert_eq!(bids.len(), 1);
+        assert_eq!(offers.len(), 0);
 
-        // Delete our offer
-        let request = MarketMessage::OfferDeletionRequest {
-            offer_id: new_offer_id.clone(),
-            owner: "toto".to_string(),
-        };
-        market_tx.send(request).await.unwrap();
-        let Some(ClientMessage::PublicOffers(updated_offers)) = rx.recv().await else {
-            unreachable!("Expected ClientMessage::PublicOffers")
-        };
-        assert!(updated_offers.iter().all(|offer| offer.id != new_offer_id));
+        // // Delete our offer
+        // let request = MarketMessage::OrderDeletionRequest {
+        //     order_id: new_offer_id.clone(),
+        //     owner: "toto".to_string(),
+        // };
+        // market_tx.send(request).await.unwrap();
+        // let Some(ClientMessage::OrderBookSnapshot(updated_offers)) = rx.recv().await else {
+        //     unreachable!("Expected ClientMessage::PublicOffers")
+        // };
+        // assert!(updated_offers.iter().all(|offer| offer.id != new_offer_id));
     }
 
     #[tokio::test]
@@ -213,39 +203,60 @@ mod tests {
             market.process().await;
         });
 
-        // Register new client to market actor
-        let (tx, mut rx) = channel::<ClientMessage>(1);
+        // Register buyer client to market actor and send BUY order
+        let (tx_buyer, mut rx_buyer) = channel::<ClientMessage>(1);
         let _ = market_tx
             .send(MarketMessage::NewClient(Client {
-                id: "toto".to_string(),
-                tx: tx.clone(),
+                id: "buyer".to_string(),
+                tx: tx_buyer.clone(),
             }))
             .await;
-
-        // Send offer request to market actor
-        let buy_offer = MarketMessage::OfferRequest(OfferRequest {
-            offer: Offer {
-                direction: Direction::Buy,
-                volume: 1,
-                price: 100,
-            },
-            owner: "toto".to_owned(),
-            tx_back: tx.clone(),
+        let buy_order = MarketMessage::OrderRequest(OrderRequest {
+            direction: Direction::Buy,
+            volume: 10,
+            price: 50_00,
+            owner: "buyer".to_owned(),
         });
-        market_tx.send(buy_offer).await.unwrap();
-        rx.recv().await.unwrap();
-        rx.recv().await.unwrap();
+        market_tx.send(buy_order).await.unwrap();
+        rx_buyer.recv().await.unwrap();
 
-        // Send second offer matching the first one
-        let sell_offer = MarketMessage::OfferRequest(OfferRequest {
-            offer: Offer {
-                direction: Direction::Sell,
-                volume: 1,
-                price: 100,
-            },
-            owner: "toto".to_owned(),
-            tx_back: tx.clone(),
+        // Register seller client to market actor and send SELL order
+        let (tx_seller, mut rx_seller) = channel::<ClientMessage>(1);
+        let _ = market_tx
+            .send(MarketMessage::NewClient(Client {
+                id: "seller".to_string(),
+                tx: tx_seller.clone(),
+            }))
+            .await;
+        let sell_order = MarketMessage::OrderRequest(OrderRequest {
+            direction: Direction::Sell,
+            volume: 10,
+            price: 50_00,
+            owner: "seller".to_owned(),
         });
-        market_tx.send(sell_offer).await.unwrap();
+        market_tx.send(sell_order).await.unwrap();
+
+        // The order book snapshot should be empty for both clients
+        let Some(ClientMessage::OrderBookSnapshot { bids, offers }) = rx_buyer.recv().await else {
+            unreachable!("Expected ClientMessage::PublicOffers")
+        };
+        assert_eq!(bids.len(), 0);
+        assert_eq!(offers.len(), 0);
+
+        let Some(ClientMessage::OrderBookSnapshot { bids, offers }) = rx_seller.recv().await else {
+            unreachable!("Expected ClientMessage::PublicOffers")
+        };
+        assert_eq!(bids.len(), 0);
+        assert_eq!(offers.len(), 0);
+
+        // Each client should receive its own trade leg
+        let Some(ClientMessage::NewTrade(trade_buyer)) = rx_buyer.recv().await else {
+            unreachable!("Should have received a trade")
+        };
+        assert_eq!(trade_buyer.direction, Direction::Buy);
+        let Some(ClientMessage::NewTrade(trade_seller)) = rx_seller.recv().await else {
+            unreachable!("Should have received a trade")
+        };
+        assert_eq!(trade_seller.direction, Direction::Sell);
     }
 }

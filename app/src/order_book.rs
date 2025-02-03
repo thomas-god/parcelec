@@ -1,4 +1,4 @@
-use std::{cmp::Ordering, collections::BinaryHeap, time::Instant};
+use std::{cmp::Ordering, collections::BinaryHeap};
 
 use chrono::{DateTime, Utc};
 use uuid::Uuid;
@@ -38,46 +38,46 @@ impl Trade {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct TradeLeg {
-    direction: Direction,
-    volume: usize,
-    price: usize,
-    owner: String,
-    execution_time: DateTime<Utc>,
+    pub direction: Direction,
+    pub volume: usize,
+    pub price: usize,
+    pub owner: String,
+    pub execution_time: DateTime<Utc>,
 }
 
+#[derive(Debug)]
 pub struct OrderRequest {
-    direction: Direction,
-    price: usize,
-    volume: usize,
-    timestamp: Instant,
-    owner: String,
+    pub direction: Direction,
+    pub price: usize,
+    pub volume: usize,
+    pub owner: String,
 }
 
 pub struct Order {
-    id: String,
-    direction: Direction,
-    price: usize,
-    volume: usize,
-    timestamp: Instant,
-    owner: String,
+    pub id: String,
+    pub direction: Direction,
+    pub price: usize,
+    pub volume: usize,
+    pub timestamp: DateTime<Utc>,
+    pub owner: String,
 }
 
 impl From<OrderRequest> for Order {
     fn from(request: OrderRequest) -> Self {
         Order {
             id: Uuid::new_v4().to_string(),
+            timestamp: Utc::now(),
             direction: request.direction,
             owner: request.owner,
             price: request.price,
             volume: request.volume,
-            timestamp: request.timestamp,
         }
     }
 }
 
-pub struct Bid(Order);
+pub struct Bid(pub Order);
 
 // Ord requires Eq + PartialOrd, that requires PartialEq
 impl Eq for Bid {}
@@ -110,7 +110,7 @@ impl Ord for Bid {
     }
 }
 
-pub struct Offer(Order);
+pub struct Offer(pub Order);
 
 // Ord requires Eq + PartialOrd, that requires PartialEq
 impl Eq for Offer {}
@@ -144,8 +144,7 @@ impl Ord for Offer {
 }
 
 /// The `OrderBook` keeps tracks of the `Bid`s (order that want to BUY) and the `Offer`s (order that
-/// want
-/// to SELL) for an associated delivery period.
+/// want to SELL) for an associated delivery period.
 ///
 /// One `Bid` can match an `Offer` if its price is greater of equal than the offer's price, and vice
 /// versa. When they match, theyre are deleted from the `OrderBook` into a matching `Trade`.
@@ -158,6 +157,11 @@ impl Ord for Offer {
 pub struct OrderBook {
     offers: BinaryHeap<Offer>,
     bids: BinaryHeap<Bid>,
+}
+
+pub struct OrderBookSnapshot<'a> {
+    pub offers: &'a [Offer],
+    pub bids: &'a [Bid],
 }
 
 impl OrderBook {
@@ -179,6 +183,13 @@ impl OrderBook {
     pub fn remove_offer(&mut self, order_id: String) {
         self.bids.retain(|bid| bid.0.id != order_id);
         self.offers.retain(|offer| offer.0.id != order_id);
+    }
+
+    pub fn snapshot(&self) -> OrderBookSnapshot {
+        OrderBookSnapshot {
+            bids: self.bids.as_slice(),
+            offers: self.offers.as_slice(),
+        }
     }
 
     fn insert_bid(&mut self, order: Order) -> Vec<Trade> {
@@ -300,8 +311,6 @@ impl Default for OrderBook {
 
 #[cfg(test)]
 mod tests {
-    use std::time::Instant;
-
     use crate::order_book::Direction;
 
     use super::{OrderBook, OrderRequest};
@@ -316,7 +325,6 @@ mod tests {
             direction,
             price,
             volume,
-            timestamp: Instant::now(),
             owner,
         }
     }
@@ -453,8 +461,6 @@ mod tests {
 
 #[cfg(test)]
 mod test_remove_order {
-    use std::time::Instant;
-
     use super::{OrderBook, OrderRequest};
 
     #[test]
@@ -466,7 +472,6 @@ mod test_remove_order {
             direction: super::Direction::Buy,
             volume: 10,
             price: 50_00,
-            timestamp: Instant::now(),
             owner: "buyer".to_string(),
         };
         order_book.register_order_request(first_order);
@@ -480,7 +485,6 @@ mod test_remove_order {
             direction: super::Direction::Sell,
             volume: 10,
             price: 50_00,
-            timestamp: Instant::now(),
             owner: "seller".to_string(),
         };
         let trades = order_book.register_order_request(offer_that_would_have_matched);
@@ -490,8 +494,9 @@ mod test_remove_order {
 
 #[cfg(test)]
 mod test_bid_and_offer {
-    use std::{cmp::Ordering, time::Instant};
+    use std::cmp::Ordering;
 
+    use chrono::Utc;
     use uuid::Uuid;
 
     use crate::order_book::{Direction, Offer};
@@ -506,7 +511,7 @@ mod test_bid_and_offer {
                 price,
                 owner: Uuid::new_v4().to_string(),
                 volume: 10,
-                timestamp: Instant::now(),
+                timestamp: Utc::now(),
                 id: Uuid::new_v4().to_string(),
             })
         }
@@ -532,7 +537,7 @@ mod test_bid_and_offer {
                 price,
                 owner: Uuid::new_v4().to_string(),
                 volume: 10,
-                timestamp: Instant::now(),
+                timestamp: Utc::now(),
                 id: Uuid::new_v4().to_string(),
             })
         }
