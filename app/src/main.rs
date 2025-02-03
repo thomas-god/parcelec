@@ -1,5 +1,5 @@
 pub mod market;
-pub mod offers;
+pub mod order_book;
 
 fn main() {
     println!("Hello, world!");
