@@ -1,8 +1,13 @@
 use std::{cmp::Ordering, collections::BinaryHeap, time::Instant};
 
 use chrono::{DateTime, Utc};
+use uuid::Uuid;
 
-use crate::market::Direction;
+#[derive(Debug, Clone, PartialEq)]
+pub enum Direction {
+    Buy,
+    Sell,
+}
 
 #[derive(Debug, PartialEq)]
 pub struct Trade {
@@ -42,12 +47,34 @@ pub struct TradeLeg {
     execution_time: DateTime<Utc>,
 }
 
-pub struct Order {
+pub struct OrderRequest {
     direction: Direction,
     price: usize,
     volume: usize,
     timestamp: Instant,
     owner: String,
+}
+
+pub struct Order {
+    id: String,
+    direction: Direction,
+    price: usize,
+    volume: usize,
+    timestamp: Instant,
+    owner: String,
+}
+
+impl From<OrderRequest> for Order {
+    fn from(request: OrderRequest) -> Self {
+        Order {
+            id: Uuid::new_v4().to_string(),
+            direction: request.direction,
+            owner: request.owner,
+            price: request.price,
+            volume: request.volume,
+            timestamp: request.timestamp,
+        }
+    }
 }
 
 pub struct Bid(Order);
@@ -116,6 +143,18 @@ impl Ord for Offer {
     }
 }
 
+/// The `OrderBook` keeps tracks of the `Bid`s (order that want to BUY) and the `Offer`s (order that
+/// want
+/// to SELL) for an associated delivery period.
+///
+/// One `Bid` can match an `Offer` if its price is greater of equal than the offer's price, and vice
+/// versa. When they match, theyre are deleted from the `OrderBook` into a matching `Trade`.
+///
+/// Because the `OrderBook` internally maintains sorted lists of the bids and the offers, we only
+/// need to check if an offer and a bid can match when trying to add a new one to the `OrderBook`.
+/// Especially, when removing and order from the `OrderBook` we don't need to check if a trade is
+/// possible, as it would have been found during the previous insertion in the `OrderBook`.
+///
 pub struct OrderBook {
     offers: BinaryHeap<Offer>,
     bids: BinaryHeap<Bid>,
@@ -129,11 +168,17 @@ impl OrderBook {
         }
     }
 
-    pub fn register_offer(&mut self, order: Order) -> Vec<Trade> {
+    pub fn register_order_request(&mut self, order_request: OrderRequest) -> Vec<Trade> {
+        let order = Order::from(order_request);
         match order.direction {
             Direction::Buy => self.insert_bid(order),
             Direction::Sell => self.insert_offer(order),
         }
+    }
+
+    pub fn remove_offer(&mut self, order_id: String) {
+        self.bids.retain(|bid| bid.0.id != order_id);
+        self.offers.retain(|offer| offer.0.id != order_id);
     }
 
     fn insert_bid(&mut self, order: Order) -> Vec<Trade> {
@@ -257,12 +302,17 @@ impl Default for OrderBook {
 mod tests {
     use std::time::Instant;
 
-    use crate::{market::Direction, order_book::Order};
+    use crate::order_book::Direction;
 
-    use super::OrderBook;
+    use super::{OrderBook, OrderRequest};
 
-    fn build_order(direction: Direction, price: usize, volume: usize, owner: String) -> Order {
-        Order {
+    fn build_order_request(
+        direction: Direction,
+        price: usize,
+        volume: usize,
+        owner: String,
+    ) -> OrderRequest {
+        OrderRequest {
             direction,
             price,
             volume,
@@ -275,9 +325,9 @@ mod tests {
     fn test_register_order_empty_repository() {
         let mut repository = OrderBook::new();
 
-        let order = build_order(Direction::Buy, 50_00, 10, "toto".to_string());
+        let order = build_order_request(Direction::Buy, 50_00, 10, "toto".to_string());
 
-        let res = repository.register_offer(order);
+        let res = repository.register_order_request(order);
         assert!(res.is_empty());
     }
 
@@ -285,12 +335,12 @@ mod tests {
     fn test_register_two_orders_doesnt_match() {
         let mut repository = OrderBook::new();
 
-        let buy_order = build_order(Direction::Buy, 50_00, 10, "toto".to_string());
-        let sell_order = build_order(Direction::Sell, 50_01, 10, "tata".to_string());
+        let buy_order = build_order_request(Direction::Buy, 50_00, 10, "toto".to_string());
+        let sell_order = build_order_request(Direction::Sell, 50_01, 10, "tata".to_string());
 
-        let res = repository.register_offer(buy_order);
+        let res = repository.register_order_request(buy_order);
         assert!(res.is_empty());
-        let res = repository.register_offer(sell_order);
+        let res = repository.register_order_request(sell_order);
         assert!(res.is_empty());
     }
 
@@ -298,13 +348,13 @@ mod tests {
     fn test_match_2_orders_same_price_same_volume() {
         let mut repository = OrderBook::new();
 
-        let buy_order = build_order(Direction::Buy, 50_00, 10, "toto".to_string());
-        let sell_order = build_order(Direction::Sell, 50_00, 10, "tata".to_string());
+        let buy_order = build_order_request(Direction::Buy, 50_00, 10, "toto".to_string());
+        let sell_order = build_order_request(Direction::Sell, 50_00, 10, "tata".to_string());
 
-        let res = repository.register_offer(buy_order);
+        let res = repository.register_order_request(buy_order);
         assert!(res.is_empty(),);
 
-        let res = repository.register_offer(sell_order);
+        let res = repository.register_order_request(sell_order);
         assert_eq!(res.len(), 1);
         assert_eq!(res[0].buyer, "toto".to_string());
         assert_eq!(res[0].seller, "tata".to_string());
@@ -316,13 +366,13 @@ mod tests {
     fn test_match_2_orders_same_price_existing_order_lesser_volume() {
         let mut repository = OrderBook::new();
 
-        let buy_order = build_order(Direction::Buy, 50_00, 5, "toto".to_string());
-        let sell_order = build_order(Direction::Sell, 50_00, 10, "tata".to_string());
+        let buy_order = build_order_request(Direction::Buy, 50_00, 5, "toto".to_string());
+        let sell_order = build_order_request(Direction::Sell, 50_00, 10, "tata".to_string());
 
-        let res = repository.register_offer(buy_order);
+        let res = repository.register_order_request(buy_order);
         assert!(res.is_empty(),);
 
-        let res = repository.register_offer(sell_order);
+        let res = repository.register_order_request(sell_order);
         assert_eq!(res.len(), 1);
         assert_eq!(res[0].buyer, "toto".to_string());
         assert_eq!(res[0].seller, "tata".to_string());
@@ -334,13 +384,13 @@ mod tests {
     fn test_match_2_orders_same_price_existing_order_greater_volume() {
         let mut repository = OrderBook::new();
 
-        let buy_order = build_order(Direction::Buy, 50_00, 15, "toto".to_string());
-        let sell_order = build_order(Direction::Sell, 50_00, 10, "tata".to_string());
+        let buy_order = build_order_request(Direction::Buy, 50_00, 15, "toto".to_string());
+        let sell_order = build_order_request(Direction::Sell, 50_00, 10, "tata".to_string());
 
-        let res = repository.register_offer(buy_order);
+        let res = repository.register_order_request(buy_order);
         assert!(res.is_empty(),);
 
-        let res = repository.register_offer(sell_order);
+        let res = repository.register_order_request(sell_order);
         assert_eq!(res.len(), 1);
         assert_eq!(res[0].buyer, "toto".to_string());
         assert_eq!(res[0].seller, "tata".to_string());
@@ -352,14 +402,14 @@ mod tests {
     fn test_match_multiple_bids() {
         let mut order_book = OrderBook::new();
 
-        let first_bid = build_order(Direction::Buy, 50_00, 10, "buyer_1".to_string());
-        let second_bid = build_order(Direction::Buy, 49_00, 5, "buyer_2".to_string());
+        let first_bid = build_order_request(Direction::Buy, 50_00, 10, "buyer_1".to_string());
+        let second_bid = build_order_request(Direction::Buy, 49_00, 5, "buyer_2".to_string());
 
-        order_book.register_offer(first_bid);
-        order_book.register_offer(second_bid);
+        order_book.register_order_request(first_bid);
+        order_book.register_order_request(second_bid);
 
-        let matching_offer = build_order(Direction::Sell, 49_00, 15, "seller".to_string());
-        let res = order_book.register_offer(matching_offer);
+        let matching_offer = build_order_request(Direction::Sell, 49_00, 15, "seller".to_string());
+        let res = order_book.register_order_request(matching_offer);
         assert_eq!(res.len(), 2);
 
         println!("{res:?}");
@@ -378,14 +428,14 @@ mod tests {
     fn test_match_multiple_offers() {
         let mut order_book = OrderBook::new();
 
-        let first_offer = build_order(Direction::Sell, 50_00, 10, "seller_1".to_string());
-        let second_offer = build_order(Direction::Sell, 51_00, 5, "seller_2".to_string());
+        let first_offer = build_order_request(Direction::Sell, 50_00, 10, "seller_1".to_string());
+        let second_offer = build_order_request(Direction::Sell, 51_00, 5, "seller_2".to_string());
 
-        order_book.register_offer(first_offer);
-        order_book.register_offer(second_offer);
+        order_book.register_order_request(first_offer);
+        order_book.register_order_request(second_offer);
 
-        let matching_bid = build_order(Direction::Buy, 51_00, 15, "buyer".to_string());
-        let res = order_book.register_offer(matching_bid);
+        let matching_bid = build_order_request(Direction::Buy, 51_00, 15, "buyer".to_string());
+        let res = order_book.register_order_request(matching_bid);
         assert_eq!(res.len(), 2);
 
         println!("{res:?}");
@@ -402,12 +452,49 @@ mod tests {
 }
 
 #[cfg(test)]
+mod test_remove_order {
+    use std::time::Instant;
+
+    use super::{OrderBook, OrderRequest};
+
+    #[test]
+    fn test_remove_order() {
+        let mut order_book = OrderBook::new();
+
+        // Insert an order
+        let first_order = OrderRequest {
+            direction: super::Direction::Buy,
+            volume: 10,
+            price: 50_00,
+            timestamp: Instant::now(),
+            owner: "buyer".to_string(),
+        };
+        order_book.register_order_request(first_order);
+
+        // Remove it from the order book
+        let order_id = order_book.bids.peek().map(|bid| bid.0.id.clone()).unwrap();
+        order_book.remove_offer(order_id);
+
+        // Insert a matching offer, this shoudl not produce any trade
+        let offer_that_would_have_matched = OrderRequest {
+            direction: super::Direction::Sell,
+            volume: 10,
+            price: 50_00,
+            timestamp: Instant::now(),
+            owner: "seller".to_string(),
+        };
+        let trades = order_book.register_order_request(offer_that_would_have_matched);
+        assert!(trades.is_empty());
+    }
+}
+
+#[cfg(test)]
 mod test_bid_and_offer {
     use std::{cmp::Ordering, time::Instant};
 
     use uuid::Uuid;
 
-    use crate::{market::Direction, order_book::Offer};
+    use crate::order_book::{Direction, Offer};
 
     use super::{Bid, Order};
 
@@ -420,6 +507,7 @@ mod test_bid_and_offer {
                 owner: Uuid::new_v4().to_string(),
                 volume: 10,
                 timestamp: Instant::now(),
+                id: Uuid::new_v4().to_string(),
             })
         }
 
@@ -445,6 +533,7 @@ mod test_bid_and_offer {
                 owner: Uuid::new_v4().to_string(),
                 volume: 10,
                 timestamp: Instant::now(),
+                id: Uuid::new_v4().to_string(),
             })
         }
 
@@ -466,7 +555,7 @@ mod test_bid_and_offer {
 mod test_trade_leg {
     use chrono::Utc;
 
-    use crate::{market::Direction, order_book::TradeLeg};
+    use crate::order_book::{Direction, TradeLeg};
 
     use super::Trade;
 
