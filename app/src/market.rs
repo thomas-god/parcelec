@@ -1,9 +1,10 @@
 use chrono::{DateTime, Utc};
+use serde::Serialize;
 use tokio::sync::mpsc::{channel, Receiver, Sender};
 
 use crate::order_book::{Bid, Direction, Offer, OrderBook, OrderRequest, TradeLeg};
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct PublicOrder {
     pub direction: Direction,
     pub volume: usize,
@@ -32,7 +33,7 @@ impl From<&Offer> for PublicOrder {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Serialize)]
 pub enum ClientMessage {
     // OfferRequestAccepted { offer_id: String },
     NewTrade(TradeLeg),
@@ -51,8 +52,8 @@ pub enum MarketMessage {
 
 #[derive(Debug)]
 pub struct Client {
-    id: String,
-    tx: Sender<ClientMessage>,
+    pub id: String,
+    pub tx: Sender<ClientMessage>,
 }
 
 pub struct Market {

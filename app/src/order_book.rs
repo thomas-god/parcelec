@@ -1,9 +1,10 @@
 use std::{cmp::Ordering, collections::BinaryHeap};
 
 use chrono::{DateTime, Utc};
+use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
 pub enum Direction {
     Buy,
     Sell,
@@ -38,7 +39,7 @@ impl Trade {
     }
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Serialize)]
 pub struct TradeLeg {
     pub direction: Direction,
     pub volume: usize,
@@ -47,7 +48,7 @@ pub struct TradeLeg {
     pub execution_time: DateTime<Utc>,
 }
 
-#[derive(Debug)]
+#[derive(Deserialize, Debug)]
 pub struct OrderRequest {
     pub direction: Direction,
     pub price: usize,
