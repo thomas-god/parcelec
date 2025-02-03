@@ -13,6 +13,35 @@ pub struct Trade {
     execution_time: DateTime<Utc>,
 }
 
+impl Trade {
+    pub fn split(&self) -> (TradeLeg, TradeLeg) {
+        let buy_trade_leg = TradeLeg {
+            direction: Direction::Buy,
+            volume: self.volume,
+            price: self.price,
+            execution_time: self.execution_time,
+            owner: self.buyer.clone(),
+        };
+        let sell_trade_leg = TradeLeg {
+            direction: Direction::Sell,
+            volume: self.volume,
+            price: self.price,
+            execution_time: self.execution_time,
+            owner: self.seller.clone(),
+        };
+        (buy_trade_leg, sell_trade_leg)
+    }
+}
+
+#[derive(Debug, PartialEq)]
+pub struct TradeLeg {
+    direction: Direction,
+    volume: usize,
+    price: usize,
+    owner: String,
+    execution_time: DateTime<Utc>,
+}
+
 pub struct Order {
     direction: Direction,
     price: usize,
@@ -430,5 +459,45 @@ mod test_bid_and_offer {
 
         let same_price_but_older_offer = build_offer(50_00);
         assert_eq!(offer.cmp(&same_price_but_older_offer), Ordering::Greater);
+    }
+}
+
+#[cfg(test)]
+mod test_trade_leg {
+    use chrono::Utc;
+
+    use crate::{market::Direction, order_book::TradeLeg};
+
+    use super::Trade;
+
+    #[test]
+    fn test_split_trade() {
+        let trade = Trade {
+            buyer: "buyer".to_string(),
+            seller: "seller".to_string(),
+            volume: 10,
+            price: 50_00,
+            execution_time: Utc::now(),
+        };
+
+        assert_eq!(
+            trade.split(),
+            (
+                TradeLeg {
+                    direction: Direction::Buy,
+                    owner: "buyer".to_string(),
+                    volume: 10,
+                    price: 50_00,
+                    execution_time: trade.execution_time
+                },
+                TradeLeg {
+                    direction: Direction::Sell,
+                    owner: "seller".to_string(),
+                    volume: 10,
+                    price: 50_00,
+                    execution_time: trade.execution_time
+                },
+            )
+        )
     }
 }
