@@ -28,9 +28,9 @@ jobs:
       - name: Build and push Docker image
         uses: docker/build-push-action@v6
         with:
-          context: "{{defaultContext}}:web"
+          context: "{{defaultContext}}:app"
           platforms: linux/amd64,linux/arm64
           push: true
           tags: |
-            ghcr.io/thomas-god/parcelec:latest
-            ghcr.io/thomas-god/parcelec:${{ github.sha }}
+            ghcr.io/thomas-god/parcelec-app:latest
+            ghcr.io/thomas-god/parcelec-app:${{ github.sha }}
