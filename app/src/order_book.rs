@@ -15,7 +15,7 @@ pub struct Trade {
     buyer: String,
     seller: String,
     volume: usize,
-    price: usize,
+    price: isize,
     execution_time: DateTime<Utc>,
 }
 
@@ -43,7 +43,7 @@ impl Trade {
 pub struct TradeLeg {
     pub direction: Direction,
     pub volume: usize,
-    pub price: usize,
+    pub price: isize,
     pub owner: String,
     pub execution_time: DateTime<Utc>,
 }
@@ -51,15 +51,16 @@ pub struct TradeLeg {
 #[derive(Deserialize, Debug)]
 pub struct OrderRequest {
     pub direction: Direction,
-    pub price: usize,
+    pub price: isize,
     pub volume: usize,
     pub owner: String,
 }
 
+#[derive(Debug)]
 pub struct Order {
     pub id: String,
     pub direction: Direction,
-    pub price: usize,
+    pub price: isize,
     pub volume: usize,
     pub timestamp: DateTime<Utc>,
     pub owner: String,
@@ -78,6 +79,7 @@ impl From<OrderRequest> for Order {
     }
 }
 
+#[derive(Debug)]
 pub struct Bid(pub Order);
 
 // Ord requires Eq + PartialOrd, that requires PartialEq
@@ -101,9 +103,9 @@ impl Ord for Bid {
             self.0.price.cmp(&other.0.price),
             self.0.timestamp.cmp(&other.0.timestamp),
         ) {
-            // Sort by descending price, and descending timestamp
-            (Ordering::Less, _) => Ordering::Greater,
-            (Ordering::Greater, _) => Ordering::Less,
+            // Sort by ascending price, and descending timestamp
+            (Ordering::Less, _) => Ordering::Less,
+            (Ordering::Greater, _) => Ordering::Greater,
             (Ordering::Equal, Ordering::Less) => Ordering::Greater,
             (Ordering::Equal, Ordering::Greater) => Ordering::Less,
             (Ordering::Equal, Ordering::Equal) => Ordering::Equal,
@@ -111,6 +113,7 @@ impl Ord for Bid {
     }
 }
 
+#[derive(Debug)]
 pub struct Offer(pub Order);
 
 // Ord requires Eq + PartialOrd, that requires PartialEq
@@ -134,9 +137,9 @@ impl Ord for Offer {
             self.0.price.cmp(&other.0.price),
             self.0.timestamp.cmp(&other.0.timestamp),
         ) {
-            // Sort by acending price, and descending timestamp
-            (Ordering::Less, _) => Ordering::Less,
-            (Ordering::Greater, _) => Ordering::Greater,
+            // Sort by descending price, and descending timestamp
+            (Ordering::Less, _) => Ordering::Greater,
+            (Ordering::Greater, _) => Ordering::Less,
             (Ordering::Equal, Ordering::Less) => Ordering::Greater,
             (Ordering::Equal, Ordering::Greater) => Ordering::Less,
             (Ordering::Equal, Ordering::Equal) => Ordering::Equal,
@@ -175,6 +178,7 @@ impl OrderBook {
 
     pub fn register_order_request(&mut self, order_request: OrderRequest) -> Vec<Trade> {
         let order = Order::from(order_request);
+        println!("Trying to register order: {order:?}");
         match order.direction {
             Direction::Buy => self.insert_bid(order),
             Direction::Sell => self.insert_offer(order),
@@ -201,7 +205,10 @@ impl OrderBook {
                 bid.0.price.cmp(&offer.0.price),
                 bid.0.volume.cmp(&offer.0.volume),
             ) {
-                (Ordering::Less, _) => break,
+                (Ordering::Less, _) => {
+                    self.offers.push(offer);
+                    break;
+                }
                 (Ordering::Equal, Ordering::Equal) | (Ordering::Greater, Ordering::Equal) => {
                     // Same volumes, both offer and bid are fully matched by the resulting trade
                     trades.push(Trade {
@@ -252,11 +259,16 @@ impl OrderBook {
         let mut offer = Offer(order);
         let mut trades = Vec::<Trade>::new();
         while let Some(mut bid) = self.bids.pop() {
+            println!("{offer:?}");
+            println!("{bid:?}");
             match (
                 offer.0.price.cmp(&bid.0.price),
                 offer.0.volume.cmp(&bid.0.volume),
             ) {
-                (Ordering::Greater, _) => break,
+                (Ordering::Greater, _) => {
+                    self.bids.push(bid);
+                    break;
+                }
                 (Ordering::Equal, Ordering::Equal) | (Ordering::Less, Ordering::Equal) => {
                     // Same volumes, both offer and bid are fully matched by the resulting trade
                     trades.push(Trade {
@@ -318,7 +330,7 @@ mod tests {
 
     fn build_order_request(
         direction: Direction,
-        price: usize,
+        price: isize,
         volume: usize,
         owner: String,
     ) -> OrderRequest {
@@ -422,15 +434,15 @@ mod tests {
         assert_eq!(res.len(), 2);
 
         println!("{res:?}");
-        assert_eq!(res[1].buyer, "buyer_1".to_string());
-        assert_eq!(res[1].seller, "seller".to_string());
-        assert_eq!(res[1].volume, 10);
-        assert_eq!(res[1].price, 50_00);
-
-        assert_eq!(res[0].buyer, "buyer_2".to_string());
+        assert_eq!(res[0].buyer, "buyer_1".to_string());
         assert_eq!(res[0].seller, "seller".to_string());
-        assert_eq!(res[0].volume, 5);
-        assert_eq!(res[0].price, 49_00);
+        assert_eq!(res[0].volume, 10);
+        assert_eq!(res[0].price, 50_00);
+
+        assert_eq!(res[1].buyer, "buyer_2".to_string());
+        assert_eq!(res[1].seller, "seller".to_string());
+        assert_eq!(res[1].volume, 5);
+        assert_eq!(res[1].price, 49_00);
     }
 
     #[test]
@@ -448,15 +460,38 @@ mod tests {
         assert_eq!(res.len(), 2);
 
         println!("{res:?}");
-        assert_eq!(res[1].buyer, "buyer".to_string());
-        assert_eq!(res[1].seller, "seller_1".to_string());
-        assert_eq!(res[1].volume, 10);
-        assert_eq!(res[1].price, 50_00);
-
         assert_eq!(res[0].buyer, "buyer".to_string());
-        assert_eq!(res[0].seller, "seller_2".to_string());
-        assert_eq!(res[0].volume, 5);
-        assert_eq!(res[0].price, 51_00);
+        assert_eq!(res[0].seller, "seller_1".to_string());
+        assert_eq!(res[0].volume, 10);
+        assert_eq!(res[0].price, 50_00);
+
+        assert_eq!(res[1].buyer, "buyer".to_string());
+        assert_eq!(res[1].seller, "seller_2".to_string());
+        assert_eq!(res[1].volume, 5);
+        assert_eq!(res[1].price, 51_00);
+
+        assert_eq!(order_book.offers.len(), 0);
+        assert_eq!(order_book.bids.len(), 0);
+    }
+
+    #[test]
+    fn test_no_match_dont_touch_existing_orders() {
+        let mut order_book = OrderBook::new();
+
+        let first_order = build_order_request(Direction::Sell, 51_00, 10, "seller".to_string());
+        let second_order = build_order_request(Direction::Buy, 50_00, 5, "buyer".to_string());
+
+        order_book.register_order_request(first_order);
+        let trades = order_book.register_order_request(second_order);
+        assert_eq!(trades.len(), 0);
+        assert_eq!(order_book.bids.len(), 1);
+        assert_eq!(order_book.offers.len(), 1);
+
+        let third_order = build_order_request(Direction::Sell, 52_00, 10, "toto".to_string());
+        let trades = order_book.register_order_request(third_order);
+        assert_eq!(trades.len(), 0);
+        assert_eq!(order_book.bids.len(), 1);
+        assert_eq!(order_book.offers.len(), 2);
     }
 }
 
@@ -506,7 +541,7 @@ mod test_bid_and_offer {
 
     #[test]
     fn test_bids_ordering() {
-        fn build_bid(price: usize) -> Bid {
+        fn build_bid(price: isize) -> Bid {
             Bid(Order {
                 direction: Direction::Buy,
                 price,
@@ -521,10 +556,10 @@ mod test_bid_and_offer {
         assert_eq!(bid.cmp(&bid), Ordering::Equal);
 
         let more_expensive_bid = build_bid(50_01);
-        assert_eq!(bid.cmp(&more_expensive_bid), Ordering::Greater);
+        assert_eq!(bid.cmp(&more_expensive_bid), Ordering::Less);
 
         let less_expensive_bid = build_bid(49_99);
-        assert_eq!(bid.cmp(&less_expensive_bid), Ordering::Less);
+        assert_eq!(bid.cmp(&less_expensive_bid), Ordering::Greater);
 
         let same_price_but_older_bid = build_bid(50_00);
         assert_eq!(bid.cmp(&same_price_but_older_bid), Ordering::Greater);
@@ -532,7 +567,7 @@ mod test_bid_and_offer {
 
     #[test]
     fn test_offers_ordering() {
-        fn build_offer(price: usize) -> Offer {
+        fn build_offer(price: isize) -> Offer {
             Offer(Order {
                 direction: Direction::Sell,
                 price,
@@ -547,10 +582,10 @@ mod test_bid_and_offer {
         assert_eq!(offer.cmp(&offer), Ordering::Equal);
 
         let more_expensive_offer = build_offer(50_01);
-        assert_eq!(offer.cmp(&more_expensive_offer), Ordering::Less);
+        assert_eq!(offer.cmp(&more_expensive_offer), Ordering::Greater);
 
         let less_expensive_offer = build_offer(49_99);
-        assert_eq!(offer.cmp(&less_expensive_offer), Ordering::Greater);
+        assert_eq!(offer.cmp(&less_expensive_offer), Ordering::Less);
 
         let same_price_but_older_offer = build_offer(50_00);
         assert_eq!(offer.cmp(&same_price_but_older_offer), Ordering::Greater);

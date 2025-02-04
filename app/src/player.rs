@@ -55,7 +55,6 @@ async fn process_ws_messages(
 
             match serde_json::from_str::<WebSocketIncomingMessage>(&content) {
                 Ok(WebSocketIncomingMessage::OrderRequest(request)) => {
-                    println!("New order request: {request:?}");
                     let _ = market_tx.send(MarketMessage::OrderRequest(request)).await;
                 }
                 Err(err) => println!("{err:?}"),

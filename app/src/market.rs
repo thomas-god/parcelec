@@ -10,7 +10,7 @@ use crate::order_book::{Bid, Direction, Offer, OrderBook, OrderRequest, TradeLeg
 pub struct PublicOrder {
     pub direction: Direction,
     pub volume: usize,
-    pub price: usize,
+    pub price: isize,
     pub created_at: DateTime<Utc>,
 }
 
@@ -88,15 +88,16 @@ impl Market {
 
     pub async fn process(&mut self) {
         while let Some(message) = self.rx.recv().await {
-            println!("Received message: {message:?}");
             match message {
                 MarketMessage::OrderRequest(request) => self.process_new_offer(request).await,
                 MarketMessage::NewPlayer(player) => {
+                    println!("New player: {player:?}");
                     let player_id = player.id.clone();
                     self.players.push(player);
                     self.send_order_book_snapshot_to_player(player_id).await;
                 }
                 MarketMessage::OrderDeletionRequest { order_id } => {
+                    println!("Order deletion request for order: {order_id:?}");
                     self.order_book.remove_offer(order_id);
                     self.send_order_book_snapshot_to_all().await;
                 }
