@@ -8,7 +8,7 @@ pub mod player;
 
 #[tokio::main]
 async fn main() {
-    let addr = "127.0.0.1:9002";
+    let addr = "0.0.0.0:9002";
     let listener = TcpListener::bind(&addr).await.expect("Unable to listen");
     println!("Listenning on {addr}");
 
