@@ -9,7 +9,7 @@ on:
       - main
 
 jobs:
-  docker:
+  build-docker-image:
     runs-on: ubuntu-latest
     steps:
       - name: Set up QEMU
@@ -34,3 +34,19 @@ jobs:
           tags: |
             ghcr.io/thomas-god/parcelec-app:latest
             ghcr.io/thomas-god/parcelec-app:${{ github.sha }}
+  deploy:
+    runs-on: ubuntu-latest
+    needs:
+      - build-docker-image
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+
+    - name: Docker Stack Deploy
+      uses: cssnr/stack-deploy-action@v1
+      with:
+        name: parcelec
+        file: docker-stack.yaml
+        host: parcelec.org
+        user: deploy
+        ssh_key: ${{ secrets.DEPLOY_SSH_PRIVATE_KEY }}
