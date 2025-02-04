@@ -12,7 +12,7 @@ RUN cargo build --release
 FROM gcr.io/distroless/cc
 COPY --from=builder /app/target/release/parcelec-app /
 
-CMD ["./web"]
+CMD ["./parcelec-app"]
 
 # Sleep for debugging
 # CMD ["tail", "-f", "/dev/null"]
