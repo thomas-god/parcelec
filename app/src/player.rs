@@ -52,14 +52,13 @@ async fn process_ws_messages(
             let Ok(content) = msg.into_text().map(|s| s.to_string()) else {
                 return;
             };
-            let Ok(message) = serde_json::from_str::<WebSocketIncomingMessage>(&content) else {
-                return;
-            };
 
-            match message {
-                WebSocketIncomingMessage::OrderRequest(request) => {
+            match serde_json::from_str::<WebSocketIncomingMessage>(&content) {
+                Ok(WebSocketIncomingMessage::OrderRequest(request)) => {
+                    println!("New order request: {request:?}");
                     let _ = market_tx.send(MarketMessage::OrderRequest(request)).await;
                 }
+                Err(err) => println!("{err:?}"),
             }
         }
     }

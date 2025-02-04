@@ -1,3 +1,5 @@
+use std::fmt::Debug;
+
 use chrono::{DateTime, Utc};
 use serde::Serialize;
 use tokio::sync::mpsc::{channel, Receiver, Sender};
@@ -50,10 +52,15 @@ pub enum MarketMessage {
     NewClient(Client),
 }
 
-#[derive(Debug)]
 pub struct Client {
     pub id: String,
     pub tx: Sender<ClientMessage>,
+}
+
+impl Debug for Client {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Client").field("id", &self.id).finish()
+    }
 }
 
 pub struct Market {
@@ -85,11 +92,13 @@ impl Market {
             match message {
                 MarketMessage::OrderRequest(request) => self.process_new_offer(request).await,
                 MarketMessage::NewClient(client) => {
+                    let client_id = client.id.clone();
                     self.clients.push(client);
+                    self.send_order_book_snapshot_to_client(client_id).await;
                 }
                 MarketMessage::OrderDeletionRequest { order_id } => {
                     self.order_book.remove_offer(order_id);
-                    self.send_order_book_snapshot().await;
+                    self.send_order_book_snapshot_to_all().await;
                 }
             }
         }
@@ -108,7 +117,7 @@ impl Market {
         let _ = tx.send(message).await;
     }
 
-    async fn send_order_book_snapshot(&self) {
+    async fn send_order_book_snapshot_to_all(&self) {
         let snapshot = self.order_book.snapshot();
 
         let message = ClientMessage::OrderBookSnapshot {
@@ -118,11 +127,21 @@ impl Market {
         let _ = self.send_to_clients(message).await;
     }
 
+    async fn send_order_book_snapshot_to_client(&self, client: String) {
+        let snapshot = self.order_book.snapshot();
+
+        let message = ClientMessage::OrderBookSnapshot {
+            bids: snapshot.bids.iter().map(PublicOrder::from).collect(),
+            offers: snapshot.offers.iter().map(PublicOrder::from).collect(),
+        };
+        let _ = self.send_to_client(client, message).await;
+    }
+
     async fn process_new_offer(&mut self, request: OrderRequest) {
         let trades = self.order_book.register_order_request(request);
         println!("New trades: {trades:?}");
 
-        self.send_order_book_snapshot().await;
+        self.send_order_book_snapshot_to_all().await;
         if !trades.is_empty() {
             for (leg_1, leg_2) in trades.iter().map(|trade| trade.split()) {
                 self.send_to_client(leg_1.owner.clone(), ClientMessage::NewTrade(leg_1))
@@ -150,6 +169,42 @@ mod tests {
     use super::{ClientMessage, Market, MarketMessage};
 
     #[tokio::test]
+    async fn test_register_player() {
+        let mut market = Market::new();
+        let market_tx = market.get_tx();
+        tokio::spawn(async move {
+            market.process().await;
+        });
+
+        // Register new player
+        let (tx, mut rx) = channel::<ClientMessage>(1);
+        let _ = market_tx
+            .send(MarketMessage::NewClient(Client {
+                id: "toto".to_string(),
+                tx: tx.clone(),
+            }))
+            .await;
+
+        // We shoudl receive an initial snapshot of the current order book
+        let Some(ClientMessage::OrderBookSnapshot { bids: _, offers: _ }) = rx.recv().await else {
+            unreachable!("Should have received an order book snapshot");
+        };
+
+        // Registering anoter player should not send a snapshot to the already connected player(s)
+        let (second_tx, mut second_rx) = channel::<ClientMessage>(1);
+        let _ = market_tx
+            .send(MarketMessage::NewClient(Client {
+                id: "tutu".to_string(),
+                tx: second_tx.clone(),
+            }))
+            .await;
+        let _ = second_rx.recv().await;
+        let Err(_) = rx.try_recv() else {
+            unreachable!("Should not have received a message")
+        };
+    }
+
+    #[tokio::test]
     async fn test_process_request_order() {
         // Start market actor
         let mut market = Market::new();
@@ -166,6 +221,7 @@ mod tests {
                 tx: tx.clone(),
             }))
             .await;
+        let _ = rx.recv().await;
 
         // Send order request to market actor
         let order_request = MarketMessage::OrderRequest(OrderRequest {
@@ -182,17 +238,6 @@ mod tests {
         };
         assert_eq!(bids.len(), 1);
         assert_eq!(offers.len(), 0);
-
-        // // Delete our offer
-        // let request = MarketMessage::OrderDeletionRequest {
-        //     order_id: new_offer_id.clone(),
-        //     owner: "toto".to_string(),
-        // };
-        // market_tx.send(request).await.unwrap();
-        // let Some(ClientMessage::OrderBookSnapshot(updated_offers)) = rx.recv().await else {
-        //     unreachable!("Expected ClientMessage::PublicOffers")
-        // };
-        // assert!(updated_offers.iter().all(|offer| offer.id != new_offer_id));
     }
 
     #[tokio::test]
@@ -212,6 +257,7 @@ mod tests {
                 tx: tx_buyer.clone(),
             }))
             .await;
+        let _ = rx_buyer.recv().await;
         let buy_order = MarketMessage::OrderRequest(OrderRequest {
             direction: Direction::Buy,
             volume: 10,
@@ -229,6 +275,7 @@ mod tests {
                 tx: tx_seller.clone(),
             }))
             .await;
+        let _ = rx_seller.recv().await;
         let sell_order = MarketMessage::OrderRequest(OrderRequest {
             direction: Direction::Sell,
             volume: 10,
