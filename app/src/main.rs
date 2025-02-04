@@ -1,5 +1,5 @@
 use market::Market;
-use player::Player;
+use player::PlayerActor;
 use tokio::net::TcpListener;
 
 pub mod market;
@@ -26,7 +26,7 @@ async fn main() {
 
         let tx = tx_martket.clone();
         tokio::spawn(async move {
-            let _ = Player::start(stream, tx).await;
+            let _ = PlayerActor::start(stream, tx).await;
         });
     }
 }

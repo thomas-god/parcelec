@@ -11,7 +11,7 @@ use tokio_tungstenite::{accept_async, tungstenite::Message, WebSocketStream};
 use uuid::Uuid;
 
 use crate::{
-    market::{Client, ClientMessage, MarketMessage},
+    market::{MarketMessage, Player, PlayerMessage},
     order_book::OrderRequest,
 };
 
@@ -20,16 +20,16 @@ enum WebSocketIncomingMessage {
     OrderRequest(OrderRequest),
 }
 
-pub struct Player {}
+pub struct PlayerActor {}
 
-impl Player {
+impl PlayerActor {
     pub async fn start(stream: TcpStream, market_tx: Sender<MarketMessage>) {
-        let (tx, rx) = channel::<ClientMessage>(16);
+        let (tx, rx) = channel::<PlayerMessage>(16);
 
         let ws_stream = accept_async(stream).await.expect("Failed to accept");
 
         let _ = market_tx
-            .send(MarketMessage::NewClient(Client {
+            .send(MarketMessage::NewPlayer(Player {
                 id: Uuid::new_v4().to_string(),
                 tx: tx.clone(),
             }))
@@ -66,7 +66,7 @@ async fn process_ws_messages(
 
 async fn process_internal_messages(
     mut sink: SplitSink<WebSocketStream<TcpStream>, Message>,
-    mut rx: Receiver<ClientMessage>,
+    mut rx: Receiver<PlayerMessage>,
 ) {
     while let Some(msg) = rx.recv().await {
         let Ok(msg) = serde_json::to_string(&msg) else {
