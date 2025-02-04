@@ -30,12 +30,21 @@ services:
     labels:
       - "traefik.enable=true"
       - "traefik.http.services.parcelec.loadbalancer.server.port=9002"
-      - "traefik.http.routers.parcelec.rule=Host(`parcelec.org`)"
+      - "traefik.http.routers.parcelec.rule=Host(`app.parcelec.org`)"
       - "traefik.http.routers.parcelec.entrypoints=websecure"
       - "traefik.http.routers.parcelec.tls.certresolver=myresolver"
     deploy:
       update_config:
         order: start-first
+
+  client:
+    image: ghcr.io/thomas-god/parcelec-client:latest
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.services.client.loadbalancer.server.port=80"
+      - "traefik.http.routers.client.rule=Host(`parcelec.org`)"
+      - "traefik.http.routers.client.entrypoints=websecure"
+      - "traefik.http.routers.client.tls.certresolver=myresolver"
 
 volumes:
   letsencrypt:
