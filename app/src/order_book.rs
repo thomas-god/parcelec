@@ -10,7 +10,7 @@ pub enum Direction {
     Sell,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct Trade {
     buyer: String,
     seller: String,
@@ -161,6 +161,7 @@ impl Ord for Offer {
 pub struct OrderBook {
     offers: BinaryHeap<Offer>,
     bids: BinaryHeap<Bid>,
+    trades: Vec<Trade>,
 }
 
 pub struct OrderBookSnapshot<'a> {
@@ -173,16 +174,21 @@ impl OrderBook {
         OrderBook {
             offers: BinaryHeap::new(),
             bids: BinaryHeap::new(),
+            trades: Vec::new(),
         }
     }
 
     pub fn register_order_request(&mut self, order_request: OrderRequest) -> Vec<Trade> {
         let order = Order::from(order_request);
         println!("Trying to register order: {order:?}");
-        match order.direction {
+        let trades = match order.direction {
             Direction::Buy => self.insert_bid(order),
             Direction::Sell => self.insert_offer(order),
+        };
+        for trade in trades.iter() {
+            self.trades.push(trade.clone());
         }
+        trades
     }
 
     pub fn remove_offer(&mut self, order_id: String) {
