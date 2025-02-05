@@ -54,7 +54,7 @@ jobs:
       - name: Build and push Docker image
         uses: docker/build-push-action@v6
         env:
-          VITE_APP_URL: wss://parcelec.org
+          VITE_APP_URL: wss://app.parcelec.org
         with:
           context: "{{defaultContext}}:client"
           platforms: linux/amd64,linux/arm64
