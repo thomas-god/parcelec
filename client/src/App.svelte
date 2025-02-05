@@ -1,34 +1,41 @@
 <script lang="ts">
-  import OrderBookEntry from "./lib/orderBookEntry.svelte";
+  import { match } from "ts-pattern";
+  import { parseMessage, type OrderBook } from "./message";
+  import OrderBookEntry from "./orderBookEntry.svelte";
+
   const socket = new WebSocket("wss://app.parcelec.org");
+
   let price: number = $state(50);
   let volume: number = $state(100);
-  interface OrderEntry {
-    direction: "Buy" | "Sell";
-    volume: number;
-    price: number;
-    created_at: Date;
-  }
-  interface OrderBook {
-    bids: OrderEntry[];
-    offers: OrderEntry[];
-  }
-  let snapshot: OrderBook = $state({
+  let orderBook: OrderBook = $state({
     bids: [],
     offers: [],
   });
+
   const spread = $derived.by(() => {
-    if (snapshot.bids.length === 0 || snapshot.offers.length === 0) {
+    if (orderBook.bids.length === 0 || orderBook.offers.length === 0) {
       return Number.NaN;
     }
-    return (snapshot.offers[0].price - snapshot.bids[0].price) / 100;
+    return (orderBook.offers[0].price - orderBook.bids[0].price) / 100;
   });
+
   socket.addEventListener("message", (msg) => {
-    let data = JSON.parse(msg.data)["OrderBookSnapshot"];
-    console.log(data);
-    snapshot = data;
-    snapshot.bids.sort((a, b) => b.price - a.price);
-    snapshot.offers.sort((a, b) => a.price - b.price);
+    const parseRes = parseMessage(msg.data);
+    if (!parseRes.success) {
+      console.log(`Error while parsing message ${msg.data}: ${parseRes.error}`);
+      return;
+    }
+    match(parseRes.data)
+      .with({ type: "OrderBookSnapshot" }, (snapshot) => {
+        orderBook.bids = snapshot.bids.toSorted((a, b) => b.price - a.price);
+        orderBook.offers = snapshot.offers.toSorted(
+          (a, b) => a.price - b.price
+        );
+      })
+      .with({ type: "NewTrade" }, (new_trade) => {
+        console.log(new_trade);
+      })
+      .exhaustive();
   });
 
   const sendBuyRequest = () => {
@@ -42,6 +49,7 @@
     console.log(`sending order request: ${payload}`);
     socket.send(payload);
   };
+
   const sendSellRequest = () => {
     const orderRequest = {
       price: price * 100,
@@ -64,7 +72,7 @@
     <div class="OrderBookColumn">
       <h3>Achats</h3>
       <ul class="OrderBook">
-        {#each snapshot.bids as bid}
+        {#each orderBook.bids as bid}
           <li>
             <OrderBookEntry price={bid.price} volume={bid.volume} />
           </li>
@@ -75,7 +83,7 @@
     <div class="OrderBookColumn">
       <h3>Ventes</h3>
       <ul class="OrderBook">
-        {#each snapshot.offers as offer}
+        {#each orderBook.offers as offer}
           <li>
             <OrderBookEntry price={offer.price} volume={offer.volume} />
           </li>

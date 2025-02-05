@@ -35,7 +35,8 @@ impl From<&Offer> for PublicOrder {
     }
 }
 
-#[derive(Clone, Serialize)]
+#[derive(Clone, Serialize, Debug)]
+#[serde(tag = "type")]
 pub enum PlayerMessage {
     // OfferRequestAccepted { offer_id: String },
     NewTrade(TradeLeg),
