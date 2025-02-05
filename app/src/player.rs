@@ -27,10 +27,10 @@ impl PlayerActor {
         let (tx, rx) = channel::<PlayerMessage>(16);
 
         let ws_stream = accept_async(stream).await.expect("Failed to accept");
-
+        let player_id = Uuid::new_v4().to_string();
         let _ = market_tx
             .send(MarketMessage::NewPlayer(Player {
-                id: Uuid::new_v4().to_string(),
+                id: player_id.clone(),
                 tx: tx.clone(),
             }))
             .await;
@@ -38,7 +38,7 @@ impl PlayerActor {
         let (sink, stream) = ws_stream.split();
         tokio::join!(
             process_internal_messages(sink, rx),
-            process_ws_messages(stream, market_tx.clone())
+            process_ws_messages(stream, market_tx.clone(), player_id)
         );
     }
 }
@@ -46,6 +46,7 @@ impl PlayerActor {
 async fn process_ws_messages(
     mut stream: SplitStream<WebSocketStream<TcpStream>>,
     market_tx: Sender<MarketMessage>,
+    player_id: String,
 ) {
     while let Some(Ok(msg)) = stream.next().await {
         if msg.is_text() {
@@ -54,7 +55,8 @@ async fn process_ws_messages(
             };
 
             match serde_json::from_str::<WebSocketIncomingMessage>(&content) {
-                Ok(WebSocketIncomingMessage::OrderRequest(request)) => {
+                Ok(WebSocketIncomingMessage::OrderRequest(mut request)) => {
+                    request.owner = player_id.clone();
                     let _ = market_tx.send(MarketMessage::OrderRequest(request)).await;
                 }
                 Err(err) => println!("{err:?}"),
@@ -69,6 +71,7 @@ async fn process_internal_messages(
 ) {
     while let Some(msg) = rx.recv().await {
         let Ok(msg) = serde_json::to_string(&msg) else {
+            println!("Unable to serialize message: {msg:?}");
             return;
         };
         let _ = sink.send(Message::text(msg)).await;
