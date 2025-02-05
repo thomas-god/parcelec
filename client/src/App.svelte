@@ -1,6 +1,7 @@
 <script lang="ts">
   import OrderBookEntry from "./lib/orderBookEntry.svelte";
-  const socket = new WebSocket("wss://app.parcelec.org");
+  const app_url = import.meta.env.VITE_APP_URL;
+  const socket = new WebSocket(app_url);
   let price: number = $state(50);
   let volume: number = $state(100);
   interface OrderEntry {
