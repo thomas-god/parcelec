@@ -3,7 +3,7 @@
   import { parseMessage, type OrderBook } from "./message";
   import OrderBookEntry from "./orderBookEntry.svelte";
 
-  const socket = new WebSocket("wss://app.parcelec.org");
+  const socket = new WebSocket(import.meta.env.VITE_APP_URL);
 
   let price: number = $state(50);
   let volume: number = $state(100);
