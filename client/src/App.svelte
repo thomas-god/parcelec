@@ -68,8 +68,8 @@
   {#if !Number.isNaN(spread)}
     Spread: {spread} €
   {/if}
-  <div class="OrderBook">
-    <div class="OrderBookColumn">
+  <div class="grid columns-2">
+    <div class="flex-col">
       <h3>Achats</h3>
       <ul class="OrderBook">
         {#each orderBook.bids as bid}
@@ -80,9 +80,9 @@
       </ul>
     </div>
 
-    <div class="OrderBookColumn">
+    <div class="flex-col">
       <h3>Ventes</h3>
-      <ul class="OrderBook">
+      <ul>
         {#each orderBook.offers as offer}
           <li>
             <OrderBookEntry price={offer.price} volume={offer.volume} />
@@ -92,7 +92,7 @@
     </div>
   </div>
 
-  <div class="SendOrder">
+  <div>
     <div>
       <label>
         Price
@@ -110,14 +110,3 @@
     </div>
   </div>
 </main>
-
-<style>
-  div.OrderBook {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-  }
-
-  .OrderBook > li {
-    list-style: none;
-  }
-</style>
