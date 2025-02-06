@@ -1,17 +1,17 @@
 <script lang="ts">
-  import { isSome, none, unwrap, type Option } from "./Options";
+import { isSome, none, unwrap, type Option } from "../../lib/Options";
 
-  let {
-    value = $bindable(),
-    label,
-    bigIncr = none(),
-  }: {
-    value: number;
-    label: string;
-    bigIncr: Option<number>;
-  } = $props();
+let {
+	value = $bindable(),
+	label,
+	bigIncr = none(),
+}: {
+	value: number;
+	label: string;
+	bigIncr: Option<number>;
+} = $props();
 
-  let showBigIncr = $derived(isSome(bigIncr));
+let showBigIncr = $derived(isSome(bigIncr));
 </script>
 
 <div class="flex flex-col items-center p-2 sm:p-4 max-w-64">

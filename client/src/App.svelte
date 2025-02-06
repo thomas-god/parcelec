@@ -1,38 +1,36 @@
 <script lang="ts">
-  import { match } from "ts-pattern";
-  import { parseMessage, type OrderBook, type Trade } from "./message";
-  import OrderBookElement from "./OrderBook.svelte";
+import { match } from "ts-pattern";
+import { parseMessage, type OrderBook, type Trade } from "./lib/message";
+import OrderBookElement from "./components/molecules/OrderBook.svelte";
 
-  const socket = new WebSocket(import.meta.env.VITE_APP_URL);
+const socket = new WebSocket(import.meta.env.VITE_APP_URL);
 
-  let orderBook: OrderBook = $state({
-    bids: [],
-    offers: [],
-  });
-  let trades: Trade[] = $state([]);
+let orderBook: OrderBook = $state({
+	bids: [],
+	offers: [],
+});
+let trades: Trade[] = $state([]);
 
-  socket.addEventListener("message", (msg) => {
-    const parseRes = parseMessage(msg.data);
-    if (!parseRes.success) {
-      console.log(`Error while parsing message ${msg.data}: ${parseRes.error}`);
-      return;
-    }
-    match(parseRes.data)
-      .with({ type: "OrderBookSnapshot" }, (snapshot) => {
-        orderBook.bids = snapshot.bids.toSorted((a, b) => b.price - a.price);
-        orderBook.offers = snapshot.offers.toSorted(
-          (a, b) => a.price - b.price
-        );
-      })
-      .with({ type: "NewTrade" }, (new_trade) => {
-        trades.push(new_trade);
-      })
-      .exhaustive();
-  });
+socket.addEventListener("message", (msg) => {
+	const parseRes = parseMessage(msg.data);
+	if (!parseRes.success) {
+		console.log(`Error while parsing message ${msg.data}: ${parseRes.error}`);
+		return;
+	}
+	match(parseRes.data)
+		.with({ type: "OrderBookSnapshot" }, (snapshot) => {
+			orderBook.bids = snapshot.bids.toSorted((a, b) => b.price - a.price);
+			orderBook.offers = snapshot.offers.toSorted((a, b) => a.price - b.price);
+		})
+		.with({ type: "NewTrade" }, (new_trade) => {
+			trades.push(new_trade);
+		})
+		.exhaustive();
+});
 
-  const sendMessage = (msg: string) => {
-    socket.send(msg);
-  };
+const sendMessage = (msg: string) => {
+	socket.send(msg);
+};
 </script>
 
 <main class="p-2">

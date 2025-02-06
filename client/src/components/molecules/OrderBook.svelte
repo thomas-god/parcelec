@@ -1,32 +1,31 @@
 <script lang="ts">
-  import type { OrderBook } from "./message";
-  import NumberInput from "./NumberInput.svelte";
-  import { some } from "./Options";
-  import OrderBookEntry from "./OrderBookEntry.svelte";
-  let {
-    orderBook,
-    send,
-  }: { orderBook: OrderBook; send: (msg: string) => void } = $props();
+import type { OrderBook } from "../../lib/message";
+import { some } from "../../lib/Options";
+import NumberInput from "../atoms/NumberInput.svelte";
+import OrderBookEntry from "../atoms/OrderBookEntry.svelte";
 
-  let price: number = $state(50);
-  let volume: number = $state(100);
+let { orderBook, send }: { orderBook: OrderBook; send: (msg: string) => void } =
+	$props();
 
-  const spread = $derived.by(() => {
-    if (orderBook.bids.length === 0 || orderBook.offers.length === 0) {
-      return Number.NaN;
-    }
-    return (orderBook.offers[0].price - orderBook.bids[0].price) / 100;
-  });
+let price: number = $state(50);
+let volume: number = $state(100);
 
-  const sendOfferRequest = (direction: "Sell" | "Buy") => {
-    const orderRequest = {
-      price: price * 100,
-      volume,
-      direction,
-      owner: "toto",
-    };
-    send(JSON.stringify({ OrderRequest: orderRequest }));
-  };
+const spread = $derived.by(() => {
+	if (orderBook.bids.length === 0 || orderBook.offers.length === 0) {
+		return Number.NaN;
+	}
+	return (orderBook.offers[0].price - orderBook.bids[0].price) / 100;
+});
+
+const sendOfferRequest = (direction: "Sell" | "Buy") => {
+	const orderRequest = {
+		price: price * 100,
+		volume,
+		direction,
+		owner: "toto",
+	};
+	send(JSON.stringify({ OrderRequest: orderRequest }));
+};
 </script>
 
 <div class="flex flex-col">

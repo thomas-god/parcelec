@@ -28,8 +28,11 @@ const WSMessageSchema = z.discriminatedUnion("type", [
 ]);
 
 type WSMessage = z.infer<typeof WSMessageSchema>;
-export type OrderBook = Omit<Extract<WSMessage, { type: "OrderBookSnapshot" }>, "type">
-export type Trade = Omit<Extract<WSMessage, { type: "NewTrade" }>, "type">
+export type OrderBook = Omit<
+	Extract<WSMessage, { type: "OrderBookSnapshot" }>,
+	"type"
+>;
+export type Trade = Omit<Extract<WSMessage, { type: "NewTrade" }>, "type">;
 
 export const parseMessage = (
 	msg: string,
