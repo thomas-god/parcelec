@@ -1,13 +1,10 @@
+use axum::extract::ws::{Message, WebSocket};
 use futures_util::{
     stream::{SplitSink, SplitStream},
     SinkExt, StreamExt,
 };
 use serde::Deserialize;
-use tokio::{
-    net::TcpStream,
-    sync::mpsc::{channel, Receiver, Sender},
-};
-use tokio_tungstenite::{accept_async, tungstenite::Message, WebSocketStream};
+use tokio::sync::mpsc::{channel, Receiver, Sender};
 use uuid::Uuid;
 
 use crate::{
@@ -23,10 +20,9 @@ enum WebSocketIncomingMessage {
 pub struct PlayerActor {}
 
 impl PlayerActor {
-    pub async fn start(stream: TcpStream, market_tx: Sender<MarketMessage>) {
+    pub async fn start(ws: WebSocket, market_tx: Sender<MarketMessage>) {
         let (tx, rx) = channel::<PlayerMessage>(16);
 
-        let ws_stream = accept_async(stream).await.expect("Failed to accept");
         let player_id = Uuid::new_v4().to_string();
         let _ = market_tx
             .send(MarketMessage::NewPlayer(Player {
@@ -35,7 +31,7 @@ impl PlayerActor {
             }))
             .await;
 
-        let (sink, stream) = ws_stream.split();
+        let (sink, stream) = ws.split();
         tokio::join!(
             process_internal_messages(sink, rx),
             process_ws_messages(stream, market_tx.clone(), player_id)
@@ -44,29 +40,23 @@ impl PlayerActor {
 }
 
 async fn process_ws_messages(
-    mut stream: SplitStream<WebSocketStream<TcpStream>>,
+    mut stream: SplitStream<WebSocket>,
     market_tx: Sender<MarketMessage>,
     player_id: String,
 ) {
-    while let Some(Ok(msg)) = stream.next().await {
-        if msg.is_text() {
-            let Ok(content) = msg.into_text().map(|s| s.to_string()) else {
-                return;
-            };
-
-            match serde_json::from_str::<WebSocketIncomingMessage>(&content) {
-                Ok(WebSocketIncomingMessage::OrderRequest(mut request)) => {
-                    request.owner = player_id.clone();
-                    let _ = market_tx.send(MarketMessage::OrderRequest(request)).await;
-                }
-                Err(err) => println!("{err:?}"),
+    while let Some(Ok(Message::Text(msg))) = stream.next().await {
+        match serde_json::from_str::<WebSocketIncomingMessage>(msg.as_str()) {
+            Ok(WebSocketIncomingMessage::OrderRequest(mut request)) => {
+                request.owner = player_id.clone();
+                let _ = market_tx.send(MarketMessage::OrderRequest(request)).await;
             }
+            Err(err) => println!("{err:?}"),
         }
     }
 }
 
 async fn process_internal_messages(
-    mut sink: SplitSink<WebSocketStream<TcpStream>, Message>,
+    mut sink: SplitSink<WebSocket, Message>,
     mut rx: Receiver<PlayerMessage>,
 ) {
     while let Some(msg) = rx.recv().await {
