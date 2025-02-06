@@ -1,7 +1,7 @@
 <script lang="ts">
-  import { Option } from "effect";
   import type { OrderBook } from "./message";
   import NumberInput from "./NumberInput.svelte";
+  import { some } from "./Options";
   import OrderBookEntry from "./OrderBookEntry.svelte";
   let {
     orderBook,
@@ -71,16 +71,8 @@
   <div class="mt-8">
     <h3 class="text-xl font-semibold mb-2 text-center">Ajouter une offre</h3>
     <div class="grid grid-cols-2 gap-2 mb-6">
-      <NumberInput
-        bind:value={price}
-        label={"Price"}
-        bigIncr={Option.some(1)}
-      />
-      <NumberInput
-        bind:value={volume}
-        label={"Volume"}
-        bigIncr={Option.some(10)}
-      />
+      <NumberInput bind:value={price} label={"Price"} bigIncr={some(1)} />
+      <NumberInput bind:value={volume} label={"Volume"} bigIncr={some(10)} />
     </div>
     <div class="flex justify-center space-x-4">
       <button

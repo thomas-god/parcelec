@@ -1,16 +1,17 @@
 <script lang="ts">
-  import { Option } from "effect";
+  import { isSome, none, unwrap, type Option } from "./Options";
+
   let {
     value = $bindable(),
     label,
-    bigIncr = Option.none(),
+    bigIncr = none(),
   }: {
     value: number;
     label: string;
-    bigIncr: Option.Option<number>;
+    bigIncr: Option<number>;
   } = $props();
 
-  let showBigIncr = $derived(Option.isSome(bigIncr));
+  let showBigIncr = $derived(isSome(bigIncr));
 </script>
 
 <div class="flex flex-col items-center p-2 sm:p-4 max-w-64">
@@ -22,11 +23,11 @@
     {#if showBigIncr}
       <button
         onclick={() => {
-          value -= Option.getOrElse(bigIncr, () => 0);
+          value -= unwrap(bigIncr);
         }}
         id={`number_input_${label}`}
       >
-        -{Option.getOrUndefined(bigIncr)}
+        -{unwrap(bigIncr)}
       </button>
     {/if}
     <input
@@ -37,8 +38,8 @@
     {#if showBigIncr}
       <button
         onclick={() => {
-          value += Option.getOrElse(bigIncr, () => 0);
-        }}>+{Option.getOrUndefined(bigIncr)}</button
+          value += unwrap(bigIncr);
+        }}>+{unwrap(bigIncr)}</button
       >
     {/if}
   </div>
