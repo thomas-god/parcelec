@@ -10,7 +10,14 @@ COPY package*.json ./
 RUN npm ci
 
 # Copy the rest of the application
-COPY . .
+COPY svelte.config.js ./
+COPY vite.config.ts ./
+COPY tsconfig.json ./
+COPY .gitignore ./
+COPY .npmrc ./
+COPY .env.production ./.env
+COPY src/ ./src
+COPY public/ ./public
 
 # Build the application for production
 ENV NODE_ENV=production

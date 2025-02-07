@@ -1,8 +1,9 @@
 <script lang="ts">
+	import {PUBLIC_APP_URL} from '$env/static/public';
 let name = $state("");
 
 const registerPlayer = async () => {
-	await fetch(`${import.meta.env.VITE_APP_URL}/game/join`, {
+	await fetch(`${PUBLIC_APP_URL}/game/join`, {
 		method: "POST",
 		headers: {
 			"Content-Type": "application/json",

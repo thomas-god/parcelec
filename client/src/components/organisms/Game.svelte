@@ -2,6 +2,7 @@
 import OrderBookElement from "../molecules/OrderBook.svelte";
 import { match } from "ts-pattern";
 import { parseMessage, type OrderBook, type Trade } from "$lib/message";
+import {PUBLIC_WS_URL} from "$env/static/public"
 
 let orderBook: OrderBook = $state({
   bids: [],
@@ -10,7 +11,7 @@ let orderBook: OrderBook = $state({
 let trades: Trade[] = $state([]);
 
 const connect = () => {
-  const socket = new WebSocket(`${import.meta.env.VITE_WS_URL}/ws`);
+  const socket = new WebSocket(`${PUBLIC_WS_URL}/ws`);
   socket.addEventListener("message", (msg) => {
     const parseRes = parseMessage(msg.data);
     if (!parseRes.success) {
