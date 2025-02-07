@@ -11,12 +11,6 @@ const registerPlayer = async () => {
 		credentials: "include",
 		body: JSON.stringify({ name }),
 	});
-
-	await fetch(`${import.meta.env.VITE_APP_URL}/player`, {
-		method: "GET",
-		mode: "no-cors",
-		credentials: "include",
-	});
 };
 </script>
 

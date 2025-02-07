@@ -5,7 +5,6 @@ use futures_util::{
 };
 use serde::Deserialize;
 use tokio::sync::mpsc::{channel, Receiver, Sender};
-use uuid::Uuid;
 
 use crate::market::{order_book::OrderRequest, MarketMessage, Player, PlayerMessage};
 
@@ -14,14 +13,13 @@ enum WebSocketIncomingMessage {
     OrderRequest(OrderRequest),
 }
 
-pub struct PlayerActor {}
+pub struct PlayerConnection {}
 
-impl PlayerActor {
-    pub async fn start(ws: WebSocket, market_tx: Sender<MarketMessage>) {
+impl PlayerConnection {
+    pub async fn start(ws: WebSocket, player_id: String, market: Sender<MarketMessage>) {
         let (tx, rx) = channel::<PlayerMessage>(16);
 
-        let player_id = Uuid::new_v4().to_string();
-        let _ = market_tx
+        let _ = market
             .send(MarketMessage::NewPlayer(Player {
                 id: player_id.clone(),
                 tx: tx.clone(),
@@ -31,7 +29,7 @@ impl PlayerActor {
         let (sink, stream) = ws.split();
         tokio::join!(
             process_internal_messages(sink, rx),
-            process_ws_messages(stream, market_tx.clone(), player_id)
+            process_ws_messages(stream, market.clone(), player_id)
         );
     }
 }
