@@ -4,11 +4,7 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
-pub enum Direction {
-    Buy,
-    Sell,
-}
+use super::models::Direction;
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct Trade {
@@ -330,7 +326,8 @@ impl Default for OrderBook {
 
 #[cfg(test)]
 mod tests {
-    use crate::order_book::Direction;
+
+    use crate::market::models::Direction;
 
     use super::{OrderBook, OrderRequest};
 
@@ -541,7 +538,7 @@ mod test_bid_and_offer {
     use chrono::Utc;
     use uuid::Uuid;
 
-    use crate::order_book::{Direction, Offer};
+    use crate::market::{models::Direction, order_book::Offer};
 
     use super::{Bid, Order};
 
@@ -602,7 +599,7 @@ mod test_bid_and_offer {
 mod test_trade_leg {
     use chrono::Utc;
 
-    use crate::order_book::{Direction, TradeLeg};
+    use crate::market::{models::Direction, order_book::TradeLeg};
 
     use super::Trade;
 

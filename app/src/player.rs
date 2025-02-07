@@ -7,10 +7,7 @@ use serde::Deserialize;
 use tokio::sync::mpsc::{channel, Receiver, Sender};
 use uuid::Uuid;
 
-use crate::{
-    market::{MarketMessage, Player, PlayerMessage},
-    order_book::OrderRequest,
-};
+use crate::market::{order_book::OrderRequest, MarketMessage, Player, PlayerMessage};
 
 #[derive(Deserialize, Debug)]
 enum WebSocketIncomingMessage {

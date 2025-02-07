@@ -22,7 +22,6 @@ use tower_http::cors::CorsLayer;
 use uuid::Uuid;
 
 pub mod market;
-pub mod order_book;
 pub mod player;
 
 struct AppState {

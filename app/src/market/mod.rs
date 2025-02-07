@@ -1,10 +1,14 @@
 use std::fmt::Debug;
 
 use chrono::{DateTime, Utc};
+use models::Direction;
 use serde::Serialize;
 use tokio::sync::mpsc::{channel, Receiver, Sender};
 
-use crate::order_book::{Bid, Direction, Offer, OrderBook, OrderRequest, TradeLeg};
+use order_book::{Bid, Offer, OrderBook, OrderRequest, TradeLeg};
+
+pub mod models;
+pub mod order_book;
 
 #[derive(Debug, Clone, Serialize)]
 pub struct PublicOrder {
@@ -165,8 +169,7 @@ impl Default for Market {
 mod tests {
     use tokio::sync::mpsc::channel;
 
-    use crate::market::Player;
-    use crate::order_book::{Direction, OrderRequest};
+    use crate::market::{models::Direction, order_book::OrderRequest, Player};
 
     use super::{Market, MarketMessage, PlayerMessage};
 
