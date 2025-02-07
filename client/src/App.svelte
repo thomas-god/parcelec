@@ -1,6 +1,6 @@
 <script lang="ts">
-import Game from "./components/pages/Game.svelte";
-import JoinGame from "./components/pages/JoinGame.svelte";
+import Game from "./components/organisms/Game.svelte";
+import JoinGame from "./components/organisms/JoinGame.svelte";
 type State = "Home" | "Register" | "Game";
 
 let state = $state<State>("Home");

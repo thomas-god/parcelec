@@ -3,30 +3,42 @@ import OrderBookElement from "../molecules/OrderBook.svelte";
 import { match } from "ts-pattern";
 import { parseMessage, type OrderBook, type Trade } from "../../lib/message";
 
-const socket = new WebSocket(`${import.meta.env.VITE_WS_URL}/ws`);
-
 let orderBook: OrderBook = $state({
-	bids: [],
-	offers: [],
+  bids: [],
+  offers: [],
 });
 let trades: Trade[] = $state([]);
 
-socket.addEventListener("message", (msg) => {
-	const parseRes = parseMessage(msg.data);
-	if (!parseRes.success) {
-		console.log(`Error while parsing message ${msg.data}: ${parseRes.error}`);
-		return;
-	}
-	match(parseRes.data)
+const connect = () => {
+  const socket = new WebSocket(`${import.meta.env.VITE_WS_URL}/ws`);
+  socket.addEventListener("message", (msg) => {
+    const parseRes = parseMessage(msg.data);
+    if (!parseRes.success) {
+      console.log(`Error while parsing message ${msg.data}: ${parseRes.error}`);
+      return;
+    }
+    match(parseRes.data)
 		.with({ type: "OrderBookSnapshot" }, (snapshot) => {
-			orderBook.bids = snapshot.bids.toSorted((a, b) => b.price - a.price);
+      orderBook.bids = snapshot.bids.toSorted((a, b) => b.price - a.price);
 			orderBook.offers = snapshot.offers.toSorted((a, b) => a.price - b.price);
 		})
 		.with({ type: "NewTrade" }, (new_trade) => {
 			trades.push(new_trade);
 		})
 		.exhaustive();
-});
+  });
+  socket.addEventListener("open", () => {
+    socketIsOpen = true;
+  })
+  socket.addEventListener("close", () => {
+    socketIsOpen = false;
+  })
+  return socket;
+};
+
+let socket = connect();
+let socketIsOpen = $state(false)
+$inspect(socketIsOpen)
 
 const sendMessage = (msg: string) => {
 	socket.send(msg);
@@ -34,8 +46,11 @@ const sendMessage = (msg: string) => {
 </script>
 
 <main class="p-2">
+  {#if socketIsOpen}
   <OrderBookElement {orderBook} send={sendMessage} />
-
+{:else}
+<p>Not connected</p>
+{/if}
   <!-- <div class="mt-8">
     <h3 class="text-xl font-semibold mb-2 text-center">Trades</h3>
     <div class="grid grid-cols-2 gap-6 h-64 overflow-y-auto p-4">
