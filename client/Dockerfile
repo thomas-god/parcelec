@@ -21,7 +21,7 @@ FROM nginx:alpine
 
 # Copy the build output to replace the default nginx contents
 COPY --from=build /app/public /usr/share/nginx/html
-COPY --from=build /app/dist /usr/share/nginx/html
+COPY --from=build /app/build /usr/share/nginx/html
 
 # Expose the port
 EXPOSE 80

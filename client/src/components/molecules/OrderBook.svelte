@@ -1,6 +1,6 @@
 <script lang="ts">
-import type { OrderBook } from "../../lib/message";
-import { some } from "../../lib/Options";
+import type { OrderBook } from "$lib/message";
+import { some } from "$lib/Options";
 import NumberInput from "../atoms/NumberInput.svelte";
 import OrderBookEntry from "../atoms/OrderBookEntry.svelte";
 

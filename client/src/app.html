@@ -7,10 +7,11 @@
     href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚡</text></svg>"
   />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    %sveltekit.head%
     <title>Parcelec</title>
   </head>
-  <body>
-    <div id="app"></div>
-    <script type="module" src="/src/main.ts"></script>
-  </body>
+
+  <body data-sveltekit-preload-data="hover">
+		<div>%sveltekit.body%</div>
+	</body>
 </html>

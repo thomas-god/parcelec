@@ -1,5 +1,5 @@
 <script lang="ts">
-import { isSome, none, unwrap, type Option } from "../../lib/Options";
+import { isSome, none, unwrap, type Option } from "$lib/Options";
 
 let {
 	value = $bindable(),

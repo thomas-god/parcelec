@@ -1,7 +1,7 @@
 <script lang="ts">
 import OrderBookElement from "../molecules/OrderBook.svelte";
 import { match } from "ts-pattern";
-import { parseMessage, type OrderBook, type Trade } from "../../lib/message";
+import { parseMessage, type OrderBook, type Trade } from "$lib/message";
 
 let orderBook: OrderBook = $state({
   bids: [],
