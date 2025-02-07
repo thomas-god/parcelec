@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use tokio::sync::{
     mpsc::{channel, Receiver, Sender},
     oneshot::Sender as OneShotSender,
@@ -46,7 +44,6 @@ pub struct GameContext {
 
 pub struct Game {
     players: Vec<Player>,
-    stacks: HashMap<String, Stack>,
     market: Sender<MarketMessage>,
     rx: Receiver<GameMessage>,
     tx: Sender<GameMessage>,
@@ -66,7 +63,6 @@ impl Game {
         Game {
             market: market_tx,
             players: Vec::new(),
-            stacks: HashMap::new(),
             rx,
             tx,
         }

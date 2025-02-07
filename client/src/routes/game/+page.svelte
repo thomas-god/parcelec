@@ -3,6 +3,8 @@ import { match } from "ts-pattern";
 import { parseMessage, type OrderBook, type Trade } from "$lib/message";
 import { PUBLIC_WS_URL } from "$env/static/public";
 import OrderBookElement from "../../components/molecules/OrderBook.svelte";
+  import { goto } from "$app/navigation";
+  import { json } from "@sveltejs/kit";
 
 let orderBook: OrderBook = $state({
 	bids: [],
@@ -12,12 +14,14 @@ let trades: Trade[] = $state([]);
 
 const connect = () => {
 	const socket = new WebSocket(`${PUBLIC_WS_URL}/ws`);
-	socket.addEventListener("message", (msg) => {
+	socket.onmessage = (msg) => {
+    console.log(msg)
 		const parseRes = parseMessage(msg.data);
 		if (!parseRes.success) {
 			console.log(`Error while parsing message ${msg.data}: ${parseRes.error}`);
 			return;
 		}
+
 		match(parseRes.data)
 			.with({ type: "OrderBookSnapshot" }, (snapshot) => {
 				orderBook.bids = snapshot.bids.toSorted((a, b) => b.price - a.price);
@@ -29,13 +33,15 @@ const connect = () => {
 				trades.push(new_trade);
 			})
 			.exhaustive();
-	});
-	socket.addEventListener("open", () => {
+	};
+	socket.onopen = () => {
+    socket.send(JSON.stringify("ConnectionReady"))
 		socketIsOpen = true;
-	});
-	socket.addEventListener("close", () => {
+	};
+	socket.onclose = () => {
 		socketIsOpen = false;
-	});
+    goto("/game/join")
+	};
 	return socket;
 };
 

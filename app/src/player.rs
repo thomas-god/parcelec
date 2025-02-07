@@ -5,32 +5,60 @@ use futures_util::{
 };
 use serde::Deserialize;
 use tokio::sync::mpsc::{channel, Receiver, Sender};
+use uuid::Uuid;
 
-use crate::market::{order_book::OrderRequest, MarketMessage, Player, PlayerMessage};
+use crate::market::{order_book::OrderRequest, MarketMessage, PlayerConnection, PlayerMessage};
 
 #[derive(Deserialize, Debug)]
 enum WebSocketIncomingMessage {
+    ConnectionReady,
     OrderRequest(OrderRequest),
 }
 
-pub struct PlayerConnection {}
+pub struct PlayerConnectionActor {}
 
-impl PlayerConnection {
-    pub async fn start(ws: WebSocket, player_id: String, market: Sender<MarketMessage>) {
+impl PlayerConnectionActor {
+    pub async fn start(mut ws: WebSocket, player_id: String, market: Sender<MarketMessage>) {
+        let connection_id = Uuid::new_v4().to_string();
         let (tx, rx) = channel::<PlayerMessage>(16);
 
+        let Some(Ok(Message::Text(msg))) = ws.recv().await else {
+            println!("Haven't received Message::Text for connection readines, closing WS");
+            let _ = ws.close().await;
+            return;
+        };
+        match serde_json::from_str::<WebSocketIncomingMessage>(&msg) {
+            Ok(WebSocketIncomingMessage::ConnectionReady) => {}
+            _ => {
+                println!("First message is not a ConnectionReady, closing WS");
+                let _ = ws.close().await;
+                return;
+            }
+        }
+
         let _ = market
-            .send(MarketMessage::NewPlayer(Player {
-                id: player_id.clone(),
+            .send(MarketMessage::NewPlayerConnection(PlayerConnection {
+                id: connection_id.clone(),
+                player_id: player_id.clone(),
                 tx: tx.clone(),
             }))
             .await;
 
         let (sink, stream) = ws.split();
-        tokio::join!(
-            process_internal_messages(sink, rx),
-            process_ws_messages(stream, market.clone(), player_id)
-        );
+        let sink_handle = tokio::spawn(process_internal_messages(sink, rx));
+        let stream_handle = tokio::spawn(process_ws_messages(
+            stream,
+            market.clone(),
+            player_id.clone(),
+        ));
+        let _ = tokio::try_join!(sink_handle, stream_handle);
+
+        // One side of the WS is closed and/or cannot be processed, disconnect player connection
+        // from market and return
+        println!("Disconnecting {player_id:?} from market");
+        let _ = market
+            .send(MarketMessage::PlayerDisconnection { connection_id })
+            .await;
     }
 }
 
@@ -45,6 +73,7 @@ async fn process_ws_messages(
                 request.owner = player_id.clone();
                 let _ = market_tx.send(MarketMessage::OrderRequest(request)).await;
             }
+            Ok(WebSocketIncomingMessage::ConnectionReady) => { /* Only for WS initialisation */ }
             Err(err) => println!("{err:?}"),
         }
     }
@@ -59,6 +88,8 @@ async fn process_internal_messages(
             println!("Unable to serialize message: {msg:?}");
             return;
         };
-        let _ = sink.send(Message::text(msg)).await;
+        if sink.send(Message::text(msg)).await.is_err() {
+            return;
+        }
     }
 }

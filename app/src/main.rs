@@ -12,7 +12,7 @@ use axum::{
 };
 use game::{ConnectPlayerResponse, Game, GameContext, RegisterPlayerResponse};
 use market::MarketMessage;
-use player::PlayerConnection;
+use player::PlayerConnectionActor;
 use serde::Deserialize;
 use tokio::{
     net::TcpListener,
@@ -124,7 +124,7 @@ async fn handle_ws_connection(
 
 async fn handle_socket(socket: WebSocket, player_id: String, market: Sender<MarketMessage>) {
     tokio::spawn(async move {
-        PlayerConnection::start(socket, player_id, market).await;
+        PlayerConnectionActor::start(socket, player_id, market).await;
     });
 }
 
