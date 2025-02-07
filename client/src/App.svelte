@@ -1,9 +1,9 @@
 <script lang="ts">
-  import Game from "./components/pages/Game.svelte";
-  import JoinGame from "./components/pages/JoinGame.svelte";
-  type State = "Home" | "Register" | "Game";
+import Game from "./components/pages/Game.svelte";
+import JoinGame from "./components/pages/JoinGame.svelte";
+type State = "Home" | "Register" | "Game";
 
-  let state = $state<State>("Home");
+let state = $state<State>("Home");
 </script>
 
 {#if state === "Home"}

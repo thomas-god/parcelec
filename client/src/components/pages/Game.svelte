@@ -3,7 +3,7 @@ import OrderBookElement from "../molecules/OrderBook.svelte";
 import { match } from "ts-pattern";
 import { parseMessage, type OrderBook, type Trade } from "../../lib/message";
 
-const socket = new WebSocket(import.meta.env.VITE_APP_URL);
+const socket = new WebSocket(`${import.meta.env.VITE_WS_URL}/ws`);
 
 let orderBook: OrderBook = $state({
 	bids: [],

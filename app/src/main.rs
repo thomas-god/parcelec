@@ -18,7 +18,7 @@ use tower_cookies::{
     cookie::{time::Duration, SameSite},
     Cookie, CookieManagerLayer, Cookies,
 };
-use tower_http::cors::{Any, CorsLayer};
+use tower_http::cors::CorsLayer;
 use uuid::Uuid;
 
 pub mod market;
