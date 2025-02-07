@@ -6,13 +6,12 @@ WORKDIR /app
 COPY Cargo.toml /app
 COPY src/ /app/src
 
-ENV ALLOW_ORIGIN = "https://parcelec.org"
-
 RUN cargo build --release
 
 # Prod layer
 FROM gcr.io/distroless/cc
 COPY --from=builder /app/target/release/parcelec-app /
+ENV ALLOW_ORIGIN = "https://parcelec.org"
 
 CMD ["./parcelec-app"]
 
