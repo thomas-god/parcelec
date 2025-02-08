@@ -1,7 +1,7 @@
 <script module>
   import { defineMeta } from "@storybook/addon-svelte-csf";
-  import { none, some } from "../lib/Options";
-  import NumberInput from "../components/atoms/NumberInput.svelte";
+  import { none, some } from "../../lib/Options";
+  import NumberInput from "../../components/atoms/NumberInput.svelte";
 
   let value = $state(0);
 
