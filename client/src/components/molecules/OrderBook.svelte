@@ -43,10 +43,8 @@
       <h3 class="text-xl font-semibold mb-2 text-end">Achats</h3>
       <ul class="space-y-2">
         {#each orderBook.bids as bid (bid.created_at)}
-          <li
-            class="flex justify-end p-2 shadow-md shadow-green-500 rounded animate-fade-in-scale"
-          >
-            <OrderBookEntry price={bid.price} volume={bid.volume} />
+          <li>
+            <OrderBookEntry entry={bid} />
           </li>
         {/each}
       </ul>
@@ -58,10 +56,8 @@
       <h3 class="text-xl font-semibold mb-2 text-start">Ventes</h3>
       <ul class="space-y-2">
         {#each orderBook.offers as offer (offer.created_at)}
-          <li
-            class="flex justify-between p-2 shadow-md shadow-red-500 rounded animate-fade-in-scale"
-          >
-            <OrderBookEntry price={offer.price} volume={offer.volume} />
+          <li>
+            <OrderBookEntry entry={offer} />
           </li>
         {/each}
       </ul>

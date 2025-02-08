@@ -47,7 +47,6 @@
 
   let socket = connect();
   let socketIsOpen = $state(false);
-  $inspect(socketIsOpen);
 
   const sendMessage = (msg: string) => {
     socket.send(msg);
