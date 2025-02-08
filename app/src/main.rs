@@ -143,6 +143,11 @@ async fn join_game(
         return StatusCode::BAD_REQUEST;
     }
 
+    let Ok(domain) = env::var("DOMAIN") else {
+        println!("No DOMAIN environnement variable");
+        return StatusCode::INTERNAL_SERVER_ERROR;
+    };
+
     let (tx, rx) = channel::<RegisterPlayerResponse>();
     let game = state.context.game.clone();
 
@@ -169,6 +174,7 @@ async fn join_game(
     let id_cookie = Cookie::build(("id", id.clone()))
         .max_age(Duration::days(1))
         .same_site(SameSite::Strict)
+        .domain(domain.clone())
         .path("/")
         .build();
     cookies.add(id_cookie);
@@ -176,6 +182,7 @@ async fn join_game(
     let name_cookie = Cookie::build(("name", input.name.clone()))
         .max_age(Duration::days(1))
         .same_site(SameSite::Strict)
+        .domain(domain)
         .path("/")
         .build();
     cookies.add(name_cookie);
