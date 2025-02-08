@@ -10,7 +10,7 @@
     "prepare": "svelte-kit sync || echo ''",
     "prepack": "svelte-kit sync && svelte-package && publint",
     "test": "vitest",
-    "format": "npx @biomejs/biome format --write ./src",
+    "format": "prettier --write .",
     "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.app.json && tsc -p tsconfig.node.json",
     "storybook": "storybook dev -p 6006"
   },
@@ -34,7 +34,6 @@
     "svelte": "^5.0.0"
   },
   "devDependencies": {
-    "@biomejs/biome": "1.9.4",
     "@chromatic-com/storybook": "^3.2.4",
     "@storybook/addon-essentials": "^8.5.3",
     "@storybook/addon-interactions": "^8.5.3",
@@ -49,6 +48,8 @@
     "@sveltejs/vite-plugin-svelte": "^5.0.3",
     "@tailwindcss/vite": "^4.0.3",
     "@tsconfig/svelte": "^5.0.4",
+    "prettier": "^3.4.2",
+    "prettier-plugin-svelte": "^3.3.3",
     "publint": "^0.3.4",
     "storybook": "^8.5.3",
     "svelte": "^5.15.0",
