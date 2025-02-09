@@ -2,6 +2,8 @@ use std::fmt::Debug;
 
 use serde::Serialize;
 
+pub mod gas_plant;
+
 pub trait PowerPlant {
     type Output: PowerPlant;
     type PublicState: Serialize + Clone + Debug;
