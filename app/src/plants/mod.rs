@@ -2,6 +2,7 @@ use std::fmt::Debug;
 
 use serde::Serialize;
 
+pub mod battery;
 pub mod gas_plant;
 
 pub trait PowerPlant {
