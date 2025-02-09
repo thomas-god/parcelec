@@ -26,6 +26,7 @@ use tower_http::cors::CorsLayer;
 
 pub mod game;
 pub mod market;
+pub mod plants;
 pub mod player;
 
 struct AppState {
