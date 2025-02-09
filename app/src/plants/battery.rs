@@ -11,8 +11,9 @@ pub struct Battery {
 pub struct BatterySettings {
     max_charge: usize,
 }
-#[derive(Debug, Clone, Serialize, PartialEq)]
-pub struct BatteryPublicState {
+
+#[derive(Serialize)]
+struct BatteryPublicState {
     setpoint: isize,
     charge: usize,
 }
@@ -38,9 +39,6 @@ impl Battery {
     }
 }
 impl PowerPlant for Battery {
-    type Output = Battery;
-    type PublicState = BatteryPublicState;
-
     /// For a battery in generator convention:
     /// - **positive** setpoint will **discharge** the battery (energy provided to the grid)
     /// - **negative** setpoint will **charge the** battery (energy taken from the grid)
@@ -52,14 +50,15 @@ impl PowerPlant for Battery {
         self.cost()
     }
 
-    fn current_state(&self) -> Box<Self::PublicState> {
-        Box::new(BatteryPublicState {
+    fn current_state(&self) -> String {
+        serde_json::to_string(&BatteryPublicState {
             setpoint: self.setpoint.unwrap_or(0),
             charge: self.charge,
         })
+        .unwrap()
     }
 
-    fn dispatch(self) -> (Box<Self::Output>, isize) {
+    fn dispatch(&mut self) -> isize {
         let next_charge = usize::try_from(
             isize::try_from(self.charge)
                 .unwrap_or(isize::MAX)
@@ -67,15 +66,9 @@ impl PowerPlant for Battery {
         )
         .unwrap_or(0);
         let cost = self.cost();
-
-        (
-            Box::new(Battery {
-                charge: next_charge,
-                setpoint: None,
-                settings: self.settings,
-            }),
-            cost,
-        )
+        self.charge = next_charge;
+        self.setpoint = None;
+        cost
     }
 }
 
@@ -88,32 +81,32 @@ mod tests {
         let mut battery = Battery::new(1_000, 0);
 
         // Basic charge of the battery (power is negative in generator convention)
-        assert_eq!(battery.current_state().charge, 0);
+        assert_eq!(battery.charge, 0);
         assert_eq!(battery.program_setpoint(-100), 0);
-        assert_eq!(battery.current_state().setpoint, -100);
+        assert_eq!(battery.setpoint, Some(-100));
 
-        let (mut battery, cost) = battery.dispatch();
-        assert_eq!(cost, 0);
+        let dispatch_cost = battery.dispatch();
+        assert_eq!(dispatch_cost, 0);
 
-        assert_eq!(battery.current_state().charge, 100);
+        assert_eq!(battery.charge, 100);
 
         // Basic discharge of the battery (power is positive in generator convention)
         battery.program_setpoint(50);
-        let (mut battery, _) = battery.dispatch();
-        assert_eq!(battery.current_state().charge, 50);
+        battery.dispatch();
+        assert_eq!(battery.charge, 50);
 
         // Too much power is clipped in regard to max available discharge
         // Current charge is 50, and max is 1000 -> 50 should be clipped
         battery.program_setpoint(-1000);
-        assert_eq!(battery.current_state().setpoint, -950);
-        let (mut battery, _) = battery.dispatch();
-        assert_eq!(battery.current_state().charge, 1000);
+        assert_eq!(battery.setpoint, Some(-950));
+        battery.dispatch();
+        assert_eq!(battery.charge, 1000);
 
         // Too much power is clipped in regard to max available charge
         // Current charge is 1000, 100 should be clipped
         battery.program_setpoint(1100);
-        assert_eq!(battery.current_state().setpoint, 1000);
-        let (battery, _) = battery.dispatch();
-        assert_eq!(battery.current_state().charge, 0);
+        assert_eq!(battery.setpoint, Some(1000));
+        battery.dispatch();
+        assert_eq!(battery.charge, 0);
     }
 }

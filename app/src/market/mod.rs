@@ -471,13 +471,13 @@ mod tests {
         else {
             unreachable!("Should have received an OBS")
         };
-        assert_eq!(bids[0].owned, true);
+        assert!(bids[0].owned);
 
         // OBS for second player says it does not own the order
         let Some(PlayerMessage::OrderBookSnapshot { bids, offers: _ }) = rx_seller.recv().await
         else {
             unreachable!("Should have received an OBS")
         };
-        assert_eq!(bids[0].owned, false);
+        assert!(!bids[0].owned);
     }
 }
