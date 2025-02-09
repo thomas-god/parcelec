@@ -1,10 +1,15 @@
+use std::collections::HashMap;
+
 use tokio::sync::{
     mpsc::{channel, Receiver, Sender},
     oneshot::Sender as OneShotSender,
 };
 use uuid::Uuid;
 
-use crate::market::{Market, MarketMessage};
+use crate::{
+    market::{Market, MarketMessage},
+    plants::stack::{StackActor, StackMessage},
+};
 
 #[derive(Debug)]
 pub struct Player {
@@ -40,11 +45,13 @@ pub enum ConnectPlayerResponse {
 pub struct GameContext {
     pub game: Sender<GameMessage>,
     pub market: Sender<MarketMessage>,
+    pub stacks: HashMap<String, Sender<StackMessage>>,
 }
 
 pub struct Game {
     players: Vec<Player>,
     market: Sender<MarketMessage>,
+    stacks: HashMap<String, Sender<StackMessage>>,
     rx: Receiver<GameMessage>,
     tx: Sender<GameMessage>,
 }
@@ -63,6 +70,7 @@ impl Game {
         Game {
             market: market_tx,
             players: Vec::new(),
+            stacks: HashMap::new(),
             rx,
             tx,
         }
@@ -75,12 +83,22 @@ impl Game {
                     if self.players.iter().any(|player| player.name == name) {
                         let _ = tx_back.send(RegisterPlayerResponse::PlayerAlreadyExist);
                     } else {
+                        // Generate player ID
                         let player_id = Uuid::new_v4().to_string();
                         let player = Player {
                             id: player_id.clone(),
                             name,
                         };
                         self.players.push(player);
+
+                        // Create a new stack for the player
+                        let mut player_stack = StackActor::new(player_id.clone());
+                        self.stacks.insert(player_id.clone(), player_stack.get_tx());
+                        tokio::spawn(async move {
+                            player_stack.start().await;
+                        });
+                        println!("Stack created for player {player_id}");
+
                         let _ = tx_back.send(RegisterPlayerResponse::Success { id: player_id });
                     }
                 }
@@ -107,6 +125,7 @@ impl Game {
         GameContext {
             game: self.get_tx(),
             market: self.get_market(),
+            stacks: self.stacks.clone(),
         }
     }
 }

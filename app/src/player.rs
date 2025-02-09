@@ -1,5 +1,6 @@
 use axum::extract::ws::{Message, WebSocket};
 use futures_util::{
+    future::join_all,
     stream::{SplitSink, SplitStream},
     SinkExt, StreamExt,
 };
@@ -36,13 +37,14 @@ impl PlayerConnectionActor {
             }
         }
 
-        let _ = market
-            .send(MarketMessage::NewPlayerConnection(PlayerConnection {
+        join_all([
+            market.send(MarketMessage::NewPlayerConnection(PlayerConnection {
                 id: connection_id.clone(),
                 player_id: player_id.clone(),
                 tx: tx.clone(),
-            }))
-            .await;
+            })),
+        ])
+        .await;
 
         let (sink, stream) = ws.split();
         let sink_handle = tokio::spawn(process_internal_messages(sink, rx));

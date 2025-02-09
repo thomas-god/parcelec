@@ -15,7 +15,7 @@ pub enum StackMessage {
 /// A stack is the collection of power plants owned by a given player
 pub struct StackActor {
     player_id: String,
-    plants: HashMap<String, Box<dyn PowerPlant>>,
+    plants: HashMap<String, Box<dyn PowerPlant + Send + Sync>>,
     tx: Sender<StackMessage>,
     rx: Receiver<StackMessage>,
     player_connections: Vec<PlayerConnection>,
@@ -27,7 +27,7 @@ impl StackActor {
 
         StackActor {
             player_id,
-            plants: defautl_plants(),
+            plants: default_plants(),
             player_connections: Vec::new(),
             tx,
             rx,
@@ -67,8 +67,8 @@ impl StackActor {
     }
 }
 
-fn defautl_plants() -> HashMap<String, Box<dyn PowerPlant>> {
-    let mut map: HashMap<String, Box<dyn PowerPlant>> = HashMap::new();
+fn default_plants() -> HashMap<String, Box<dyn PowerPlant + Send + Sync>> {
+    let mut map: HashMap<String, Box<dyn PowerPlant + Send + Sync>> = HashMap::new();
     map.insert(
         Uuid::new_v4().to_string(),
         Box::new(Battery::new(1_000, 500)),
