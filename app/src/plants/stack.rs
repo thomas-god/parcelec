@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use serde::Deserialize;
 use tokio::sync::mpsc::{channel, Receiver, Sender};
 use uuid::Uuid;
 
@@ -7,8 +8,14 @@ use crate::market::PlayerConnection;
 
 use super::{battery::Battery, gas_plant::GasPlant, PowerPlant};
 
+#[derive(Debug, Deserialize)]
+pub struct ProgramPlant {
+    pub plant_id: String,
+    pub setpoint: isize,
+}
+
 pub enum StackMessage {
-    ProgramSetpoint { plant_id: String, setpoint: isize },
+    ProgramSetpoint(ProgramPlant),
     RegisterPlayerConnection(PlayerConnection),
 }
 
@@ -44,7 +51,7 @@ impl StackActor {
                 StackMessage::RegisterPlayerConnection(connection) => {
                     self.handle_player_connection(connection);
                 }
-                StackMessage::ProgramSetpoint { plant_id, setpoint } => {
+                StackMessage::ProgramSetpoint(ProgramPlant { plant_id, setpoint }) => {
                     let _ = self.program_plant_setpoint(plant_id, setpoint).await;
                 }
             }

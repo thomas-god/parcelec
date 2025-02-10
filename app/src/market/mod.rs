@@ -47,7 +47,6 @@ impl PlayerOrder {
 #[derive(Clone, Serialize, Debug)]
 #[serde(tag = "type")]
 pub enum PlayerMessage {
-    // OfferRequestAccepted { offer_id: String },
     NewTrade(TradeLeg),
     OrderBookSnapshot {
         bids: Vec<PlayerOrder>,

@@ -10,13 +10,14 @@ use uuid::Uuid;
 
 use crate::{
     market::{order_book::OrderRequest, MarketMessage, PlayerConnection, PlayerMessage},
-    plants::stack::StackMessage,
+    plants::stack::{ProgramPlant, StackMessage},
 };
 
 #[derive(Deserialize, Debug)]
 enum WebSocketIncomingMessage {
     ConnectionReady,
     OrderRequest(OrderRequest),
+    ProgramPlant(ProgramPlant),
 }
 
 pub struct PlayerConnectionActor {}
@@ -59,6 +60,7 @@ impl PlayerConnectionActor {
         let stream_handle = tokio::spawn(process_ws_messages(
             stream,
             market.clone(),
+            stack.clone(),
             player_id.clone(),
         ));
         let _ = tokio::try_join!(sink_handle, stream_handle);
@@ -75,6 +77,7 @@ impl PlayerConnectionActor {
 async fn process_ws_messages(
     mut stream: SplitStream<WebSocket>,
     market_tx: Sender<MarketMessage>,
+    stack_tx: Sender<StackMessage>,
     player_id: String,
 ) {
     while let Some(Ok(Message::Text(msg))) = stream.next().await {
@@ -84,6 +87,9 @@ async fn process_ws_messages(
                 let _ = market_tx.send(MarketMessage::OrderRequest(request)).await;
             }
             Ok(WebSocketIncomingMessage::ConnectionReady) => { /* Only for WS initialisation */ }
+            Ok(WebSocketIncomingMessage::ProgramPlant(req)) => {
+                let _ = stack_tx.send(StackMessage::ProgramSetpoint(req)).await;
+            }
             Err(err) => println!("{err:?}"),
         }
     }
