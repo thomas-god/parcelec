@@ -1,6 +1,6 @@
 use serde::Serialize;
 
-use super::PowerPlant;
+use super::{PowerPlant, PowerPlantPublicRepr};
 
 /// Store energy accros delivery periods
 pub struct Battery {
@@ -12,10 +12,11 @@ pub struct BatterySettings {
     max_charge: usize,
 }
 
-#[derive(Serialize)]
-struct BatteryPublicState {
-    setpoint: isize,
-    charge: usize,
+#[derive(Debug, Serialize, Clone, Copy)]
+pub struct BatteryPublicRepr {
+    pub max_charge: usize,
+    pub current_setpoint: isize,
+    pub charge: usize,
 }
 
 impl Battery {
@@ -50,12 +51,12 @@ impl PowerPlant for Battery {
         self.cost()
     }
 
-    fn current_state(&self) -> String {
-        serde_json::to_string(&BatteryPublicState {
-            setpoint: self.setpoint.unwrap_or(0),
+    fn current_state(&self) -> PowerPlantPublicRepr {
+        PowerPlantPublicRepr::Battery(BatteryPublicRepr {
+            max_charge: self.settings.max_charge,
+            current_setpoint: self.setpoint.unwrap_or(0),
             charge: self.charge,
         })
-        .unwrap()
     }
 
     fn dispatch(&mut self) -> isize {

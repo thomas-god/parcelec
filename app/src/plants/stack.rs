@@ -6,7 +6,7 @@ use uuid::Uuid;
 
 use crate::market::PlayerConnection;
 
-use super::{battery::Battery, gas_plant::GasPlant, PowerPlant};
+use super::{battery::Battery, gas_plant::GasPlant, PowerPlant, PowerPlantPublicRepr};
 
 #[derive(Debug, Deserialize)]
 pub struct ProgramPlant {
@@ -49,7 +49,7 @@ impl StackActor {
         while let Some(message) = self.rx.recv().await {
             match message {
                 StackMessage::RegisterPlayerConnection(connection) => {
-                    self.handle_player_connection(connection);
+                    self.handle_player_connection(connection).await;
                 }
                 StackMessage::ProgramSetpoint(ProgramPlant { plant_id, setpoint }) => {
                     let _ = self.program_plant_setpoint(plant_id, setpoint).await;
@@ -58,12 +58,30 @@ impl StackActor {
         }
     }
 
-    fn handle_player_connection(&mut self, conn: PlayerConnection) {
+    async fn handle_player_connection(&mut self, conn: PlayerConnection) {
         if conn.player_id != self.player_id {
             return;
         }
-
+        let conn_id = conn.id.clone();
         self.player_connections.push(conn);
+        self.send_stack_snapshot(conn_id).await;
+    }
+
+    async fn send_stack_snapshot(&self, conn_id: String) {
+        let Some(conn) = self.player_connections.iter().find(|c| c.id == conn_id) else {
+            return;
+        };
+
+        let stack_snapshot: HashMap<String, PowerPlantPublicRepr> = self
+            .plants
+            .iter()
+            .map(|(id, p)| (id.to_owned(), p.current_state()))
+            .collect();
+
+        let _ = conn
+            .tx
+            .send(crate::market::PlayerMessage::StackSnapshot(stack_snapshot))
+            .await;
     }
 
     async fn program_plant_setpoint(&mut self, plant_id: String, setpoint: isize) {
@@ -80,6 +98,9 @@ fn default_plants() -> HashMap<String, Box<dyn PowerPlant + Send + Sync>> {
         Uuid::new_v4().to_string(),
         Box::new(Battery::new(1_000, 500)),
     );
-    map.insert(Uuid::new_v4().to_string(), Box::new(GasPlant::new(85)));
+    map.insert(
+        Uuid::new_v4().to_string(),
+        Box::new(GasPlant::new(85, 1000)),
+    );
     map
 }

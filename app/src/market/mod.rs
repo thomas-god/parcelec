@@ -1,4 +1,4 @@
-use std::fmt::Debug;
+use std::{collections::HashMap, fmt::Debug};
 
 use chrono::{DateTime, Utc};
 use futures_util::future::{join, join_all};
@@ -7,6 +7,8 @@ use serde::Serialize;
 use tokio::sync::mpsc::{channel, Receiver, Sender};
 
 use order_book::{Bid, Offer, OrderBook, OrderRequest, TradeLeg};
+
+use crate::plants::PowerPlantPublicRepr;
 
 pub mod models;
 pub mod order_book;
@@ -52,6 +54,7 @@ pub enum PlayerMessage {
         bids: Vec<PlayerOrder>,
         offers: Vec<PlayerOrder>,
     },
+    StackSnapshot(HashMap<String, PowerPlantPublicRepr>),
 }
 
 #[derive(Debug)]

@@ -1,20 +1,25 @@
 use serde::Serialize;
 
-use super::PowerPlant;
+use super::{PowerPlant, PowerPlantPublicRepr};
 
 /// Plant with no dynamic constraints.
 pub struct GasPlant {
     settings: GasPlantSettings,
     setpoint: Option<isize>,
 }
-struct GasPlantSettings {
+#[derive(Debug, Serialize, Clone, Copy)]
+pub struct GasPlantSettings {
     energy_cost: isize,
+    max_setpoint: isize,
 }
 
 impl GasPlant {
-    pub fn new(energy_cost: isize) -> GasPlant {
+    pub fn new(energy_cost: isize, max_setpoint: isize) -> GasPlant {
         GasPlant {
-            settings: GasPlantSettings { energy_cost },
+            settings: GasPlantSettings {
+                energy_cost,
+                max_setpoint,
+            },
             setpoint: None,
         }
     }
@@ -26,10 +31,11 @@ impl GasPlant {
     }
 }
 
-#[derive(Serialize)]
-struct GasPlantPublicState {
-    cost: isize,
-    setpoint: isize,
+#[derive(Debug, Serialize, Clone, Copy)]
+pub struct GasPlantPublicRepr {
+    pub settings: GasPlantSettings,
+    pub cost: isize,
+    pub setpoint: isize,
 }
 
 impl PowerPlant for GasPlant {
@@ -38,12 +44,12 @@ impl PowerPlant for GasPlant {
         self.cost()
     }
 
-    fn current_state(&self) -> String {
-        serde_json::to_string(&GasPlantPublicState {
+    fn current_state(&self) -> PowerPlantPublicRepr {
+        PowerPlantPublicRepr::GasPlant(GasPlantPublicRepr {
+            settings: self.settings,
             cost: self.cost(),
             setpoint: self.setpoint.unwrap_or(0),
         })
-        .unwrap()
     }
 
     fn dispatch(&mut self) -> isize {
@@ -59,7 +65,7 @@ mod tests {
 
     #[test]
     fn test_gas_plant() {
-        let mut plant = GasPlant::new(47);
+        let mut plant = GasPlant::new(47, 1000);
 
         assert_eq!(plant.program_setpoint(100), 47 * 100);
 

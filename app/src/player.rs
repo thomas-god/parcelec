@@ -1,11 +1,13 @@
 use axum::extract::ws::{Message, WebSocket};
 use futures_util::{
-    future::join_all,
     stream::{SplitSink, SplitStream},
     SinkExt, StreamExt,
 };
 use serde::Deserialize;
-use tokio::sync::mpsc::{channel, Receiver, Sender};
+use tokio::{
+    sync::mpsc::{channel, Receiver, Sender},
+    task::JoinSet,
+};
 use uuid::Uuid;
 
 use crate::{
@@ -46,14 +48,7 @@ impl PlayerConnectionActor {
             }
         }
 
-        join_all([
-            market.send(MarketMessage::NewPlayerConnection(PlayerConnection {
-                id: connection_id.clone(),
-                player_id: player_id.clone(),
-                tx: tx.clone(),
-            })),
-        ])
-        .await;
+        register_connection(&player_id, &market, &stack, &connection_id, tx).await;
 
         let (sink, stream) = ws.split();
         let sink_handle = tokio::spawn(process_internal_messages(sink, rx));
@@ -72,6 +67,64 @@ impl PlayerConnectionActor {
             .send(MarketMessage::PlayerDisconnection { connection_id })
             .await;
     }
+}
+
+async fn register_connection(
+    player_id: &str,
+    market: &Sender<MarketMessage>,
+    stack: &Sender<StackMessage>,
+    connection_id: &str,
+    tx: Sender<PlayerMessage>,
+) {
+    let mut set = JoinSet::new();
+    let p_id = player_id.to_owned();
+    let m_tx = market.clone();
+    let c_id = connection_id.to_owned();
+    let tx_cloned = tx.clone();
+    set.spawn(async move {
+        connect_to_market(p_id, m_tx, c_id, tx_cloned).await;
+    });
+
+    let p_id = player_id.to_owned();
+    let s_tx = stack.clone();
+    let c_id = connection_id.to_owned();
+    let tx_cloned = tx.clone();
+    set.spawn(async move {
+        connect_to_stack(p_id, s_tx, c_id, tx_cloned).await;
+    });
+    set.join_all().await;
+}
+
+async fn connect_to_stack(
+    player_id: String,
+    stack: Sender<StackMessage>,
+    connection_id: String,
+    tx: Sender<PlayerMessage>,
+) -> Option<()> {
+    stack
+        .send(StackMessage::RegisterPlayerConnection(PlayerConnection {
+            id: connection_id,
+            player_id,
+            tx,
+        }))
+        .await
+        .ok()
+}
+
+async fn connect_to_market(
+    player_id: String,
+    market: Sender<MarketMessage>,
+    connection_id: String,
+    tx: Sender<PlayerMessage>,
+) -> Option<()> {
+    market
+        .send(MarketMessage::NewPlayerConnection(PlayerConnection {
+            id: connection_id,
+            player_id,
+            tx,
+        }))
+        .await
+        .ok()
 }
 
 async fn process_ws_messages(
@@ -100,6 +153,7 @@ async fn process_internal_messages(
     mut rx: Receiver<PlayerMessage>,
 ) {
     while let Some(msg) = rx.recv().await {
+        println!("{msg:?}");
         let Ok(msg) = serde_json::to_string(&msg) else {
             println!("Unable to serialize message: {msg:?}");
             return;

@@ -1,6 +1,16 @@
+use battery::BatteryPublicRepr;
+use gas_plant::GasPlantPublicRepr;
+use serde::Serialize;
+
 pub mod battery;
 pub mod gas_plant;
 pub mod stack;
+
+#[derive(Debug, Serialize, Clone, Copy)]
+pub enum PowerPlantPublicRepr {
+    Battery(BatteryPublicRepr),
+    GasPlant(GasPlantPublicRepr),
+}
 
 pub trait PowerPlant {
     /// Program the setpoint for the next delivery period.
@@ -10,5 +20,5 @@ pub trait PowerPlant {
     fn dispatch(&mut self) -> isize;
 
     /// Retrieve a string representation of the plant's state
-    fn current_state(&self) -> String;
+    fn current_state(&self) -> PowerPlantPublicRepr;
 }
