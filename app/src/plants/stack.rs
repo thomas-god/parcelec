@@ -4,7 +4,7 @@ use serde::Deserialize;
 use tokio::sync::mpsc::{channel, Receiver, Sender};
 use uuid::Uuid;
 
-use crate::market::PlayerConnection;
+use crate::{market::PlayerConnection, player::PlayerMessage};
 
 use super::{battery::Battery, gas_plant::GasPlant, PowerPlant, PowerPlantPublicRepr};
 
@@ -80,7 +80,9 @@ impl StackActor {
 
         let _ = conn
             .tx
-            .send(crate::market::PlayerMessage::StackSnapshot(stack_snapshot))
+            .send(PlayerMessage::StackSnapshot {
+                plants: stack_snapshot,
+            })
             .await;
     }
 

@@ -1,9 +1,11 @@
+use std::collections::HashMap;
+
 use axum::extract::ws::{Message, WebSocket};
 use futures_util::{
     stream::{SplitSink, SplitStream},
     SinkExt, StreamExt,
 };
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use tokio::{
     sync::mpsc::{channel, Receiver, Sender},
     task::JoinSet,
@@ -11,8 +13,14 @@ use tokio::{
 use uuid::Uuid;
 
 use crate::{
-    market::{order_book::OrderRequest, MarketMessage, PlayerConnection, PlayerMessage},
-    plants::stack::{ProgramPlant, StackMessage},
+    market::{
+        order_book::{OrderRequest, TradeLeg},
+        MarketMessage, PlayerConnection, PlayerOrder,
+    },
+    plants::{
+        stack::{ProgramPlant, StackMessage},
+        PowerPlantPublicRepr,
+    },
 };
 
 #[derive(Deserialize, Debug)]
@@ -22,6 +30,18 @@ enum WebSocketIncomingMessage {
     ProgramPlant(ProgramPlant),
 }
 
+#[derive(Clone, Serialize, Debug)]
+#[serde(tag = "type")]
+pub enum PlayerMessage {
+    NewTrade(TradeLeg),
+    OrderBookSnapshot {
+        bids: Vec<PlayerOrder>,
+        offers: Vec<PlayerOrder>,
+    },
+    StackSnapshot {
+        plants: HashMap<String, PowerPlantPublicRepr>,
+    },
+}
 pub struct PlayerConnectionActor {}
 
 impl PlayerConnectionActor {

@@ -13,6 +13,24 @@ const OrderBookEntrySchema = z.object({
   created_at: z.string().datetime(),
 });
 
+const PowerPlantRepr = z.discriminatedUnion("type", [
+  z.object({
+    type: z.literal("Battery"),
+    max_charge: z.number().int(),
+    current_setpoint: z.number().int(),
+    charge: z.number().int(),
+  }),
+  z.object({
+    type: z.literal("GasPlant"),
+    settings: z.object({
+      energy_cost: z.number(),
+      max_setpoint: z.number(),
+    }),
+    cost: z.number(),
+    setpoint: z.number(),
+  }),
+]);
+
 const WSMessageSchema = z.discriminatedUnion("type", [
   z.object({
     type: z.literal("OrderBookSnapshot"),
@@ -27,6 +45,12 @@ const WSMessageSchema = z.discriminatedUnion("type", [
     owner: z.string(),
     execution_time: z.string().datetime(),
   }),
+  z.object({
+    type: z.literal("StackSnapshot"),
+    plants: z
+      .record(z.string(), PowerPlantRepr)
+      .transform((rec) => new Map(Object.entries(rec))),
+  }),
 ]);
 
 type WSMessage = z.infer<typeof WSMessageSchema>;
@@ -36,6 +60,18 @@ export type OrderBook = Omit<
 >;
 export type Trade = Omit<Extract<WSMessage, { type: "NewTrade" }>, "type">;
 export type OrderBookEntry = z.infer<typeof OrderBookEntrySchema>;
+export type StackSnapshot = Omit<
+  Extract<WSMessage, { type: "StackSnapshot" }>,
+  "type"
+>["plants"];
+export type Battery = Extract<
+  StackSnapshot extends Map<any, infer I> ? I : never,
+  { type: "Battery" }
+>;
+export type GasPlant = Extract<
+  StackSnapshot extends Map<any, infer I> ? I : never,
+  { type: "GasPlant" }
+>;
 
 export const parseMessage = (
   msg: string,

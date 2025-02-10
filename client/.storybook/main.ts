@@ -15,6 +15,6 @@ const config: StorybookConfig = {
     options: {},
   },
 
-  docs: {}
+  docs: {},
 };
 export default config;

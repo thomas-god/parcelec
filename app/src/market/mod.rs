@@ -1,4 +1,4 @@
-use std::{collections::HashMap, fmt::Debug};
+use std::fmt::Debug;
 
 use chrono::{DateTime, Utc};
 use futures_util::future::{join, join_all};
@@ -6,9 +6,9 @@ use models::Direction;
 use serde::Serialize;
 use tokio::sync::mpsc::{channel, Receiver, Sender};
 
-use order_book::{Bid, Offer, OrderBook, OrderRequest, TradeLeg};
+use order_book::{Bid, Offer, OrderBook, OrderRequest};
 
-use crate::plants::PowerPlantPublicRepr;
+use crate::player::PlayerMessage;
 
 pub mod models;
 pub mod order_book;
@@ -44,17 +44,6 @@ impl PlayerOrder {
             owned: player_id.map(|id| *id == bid.0.owner).unwrap_or(false),
         }
     }
-}
-
-#[derive(Clone, Serialize, Debug)]
-#[serde(tag = "type")]
-pub enum PlayerMessage {
-    NewTrade(TradeLeg),
-    OrderBookSnapshot {
-        bids: Vec<PlayerOrder>,
-        offers: Vec<PlayerOrder>,
-    },
-    StackSnapshot(HashMap<String, PowerPlantPublicRepr>),
 }
 
 #[derive(Debug)]

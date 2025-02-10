@@ -7,6 +7,7 @@ pub mod gas_plant;
 pub mod stack;
 
 #[derive(Debug, Serialize, Clone, Copy)]
+#[serde(tag = "type")]
 pub enum PowerPlantPublicRepr {
     Battery(BatteryPublicRepr),
     GasPlant(GasPlantPublicRepr),

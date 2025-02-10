@@ -1,15 +1,22 @@
 <script lang="ts">
   import { match } from "ts-pattern";
-  import { parseMessage, type OrderBook, type Trade } from "$lib/message";
+  import {
+    parseMessage,
+    type OrderBook,
+    type StackSnapshot,
+    type Trade,
+  } from "$lib/message";
   import { PUBLIC_WS_URL } from "$env/static/public";
   import OrderBookElement from "../../components/molecules/OrderBook.svelte";
   import { goto } from "$app/navigation";
+  import Stack from "../../components/organisms/Stack.svelte";
 
   let orderBook: OrderBook = $state({
     bids: [],
     offers: [],
   });
   let trades: Trade[] = $state([]);
+  let plants: StackSnapshot = $state(new Map());
 
   const connect = () => {
     const socket = new WebSocket(`${PUBLIC_WS_URL}/ws`);
@@ -31,6 +38,9 @@
         })
         .with({ type: "NewTrade" }, (new_trade) => {
           trades.push(new_trade);
+        })
+        .with({ type: "StackSnapshot" }, (stack_snapshot) => {
+          plants = stack_snapshot.plants;
         })
         .exhaustive();
     };
@@ -56,6 +66,7 @@
 <main class="p-2">
   {#if socketIsOpen}
     <OrderBookElement {orderBook} send={sendMessage} />
+    <Stack {plants} />
   {:else}
     <p>Not connected</p>
   {/if}
