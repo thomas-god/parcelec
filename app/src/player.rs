@@ -8,7 +8,10 @@ use serde::Deserialize;
 use tokio::sync::mpsc::{channel, Receiver, Sender};
 use uuid::Uuid;
 
-use crate::market::{order_book::OrderRequest, MarketMessage, PlayerConnection, PlayerMessage};
+use crate::{
+    market::{order_book::OrderRequest, MarketMessage, PlayerConnection, PlayerMessage},
+    plants::stack::StackMessage,
+};
 
 #[derive(Deserialize, Debug)]
 enum WebSocketIncomingMessage {
@@ -19,7 +22,12 @@ enum WebSocketIncomingMessage {
 pub struct PlayerConnectionActor {}
 
 impl PlayerConnectionActor {
-    pub async fn start(mut ws: WebSocket, player_id: String, market: Sender<MarketMessage>) {
+    pub async fn start(
+        mut ws: WebSocket,
+        player_id: String,
+        market: Sender<MarketMessage>,
+        stack: Sender<StackMessage>,
+    ) {
         let connection_id = Uuid::new_v4().to_string();
         let (tx, rx) = channel::<PlayerMessage>(16);
 

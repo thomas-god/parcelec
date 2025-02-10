@@ -12,6 +12,7 @@ use axum::{
 };
 use game::{ConnectPlayerResponse, Game, GameContext, RegisterPlayerResponse};
 use market::MarketMessage;
+use plants::stack::StackMessage;
 use player::PlayerConnectionActor;
 use serde::Deserialize;
 use tokio::{
@@ -92,9 +93,10 @@ async fn handle_ws_connection(
         })
         .await;
 
-    match rx.await {
-        Ok(ConnectPlayerResponse::OK) => {
+    let player_stack = match rx.await {
+        Ok(ConnectPlayerResponse::OK { player_stack }) => {
             println!("Player is connected, continuing with processing WS");
+            player_stack
         }
         Ok(ConnectPlayerResponse::DoesNotExist) => {
             println!("Player does not exist, invalidating its cookies");
@@ -113,6 +115,10 @@ async fn handle_ws_connection(
             cookies.add(name_cookie);
             return StatusCode::UNAUTHORIZED.into_response();
         }
+        Ok(ConnectPlayerResponse::NoStackFound) => {
+            println!("Player exists but has no matching stack");
+            return StatusCode::INTERNAL_SERVER_ERROR.into_response();
+        }
         Err(err) => {
             println!("Something went wrong");
             println!("{err:?}");
@@ -120,12 +126,17 @@ async fn handle_ws_connection(
         }
     };
     let market = state.context.market.clone();
-    ws.on_upgrade(move |socket| handle_socket(socket, id, market))
+    ws.on_upgrade(move |socket| handle_socket(socket, id, market, player_stack))
 }
 
-async fn handle_socket(socket: WebSocket, player_id: String, market: Sender<MarketMessage>) {
+async fn handle_socket(
+    socket: WebSocket,
+    player_id: String,
+    market: Sender<MarketMessage>,
+    stack: Sender<StackMessage>,
+) {
     tokio::spawn(async move {
-        PlayerConnectionActor::start(socket, player_id, market).await;
+        PlayerConnectionActor::start(socket, player_id, market, stack).await;
     });
 }
 

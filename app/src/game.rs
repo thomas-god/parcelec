@@ -37,7 +37,8 @@ pub enum RegisterPlayerResponse {
 }
 #[derive(Debug)]
 pub enum ConnectPlayerResponse {
-    OK,
+    OK { player_stack: Sender<StackMessage> },
+    NoStackFound,
     DoesNotExist,
 }
 
@@ -80,37 +81,53 @@ impl Game {
         while let Some(msg) = self.rx.recv().await {
             match msg {
                 GameMessage::RegisterPlayer { name, tx_back } => {
-                    if self.players.iter().any(|player| player.name == name) {
-                        let _ = tx_back.send(RegisterPlayerResponse::PlayerAlreadyExist);
-                    } else {
-                        // Generate player ID
-                        let player_id = Uuid::new_v4().to_string();
-                        let player = Player {
-                            id: player_id.clone(),
-                            name,
-                        };
-                        self.players.push(player);
-
-                        // Create a new stack for the player
-                        let mut player_stack = StackActor::new(player_id.clone());
-                        self.stacks.insert(player_id.clone(), player_stack.get_tx());
-                        tokio::spawn(async move {
-                            player_stack.start().await;
-                        });
-                        println!("Stack created for player {player_id}");
-
-                        let _ = tx_back.send(RegisterPlayerResponse::Success { id: player_id });
-                    }
+                    self.register_player(name, tx_back);
                 }
                 GameMessage::ConnectPlayer { id, tx_back } => {
-                    if self.players.iter().any(|player| player.id == id) {
-                        let _ = tx_back.send(ConnectPlayerResponse::OK);
-                    } else {
-                        let _ = tx_back.send(ConnectPlayerResponse::DoesNotExist);
-                    }
+                    self.connect_player(id, tx_back);
                 }
             }
         }
+    }
+
+    fn connect_player(&mut self, id: String, tx_back: OneShotSender<ConnectPlayerResponse>) {
+        if !self.players.iter().any(|player| player.id == id) {
+            let _ = tx_back.send(ConnectPlayerResponse::DoesNotExist);
+            return;
+        }
+
+        let Some(player_stack) = self.stacks.get(&id) else {
+            let _ = tx_back.send(ConnectPlayerResponse::NoStackFound);
+            return;
+        };
+
+        let _ = tx_back.send(ConnectPlayerResponse::OK {
+            player_stack: player_stack.clone(),
+        });
+    }
+
+    fn register_player(&mut self, name: String, tx_back: OneShotSender<RegisterPlayerResponse>) {
+        if self.players.iter().any(|player| player.name == name) {
+            let _ = tx_back.send(RegisterPlayerResponse::PlayerAlreadyExist);
+            return;
+        }
+        // Generate player ID
+        let player_id = Uuid::new_v4().to_string();
+        let player = Player {
+            id: player_id.clone(),
+            name,
+        };
+        self.players.push(player);
+
+        // Create a new stack for the player
+        let mut player_stack = StackActor::new(player_id.clone());
+        self.stacks.insert(player_id.clone(), player_stack.get_tx());
+        tokio::spawn(async move {
+            player_stack.start().await;
+        });
+        println!("Stack created for player {player_id}");
+
+        let _ = tx_back.send(RegisterPlayerResponse::Success { id: player_id });
     }
 
     pub fn get_tx(&self) -> Sender<GameMessage> {
@@ -266,9 +283,6 @@ mod tests {
         let game = context.game.clone();
         // Register a player
         let (tx, rx) = channel::<RegisterPlayerResponse>();
-        // context
-        //     .game
-        //     .clone()
         game.send(crate::game::GameMessage::RegisterPlayer {
             name: "toto".to_owned(),
             tx_back: tx,
@@ -282,9 +296,6 @@ mod tests {
 
         // Connect the player
         let (tx, rx) = channel::<ConnectPlayerResponse>();
-        // context
-        //     .game
-        //     .clone()
         game.send(crate::game::GameMessage::ConnectPlayer {
             id: id.clone(),
             tx_back: tx,
@@ -292,15 +303,12 @@ mod tests {
         .await
         .unwrap();
         match rx.await {
-            Ok(ConnectPlayerResponse::OK) => {}
+            Ok(ConnectPlayerResponse::OK { player_stack: _ }) => {}
             _ => unreachable!("Should have connected the player"),
         };
 
         // Connection should be idempotent
         let (tx, rx) = channel::<ConnectPlayerResponse>();
-        // context
-        //     .game
-        //     .clone()
         game.send(crate::game::GameMessage::ConnectPlayer {
             id: id.clone(),
             tx_back: tx,
@@ -308,7 +316,7 @@ mod tests {
         .await
         .unwrap();
         match rx.await {
-            Ok(ConnectPlayerResponse::OK) => {}
+            Ok(ConnectPlayerResponse::OK { player_stack: _ }) => {}
             _ => unreachable!("Should have connected the player"),
         };
     }
