@@ -7,7 +7,7 @@
     type Trade,
   } from "$lib/message";
   import { PUBLIC_WS_URL } from "$env/static/public";
-  import OrderBookElement from "../../components/molecules/OrderBook.svelte";
+  import OrderBookElement from "../../components/organisms/OrderBook.svelte";
   import { goto } from "$app/navigation";
   import Stack from "../../components/organisms/Stack.svelte";
 
@@ -65,46 +65,11 @@
 
 <main class="p-2">
   {#if socketIsOpen}
-    <OrderBookElement {orderBook} send={sendMessage} />
-    <Stack {plants} />
+    <div class="flex flex-col gap-6">
+      <OrderBookElement {orderBook} send={sendMessage} />
+      <Stack {plants} />
+    </div>
   {:else}
     <p>Not connected</p>
   {/if}
-  <!-- <div class="mt-8">
-        <h3 class="text-xl font-semibold mb-2 text-center">Trades</h3>
-        <div class="grid grid-cols-2 gap-6 h-64 overflow-y-auto p-4">
-          <ul class="space-y-2">
-            {#each trades as trade, i}
-              {#if i % 2 === 0}
-                <li
-                  class="flex justify-between p-2 rounded border-dashed border-2 {trade.direction ===
-                  'Buy'
-                    ? 'border-green-500'
-                    : 'border-red-500'}"
-                >
-                  <span>Price: {trade.price / 100} €</span>
-                  <span>Volume: {trade.volume}</span>
-                  <span>Direction: {trade.direction}</span>
-                </li>
-              {/if}
-            {/each}
-          </ul>
-          <ul class="space-y-2">
-            {#each trades as trade, i}
-              {#if i % 2 !== 0}
-                <li
-                  class="flex justify-between p-2 rounded border-dashed border-2 {trade.direction ===
-                  'Buy'
-                    ? 'border-green-500'
-                    : 'border-red-500'}"
-                >
-                  <span>Price: {trade.price / 100} €</span>
-                  <span>Volume: {trade.volume}</span>
-                  <span>Direction: {trade.direction}</span>
-                </li>
-              {/if}
-            {/each}
-          </ul>
-        </div>
-      </div> -->
 </main>

@@ -64,11 +64,11 @@ export type StackSnapshot = Omit<
   Extract<WSMessage, { type: "StackSnapshot" }>,
   "type"
 >["plants"];
-export type Battery = Extract<
+export type BatteryState = Extract<
   StackSnapshot extends Map<any, infer I> ? I : never,
   { type: "Battery" }
 >;
-export type GasPlant = Extract<
+export type GasPlantState = Extract<
   StackSnapshot extends Map<any, infer I> ? I : never,
   { type: "GasPlant" }
 >;
