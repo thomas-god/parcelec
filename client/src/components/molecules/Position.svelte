@@ -3,18 +3,18 @@
   import { match } from "ts-pattern";
 
   let { plants, trades }: { plants: StackSnapshot; trades: Trade[] } = $props();
-  let plants_position = $derived(
-    plants.entries().reduce(
-      (acc, [_id, plant]) =>
-        acc +
-        match(plant)
-          .with({ type: "Battery" }, (batt) => batt.current_setpoint)
-          .with({ type: "GasPlant" }, (plant) => plant.setpoint)
-          .with({ type: "RenewablePlant" }, (plant) => plant.setpoint)
-          .exhaustive(),
-      0,
-    ),
-  );
+  let plants_position = $derived.by(() => {
+    /// Cannot use plants.entries().reduce(/.../) on WebKit...
+    let total = 0;
+    for (const [_, plant] of plants.entries()) {
+      total += match(plant)
+        .with({ type: "Battery" }, (batt) => batt.current_setpoint)
+        .with({ type: "GasPlant" }, (plant) => plant.setpoint)
+        .with({ type: "RenewablePlant" }, (plant) => plant.setpoint)
+        .exhaustive();
+    }
+    return total;
+  });
 
   let trades_position = $derived(
     trades.reduce(
