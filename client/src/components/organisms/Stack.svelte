@@ -2,6 +2,7 @@
   import type { StackSnapshot } from "$lib/message";
   import Battery from "../molecules/Battery.svelte";
   import GasPlant from "../molecules/GasPlant.svelte";
+  import RenewablePlant from "../molecules/RenewablePlant.svelte";
 
   let { plants, send }: { plants: StackSnapshot; send: (msg: string) => void } =
     $props();
@@ -30,6 +31,8 @@
         {plant}
         updateSetpoint={(setpoint) => programSetpoint(id, setpoint)}
       />
+    {:else if plant.type === "RenewablePlant"}
+      <RenewablePlant {plant} />
     {/if}
   {/each}
 </div>

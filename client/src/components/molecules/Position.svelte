@@ -10,6 +10,7 @@
         match(plant)
           .with({ type: "Battery" }, (batt) => batt.current_setpoint)
           .with({ type: "GasPlant" }, (plant) => plant.setpoint)
+          .with({ type: "RenewablePlant" }, (plant) => plant.setpoint)
           .exhaustive(),
       0,
     ),

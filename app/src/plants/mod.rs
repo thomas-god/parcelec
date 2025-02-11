@@ -1,9 +1,11 @@
 use battery::BatteryPublicRepr;
 use gas_plant::GasPlantPublicRepr;
+use renewable::RenewablePlantPublicRepr;
 use serde::Serialize;
 
 pub mod battery;
 pub mod gas_plant;
+pub mod renewable;
 pub mod stack;
 
 #[derive(Debug, Serialize, Clone, Copy)]
@@ -11,6 +13,7 @@ pub mod stack;
 pub enum PowerPlantPublicRepr {
     Battery(BatteryPublicRepr),
     GasPlant(GasPlantPublicRepr),
+    RenewablePlant(RenewablePlantPublicRepr),
 }
 
 pub trait PowerPlant {
