@@ -40,7 +40,7 @@ pub struct GasPlantPublicRepr {
 
 impl PowerPlant for GasPlant {
     fn program_setpoint(&mut self, setpoint: isize) -> isize {
-        self.setpoint = Some(setpoint);
+        self.setpoint = Some(setpoint.max(0).min(self.settings.max_setpoint));
         self.cost()
     }
 
@@ -73,5 +73,11 @@ mod tests {
         assert_eq!(dispatch_cost, 47 * 100);
 
         assert_eq!(plant.program_setpoint(0), 0);
+
+        // Setpoint cannot be negative
+        assert_eq!(plant.program_setpoint(-100), 0);
+
+        // Setpoint will be clipped if above P_max
+        assert_eq!(plant.program_setpoint(1100), 1000 * 47);
     }
 }
