@@ -67,7 +67,7 @@
   {#if socketIsOpen}
     <div class="flex flex-col gap-6">
       <OrderBookElement {orderBook} send={sendMessage} />
-      <Stack {plants} />
+      <Stack {plants} send={sendMessage} />
     </div>
   {:else}
     <p>Not connected</p>
