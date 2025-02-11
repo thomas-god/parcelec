@@ -7,16 +7,16 @@
   }: { battery: BatteryState; updateSetpoint: (setpoint: number) => void } =
     $props();
 
-  let current_setpoint = $state(0);
+  let current_setpoint = $state("0");
   $effect(() => {
-    current_setpoint = battery.current_setpoint;
+    current_setpoint = String(battery.current_setpoint);
   });
 
   let debounceTimer: ReturnType<typeof setTimeout>;
   const deboundedUpdateSetpoint = () => {
     clearTimeout(debounceTimer);
     debounceTimer = setTimeout(() => {
-      updateSetpoint(current_setpoint);
+      updateSetpoint(Number.parseInt(current_setpoint));
     }, 500);
   };
 
@@ -115,7 +115,9 @@
       <label
         >Consigne
         <input
-          type="number"
+          type="text"
+          inputmode="numeric"
+          pattern="[-]?[0-9]*"
           bind:value={current_setpoint}
           oninput={deboundedUpdateSetpoint}
           class="max-w-[60px] text-center"

@@ -41,7 +41,9 @@
       <label
         >Consigne
         <input
-          type="number"
+          type="text"
+          inputmode="numeric"
+          pattern="[-]?[0-9]*"
           bind:value={current_setpoint}
           oninput={deboundedUpdateSetpoint}
           class="max-w-[60px] text-center"

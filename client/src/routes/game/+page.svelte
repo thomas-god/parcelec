@@ -73,9 +73,9 @@
   };
 </script>
 
-<main class="p-2 max-w-[600px]">
+<main class="p-2 max-w-[600px] mx-auto">
   {#if socketIsOpen}
-    <div class="flex flex-col gap-6">
+    <div class="flex flex-col gap-6 items-stretch">
       <Position {plants} {trades} />
       <Stack {plants} send={sendMessage} />
       <OrderBookElement {orderBook} send={sendMessage} />

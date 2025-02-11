@@ -31,9 +31,11 @@
       </button>
     {/if}
     <input
-      type="number"
+      type="text"
+      inputmode="numeric"
+      pattern="[-]?[0-9]*"
       bind:value
-      class="block w-full rounded border-gray-300 shadow-sm p-2 text-center"
+      class="block w-full rounded border-gray-300 shadow-sm p-2 text-center max-w-16"
     />
     {#if showBigIncr}
       <button
