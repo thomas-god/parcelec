@@ -16,7 +16,7 @@ pub struct Trade {
 }
 
 impl Trade {
-    pub fn split(&self) -> (TradeLeg, TradeLeg) {
+    pub fn split(&self) -> [TradeLeg; 2] {
         let buy_trade_leg = TradeLeg {
             direction: Direction::Buy,
             volume: self.volume,
@@ -31,7 +31,15 @@ impl Trade {
             execution_time: self.execution_time,
             owner: self.seller.clone(),
         };
-        (buy_trade_leg, sell_trade_leg)
+        [buy_trade_leg, sell_trade_leg]
+    }
+
+    pub fn for_player(&self, player_id: &str) -> Vec<TradeLeg> {
+        self.split()
+            .iter()
+            .filter(|leg| leg.owner == player_id)
+            .cloned()
+            .collect()
     }
 }
 
@@ -157,7 +165,7 @@ impl Ord for Offer {
 pub struct OrderBook {
     offers: BinaryHeap<Offer>,
     bids: BinaryHeap<Bid>,
-    trades: Vec<Trade>,
+    pub trades: Vec<Trade>,
 }
 
 pub struct OrderBookSnapshot<'a> {
@@ -615,7 +623,7 @@ mod test_trade_leg {
 
         assert_eq!(
             trade.split(),
-            (
+            [
                 TradeLeg {
                     direction: Direction::Buy,
                     owner: "buyer".to_string(),
@@ -630,7 +638,67 @@ mod test_trade_leg {
                     price: 50_00,
                     execution_time: trade.execution_time
                 },
-            )
+            ]
         )
+    }
+
+    #[test]
+    fn test_trade_to_player() {
+        let trade = Trade {
+            buyer: "buyer".to_string(),
+            seller: "seller".to_string(),
+            volume: 10,
+            price: 50_00,
+            execution_time: Utc::now(),
+        };
+
+        assert_eq!(
+            trade.for_player("buyer"),
+            vec![TradeLeg {
+                direction: Direction::Buy,
+                owner: "buyer".to_string(),
+                volume: 10,
+                price: 50_00,
+                execution_time: trade.execution_time
+            },]
+        );
+        assert_eq!(
+            trade.for_player("seller"),
+            vec![TradeLeg {
+                direction: Direction::Sell,
+                owner: "seller".to_string(),
+                volume: 10,
+                price: 50_00,
+                execution_time: trade.execution_time
+            },]
+        );
+        assert_eq!(trade.for_player("toto"), vec![]);
+
+        let trade = Trade {
+            buyer: "same_player".to_string(),
+            seller: "same_player".to_string(),
+            volume: 10,
+            price: 50_00,
+            execution_time: Utc::now(),
+        };
+        assert_eq!(
+            trade.for_player("same_player"),
+            vec![
+                TradeLeg {
+                    direction: Direction::Buy,
+                    owner: "same_player".to_string(),
+                    volume: 10,
+                    price: 50_00,
+                    execution_time: trade.execution_time
+                },
+                TradeLeg {
+                    direction: Direction::Sell,
+                    owner: "same_player".to_string(),
+                    volume: 10,
+                    price: 50_00,
+                    execution_time: trade.execution_time
+                },
+            ]
+        );
     }
 }
