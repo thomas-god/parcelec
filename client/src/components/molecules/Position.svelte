@@ -25,4 +25,6 @@
   );
 </script>
 
-<p>Position totale: {plants_position + trades_position} MW</p>
+<div class="text-2xl text-center">
+  Equilibre: {plants_position + trades_position} MW
+</div>

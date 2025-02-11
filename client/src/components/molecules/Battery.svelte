@@ -90,25 +90,27 @@
   });
 </script>
 
-<div class="flex flex-col @container max-w-[400px]">
-  <!-- <div>🔋</div> -->
-  <div
-    class="mb-1 h-6 rounded-full bg-gray-200 grow grid grid-rows-1"
-    style={grid_template}
-  >
+<div
+  class="flex flex-col @container max-w-[400px] self-center"
+  style="width: 100%;"
+>
+  <div class="flex flex-row">
+    <div>🔋</div>
     <div
-      class="h-6 rounded-full bg-orange-500 col-start-1 col-end-2"
-      style={current_charge_style}
-    ></div>
-    <div
-      class="h-6 rounded-full border-dotted"
-      style={delta_charge_style}
-    ></div>
-  </div>
-  <div class="flex flex-col @sm:flex-row @sm:justify-between">
-    <div class="justify-self-start">
-      Charge: {battery.charge} / {battery.max_charge} MWh
+      class="mb-1 h-6 rounded-full bg-gray-200 grow grid grid-rows-1"
+      style={grid_template}
+    >
+      <div
+        class="h-6 rounded-full bg-orange-500 col-start-1 col-end-2"
+        style={current_charge_style}
+      ></div>
+      <div
+        class="h-6 rounded-full border-dotted"
+        style={delta_charge_style}
+      ></div>
     </div>
+  </div>
+  <div class="flex flex-col @xs:flex-row @xs:justify-between">
     <div>
       <label
         >Consigne
@@ -121,6 +123,10 @@
         />
         MW
       </label>
+    </div>
+    <div class="justify-self-start">
+      <span class="hidden @sm:inline pr-1">Charge:</span>{battery.charge} / {battery.max_charge}
+      MWh
     </div>
   </div>
 </div>

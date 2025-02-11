@@ -73,12 +73,12 @@
   };
 </script>
 
-<main class="p-2">
+<main class="p-2 max-w-[600px]">
   {#if socketIsOpen}
     <div class="flex flex-col gap-6">
       <Position {plants} {trades} />
-      <OrderBookElement {orderBook} send={sendMessage} />
       <Stack {plants} send={sendMessage} />
+      <OrderBookElement {orderBook} send={sendMessage} />
     </div>
   {:else}
     <p>Not connected</p>

@@ -35,7 +35,25 @@
 </script>
 
 <div class="flex flex-col">
-  <h2 class="text-2xl font-bold mb-4 text-center">Carnet d'ordres</h2>
+  <h2 class="text-lg font-bold">Carnet d'ordres</h2>
+  <!-- Add an offer -->
+  <div class="">
+    <h3 class="text-xl font-semibold mb-2 text-center">Ajouter une offre</h3>
+    <div class="grid grid-cols-2 gap-2 mb-6">
+      <NumberInput bind:value={price} label={"Price"} bigIncr={some(1)} />
+      <NumberInput bind:value={volume} label={"Volume"} bigIncr={some(10)} />
+    </div>
+    <div class="flex justify-center space-x-4">
+      <button
+        class="px-4 py-2 bg-green-500 text-white rounded"
+        onclick={() => sendOrderRequest("Buy")}>BUY</button
+      >
+      <button
+        class="px-4 py-2 bg-red-500 text-white rounded"
+        onclick={() => sendOrderRequest("Sell")}>SELL</button
+      >
+    </div>
+  </div>
   <!-- {#if !Number.isNaN(spread)}
     <p class="mb-4 text-center text-lg">Spread: {spread} €</p>
     {/if} -->
@@ -65,25 +83,6 @@
           </li>
         {/each}
       </ul>
-    </div>
-  </div>
-
-  <!-- Add an offer -->
-  <div class="mt-8">
-    <h3 class="text-xl font-semibold mb-2 text-center">Ajouter une offre</h3>
-    <div class="grid grid-cols-2 gap-2 mb-6">
-      <NumberInput bind:value={price} label={"Price"} bigIncr={some(1)} />
-      <NumberInput bind:value={volume} label={"Volume"} bigIncr={some(10)} />
-    </div>
-    <div class="flex justify-center space-x-4">
-      <button
-        class="px-4 py-2 bg-green-500 text-white rounded"
-        onclick={() => sendOrderRequest("Buy")}>BUY</button
-      >
-      <button
-        class="px-4 py-2 bg-red-500 text-white rounded"
-        onclick={() => sendOrderRequest("Sell")}>SELL</button
-      >
     </div>
   </div>
 </div>

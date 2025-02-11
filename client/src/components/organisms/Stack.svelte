@@ -19,7 +19,8 @@
   };
 </script>
 
-<div class="flex flex-col content-center gap-4">
+<div class="flex flex-col gap-4">
+  <h2 class="text-lg font-bold">Centrales</h2>
   {#each sortedPlant.entries() as [id, plant] (id)}
     {#if plant.type === "Battery"}
       <Battery
