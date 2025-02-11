@@ -10,6 +10,7 @@ use axum::{
     routing::{get, post},
     Json, Router,
 };
+use bots::start_bots;
 use game::{ConnectPlayerResponse, Game, GameContext, RegisterPlayerResponse};
 use market::MarketMessage;
 use plants::stack::StackMessage;
@@ -25,6 +26,7 @@ use tower_cookies::{
 };
 use tower_http::cors::CorsLayer;
 
+pub mod bots;
 pub mod game;
 pub mod market;
 pub mod plants;
@@ -41,6 +43,8 @@ async fn main() {
     tokio::spawn(async move {
         game.run().await;
     });
+
+    start_bots(context.market.clone()).await;
 
     let addr = "0.0.0.0:9002";
     let listener = TcpListener::bind(&addr)
