@@ -27,6 +27,7 @@ use crate::{
 enum WebSocketIncomingMessage {
     ConnectionReady,
     OrderRequest(OrderRequest),
+    DeleteOrder { order_id: String },
     ProgramPlant(ProgramPlant),
 }
 
@@ -161,6 +162,11 @@ async fn process_ws_messages(
             Ok(WebSocketIncomingMessage::OrderRequest(mut request)) => {
                 request.owner = player_id.clone();
                 let _ = market_tx.send(MarketMessage::OrderRequest(request)).await;
+            }
+            Ok(WebSocketIncomingMessage::DeleteOrder { order_id }) => {
+                let _ = market_tx
+                    .send(MarketMessage::OrderDeletionRequest { order_id })
+                    .await;
             }
             Ok(WebSocketIncomingMessage::ConnectionReady) => { /* Only for WS initialisation */ }
             Ok(WebSocketIncomingMessage::ProgramPlant(req)) => {

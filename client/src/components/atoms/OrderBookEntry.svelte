@@ -2,8 +2,10 @@
   import { type OrderBookEntry } from "$lib/message";
   const {
     entry,
+    deleteEntry,
   }: {
     entry: OrderBookEntry;
+    deleteEntry: (order_id: String) => void;
   } = $props();
 
   const price_in_euros = $derived(entry.price / 100);
@@ -16,6 +18,9 @@
       : 'font-normal'}"
   >
     {price_in_euros}€ ({entry.volume} MW)
+    <button onclick={() => deleteEntry(entry.order_id)}
+      >{entry.owned ? "🗑️" : ""}</button
+    >
   </span>
 {:else}
   <span
@@ -24,5 +29,8 @@
       : 'font-normal'}"
   >
     {price_in_euros}€ ({entry.volume} MW)
+    <button onclick={() => deleteEntry(entry.order_id)}
+      >{entry.owned ? "🗑️" : ""}</button
+    >
   </span>
 {/if}

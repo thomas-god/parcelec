@@ -47,14 +47,15 @@ const WSMessageSchema = z.discriminatedUnion("type", [
   }),
   z.object({
     type: z.literal("TradeList"),
-    trades: z.array(z.object({
-      direction: Direction,
-      volume: Volume,
-      price: Price,
-      owner: z.string(),
-      execution_time: z.string().datetime(),
-    })
-    )
+    trades: z.array(
+      z.object({
+        direction: Direction,
+        volume: Volume,
+        price: Price,
+        owner: z.string(),
+        execution_time: z.string().datetime(),
+      }),
+    ),
   }),
   z.object({
     type: z.literal("StackSnapshot"),

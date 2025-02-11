@@ -19,7 +19,7 @@
     return (orderBook.offers[0].price - orderBook.bids[0].price) / 100;
   });
 
-  const sendOfferRequest = (direction: "Sell" | "Buy") => {
+  const sendOrderRequest = (direction: "Sell" | "Buy") => {
     const orderRequest = {
       price: price * 100,
       volume,
@@ -27,6 +27,10 @@
       owner: "toto",
     };
     send(JSON.stringify({ OrderRequest: orderRequest }));
+  };
+
+  const deleteOrder = (order_id: String) => {
+    send(JSON.stringify({ DeleteOrder: { order_id } }));
   };
 </script>
 
@@ -44,7 +48,7 @@
       <ul class="space-y-2">
         {#each orderBook.bids as bid (bid.created_at)}
           <li>
-            <OrderBookEntry entry={bid} />
+            <OrderBookEntry entry={bid} deleteEntry={deleteOrder} />
           </li>
         {/each}
       </ul>
@@ -57,7 +61,7 @@
       <ul class="space-y-2">
         {#each orderBook.offers as offer (offer.created_at)}
           <li>
-            <OrderBookEntry entry={offer} />
+            <OrderBookEntry entry={offer} deleteEntry={deleteOrder} />
           </li>
         {/each}
       </ul>
@@ -74,11 +78,11 @@
     <div class="flex justify-center space-x-4">
       <button
         class="px-4 py-2 bg-green-500 text-white rounded"
-        onclick={() => sendOfferRequest("Buy")}>BUY</button
+        onclick={() => sendOrderRequest("Buy")}>BUY</button
       >
       <button
         class="px-4 py-2 bg-red-500 text-white rounded"
-        onclick={() => sendOfferRequest("Sell")}>SELL</button
+        onclick={() => sendOrderRequest("Sell")}>SELL</button
       >
     </div>
   </div>
