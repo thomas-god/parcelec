@@ -64,7 +64,7 @@
     <div
       class="flex flex-col h-64 overflow-y-auto p-2 max-w-64 justify-self-end"
     >
-      <h3 class="text-xl font-semibold mb-2 text-end">Achats</h3>
+      <h3 class="text-xl font-semibold mb-2 text-end">Acheteurs</h3>
       <ul class="space-y-2">
         {#each orderBook.bids as bid (bid.created_at)}
           <li>
@@ -77,7 +77,7 @@
     <div
       class="flex flex-col h-64 overflow-y-auto p-2 max-w-64 justify-self-start"
     >
-      <h3 class="text-xl font-semibold mb-2 text-start">Ventes</h3>
+      <h3 class="text-xl font-semibold mb-2 text-start">Vendeurs</h3>
       <ul class="space-y-2">
         {#each orderBook.offers as offer (offer.created_at)}
           <li>

@@ -9,16 +9,16 @@
   let setpoint_percentage = $derived(
     (plant.setpoint / plant.settings.max_setpoint) * 100,
   );
-  let current_setpoint = $state(0);
+  let current_setpoint = $state("0");
   $effect(() => {
-    current_setpoint = plant.setpoint;
+    current_setpoint = String(plant.setpoint);
   });
 
   let debounceTimer: ReturnType<typeof setTimeout>;
   const deboundedUpdateSetpoint = () => {
     clearTimeout(debounceTimer);
     debounceTimer = setTimeout(() => {
-      updateSetpoint(current_setpoint);
+      updateSetpoint(Number.parseInt(current_setpoint));
     }, 500);
   };
 </script>
@@ -52,6 +52,8 @@
         MW
       </label>
     </div>
-    <div>{plant.cost}€ ({plant.settings.energy_cost} €/MWh)</div>
+    <div>
+      {plant.cost.toLocaleString("fr-FR")}€ ({plant.settings.energy_cost} €/MWh)
+    </div>
   </div>
 </div>
