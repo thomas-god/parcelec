@@ -10,6 +10,7 @@
   import OrderBookElement from "../../components/organisms/OrderBook.svelte";
   import { goto } from "$app/navigation";
   import Stack from "../../components/organisms/Stack.svelte";
+  import Position from "../../components/molecules/Position.svelte";
 
   let orderBook: OrderBook = $state({
     bids: [],
@@ -42,6 +43,15 @@
         .with({ type: "StackSnapshot" }, (stack_snapshot) => {
           plants = stack_snapshot.plants;
         })
+        .with({ type: "TradeList" }, (trade_list) => {
+          const trades_to_add = [];
+          for (const trade of trade_list.trades) {
+            if (!trades.includes(trade)) {
+              trades_to_add.push(trade);
+            }
+          }
+          trades = trades.concat(trades_to_add);
+        })
         .exhaustive();
     };
     socket.onopen = () => {
@@ -66,6 +76,7 @@
 <main class="p-2">
   {#if socketIsOpen}
     <div class="flex flex-col gap-6">
+      <Position {plants} {trades} />
       <OrderBookElement {orderBook} send={sendMessage} />
       <Stack {plants} send={sendMessage} />
     </div>
