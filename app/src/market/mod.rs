@@ -1,12 +1,12 @@
 use std::fmt::Debug;
 
 use chrono::{DateTime, Utc};
-use futures_util::future::{join, join_all};
+use futures_util::future::join_all;
 use models::Direction;
 use serde::Serialize;
 use tokio::sync::mpsc::{channel, Receiver, Sender};
 
-use order_book::{Bid, Offer, OrderBook, OrderRequest};
+use order_book::{Bid, Offer, OrderBook, OrderRequest, TradeLeg};
 
 use crate::player::PlayerMessage;
 
@@ -99,6 +99,7 @@ impl Market {
                     println!("New player: {conn:?}");
                     self.players.push(conn.clone());
                     self.send_order_book_snapshot_to_conn(&conn).await;
+                    self.send_trade_list_to_conn(&conn).await
                 }
                 MarketMessage::OrderRequest(request) => self.process_new_offer(request).await,
                 MarketMessage::OrderDeletionRequest { order_id } => {
@@ -119,7 +120,7 @@ impl Market {
         }
     }
 
-    async fn send_to_connection(&self, connection_id: &String, message: PlayerMessage) {
+    async fn send_to_connection(&self, connection_id: &str, message: PlayerMessage) {
         join_all(
             self.players
                 .iter()
@@ -130,7 +131,7 @@ impl Market {
         .await;
     }
 
-    async fn send_to_player(&self, player_id: &String, message: PlayerMessage) {
+    async fn send_to_player(&self, player_id: String, message: PlayerMessage) {
         join_all(
             self.players
                 .iter()
@@ -169,6 +170,21 @@ impl Market {
         let _ = self.send_to_connection(&conn.id, message).await;
     }
 
+    async fn send_trade_list_to_conn(&self, conn: &PlayerConnection) {
+        let trade_legs: Vec<TradeLeg> = self
+            .order_book
+            .trades
+            .iter()
+            .flat_map(|trade| trade.for_player(&conn.player_id))
+            .collect();
+        let _ = self
+            .send_to_player(
+                conn.player_id.clone(),
+                PlayerMessage::TradeList { trades: trade_legs },
+            )
+            .await;
+    }
+
     async fn process_new_offer(&mut self, request: OrderRequest) {
         let trades = self.order_book.register_order_request(request);
         println!("New trades: {trades:?}");
@@ -176,13 +192,12 @@ impl Market {
         self.send_order_book_snapshot_to_all().await;
 
         if !trades.is_empty() {
-            for (leg_1, leg_2) in trades.iter().map(|trade| trade.split()) {
-                join(
-                    self.send_to_player(&leg_1.owner.clone(), PlayerMessage::NewTrade(leg_1)),
-                    self.send_to_player(&leg_2.owner.clone(), PlayerMessage::NewTrade(leg_2)),
-                )
-                .await;
-            }
+            join_all(trades.iter().flat_map(|trade| {
+                trade.split().map(|leg| {
+                    self.send_to_player(leg.owner.clone(), PlayerMessage::NewTrade(leg.clone()))
+                })
+            }))
+            .await;
         }
     }
 }
@@ -195,46 +210,83 @@ impl Default for Market {
 
 #[cfg(test)]
 mod tests {
-    use tokio::sync::mpsc::channel;
+    use tokio::sync::mpsc::{channel, Receiver, Sender};
     use uuid::Uuid;
 
     use crate::market::{models::Direction, order_book::OrderRequest, PlayerConnection};
 
     use super::{Market, MarketMessage, PlayerMessage};
 
-    #[tokio::test]
-    async fn test_register_player() {
+    fn start_market_actor() -> Sender<MarketMessage> {
         let mut market = Market::new();
         let market_tx = market.get_tx();
         tokio::spawn(async move {
             market.process().await;
         });
+        market_tx
+    }
 
-        // Register new player
-        let (tx, mut rx) = channel::<PlayerMessage>(1);
+    struct PlayerConn {
+        player_id: String,
+        rx: Receiver<PlayerMessage>,
+    }
+    async fn register_player(market_tx: Sender<MarketMessage>) -> PlayerConn {
+        let player_id = Uuid::new_v4().to_string();
+        let conn_id = Uuid::new_v4().to_string();
+        let (tx, mut rx) = channel::<PlayerMessage>(16);
         let _ = market_tx
             .send(MarketMessage::NewPlayerConnection(PlayerConnection {
-                id: Uuid::new_v4().to_string(),
-                player_id: "toto".to_string(),
+                id: conn_id.clone(),
+                player_id: player_id.clone(),
+                tx: tx.clone(),
+            }))
+            .await;
+        // Consume first Order Book snapshot
+        let _ = rx.recv().await;
+        // Consume first trade list
+        let _ = rx.recv().await;
+
+        PlayerConn { player_id, rx }
+    }
+
+    #[tokio::test]
+    async fn test_register_player() {
+        let market_tx = start_market_actor();
+
+        // Register a new player
+        let player_id = Uuid::new_v4().to_string();
+        let connection_id = Uuid::new_v4().to_string();
+        let (tx, mut player_rx) = channel::<PlayerMessage>(1);
+        let _ = market_tx
+            .send(MarketMessage::NewPlayerConnection(PlayerConnection {
+                id: connection_id.clone(),
+                player_id: player_id.clone(),
                 tx: tx.clone(),
             }))
             .await;
 
         // We shoudl receive an initial snapshot of the current order book
-        let Some(PlayerMessage::OrderBookSnapshot { bids: _, offers: _ }) = rx.recv().await else {
+        let Some(PlayerMessage::OrderBookSnapshot { bids: _, offers: _ }) = player_rx.recv().await
+        else {
             unreachable!("Should have received an order book snapshot");
         };
 
-        // Registering anoter player should not send a snapshot to the already connected player(s)
-        let (second_tx, mut second_rx) = channel::<PlayerMessage>(1);
-        let _ = market_tx
-            .send(MarketMessage::NewPlayerConnection(PlayerConnection {
-                id: Uuid::new_v4().to_string(),
-                player_id: "tutu".to_string(),
-                tx: second_tx.clone(),
-            }))
-            .await;
-        let _ = second_rx.recv().await;
+        // We should receive a list of the player's previous trades
+        let Some(PlayerMessage::TradeList { trades: _ }) = player_rx.recv().await else {
+            unreachable!("Should have received a list of past trades")
+        };
+    }
+
+    #[tokio::test]
+    async fn test_register_another_player() {
+        let market_tx = start_market_actor();
+        // Register a new player
+        let PlayerConn { mut rx, .. } = register_player(market_tx.clone()).await;
+
+        // Registering another player
+        register_player(market_tx.clone()).await;
+
+        // It should not send a snapshot to the already connected player(s)
         let Err(_) = rx.try_recv() else {
             unreachable!("Should not have received a message")
         };
@@ -242,32 +294,21 @@ mod tests {
 
     #[tokio::test]
     async fn test_process_request_order() {
-        // Start market actor
-        let mut market = Market::new();
-        let market_tx = market.get_tx();
-        tokio::spawn(async move {
-            market.process().await;
-        });
+        let market_tx = start_market_actor();
 
         // Register new player to market actor
-        let (tx, mut rx) = channel::<PlayerMessage>(1);
-        let _ = market_tx
-            .send(MarketMessage::NewPlayerConnection(PlayerConnection {
-                id: Uuid::new_v4().to_string(),
-                player_id: "toto".to_string(),
-                tx: tx.clone(),
-            }))
-            .await;
-        let _ = rx.recv().await;
+        let PlayerConn {
+            player_id, mut rx, ..
+        } = register_player(market_tx.clone()).await;
 
         // Send order request to market actor
         let order_request = MarketMessage::OrderRequest(OrderRequest {
             direction: Direction::Buy,
             price: 50_00,
             volume: 10,
-            owner: "toto".to_owned(),
+            owner: player_id.clone(),
         });
-        market_tx.send(order_request).await.unwrap();
+        market_tx.clone().send(order_request).await.unwrap();
 
         // The list of offers has been updated to contains our new offer
         let Some(PlayerMessage::OrderBookSnapshot { bids, offers }) = rx.recv().await else {
@@ -279,49 +320,41 @@ mod tests {
 
     #[tokio::test]
     async fn test_match_offers() {
-        // Start market actor
-        let mut market = Market::new();
-        let market_tx = market.get_tx();
-        tokio::spawn(async move {
-            market.process().await;
-        });
+        let market_tx = start_market_actor();
 
         // Register buyer player to market actor and send BUY order
-        let (tx_buyer, mut rx_buyer) = channel::<PlayerMessage>(1);
-        let _ = market_tx
-            .send(MarketMessage::NewPlayerConnection(PlayerConnection {
-                id: Uuid::new_v4().to_string(),
-                player_id: "buyer".to_string(),
-                tx: tx_buyer.clone(),
+        let PlayerConn {
+            player_id: buyer_id,
+            rx: mut rx_buyer,
+            ..
+        } = register_player(market_tx.clone()).await;
+        market_tx
+            .send(MarketMessage::OrderRequest(OrderRequest {
+                direction: Direction::Buy,
+                volume: 10,
+                price: 50_00,
+                owner: buyer_id.to_owned(),
             }))
-            .await;
-        let _ = rx_buyer.recv().await;
-        let buy_order = MarketMessage::OrderRequest(OrderRequest {
-            direction: Direction::Buy,
-            volume: 10,
-            price: 50_00,
-            owner: "buyer".to_owned(),
-        });
-        market_tx.send(buy_order).await.unwrap();
+            .await
+            .unwrap();
+        // Flush the corresponding OBS
         rx_buyer.recv().await.unwrap();
 
         // Register seller player to market actor and send SELL order
-        let (tx_seller, mut rx_seller) = channel::<PlayerMessage>(1);
-        let _ = market_tx
-            .send(MarketMessage::NewPlayerConnection(PlayerConnection {
-                id: Uuid::new_v4().to_string(),
-                player_id: "seller".to_string(),
-                tx: tx_seller.clone(),
+        let PlayerConn {
+            player_id: seller_id,
+            rx: mut rx_seller,
+            ..
+        } = register_player(market_tx.clone()).await;
+        market_tx
+            .send(MarketMessage::OrderRequest(OrderRequest {
+                direction: Direction::Sell,
+                volume: 10,
+                price: 50_00,
+                owner: seller_id.to_owned(),
             }))
-            .await;
-        let _ = rx_seller.recv().await;
-        let sell_order = MarketMessage::OrderRequest(OrderRequest {
-            direction: Direction::Sell,
-            volume: 10,
-            price: 50_00,
-            owner: "seller".to_owned(),
-        });
-        market_tx.send(sell_order).await.unwrap();
+            .await
+            .unwrap();
 
         // The order book snapshot should be empty for both players
         let Some(PlayerMessage::OrderBookSnapshot { bids, offers }) = rx_buyer.recv().await else {
@@ -349,23 +382,14 @@ mod tests {
 
     #[tokio::test]
     async fn same_player_multiple_connections() {
-        // Start market actor
-        let mut market = Market::new();
-        let market_tx = market.get_tx();
-        tokio::spawn(async move {
-            market.process().await;
-        });
+        let market_tx = start_market_actor();
 
         // register the same player id, over two distincts connections
-        let (tx_1, mut rx_1) = channel::<PlayerMessage>(16);
-        let _ = market_tx
-            .send(MarketMessage::NewPlayerConnection(PlayerConnection {
-                id: Uuid::new_v4().to_string(),
-                player_id: "same_player".to_string(),
-                tx: tx_1.clone(),
-            }))
-            .await;
-        let _ = rx_1.recv().await;
+        let PlayerConn {
+            player_id,
+            rx: mut rx_1,
+            ..
+        } = register_player(market_tx.clone()).await;
         let (tx_2, mut rx_2) = channel::<PlayerMessage>(16);
         let _ = market_tx
             .send(MarketMessage::NewPlayerConnection(PlayerConnection {
@@ -374,6 +398,8 @@ mod tests {
                 tx: tx_2.clone(),
             }))
             .await;
+        // Flush first OBS and trade list messages
+        let _ = rx_2.recv().await;
         let _ = rx_2.recv().await;
 
         // Generate some trades for the player, both connections should received them
@@ -382,7 +408,7 @@ mod tests {
                 direction: Direction::Sell,
                 volume: 10,
                 price: 50_00,
-                owner: "same_player".to_owned(),
+                owner: player_id.to_owned(),
             }))
             .await
             .unwrap();
@@ -419,41 +445,26 @@ mod tests {
 
     #[tokio::test]
     async fn test_order_book_snapshot_entry_owner() {
-        // Start market actor
-        let mut market = Market::new();
-        let market_tx = market.get_tx();
-        tokio::spawn(async move {
-            market.process().await;
-        });
+        let market_tx = start_market_actor();
 
         // Register first player to market actor
-        let (tx_buyer, mut rx_buyer) = channel::<PlayerMessage>(1);
-        let _ = market_tx
-            .send(MarketMessage::NewPlayerConnection(PlayerConnection {
-                id: Uuid::new_v4().to_string(),
-                player_id: "buyer".to_string(),
-                tx: tx_buyer.clone(),
-            }))
-            .await;
-        let _ = rx_buyer.recv().await;
+        let PlayerConn {
+            player_id,
+            rx: mut rx_buyer,
+            ..
+        } = register_player(market_tx.clone()).await;
 
         // Register second player to market actor
-        let (tx_seller, mut rx_seller) = channel::<PlayerMessage>(1);
-        let _ = market_tx
-            .send(MarketMessage::NewPlayerConnection(PlayerConnection {
-                id: Uuid::new_v4().to_string(),
-                player_id: "seller".to_string(),
-                tx: tx_seller.clone(),
-            }))
-            .await;
-        let _ = rx_seller.recv().await;
+        let PlayerConn {
+            rx: mut rx_seller, ..
+        } = register_player(market_tx.clone()).await;
 
         // Send an order with the first player
         let buy_order = MarketMessage::OrderRequest(OrderRequest {
             direction: Direction::Buy,
             volume: 10,
             price: 50_00,
-            owner: "buyer".to_owned(),
+            owner: player_id.to_owned(),
         });
         market_tx.send(buy_order).await.unwrap();
 

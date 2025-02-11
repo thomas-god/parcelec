@@ -38,6 +38,9 @@ pub enum PlayerMessage {
         bids: Vec<PlayerOrder>,
         offers: Vec<PlayerOrder>,
     },
+    TradeList {
+        trades: Vec<TradeLeg>,
+    },
     StackSnapshot {
         plants: HashMap<String, PowerPlantPublicRepr>,
     },
@@ -174,12 +177,15 @@ async fn process_internal_messages(
 ) {
     while let Some(msg) = rx.recv().await {
         println!("{msg:?}");
-        let Ok(msg) = serde_json::to_string(&msg) else {
-            println!("Unable to serialize message: {msg:?}");
-            return;
-        };
-        if sink.send(Message::text(msg)).await.is_err() {
-            return;
+        match serde_json::to_string(&msg) {
+            Ok(msg) => {
+                if sink.send(Message::text(msg)).await.is_err() {
+                    return;
+                }
+            }
+            Err(err) => {
+                println!("Unable to serialize message: {msg:?}, error: {err:?}");
+            }
         }
     }
 }
