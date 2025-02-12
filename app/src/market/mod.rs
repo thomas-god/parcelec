@@ -48,13 +48,22 @@ impl PlayerOrder {
 
 #[derive(Debug)]
 pub enum MarketMessage {
+    OpenMarket,
+    CloseMarket,
     OrderRequest(OrderRequest),
     OrderDeletionRequest { order_id: String },
     NewPlayerConnection(PlayerConnection),
     PlayerDisconnection { connection_id: String },
 }
 
+#[derive(Debug)]
+enum MarketState {
+    Open,
+    Closed,
+}
+
 pub struct Market {
+    state: MarketState,
     rx: Receiver<MarketMessage>,
     tx: Sender<MarketMessage>,
     order_book: OrderBook,
@@ -66,6 +75,7 @@ impl Market {
         let (tx, rx) = channel::<MarketMessage>(128);
 
         Market {
+            state: MarketState::Open,
             rx,
             tx,
             players: Vec::new(),
@@ -79,29 +89,34 @@ impl Market {
 
     pub async fn process(&mut self) {
         while let Some(message) = self.rx.recv().await {
-            match message {
-                MarketMessage::NewPlayerConnection(conn) => {
+            match (&self.state, message) {
+                (_, MarketMessage::NewPlayerConnection(conn)) => {
                     println!("New player: {conn:?}");
                     self.players.push(conn.clone());
                     self.send_order_book_snapshot_to_conn(&conn).await;
                     self.send_trade_list_to_conn(&conn).await
                 }
-                MarketMessage::OrderRequest(request) => self.process_new_offer(request).await,
-                MarketMessage::OrderDeletionRequest { order_id } => {
+                (MarketState::Open, MarketMessage::OrderRequest(request)) => {
+                    self.process_new_offer(request).await
+                }
+                (MarketState::Open, MarketMessage::OrderDeletionRequest { order_id }) => {
                     println!("Order deletion request for order: {order_id:?}");
                     self.order_book.remove_offer(order_id);
                     self.send_order_book_snapshot_to_all().await;
                 }
-                MarketMessage::PlayerDisconnection { connection_id } => {
+                (_, MarketMessage::PlayerDisconnection { connection_id }) => {
                     self.players.retain(|conn| conn.id != connection_id);
                 }
+                (MarketState::Closed, MarketMessage::OpenMarket) => {
+                    self.state = MarketState::Open;
+                }
+                (MarketState::Open, MarketMessage::CloseMarket) => {
+                    self.state = MarketState::Closed;
+                }
+                (state, msg) => {
+                    println!("Msg {msg:?} unsupported in state: {state:?}")
+                }
             }
-        }
-    }
-
-    async fn send_to_players(&self, message: PlayerMessage) {
-        for player in self.players.iter() {
-            let _ = player.tx.send(message.clone()).await;
         }
     }
 
@@ -195,6 +210,8 @@ impl Default for Market {
 
 #[cfg(test)]
 mod tests {
+    use std::time::Duration;
+
     use tokio::sync::mpsc::{channel, Receiver, Sender};
     use uuid::Uuid;
 
@@ -466,5 +483,119 @@ mod tests {
             unreachable!("Should have received an OBS")
         };
         assert!(!bids[0].owned);
+    }
+
+    #[tokio::test]
+    async fn test_closed_state_does_not_process_order_request() {
+        let market = start_market_actor();
+
+        // Register player to market actor
+        let PlayerConn {
+            player_id, mut rx, ..
+        } = register_player(market.clone()).await;
+
+        // Close the market
+        let _ = market.clone().send(MarketMessage::CloseMarket).await;
+
+        // Send an OrderRequest to the market
+        let _ = market
+            .clone()
+            .send(MarketMessage::OrderRequest(OrderRequest {
+                direction: Direction::Buy,
+                volume: 10,
+                price: 50_00,
+                owner: player_id.to_owned(),
+            }))
+            .await;
+
+        // We should not receive an order book snapshot
+        tokio::select! {
+        _ = rx.recv() => {
+            unreachable!("Should not have received a message");
+        }
+        _ = tokio::time::sleep(Duration::from_micros(1)) => {}
+        };
+    }
+
+    #[tokio::test]
+    async fn test_closed_state_and_reopen() {
+        let market = start_market_actor();
+
+        // Register player to market actor
+        let PlayerConn {
+            player_id, mut rx, ..
+        } = register_player(market.clone()).await;
+
+        // Close the market
+        let _ = market.clone().send(MarketMessage::CloseMarket).await;
+
+        // Reopen the market
+        let _ = market.clone().send(MarketMessage::OpenMarket).await;
+
+        // Send an OrderRequest to the market
+        let _ = market
+            .clone()
+            .send(MarketMessage::OrderRequest(OrderRequest {
+                direction: Direction::Buy,
+                volume: 10,
+                price: 50_00,
+                owner: player_id.to_owned(),
+            }))
+            .await;
+
+        // We should receive an obs
+        let Some(PlayerMessage::OrderBookSnapshot { bids: _, offers: _ }) = rx.recv().await else {
+            unreachable!("Should have received an OBS")
+        };
+    }
+
+    #[tokio::test]
+    async fn test_register_player_during_market_closed() {
+        let market = start_market_actor();
+
+        // Close the market immediately
+        let _ = market.clone().send(MarketMessage::CloseMarket).await;
+
+        // Register player to market actor while market is closed
+        let player_id = Uuid::new_v4().to_string();
+        let conn_id = Uuid::new_v4().to_string();
+        let (tx, mut rx) = channel::<PlayerMessage>(16);
+        let _ = market
+            .send(MarketMessage::NewPlayerConnection(PlayerConnection {
+                id: conn_id.clone(),
+                player_id: player_id.clone(),
+                tx: tx.clone(),
+            }))
+            .await;
+
+        // Should still received empty OBS and trade list
+        let Some(PlayerMessage::OrderBookSnapshot { bids, offers }) = rx.recv().await else {
+            unreachable!("Should have received an initial OBS")
+        };
+        assert_eq!(bids.len(), 0);
+        assert_eq!(offers.len(), 0);
+        let Some(PlayerMessage::TradeList { trades }) = rx.recv().await else {
+            unreachable!("Should have received an initial trade list")
+        };
+        assert_eq!(trades.len(), 0);
+
+        // Reopen the market
+        let _ = market.clone().send(MarketMessage::OpenMarket).await;
+
+        // Send an OrderRequest to the market
+        let _ = market
+            .clone()
+            .send(MarketMessage::OrderRequest(OrderRequest {
+                direction: Direction::Buy,
+                volume: 10,
+                price: 50_00,
+                owner: player_id.to_owned(),
+            }))
+            .await;
+
+        // We should receive an obs
+        let Some(PlayerMessage::OrderBookSnapshot { bids: _, offers: _ }) = rx.recv().await else {
+            unreachable!("Should have received an OBS")
+        };
     }
 }
