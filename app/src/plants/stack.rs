@@ -8,8 +8,8 @@ use uuid::Uuid;
 use crate::{market::PlayerConnection, player::PlayerMessage};
 
 use super::{
-    battery::Battery, gas_plant::GasPlant, renewable::RenewablePlant, PowerPlant,
-    PowerPlantPublicRepr,
+    battery::Battery, consumers::Consumers, gas_plant::GasPlant, renewable::RenewablePlant,
+    PowerPlant, PowerPlantPublicRepr,
 };
 
 #[derive(Debug, Deserialize)]
@@ -126,6 +126,10 @@ fn default_plants() -> HashMap<String, Box<dyn PowerPlant + Send + Sync>> {
     map.insert(
         Uuid::new_v4().to_string(),
         Box::new(RenewablePlant::new(500)),
+    );
+    map.insert(
+        Uuid::new_v4().to_string(),
+        Box::new(Consumers::new(1500, 56)),
     );
     map
 }

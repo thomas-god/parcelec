@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { StackSnapshot } from "$lib/message";
   import Battery from "../molecules/Battery.svelte";
+  import Consumers from "../molecules/Consumers.svelte";
   import GasPlant from "../molecules/GasPlant.svelte";
   import RenewablePlant from "../molecules/RenewablePlant.svelte";
 
@@ -34,6 +35,8 @@
       />
     {:else if plant.type === "RenewablePlant"}
       <RenewablePlant {plant} />
+    {:else if plant.type === "Consumers"}
+      <Consumers {plant} />
     {/if}
   {/each}
 </div>

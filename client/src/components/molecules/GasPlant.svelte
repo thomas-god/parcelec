@@ -53,7 +53,7 @@
       </label>
     </div>
     <div>
-      {plant.cost.toLocaleString("fr-FR")}€ ({plant.settings.energy_cost} €/MWh)
+      {(-plant.cost).toLocaleString("fr-FR")}€ ({plant.settings.energy_cost} €/MWh)
     </div>
   </div>
 </div>
