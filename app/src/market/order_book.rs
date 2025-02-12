@@ -1,4 +1,4 @@
-use std::{cmp::Ordering, collections::BinaryHeap};
+use std::{cmp::Ordering, collections::BinaryHeap, mem};
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
@@ -207,6 +207,13 @@ impl OrderBook {
         }
     }
 
+    pub fn drain(&mut self) -> Vec<Trade> {
+        let trades = mem::take(&mut self.trades);
+        self.bids.drain();
+        self.offers.drain();
+        trades
+    }
+
     fn insert_bid(&mut self, order: Order) -> Vec<Trade> {
         let mut bid = Bid(order);
         let mut trades = Vec::<Trade>::new();
@@ -333,25 +340,25 @@ impl Default for OrderBook {
 }
 
 #[cfg(test)]
-mod tests {
-
-    use crate::market::models::Direction;
-
-    use super::{OrderBook, OrderRequest};
-
-    fn build_order_request(
-        direction: Direction,
-        price: isize,
-        volume: usize,
-        owner: String,
-    ) -> OrderRequest {
-        OrderRequest {
-            direction,
-            price,
-            volume,
-            owner,
-        }
+fn build_order_request(
+    direction: Direction,
+    price: isize,
+    volume: usize,
+    owner: String,
+) -> OrderRequest {
+    OrderRequest {
+        direction,
+        price,
+        volume,
+        owner,
     }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::market::{models::Direction, order_book::build_order_request};
+
+    use super::OrderBook;
 
     #[test]
     fn test_register_order_empty_repository() {
@@ -700,5 +707,33 @@ mod test_trade_leg {
                 },
             ]
         );
+    }
+}
+
+#[cfg(test)]
+mod test_drain_order_book {
+    use crate::market::{models::Direction, order_book::build_order_request};
+
+    use super::OrderBook;
+
+    #[test]
+    fn test_draining_order_book() {
+        let mut obs = OrderBook::new();
+
+        let buy_order = build_order_request(Direction::Buy, 50_00, 10, "toto".to_string());
+        let matching_order = build_order_request(Direction::Sell, 50_00, 10, "tata".to_string());
+        let another_order = build_order_request(Direction::Sell, 50_00, 10, "tutu".to_string());
+
+        obs.register_order_request(buy_order);
+        obs.register_order_request(matching_order);
+        obs.register_order_request(another_order);
+
+        let trades = obs.drain();
+
+        // We should get all the trades back, and the obs should be empty
+        assert_eq!(trades.len(), 1);
+        assert!(obs.bids.is_empty());
+        assert!(obs.offers.is_empty());
+        assert!(obs.trades.is_empty());
     }
 }
