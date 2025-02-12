@@ -8,7 +8,7 @@ use tokio::sync::mpsc::{channel, Receiver, Sender};
 
 use order_book::{Bid, Offer, OrderBook, OrderRequest, TradeLeg};
 
-use crate::player::PlayerMessage;
+use crate::player::{PlayerConnection, PlayerMessage};
 
 pub mod models;
 pub mod order_book;
@@ -52,21 +52,6 @@ pub enum MarketMessage {
     OrderDeletionRequest { order_id: String },
     NewPlayerConnection(PlayerConnection),
     PlayerDisconnection { connection_id: String },
-}
-
-#[derive(Clone)]
-pub struct PlayerConnection {
-    pub id: String,
-    pub player_id: String,
-    pub tx: Sender<PlayerMessage>,
-}
-
-impl Debug for PlayerConnection {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("PlayerConnection")
-            .field("id", &self.player_id)
-            .finish()
-    }
 }
 
 pub struct Market {

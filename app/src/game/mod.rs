@@ -28,6 +28,10 @@ pub enum GameMessage {
         id: String,
         tx_back: OneShotSender<ConnectPlayerResponse>,
     },
+    // MarketOpen,
+    // MarketClosed,
+    // DispatchOpen,
+    // DispatchClosed,
 }
 
 #[derive(Debug)]

@@ -5,7 +5,7 @@ use serde::Deserialize;
 use tokio::sync::mpsc::{channel, Receiver, Sender};
 use uuid::Uuid;
 
-use crate::{market::PlayerConnection, player::PlayerMessage};
+use crate::player::{PlayerConnection, PlayerMessage};
 
 use super::{
     battery::Battery, consumers::Consumers, gas_plant::GasPlant, renewable::RenewablePlant,
@@ -142,12 +142,11 @@ mod tests {
     use uuid::Uuid;
 
     use crate::{
-        market::PlayerConnection,
         plants::{
             stack::{ProgramPlant, StackActor, StackMessage},
             PowerPlantPublicRepr,
         },
-        player::PlayerMessage,
+        player::{PlayerConnection, PlayerMessage},
     };
 
     fn start_stack() -> (String, Sender<StackMessage>) {

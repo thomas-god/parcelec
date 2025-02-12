@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, fmt::Debug};
 
 use axum::extract::ws::{Message, WebSocket};
 use futures_util::{
@@ -15,13 +15,28 @@ use uuid::Uuid;
 use crate::{
     market::{
         order_book::{OrderRequest, TradeLeg},
-        MarketMessage, PlayerConnection, PlayerOrder,
+        MarketMessage, PlayerOrder,
     },
     plants::{
         stack::{ProgramPlant, StackMessage},
         PowerPlantPublicRepr,
     },
 };
+
+#[derive(Clone)]
+pub struct PlayerConnection {
+    pub id: String,
+    pub player_id: String,
+    pub tx: Sender<PlayerMessage>,
+}
+
+impl Debug for PlayerConnection {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("PlayerConnection")
+            .field("id", &self.player_id)
+            .finish()
+    }
+}
 
 #[derive(Deserialize, Debug)]
 enum WebSocketIncomingMessage {

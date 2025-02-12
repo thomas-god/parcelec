@@ -2,8 +2,8 @@ use tokio::sync::mpsc::{channel, Receiver, Sender};
 use uuid::Uuid;
 
 use crate::{
-    market::{models::Direction, order_book::OrderRequest, MarketMessage, PlayerConnection},
-    player::PlayerMessage,
+    market::{models::Direction, order_book::OrderRequest, MarketMessage},
+    player::{PlayerConnection, PlayerMessage},
 };
 
 pub struct InitialOrdersBot {
