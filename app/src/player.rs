@@ -7,7 +7,11 @@ use futures_util::{
 };
 use serde::{Deserialize, Serialize};
 use tokio::{
-    sync::mpsc::{channel, Receiver, Sender},
+    select,
+    sync::{
+        mpsc::{channel, Receiver, Sender},
+        watch,
+    },
     task::JoinSet,
 };
 use uuid::Uuid;
@@ -15,10 +19,10 @@ use uuid::Uuid;
 use crate::{
     market::{
         order_book::{OrderRequest, TradeLeg},
-        MarketMessage, PlayerOrder,
+        MarketMessage, MarketState, OrderRepr,
     },
     plants::{
-        stack::{ProgramPlant, StackMessage},
+        stack::{ProgramPlant, StackMessage, StackState},
         PowerPlantPublicRepr,
     },
 };
@@ -51,8 +55,8 @@ enum WebSocketIncomingMessage {
 pub enum PlayerMessage {
     NewTrade(TradeLeg),
     OrderBookSnapshot {
-        bids: Vec<PlayerOrder>,
-        offers: Vec<PlayerOrder>,
+        bids: Vec<OrderRepr>,
+        offers: Vec<OrderRepr>,
     },
     TradeList {
         trades: Vec<TradeLeg>,
@@ -68,7 +72,9 @@ impl PlayerConnectionActor {
         mut ws: WebSocket,
         player_id: String,
         market: Sender<MarketMessage>,
+        market_state: watch::Receiver<MarketState>,
         stack: Sender<StackMessage>,
+        stack_state: watch::Receiver<StackState>,
     ) {
         let connection_id = Uuid::new_v4().to_string();
         let (tx, rx) = channel::<PlayerMessage>(16);
@@ -90,7 +96,12 @@ impl PlayerConnectionActor {
         register_connection(&player_id, &market, &stack, &connection_id, tx).await;
 
         let (sink, stream) = ws.split();
-        let sink_handle = tokio::spawn(process_internal_messages(sink, rx));
+        let sink_handle = tokio::spawn(process_internal_messages(
+            sink,
+            rx,
+            market_state,
+            stack_state,
+        ));
         let stream_handle = tokio::spawn(process_ws_messages(
             stream,
             market.clone(),
@@ -195,18 +206,49 @@ async fn process_ws_messages(
 async fn process_internal_messages(
     mut sink: SplitSink<WebSocket, Message>,
     mut rx: Receiver<PlayerMessage>,
+    mut market_state: watch::Receiver<MarketState>,
+    mut stack_state: watch::Receiver<StackState>,
 ) {
-    while let Some(msg) = rx.recv().await {
-        println!("{msg:?}");
-        match serde_json::to_string(&msg) {
-            Ok(msg) => {
-                if sink.send(Message::text(msg)).await.is_err() {
-                    return;
-                }
+    // Send initial market and stack states before processing further messages
+    let initial_market_state = serde_json::to_string(&market_state.borrow_and_update().clone());
+    if send_msg(&mut sink, initial_market_state).await.is_err() {
+        return;
+    }
+    let initial_stack_state = serde_json::to_string(&stack_state.borrow_and_update().clone());
+    if send_msg(&mut sink, initial_stack_state).await.is_err() {
+        return;
+    }
+
+    loop {
+        let msg = select! {
+            Some(msg) = rx.recv() => serde_json::to_string(&msg),
+            Ok(()) = market_state.changed() => {
+                serde_json::to_string(&market_state.borrow_and_update().clone())
             }
-            Err(err) => {
-                println!("Unable to serialize message: {msg:?}, error: {err:?}");
+            Ok(()) = stack_state.changed() => {
+                serde_json::to_string(&stack_state.borrow_and_update().clone())
             }
+        };
+        if send_msg(&mut sink, msg).await.is_err() {
+            return;
+        }
+    }
+}
+
+async fn send_msg(
+    sink: &mut SplitSink<WebSocket, Message>,
+    msg: Result<String, serde_json::Error>,
+) -> Result<(), ()> {
+    match &msg {
+        Ok(msg) => {
+            if sink.send(Message::text(msg)).await.is_err() {
+                return Err(());
+            }
+            Ok(())
+        }
+        Err(err) => {
+            println!("Unable to serialize message: {msg:?}, error: {err:?}");
+            Ok(())
         }
     }
 }

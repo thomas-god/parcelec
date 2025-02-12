@@ -12,13 +12,13 @@ use axum::{
 };
 use bots::start_bots;
 use game::{ConnectPlayerResponse, Game, GameContext, RegisterPlayerResponse};
-use market::MarketMessage;
-use plants::stack::StackMessage;
+use market::{MarketMessage, MarketState};
+use plants::stack::{StackMessage, StackState};
 use player::PlayerConnectionActor;
 use serde::Deserialize;
 use tokio::{
     net::TcpListener,
-    sync::{mpsc::Sender, oneshot::channel},
+    sync::{mpsc::Sender, oneshot::channel, watch},
 };
 use tower_cookies::{
     cookie::{time::Duration, SameSite},
@@ -97,10 +97,13 @@ async fn handle_ws_connection(
         })
         .await;
 
-    let player_stack = match rx.await {
-        Ok(ConnectPlayerResponse::OK { player_stack }) => {
+    let (player_stack, stack_state) = match rx.await {
+        Ok(ConnectPlayerResponse::OK {
+            player_stack,
+            stack_state,
+        }) => {
             println!("Player is connected, continuing with processing WS");
-            player_stack
+            (player_stack, stack_state)
         }
         Ok(ConnectPlayerResponse::DoesNotExist) => {
             println!("Player does not exist, invalidating its cookies");
@@ -130,17 +133,23 @@ async fn handle_ws_connection(
         }
     };
     let market = state.context.market.clone();
-    ws.on_upgrade(move |socket| handle_socket(socket, id, market, player_stack))
+    let market_state = state.context.market_state.clone();
+    ws.on_upgrade(move |socket| {
+        handle_socket(socket, id, market, market_state, player_stack, stack_state)
+    })
 }
 
 async fn handle_socket(
     socket: WebSocket,
     player_id: String,
     market: Sender<MarketMessage>,
+    market_state: watch::Receiver<MarketState>,
     stack: Sender<StackMessage>,
+    stack_state: watch::Receiver<StackState>,
 ) {
     tokio::spawn(async move {
-        PlayerConnectionActor::start(socket, player_id, market, stack).await;
+        PlayerConnectionActor::start(socket, player_id, market, market_state, stack, stack_state)
+            .await;
     });
 }
 

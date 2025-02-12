@@ -3,8 +3,11 @@ use std::fmt::Debug;
 use chrono::{DateTime, Utc};
 use futures_util::future::join_all;
 use models::Direction;
-use serde::Serialize;
-use tokio::sync::mpsc::{channel, Receiver, Sender};
+use serde::{ser::SerializeStruct, Serialize};
+use tokio::sync::{
+    mpsc::{self, Sender},
+    watch,
+};
 
 use order_book::{Bid, Offer, OrderBook, OrderRequest, TradeLeg};
 
@@ -14,7 +17,7 @@ pub mod models;
 pub mod order_book;
 
 #[derive(Debug, Clone, Serialize)]
-pub struct PlayerOrder {
+pub struct OrderRepr {
     pub order_id: String,
     pub direction: Direction,
     pub volume: usize,
@@ -23,9 +26,9 @@ pub struct PlayerOrder {
     pub owned: bool,
 }
 
-impl PlayerOrder {
+impl OrderRepr {
     fn from_offer(offer: &Offer, player_id: Option<&String>) -> Self {
-        PlayerOrder {
+        OrderRepr {
             order_id: offer.0.id.clone(),
             direction: offer.0.direction.clone(),
             price: offer.0.price,
@@ -35,7 +38,7 @@ impl PlayerOrder {
         }
     }
     fn from_bid(bid: &Bid, player_id: Option<&String>) -> Self {
-        PlayerOrder {
+        OrderRepr {
             order_id: bid.0.id.clone(),
             direction: bid.0.direction.clone(),
             price: bid.0.price,
@@ -56,26 +59,47 @@ pub enum MarketMessage {
     PlayerDisconnection { connection_id: String },
 }
 
-#[derive(Debug)]
-enum MarketState {
+#[derive(Debug, PartialEq, Clone, Copy)]
+pub enum MarketState {
     Open,
     Closed,
 }
 
+impl Serialize for MarketState {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        let mut state = serializer.serialize_struct("MarketState", 2)?;
+        state.serialize_field("type", "MarketState")?;
+        state.serialize_field(
+            "state",
+            match self {
+                Self::Closed => "Closed",
+                Self::Open => "Open",
+            },
+        )?;
+        state.end()
+    }
+}
+
 pub struct Market {
     state: MarketState,
-    rx: Receiver<MarketMessage>,
-    tx: Sender<MarketMessage>,
+    state_sender: watch::Sender<MarketState>,
+    rx: mpsc::Receiver<MarketMessage>,
+    tx: mpsc::Sender<MarketMessage>,
     order_book: OrderBook,
     players: Vec<PlayerConnection>,
 }
 
 impl Market {
     pub fn new() -> Market {
-        let (tx, rx) = channel::<MarketMessage>(128);
+        let (state_tx, _) = watch::channel(MarketState::Open);
+        let (tx, rx) = mpsc::channel::<MarketMessage>(128);
 
         Market {
             state: MarketState::Open,
+            state_sender: state_tx,
             rx,
             tx,
             players: Vec::new(),
@@ -85,6 +109,10 @@ impl Market {
 
     pub fn get_tx(&self) -> Sender<MarketMessage> {
         self.tx.clone()
+    }
+
+    pub fn get_state_rx(&self) -> watch::Receiver<MarketState> {
+        self.state_sender.subscribe()
     }
 
     pub async fn process(&mut self) {
@@ -109,9 +137,11 @@ impl Market {
                 }
                 (MarketState::Closed, MarketMessage::OpenMarket) => {
                     self.state = MarketState::Open;
+                    let _ = self.state_sender.send(MarketState::Open);
                 }
                 (MarketState::Open, MarketMessage::CloseMarket) => {
                     self.state = MarketState::Closed;
+                    let _ = self.state_sender.send(MarketState::Closed);
                 }
                 (state, msg) => {
                     println!("Msg {msg:?} unsupported in state: {state:?}")
@@ -159,12 +189,12 @@ impl Market {
             bids: snapshot
                 .bids
                 .iter()
-                .map(|bid| PlayerOrder::from_bid(bid, Some(&conn.player_id)))
+                .map(|bid| OrderRepr::from_bid(bid, Some(&conn.player_id)))
                 .collect(),
             offers: snapshot
                 .offers
                 .iter()
-                .map(|offer| PlayerOrder::from_offer(offer, Some(&conn.player_id)))
+                .map(|offer| OrderRepr::from_offer(offer, Some(&conn.player_id)))
                 .collect(),
         };
         let _ = self.send_to_connection(&conn.id, message).await;
@@ -215,7 +245,9 @@ mod tests {
     use tokio::sync::mpsc::{channel, Receiver, Sender};
     use uuid::Uuid;
 
-    use crate::market::{models::Direction, order_book::OrderRequest, PlayerConnection};
+    use crate::market::{
+        models::Direction, order_book::OrderRequest, MarketState, PlayerConnection,
+    };
 
     use super::{Market, MarketMessage, PlayerMessage};
 
@@ -597,5 +629,27 @@ mod tests {
         let Some(PlayerMessage::OrderBookSnapshot { bids: _, offers: _ }) = rx.recv().await else {
             unreachable!("Should have received an OBS")
         };
+    }
+
+    #[tokio::test]
+    async fn test_market_state_watch() {
+        let mut market = Market::new();
+        let market_tx = market.get_tx();
+        let mut state_rx = market.get_state_rx();
+        tokio::spawn(async move {
+            market.process().await;
+        });
+
+        assert_eq!(*state_rx.borrow(), MarketState::Open);
+
+        // Close the market
+        let _ = market_tx.send(MarketMessage::CloseMarket).await;
+        assert!(state_rx.changed().await.is_ok());
+        assert_eq!(*state_rx.borrow_and_update(), MarketState::Closed);
+
+        // Reopen the market
+        let _ = market_tx.send(MarketMessage::OpenMarket).await;
+        assert!(state_rx.changed().await.is_ok());
+        assert_eq!(*state_rx.borrow_and_update(), MarketState::Open);
     }
 }

@@ -1,8 +1,11 @@
 use std::collections::HashMap;
 
 use futures_util::future::join_all;
-use serde::Deserialize;
-use tokio::sync::mpsc::{channel, Receiver, Sender};
+use serde::{ser::SerializeStruct, Deserialize, Serialize};
+use tokio::sync::{
+    mpsc::{channel, Receiver, Sender},
+    watch,
+};
 use uuid::Uuid;
 
 use crate::player::{PlayerConnection, PlayerMessage};
@@ -26,15 +29,34 @@ pub enum StackMessage {
     RegisterPlayerConnection(PlayerConnection),
 }
 
-#[derive(Debug)]
-enum StackState {
+#[derive(Debug, PartialEq, Clone, Copy)]
+pub enum StackState {
     Open,
     Closed,
+}
+
+impl Serialize for StackState {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        let mut state = serializer.serialize_struct("StackState", 2)?;
+        state.serialize_field("type", "StackState")?;
+        state.serialize_field(
+            "state",
+            match self {
+                Self::Closed => "Closed",
+                Self::Open => "Open",
+            },
+        )?;
+        state.end()
+    }
 }
 
 /// A stack is the collection of power plants owned by a given player
 pub struct StackActor {
     state: StackState,
+    state_sender: watch::Sender<StackState>,
     player_id: String,
     plants: HashMap<String, Box<dyn PowerPlant + Send + Sync>>,
     tx: Sender<StackMessage>,
@@ -44,10 +66,12 @@ pub struct StackActor {
 
 impl StackActor {
     pub fn new(player_id: String) -> StackActor {
+        let (state_tx, _) = watch::channel(StackState::Open);
         let (tx, rx) = channel::<StackMessage>(16);
 
         StackActor {
             state: StackState::Open,
+            state_sender: state_tx,
             player_id,
             plants: default_plants(),
             player_connections: Vec::new(),
@@ -58,6 +82,10 @@ impl StackActor {
 
     pub fn get_tx(&self) -> Sender<StackMessage> {
         self.tx.clone()
+    }
+
+    pub fn get_state_rx(&self) -> watch::Receiver<StackState> {
+        self.state_sender.subscribe()
     }
 
     pub async fn start(&mut self) {
@@ -74,9 +102,11 @@ impl StackActor {
                 }
                 (StackState::Closed, StackMessage::OpenStack) => {
                     self.state = StackState::Open;
+                    let _ = self.state_sender.send(StackState::Open);
                 }
                 (StackState::Open, StackMessage::CloseStack) => {
                     self.state = StackState::Closed;
+                    let _ = self.state_sender.send(StackState::Closed);
                 }
                 (state, msg) => {
                     println!("Msg {msg:?} unsupported in state: {state:?}")
@@ -166,7 +196,7 @@ mod tests_stack {
 
     use crate::{
         plants::{
-            stack::{ProgramPlant, StackActor, StackMessage},
+            stack::{ProgramPlant, StackActor, StackMessage, StackState},
             PowerPlantPublicRepr,
         },
         player::{PlayerConnection, PlayerMessage},
@@ -352,5 +382,28 @@ mod tests_stack {
         let Some(PlayerMessage::StackSnapshot { plants: _ }) = rx.recv().await else {
             unreachable!("Should have received a snapshot of the player's stack");
         };
+    }
+
+    #[tokio::test]
+    async fn test_stack_state_watch() {
+        let player_id = Uuid::new_v4().to_string();
+        let mut stack = StackActor::new(player_id.clone());
+        let stack_tx = stack.get_tx();
+        let mut state_rx = stack.get_state_rx();
+        tokio::spawn(async move {
+            stack.start().await;
+        });
+
+        assert_eq!(*state_rx.borrow(), StackState::Open);
+
+        // Close the Stack
+        let _ = stack_tx.send(StackMessage::CloseStack).await;
+        assert!(state_rx.changed().await.is_ok());
+        assert_eq!(*state_rx.borrow_and_update(), StackState::Closed);
+
+        // Reopen the Stack
+        let _ = stack_tx.send(StackMessage::OpenStack).await;
+        assert!(state_rx.changed().await.is_ok());
+        assert_eq!(*state_rx.borrow_and_update(), StackState::Open);
     }
 }

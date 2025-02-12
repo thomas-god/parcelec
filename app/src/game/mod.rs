@@ -3,12 +3,13 @@ use std::collections::HashMap;
 use tokio::sync::{
     mpsc::{channel, Receiver, Sender},
     oneshot::Sender as OneShotSender,
+    watch,
 };
 use uuid::Uuid;
 
 use crate::{
-    market::{Market, MarketMessage},
-    plants::stack::{StackActor, StackMessage},
+    market::{Market, MarketMessage, MarketState},
+    plants::stack::{StackActor, StackMessage, StackState},
 };
 
 #[derive(Debug)]
@@ -28,10 +29,6 @@ pub enum GameMessage {
         id: String,
         tx_back: OneShotSender<ConnectPlayerResponse>,
     },
-    // MarketOpen,
-    // MarketClosed,
-    // DispatchOpen,
-    // DispatchClosed,
 }
 
 #[derive(Debug)]
@@ -41,7 +38,10 @@ pub enum RegisterPlayerResponse {
 }
 #[derive(Debug)]
 pub enum ConnectPlayerResponse {
-    OK { player_stack: Sender<StackMessage> },
+    OK {
+        player_stack: Sender<StackMessage>,
+        stack_state: watch::Receiver<StackState>,
+    },
     NoStackFound,
     DoesNotExist,
 }
@@ -50,13 +50,16 @@ pub enum ConnectPlayerResponse {
 pub struct GameContext {
     pub game: Sender<GameMessage>,
     pub market: Sender<MarketMessage>,
+    pub market_state: watch::Receiver<MarketState>,
     pub stacks: HashMap<String, Sender<StackMessage>>,
 }
 
 pub struct Game {
     players: Vec<Player>,
     market: Sender<MarketMessage>,
+    market_state: watch::Receiver<MarketState>,
     stacks: HashMap<String, Sender<StackMessage>>,
+    stack_states: HashMap<String, watch::Receiver<StackState>>,
     rx: Receiver<GameMessage>,
     tx: Sender<GameMessage>,
 }
@@ -65,6 +68,7 @@ impl Game {
     pub async fn new() -> Game {
         let mut market = Market::new();
         let market_tx = market.get_tx();
+        let market_state = market.get_state_rx();
 
         tokio::spawn(async move {
             market.process().await;
@@ -74,8 +78,10 @@ impl Game {
 
         Game {
             market: market_tx,
+            market_state,
             players: Vec::new(),
             stacks: HashMap::new(),
+            stack_states: HashMap::new(),
             rx,
             tx,
         }
@@ -104,9 +110,14 @@ impl Game {
             let _ = tx_back.send(ConnectPlayerResponse::NoStackFound);
             return;
         };
+        let Some(player_stack_state) = self.stack_states.get(&id) else {
+            let _ = tx_back.send(ConnectPlayerResponse::NoStackFound);
+            return;
+        };
 
         let _ = tx_back.send(ConnectPlayerResponse::OK {
             player_stack: player_stack.clone(),
+            stack_state: player_stack_state.clone(),
         });
     }
 
@@ -126,6 +137,8 @@ impl Game {
         // Create a new stack for the player
         let mut player_stack = StackActor::new(player_id.clone());
         self.stacks.insert(player_id.clone(), player_stack.get_tx());
+        self.stack_states
+            .insert(player_id.clone(), player_stack.get_state_rx());
         tokio::spawn(async move {
             player_stack.start().await;
         });
@@ -146,6 +159,7 @@ impl Game {
         GameContext {
             game: self.get_tx(),
             market: self.get_market(),
+            market_state: self.market_state.clone(),
             stacks: self.stacks.clone(),
         }
     }
@@ -307,7 +321,7 @@ mod tests {
         .await
         .unwrap();
         match rx.await {
-            Ok(ConnectPlayerResponse::OK { player_stack: _ }) => {}
+            Ok(ConnectPlayerResponse::OK { .. }) => {}
             _ => unreachable!("Should have connected the player"),
         };
 
@@ -320,7 +334,7 @@ mod tests {
         .await
         .unwrap();
         match rx.await {
-            Ok(ConnectPlayerResponse::OK { player_stack: _ }) => {}
+            Ok(ConnectPlayerResponse::OK { .. }) => {}
             _ => unreachable!("Should have connected the player"),
         };
     }
