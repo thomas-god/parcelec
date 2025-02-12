@@ -74,6 +74,14 @@ const WSMessageSchema = z.discriminatedUnion("type", [
       .record(z.string(), PowerPlantRepr)
       .transform((rec) => new Map(Object.entries(rec))),
   }),
+  z.object({
+    type: z.literal("MarketState"),
+    state: z.enum(["Open", "Closed"]),
+  }),
+  z.object({
+    type: z.literal("StackState"),
+    state: z.enum(["Open", "Closed"]),
+  }),
 ]);
 
 type WSMessage = z.infer<typeof WSMessageSchema>;

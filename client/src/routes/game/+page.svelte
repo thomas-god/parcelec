@@ -18,6 +18,8 @@
   });
   let trades: Trade[] = $state([]);
   let plants: StackSnapshot = $state(new Map());
+  let market_state: "Open" | "Closed" = $state("Open");
+  let stack_state: "Open" | "Closed" = $state("Open");
 
   const connect = () => {
     const socket = new WebSocket(`${PUBLIC_WS_URL}/ws`);
@@ -51,6 +53,12 @@
             }
           }
           trades = trades.concat(trades_to_add);
+        })
+        .with({ type: "MarketState" }, ({ state }) => {
+          market_state = state;
+        })
+        .with({ type: "StackState" }, ({ state }) => {
+          stack_state = state;
         })
         .exhaustive();
     };
