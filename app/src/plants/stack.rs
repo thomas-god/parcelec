@@ -18,13 +18,23 @@ pub struct ProgramPlant {
     pub setpoint: isize,
 }
 
+#[derive(Debug)]
 pub enum StackMessage {
+    OpenStack,
+    CloseStack,
     ProgramSetpoint(ProgramPlant),
     RegisterPlayerConnection(PlayerConnection),
 }
 
+#[derive(Debug)]
+enum StackState {
+    Open,
+    Closed,
+}
+
 /// A stack is the collection of power plants owned by a given player
 pub struct StackActor {
+    state: StackState,
     player_id: String,
     plants: HashMap<String, Box<dyn PowerPlant + Send + Sync>>,
     tx: Sender<StackMessage>,
@@ -37,6 +47,7 @@ impl StackActor {
         let (tx, rx) = channel::<StackMessage>(16);
 
         StackActor {
+            state: StackState::Open,
             player_id,
             plants: default_plants(),
             player_connections: Vec::new(),
@@ -51,12 +62,24 @@ impl StackActor {
 
     pub async fn start(&mut self) {
         while let Some(message) = self.rx.recv().await {
-            match message {
-                StackMessage::RegisterPlayerConnection(connection) => {
+            match (&self.state, message) {
+                (_, StackMessage::RegisterPlayerConnection(connection)) => {
                     self.handle_player_connection(connection).await;
                 }
-                StackMessage::ProgramSetpoint(ProgramPlant { plant_id, setpoint }) => {
+                (
+                    StackState::Open,
+                    StackMessage::ProgramSetpoint(ProgramPlant { plant_id, setpoint }),
+                ) => {
                     self.program_plant_setpoint(plant_id, setpoint).await;
+                }
+                (StackState::Closed, StackMessage::OpenStack) => {
+                    self.state = StackState::Open;
+                }
+                (StackState::Open, StackMessage::CloseStack) => {
+                    self.state = StackState::Closed;
+                }
+                (state, msg) => {
+                    println!("Msg {msg:?} unsupported in state: {state:?}")
                 }
             }
         }
@@ -135,8 +158,8 @@ fn default_plants() -> HashMap<String, Box<dyn PowerPlant + Send + Sync>> {
 }
 
 #[cfg(test)]
-mod tests {
-    use std::collections::HashMap;
+mod tests_stack {
+    use std::{collections::HashMap, time::Duration};
 
     use tokio::sync::mpsc::{channel, Receiver, Sender};
     use uuid::Uuid;
@@ -255,6 +278,78 @@ mod tests {
             unreachable!("Should have received a snapshot of the player's stack");
         };
         let Some(PlayerMessage::StackSnapshot { plants: _ }) = player_rx_2.recv().await else {
+            unreachable!("Should have received a snapshot of the player's stack");
+        };
+    }
+
+    #[tokio::test]
+    async fn test_no_dispatch_when_stack_closed() {
+        let (player_id, stack) = start_stack();
+        let (_, mut player_rx, plants) =
+            register_player_connection(&player_id, stack.clone()).await;
+
+        // Close the stack
+        let _ = stack.clone().send(StackMessage::CloseStack).await;
+
+        // Try to send a dispatch command
+        let Some(plant_id) = plants.keys().next() else {
+            unreachable!("Stack should contain at least one power plant");
+        };
+        let _ = stack
+            .clone()
+            .send(StackMessage::ProgramSetpoint(ProgramPlant {
+                plant_id: plant_id.to_owned(),
+                setpoint: 100,
+            }))
+            .await;
+
+        // Should not receive a new stack snapshot
+        tokio::select! {
+        _ = player_rx.recv() => {
+            unreachable!("Should not have received a message");
+        }
+        _ = tokio::time::sleep(Duration::from_micros(1)) => {}
+        };
+    }
+
+    #[tokio::test]
+    async fn test_register_connection_when_stack_closed() {
+        let (player_id, stack) = start_stack();
+
+        // Close the stack
+        let _ = stack.send(StackMessage::CloseStack).await;
+
+        // Register a player
+        let (tx, mut rx) = channel::<PlayerMessage>(16);
+        let connection_id = Uuid::new_v4().to_string();
+        let _ = stack
+            .send(StackMessage::RegisterPlayerConnection(PlayerConnection {
+                id: connection_id.clone(),
+                player_id: player_id.to_string(),
+                tx: tx.clone(),
+            }))
+            .await;
+
+        // Should receive a snapshot of the stack, even if the stack is closed
+        let Some(PlayerMessage::StackSnapshot { plants }) = rx.recv().await else {
+            unreachable!("Should have received a snapshot of the player's stack");
+        };
+        assert!(!plants.is_empty());
+
+        // Reopen the stack
+        let _ = stack.send(StackMessage::OpenStack).await;
+
+        // Check dispatch is working
+        let Some(plant_id) = plants.keys().next() else {
+            unreachable!("Stack should contain at least one power plant");
+        };
+        let _ = stack
+            .send(StackMessage::ProgramSetpoint(ProgramPlant {
+                plant_id: plant_id.to_owned(),
+                setpoint: 0,
+            }))
+            .await;
+        let Some(PlayerMessage::StackSnapshot { plants: _ }) = rx.recv().await else {
             unreachable!("Should have received a snapshot of the player's stack");
         };
     }
