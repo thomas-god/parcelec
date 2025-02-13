@@ -19,7 +19,6 @@
 
   let debounceTimer: ReturnType<typeof setTimeout>;
   const debouncedUpdateSetpoint = () => {
-    console.log("updating");
     clearTimeout(debounceTimer);
     debounceTimer = setTimeout(() => {
       updateSetpoint(

@@ -11,6 +11,7 @@
   import { goto } from "$app/navigation";
   import Stack from "../../components/organisms/Stack.svelte";
   import Scores from "../../components/molecules/Scores.svelte";
+  import { fade } from "svelte/transition";
 
   let orderBook: OrderBook = $state({
     bids: [],
@@ -41,6 +42,8 @@
         })
         .with({ type: "NewTrade" }, (new_trade) => {
           trades.push(new_trade);
+          show_last_trade = true;
+          debouncedHideLastTrade();
         })
         .with({ type: "StackSnapshot" }, (stack_snapshot) => {
           plants = stack_snapshot.plants;
@@ -79,6 +82,15 @@
   const sendMessage = (msg: string) => {
     socket.send(msg);
   };
+
+  let show_last_trade = $state(false);
+  let debounceTimer: ReturnType<typeof setTimeout>;
+  const debouncedHideLastTrade = () => {
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(() => {
+      show_last_trade = false;
+    }, 3000);
+  };
 </script>
 
 <main class="p-2 max-w-[600px] mx-auto">
@@ -87,6 +99,28 @@
       <Scores {plants} {trades} />
       <Stack {plants} send={sendMessage} />
       <OrderBookElement {orderBook} send={sendMessage} {trades} />
+      {#if show_last_trade && trades.length > 0}
+        <div
+          transition:fade
+          id="bottom-banner"
+          tabindex="-1"
+          class="fixed bottom-0 start-0 z-50 flex justify-between w-full p-4 border-t border-gray-200 bg-gray-50 dark:bg-gray-700 dark:border-gray-600"
+        >
+          <div class="flex items-center mx-auto">
+            <p
+              class="flex items-center text-md font-normal text-gray-500 dark:text-gray-400"
+            >
+              <span
+                >Nouveau trade: {trades.at(-1)?.direction === "Buy"
+                  ? "achetés"
+                  : "vendus"}
+                {trades.at(-1)?.volume}MW @ {0.01 *
+                  (trades.at(-1)?.price as number)}€ 🤑</span
+              >
+            </p>
+          </div>
+        </div>
+      {/if}
     </div>
   {:else}
     <p>Not connected</p>
