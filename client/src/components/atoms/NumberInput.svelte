@@ -6,7 +6,7 @@
     label,
     bigIncr = none(),
   }: {
-    value: number;
+    value: string;
     label: string;
     bigIncr: Option<number>;
   } = $props();
@@ -23,7 +23,7 @@
     {#if showBigIncr}
       <button
         onclick={() => {
-          value -= unwrap(bigIncr);
+          value = String(Number.parseInt(value) - unwrap(bigIncr));
         }}
         id={`number_input_${label}`}
       >
@@ -40,7 +40,7 @@
     {#if showBigIncr}
       <button
         onclick={() => {
-          value += unwrap(bigIncr);
+          value = String(Number.parseInt(value) + unwrap(bigIncr));
         }}>+{unwrap(bigIncr)}</button
       >
     {/if}

@@ -14,18 +14,20 @@
   let pnl = $derived(plants_pnl + market_pnl);
 </script>
 
-<div class="flex flex-row justify-around">
-  <div class="text-2xl text-center">
+<div class="flex flex-row justify-around text-xl min-[400px]:text-2xl">
+  <div class="text-left grow">
     {#if position > 0}
-      ⚠️ Surplus d'énergie: {Math.abs(position)} MW
+      ⚠️ Surplus : {Math.abs(position)} MW
     {:else if position < 0}
-      ⚠️ Manque d'énergie: {Math.abs(position)} MW
+      ⚠️ Manque : {Math.abs(position)} MW
     {:else}
       ✅ A l'équilibre
     {/if}
   </div>
-  <div class="text-2xl text-center">
-    Score: {pnl.toLocaleString("fr-FR")} €
+  <div class="@container-normal grow text-right">
+    <span class="hidden @3xs:inline"> Score : </span>
+    <span class="inline @3xs:hidden"> 💰</span>
+    {pnl.toLocaleString("fr-FR")} €
   </div>
   <!-- Equilibre: {plants_position + trades_position} MW -->
 </div>

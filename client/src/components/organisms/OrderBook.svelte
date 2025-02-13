@@ -14,8 +14,8 @@
     trades: Trade[];
   } = $props();
 
-  let price: number = $state(50);
-  let volume: number = $state(100);
+  let price = $state("50");
+  let volume = $state("100");
 
   const spread = $derived.by(() => {
     if (orderBook.bids.length === 0 || orderBook.offers.length === 0) {
@@ -32,8 +32,8 @@
   );
   const sendOrderRequest = (direction: "Sell" | "Buy") => {
     const orderRequest = {
-      price: price * 100,
-      volume,
+      price: Number.parseInt(price) * 100,
+      volume: Number.parseInt(volume),
       direction,
       owner: "toto",
     };
@@ -46,15 +46,17 @@
 </script>
 
 <div class="flex flex-col">
-  <h2 class="text-lg font-bold">
-    Marché
+  <div class="flex flex-row justify-between">
+    <h2 class="text-lg font-bold">Marché</h2>
 
-    <!-- {#if market_position > 0}
-      (achats : {market_position} MW)
-    {:else if market_position < 0}
-      (ventes : {Math.abs(market_position)} MW)
-    {/if} -->
-  </h2>
+    <div>
+      {#if market_position > 0}
+        acheté : {market_position} MWh
+      {:else if market_position < 0}
+        vendu : {Math.abs(market_position)} MWh
+      {/if}
+    </div>
+  </div>
   <!-- Add an offer -->
   <div class="">
     <!-- <h3 class="text-xl font-semibold mb-2 text-center">Ajouter une offre</h3> -->
