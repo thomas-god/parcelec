@@ -1,7 +1,7 @@
 use rand::Rng;
 use serde::Serialize;
 
-use super::{PowerPlant, PowerPlantPublicRepr};
+use super::{PlantOutput, PowerPlant, PowerPlantPublicRepr};
 
 #[derive(Debug, Serialize, Clone, Copy)]
 pub struct ConsumersPublicRepr {
@@ -26,13 +26,19 @@ impl Consumers {
 }
 
 impl PowerPlant for Consumers {
-    fn program_setpoint(&mut self, _setpoint: isize) -> isize {
-        (self.setpoint * self.price_per_mwh) as isize
+    fn program_setpoint(&mut self, _setpoint: isize) -> PlantOutput {
+        PlantOutput {
+            cost: (self.setpoint * self.price_per_mwh) as isize,
+            setpoint: self.setpoint as isize,
+        }
     }
-    fn dispatch(&mut self) -> isize {
+    fn dispatch(&mut self) -> PlantOutput {
         let cost = self.setpoint * self.price_per_mwh;
         self.setpoint = rand::rng().random_range(-self.max_power..0);
-        cost as isize
+        PlantOutput {
+            cost: cost as isize,
+            setpoint: self.setpoint as isize,
+        }
     }
     fn current_state(&self) -> PowerPlantPublicRepr {
         PowerPlantPublicRepr::Consumers(ConsumersPublicRepr {
@@ -64,12 +70,12 @@ mod tests {
         assert!(cost < 0);
 
         // Consumers cannot be programed
-        let setpoint = plant.setpoint as isize;
-        plant.program_setpoint(setpoint);
-        assert_eq!(plant.setpoint as isize, setpoint);
+        let initial_setpoint = plant.setpoint as isize;
+        plant.program_setpoint(initial_setpoint);
+        assert_eq!(plant.setpoint as isize, initial_setpoint);
 
         // Consumption value changes when dispatched
         plant.dispatch();
-        assert_ne!(plant.setpoint as isize, setpoint);
+        assert_ne!(plant.setpoint as isize, initial_setpoint);
     }
 }

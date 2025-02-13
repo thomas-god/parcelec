@@ -1,6 +1,6 @@
 use serde::Serialize;
 
-use super::{PowerPlant, PowerPlantPublicRepr};
+use super::{PlantOutput, PowerPlant, PowerPlantPublicRepr};
 
 /// Plant with no dynamic constraints.
 pub struct GasPlant {
@@ -39,9 +39,12 @@ pub struct GasPlantPublicRepr {
 }
 
 impl PowerPlant for GasPlant {
-    fn program_setpoint(&mut self, setpoint: isize) -> isize {
+    fn program_setpoint(&mut self, setpoint: isize) -> PlantOutput {
         self.setpoint = Some(setpoint.max(0).min(self.settings.max_setpoint));
-        self.cost()
+        PlantOutput {
+            setpoint: self.setpoint.unwrap_or(0),
+            cost: self.cost(),
+        }
     }
 
     fn current_state(&self) -> PowerPlantPublicRepr {
@@ -52,32 +55,67 @@ impl PowerPlant for GasPlant {
         })
     }
 
-    fn dispatch(&mut self) -> isize {
-        let cost = self.cost();
+    fn dispatch(&mut self) -> PlantOutput {
+        let output = PlantOutput {
+            setpoint: self.setpoint.unwrap_or(0),
+            cost: self.cost(),
+        };
         self.setpoint = None;
-        cost
+        output
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::plants::gas_plant::{GasPlant, PowerPlant};
+    use crate::plants::{
+        gas_plant::{GasPlant, PowerPlant},
+        PlantOutput,
+    };
 
     #[test]
     fn test_gas_plant() {
         let mut plant = GasPlant::new(47, 1000);
 
-        assert_eq!(plant.program_setpoint(100), 47 * 100);
+        assert_eq!(
+            plant.program_setpoint(100),
+            PlantOutput {
+                setpoint: 100,
+                cost: 100 * 47
+            }
+        );
 
-        let dispatch_cost = plant.dispatch();
-        assert_eq!(dispatch_cost, 47 * 100);
+        assert_eq!(
+            plant.dispatch(),
+            PlantOutput {
+                setpoint: 100,
+                cost: 47 * 100
+            }
+        );
 
-        assert_eq!(plant.program_setpoint(0), 0);
+        assert_eq!(
+            plant.program_setpoint(0),
+            PlantOutput {
+                setpoint: 0,
+                cost: 0
+            }
+        );
 
         // Setpoint cannot be negative
-        assert_eq!(plant.program_setpoint(-100), 0);
+        assert_eq!(
+            plant.program_setpoint(-100),
+            PlantOutput {
+                setpoint: 0,
+                cost: 0
+            }
+        );
 
         // Setpoint will be clipped if above P_max
-        assert_eq!(plant.program_setpoint(1100), 1000 * 47);
+        assert_eq!(
+            plant.program_setpoint(1100),
+            PlantOutput {
+                setpoint: 1000,
+                cost: 1000 * 47
+            }
+        );
     }
 }

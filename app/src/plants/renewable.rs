@@ -1,7 +1,7 @@
 use rand::Rng;
 use serde::Serialize;
 
-use super::{PowerPlant, PowerPlantPublicRepr};
+use super::{PlantOutput, PowerPlant, PowerPlantPublicRepr};
 
 #[derive(Debug, Serialize, Clone, Copy)]
 pub struct RenewablePlantPublicRepr {
@@ -23,12 +23,18 @@ impl RenewablePlant {
 }
 
 impl PowerPlant for RenewablePlant {
-    fn program_setpoint(&mut self, _setpoint: isize) -> isize {
-        0
+    fn program_setpoint(&mut self, _setpoint: isize) -> PlantOutput {
+        PlantOutput {
+            setpoint: self.setpoint as isize,
+            cost: 0,
+        }
     }
-    fn dispatch(&mut self) -> isize {
+    fn dispatch(&mut self) -> PlantOutput {
         self.setpoint = rand::rng().random_range(0..self.max_power);
-        0
+        PlantOutput {
+            setpoint: self.setpoint as isize,
+            cost: 0,
+        }
     }
     fn current_state(&self) -> PowerPlantPublicRepr {
         PowerPlantPublicRepr::RenewablePlant(RenewablePlantPublicRepr {
@@ -40,7 +46,7 @@ impl PowerPlant for RenewablePlant {
 
 #[cfg(test)]
 mod tests {
-    use crate::plants::PowerPlant;
+    use crate::plants::{PlantOutput, PowerPlant};
 
     use super::RenewablePlant;
 
@@ -49,15 +55,17 @@ mod tests {
         let mut plant = RenewablePlant::new(1000);
 
         // Plant has no associated cost
-        assert_eq!(plant.program_setpoint(100), 0);
+        let PlantOutput { cost, .. } = plant.program_setpoint(100);
+        assert_eq!(cost, 0);
 
         // The plant cannot be programed
-        let setpoint = plant.setpoint as isize;
-        plant.program_setpoint(setpoint);
-        assert_eq!(plant.setpoint as isize, setpoint);
+        let initial_setpoint = plant.setpoint as isize;
+        let PlantOutput { setpoint, .. } = plant.program_setpoint(initial_setpoint + 1);
+        assert_eq!(setpoint, initial_setpoint);
 
         // Setpoint changes when dispatched
-        plant.dispatch();
-        assert_ne!(plant.setpoint as isize, setpoint);
+        let PlantOutput { setpoint, cost } = plant.dispatch();
+        assert_ne!(setpoint, initial_setpoint);
+        assert_eq!(cost, 0);
     }
 }

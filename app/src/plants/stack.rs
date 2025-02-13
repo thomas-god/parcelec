@@ -8,7 +8,10 @@ use tokio::sync::{
 };
 use uuid::Uuid;
 
-use crate::player::{PlayerConnection, PlayerMessage};
+use crate::{
+    plants::PlantOutput,
+    player::{PlayerConnection, PlayerMessage},
+};
 
 use super::{
     battery::Battery, consumers::Consumers, gas_plant::GasPlant, renewable::RenewablePlant,
@@ -159,7 +162,7 @@ impl StackActor {
 
     async fn program_plant_setpoint(&mut self, plant_id: String, setpoint: isize) {
         if let Some(plant) = self.plants.get_mut(&plant_id) {
-            let cost = plant.program_setpoint(setpoint);
+            let PlantOutput { cost, .. } = plant.program_setpoint(setpoint);
             println!("Programmed setpoint {setpoint} for plant {plant_id} (cost: {cost}");
             self.send_stack_snapshot_to_all().await;
         };

@@ -19,12 +19,18 @@ pub enum PowerPlantPublicRepr {
     Consumers(ConsumersPublicRepr),
 }
 
+#[derive(Debug, PartialEq)]
+pub struct PlantOutput {
+    setpoint: isize,
+    cost: isize,
+}
+
 pub trait PowerPlant {
     /// Program the setpoint for the next delivery period.
-    fn program_setpoint(&mut self, setpoint: isize) -> isize;
+    fn program_setpoint(&mut self, setpoint: isize) -> PlantOutput;
 
     /// Apply the programmed setpoint, and update the state of the plant.
-    fn dispatch(&mut self) -> isize;
+    fn dispatch(&mut self) -> PlantOutput;
 
     /// Retrieve a string representation of the plant's state
     fn current_state(&self) -> PowerPlantPublicRepr;
