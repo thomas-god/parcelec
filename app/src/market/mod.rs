@@ -6,10 +6,10 @@ use models::Direction;
 use serde::{ser::SerializeStruct, Serialize};
 use tokio::sync::{
     mpsc::{self, Sender},
-    watch,
+    oneshot, watch,
 };
 
-use order_book::{Bid, Offer, OrderBook, OrderRequest, TradeLeg};
+use order_book::{Bid, Offer, OrderBook, OrderRequest, Trade, TradeLeg};
 
 use crate::player::{PlayerConnection, PlayerMessage};
 
@@ -52,11 +52,17 @@ impl OrderRepr {
 #[derive(Debug)]
 pub enum MarketMessage {
     OpenMarket,
-    CloseMarket,
+    CloseMarket {
+        tx_back: oneshot::Sender<Vec<Trade>>,
+    },
     OrderRequest(OrderRequest),
-    OrderDeletionRequest { order_id: String },
+    OrderDeletionRequest {
+        order_id: String,
+    },
     NewPlayerConnection(PlayerConnection),
-    PlayerDisconnection { connection_id: String },
+    PlayerDisconnection {
+        connection_id: String,
+    },
 }
 
 #[derive(Debug, PartialEq, Clone, Copy)]
@@ -139,8 +145,10 @@ impl Market {
                     self.state = MarketState::Open;
                     let _ = self.state_sender.send(MarketState::Open);
                 }
-                (MarketState::Open, MarketMessage::CloseMarket) => {
+                (MarketState::Open, MarketMessage::CloseMarket { tx_back }) => {
+                    let trades = self.order_book.drain();
                     self.state = MarketState::Closed;
+                    let _ = tx_back.send(trades);
                     let _ = self.state_sender.send(MarketState::Closed);
                 }
                 (state, msg) => {
@@ -242,7 +250,10 @@ impl Default for Market {
 mod tests {
     use std::time::Duration;
 
-    use tokio::sync::mpsc::{channel, Receiver, Sender};
+    use tokio::sync::{
+        mpsc::{channel, Receiver, Sender},
+        oneshot,
+    };
     use uuid::Uuid;
 
     use crate::market::{
@@ -527,7 +538,11 @@ mod tests {
         } = register_player(market.clone()).await;
 
         // Close the market
-        let _ = market.clone().send(MarketMessage::CloseMarket).await;
+        let (tx_back, _) = oneshot::channel();
+        let _ = market
+            .clone()
+            .send(MarketMessage::CloseMarket { tx_back })
+            .await;
 
         // Send an OrderRequest to the market
         let _ = market
@@ -559,7 +574,11 @@ mod tests {
         } = register_player(market.clone()).await;
 
         // Close the market
-        let _ = market.clone().send(MarketMessage::CloseMarket).await;
+        let (tx_back, _) = oneshot::channel();
+        let _ = market
+            .clone()
+            .send(MarketMessage::CloseMarket { tx_back })
+            .await;
 
         // Reopen the market
         let _ = market.clone().send(MarketMessage::OpenMarket).await;
@@ -586,7 +605,11 @@ mod tests {
         let market = start_market_actor();
 
         // Close the market immediately
-        let _ = market.clone().send(MarketMessage::CloseMarket).await;
+        let (tx_back, _) = oneshot::channel();
+        let _ = market
+            .clone()
+            .send(MarketMessage::CloseMarket { tx_back })
+            .await;
 
         // Register player to market actor while market is closed
         let player_id = Uuid::new_v4().to_string();
@@ -632,6 +655,42 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn test_close_market_receive_trades() {
+        let market = start_market_actor();
+
+        // Register player to market actor
+        let PlayerConn { player_id, .. } = register_player(market.clone()).await;
+
+        // Make a trade with ourself
+        let _ = market
+            .clone()
+            .send(MarketMessage::OrderRequest(OrderRequest {
+                direction: Direction::Buy,
+                volume: 10,
+                price: 50_00,
+                owner: player_id.to_owned(),
+            }))
+            .await;
+        let _ = market
+            .clone()
+            .send(MarketMessage::OrderRequest(OrderRequest {
+                direction: Direction::Sell,
+                volume: 10,
+                price: 50_00,
+                owner: player_id.to_owned(),
+            }))
+            .await;
+
+        // Close the market and receive the trade list back
+        let (tx_back, rx_back) = oneshot::channel();
+        let _ = market.send(MarketMessage::CloseMarket { tx_back }).await;
+        let trades = rx_back
+            .await
+            .expect("Should have received a list of trades");
+        assert_eq!(trades.len(), 1);
+    }
+
+    #[tokio::test]
     async fn test_market_state_watch() {
         let mut market = Market::new();
         let market_tx = market.get_tx();
@@ -643,7 +702,8 @@ mod tests {
         assert_eq!(*state_rx.borrow(), MarketState::Open);
 
         // Close the market
-        let _ = market_tx.send(MarketMessage::CloseMarket).await;
+        let (tx_back, _) = oneshot::channel();
+        let _ = market_tx.send(MarketMessage::CloseMarket { tx_back }).await;
         assert!(state_rx.changed().await.is_ok());
         assert_eq!(*state_rx.borrow_and_update(), MarketState::Closed);
 

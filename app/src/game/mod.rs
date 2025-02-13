@@ -2,8 +2,7 @@ use std::collections::HashMap;
 
 use tokio::sync::{
     mpsc::{channel, Receiver, Sender},
-    oneshot::Sender as OneShotSender,
-    watch,
+    oneshot, watch,
 };
 use uuid::Uuid;
 
@@ -23,11 +22,11 @@ pub struct Stack {}
 pub enum GameMessage {
     RegisterPlayer {
         name: String,
-        tx_back: OneShotSender<RegisterPlayerResponse>,
+        tx_back: oneshot::Sender<RegisterPlayerResponse>,
     },
     ConnectPlayer {
         id: String,
-        tx_back: OneShotSender<ConnectPlayerResponse>,
+        tx_back: oneshot::Sender<ConnectPlayerResponse>,
     },
 }
 
@@ -100,7 +99,7 @@ impl Game {
         }
     }
 
-    fn connect_player(&mut self, id: String, tx_back: OneShotSender<ConnectPlayerResponse>) {
+    fn connect_player(&mut self, id: String, tx_back: oneshot::Sender<ConnectPlayerResponse>) {
         if !self.players.iter().any(|player| player.id == id) {
             let _ = tx_back.send(ConnectPlayerResponse::DoesNotExist);
             return;
@@ -121,7 +120,7 @@ impl Game {
         });
     }
 
-    fn register_player(&mut self, name: String, tx_back: OneShotSender<RegisterPlayerResponse>) {
+    fn register_player(&mut self, name: String, tx_back: oneshot::Sender<RegisterPlayerResponse>) {
         if self.players.iter().any(|player| player.name == name) {
             let _ = tx_back.send(RegisterPlayerResponse::PlayerAlreadyExist);
             return;
