@@ -10,7 +10,6 @@
   let { plants, send }: { plants: StackSnapshot; send: (msg: string) => void } =
     $props();
   let sortedPlants = $derived(sortStack(plants));
-  $inspect(Array.from(sortedPlants.keys()));
   const programSetpoint = (plant_id: string, setpoint: number) => {
     const parsed_setpoint = Number.isNaN(setpoint) ? 0 : setpoint;
     send(

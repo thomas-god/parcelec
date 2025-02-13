@@ -10,7 +10,7 @@
   import OrderBookElement from "../../components/organisms/OrderBook.svelte";
   import { goto } from "$app/navigation";
   import Stack from "../../components/organisms/Stack.svelte";
-  import Position from "../../components/molecules/Position.svelte";
+  import Scores from "../../components/molecules/Scores.svelte";
 
   let orderBook: OrderBook = $state({
     bids: [],
@@ -84,9 +84,9 @@
 <main class="p-2 max-w-[600px] mx-auto">
   {#if socketIsOpen}
     <div class="flex flex-col gap-6 items-stretch">
-      <Position {plants} {trades} />
+      <Scores {plants} {trades} />
       <Stack {plants} send={sendMessage} />
-      <OrderBookElement {orderBook} send={sendMessage} />
+      <OrderBookElement {orderBook} send={sendMessage} {trades} />
     </div>
   {:else}
     <p>Not connected</p>

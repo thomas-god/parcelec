@@ -15,8 +15,8 @@ pub struct BatterySettings {
 #[derive(Debug, Serialize, Clone, Copy)]
 pub struct BatteryPublicRepr {
     pub max_charge: usize,
-    pub current_setpoint: isize,
     pub charge: usize,
+    pub output: PlantOutput,
 }
 
 impl Battery {
@@ -57,8 +57,11 @@ impl PowerPlant for Battery {
     fn current_state(&self) -> PowerPlantPublicRepr {
         PowerPlantPublicRepr::Battery(BatteryPublicRepr {
             max_charge: self.settings.max_charge,
-            current_setpoint: self.setpoint.unwrap_or(0),
             charge: self.charge,
+            output: PlantOutput {
+                setpoint: self.setpoint.unwrap_or(0),
+                cost: 0,
+            },
         })
     }
 

@@ -6,7 +6,9 @@
   }: {
     plant: RenewablePlantState;
   } = $props();
-  let setpoint_percentage = $derived((plant.setpoint / plant.max_power) * 100);
+  let setpoint_percentage = $derived(
+    (plant.output.setpoint / plant.max_power) * 100,
+  );
 </script>
 
 <div
@@ -24,7 +26,7 @@
   </div>
   <div class="flex flex-row justify-between">
     <div>
-      Production: {plant.setpoint} MW
+      Production: {plant.output.setpoint} MW
     </div>
     <div>0€</div>
   </div>

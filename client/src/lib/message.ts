@@ -13,12 +13,16 @@ const OrderBookEntrySchema = z.object({
   created_at: z.string().datetime(),
 });
 
+const PlantOutput = z.object({
+  setpoint: z.number(),
+  cost: z.number(),
+});
 const PowerPlantRepr = z.discriminatedUnion("type", [
   z.object({
     type: z.literal("Battery"),
     max_charge: z.number().int(),
-    current_setpoint: z.number().int(),
     charge: z.number().int(),
+    output: PlantOutput,
   }),
   z.object({
     type: z.literal("GasPlant"),
@@ -26,19 +30,17 @@ const PowerPlantRepr = z.discriminatedUnion("type", [
       energy_cost: z.number(),
       max_setpoint: z.number(),
     }),
-    cost: z.number(),
-    setpoint: z.number(),
+    output: PlantOutput,
   }),
   z.object({
     type: z.literal("RenewablePlant"),
     max_power: z.number(),
-    setpoint: z.number(),
+    output: PlantOutput,
   }),
   z.object({
     type: z.literal("Consumers"),
     max_power: z.number(),
-    setpoint: z.number(),
-    cost: z.number(),
+    output: PlantOutput,
   }),
 ]);
 

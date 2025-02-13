@@ -7,7 +7,7 @@
     plant: ConsumersState;
   } = $props();
   let setpoint_percentage = $derived(
-    Math.abs((plant.setpoint / plant.max_power) * 100),
+    Math.abs((plant.output.setpoint / plant.max_power) * 100),
   );
 </script>
 
@@ -26,8 +26,8 @@
   </div>
   <div class="flex flex-row justify-between">
     <div>
-      Consommation: {plant.setpoint} MW
+      Consommation: {plant.output.setpoint} MW
     </div>
-    <div>{(-plant.cost).toLocaleString("fr-FR")}€</div>
+    <div>{(-plant.output.cost).toLocaleString("fr-FR")}€</div>
   </div>
 </div>

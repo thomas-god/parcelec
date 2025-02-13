@@ -5,9 +5,8 @@ use super::{PlantOutput, PowerPlant, PowerPlantPublicRepr};
 
 #[derive(Debug, Serialize, Clone, Copy)]
 pub struct ConsumersPublicRepr {
-    max_power: i64,
-    setpoint: i64,
-    cost: isize,
+    pub max_power: i64,
+    pub output: PlantOutput,
 }
 pub struct Consumers {
     max_power: i64,
@@ -43,15 +42,19 @@ impl PowerPlant for Consumers {
     fn current_state(&self) -> PowerPlantPublicRepr {
         PowerPlantPublicRepr::Consumers(ConsumersPublicRepr {
             max_power: self.max_power,
-            setpoint: self.setpoint,
-            cost: (self.setpoint * self.price_per_mwh) as isize,
+            output: PlantOutput {
+                setpoint: self.setpoint as isize,
+                cost: (self.setpoint * self.price_per_mwh) as isize,
+            },
         })
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::plants::{consumers::ConsumersPublicRepr, PowerPlant, PowerPlantPublicRepr};
+    use crate::plants::{
+        consumers::ConsumersPublicRepr, PlantOutput, PowerPlant, PowerPlantPublicRepr,
+    };
 
     use super::Consumers;
 
@@ -62,8 +65,10 @@ mod tests {
         // Consumers have negative setpoint, i.e. they consume energy
         assert!(plant.setpoint < 0);
         // Consumers have negative costs, i.e. they pay you
-        let PowerPlantPublicRepr::Consumers(ConsumersPublicRepr { cost, .. }) =
-            plant.current_state()
+        let PowerPlantPublicRepr::Consumers(ConsumersPublicRepr {
+            output: PlantOutput { cost, .. },
+            ..
+        }) = plant.current_state()
         else {
             unreachable!()
         };

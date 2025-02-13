@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { OrderBook } from "$lib/message";
+  import type { OrderBook, Trade } from "$lib/message";
   import { some } from "$lib/Options";
   import NumberInput from "../atoms/NumberInput.svelte";
   import OrderBookEntry from "../atoms/OrderBookEntry.svelte";
@@ -7,7 +7,12 @@
   let {
     orderBook,
     send,
-  }: { orderBook: OrderBook; send: (msg: string) => void } = $props();
+    trades,
+  }: {
+    orderBook: OrderBook;
+    send: (msg: string) => void;
+    trades: Trade[];
+  } = $props();
 
   let price: number = $state(50);
   let volume: number = $state(100);
@@ -18,7 +23,13 @@
     }
     return (orderBook.offers[0].price - orderBook.bids[0].price) / 100;
   });
-
+  let market_position = $derived(
+    trades.reduce(
+      (acc, trade) =>
+        acc + (trade.direction === "Buy" ? trade.volume : -trade.volume),
+      0,
+    ),
+  );
   const sendOrderRequest = (direction: "Sell" | "Buy") => {
     const orderRequest = {
       price: price * 100,
@@ -35,7 +46,15 @@
 </script>
 
 <div class="flex flex-col">
-  <h2 class="text-lg font-bold">Marché</h2>
+  <h2 class="text-lg font-bold">
+    Marché
+
+    <!-- {#if market_position > 0}
+      (achats : {market_position} MW)
+    {:else if market_position < 0}
+      (ventes : {Math.abs(market_position)} MW)
+    {/if} -->
+  </h2>
   <!-- Add an offer -->
   <div class="">
     <!-- <h3 class="text-xl font-semibold mb-2 text-center">Ajouter une offre</h3> -->

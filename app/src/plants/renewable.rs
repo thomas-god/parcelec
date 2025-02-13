@@ -6,7 +6,7 @@ use super::{PlantOutput, PowerPlant, PowerPlantPublicRepr};
 #[derive(Debug, Serialize, Clone, Copy)]
 pub struct RenewablePlantPublicRepr {
     max_power: i64,
-    setpoint: i64,
+    output: PlantOutput,
 }
 pub struct RenewablePlant {
     max_power: i64,
@@ -39,7 +39,10 @@ impl PowerPlant for RenewablePlant {
     fn current_state(&self) -> PowerPlantPublicRepr {
         PowerPlantPublicRepr::RenewablePlant(RenewablePlantPublicRepr {
             max_power: self.max_power,
-            setpoint: self.setpoint,
+            output: PlantOutput {
+                setpoint: self.setpoint as isize,
+                cost: 0,
+            },
         })
     }
 }

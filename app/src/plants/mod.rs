@@ -19,7 +19,7 @@ pub enum PowerPlantPublicRepr {
     Consumers(ConsumersPublicRepr),
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Serialize, Clone, Copy)]
 pub struct PlantOutput {
     setpoint: isize,
     cost: isize,

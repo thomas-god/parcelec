@@ -7,11 +7,11 @@
   }: { plant: GasPlantState; updateSetpoint: (setpoint: number) => void } =
     $props();
   let setpoint_percentage = $derived(
-    (plant.setpoint / plant.settings.max_setpoint) * 100,
+    (plant.output.setpoint / plant.settings.max_setpoint) * 100,
   );
   let current_setpoint = $state("0");
   $effect(() => {
-    current_setpoint = String(plant.setpoint);
+    current_setpoint = String(plant.output.setpoint);
   });
 
   let debounceTimer: ReturnType<typeof setTimeout>;
@@ -53,7 +53,8 @@
       </label>
     </div>
     <div>
-      {(-plant.cost).toLocaleString("fr-FR")}€ ({plant.settings.energy_cost} €/MWh)
+      {(-plant.output.cost).toLocaleString("fr-FR")}€ ({plant.settings
+        .energy_cost} €/MWh)
     </div>
   </div>
 </div>

@@ -34,8 +34,7 @@ impl GasPlant {
 #[derive(Debug, Serialize, Clone, Copy)]
 pub struct GasPlantPublicRepr {
     pub settings: GasPlantSettings,
-    pub cost: isize,
-    pub setpoint: isize,
+    pub output: PlantOutput,
 }
 
 impl PowerPlant for GasPlant {
@@ -50,8 +49,10 @@ impl PowerPlant for GasPlant {
     fn current_state(&self) -> PowerPlantPublicRepr {
         PowerPlantPublicRepr::GasPlant(GasPlantPublicRepr {
             settings: self.settings,
-            cost: self.cost(),
-            setpoint: self.setpoint.unwrap_or(0),
+            output: PlantOutput {
+                setpoint: self.setpoint.unwrap_or(0),
+                cost: self.cost(),
+            },
         })
     }
 

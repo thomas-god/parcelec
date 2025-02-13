@@ -9,7 +9,7 @@
 
   let current_setpoint = $state("0");
   $effect(() => {
-    current_setpoint = String(battery.current_setpoint);
+    current_setpoint = String(battery.output.setpoint);
   });
 
   let debounceTimer: ReturnType<typeof setTimeout>;
@@ -24,16 +24,16 @@
     Math.round((battery.charge / battery.max_charge) * 100),
   );
   let charge_variation_percent = $derived(
-    Math.round((Math.abs(battery.current_setpoint) / battery.max_charge) * 100),
+    Math.round((Math.abs(battery.output.setpoint) / battery.max_charge) * 100),
   );
   let grid_template = $derived.by(() => {
-    if (battery.current_setpoint > 0) {
+    if (battery.output.setpoint > 0) {
       // Discharge
       const col1 = current_charge_percent - charge_variation_percent;
       const col2 = charge_variation_percent;
       const col3 = 100 - current_charge_percent;
       return `grid-template-columns: ${col1}fr ${col2}fr ${col3}fr;`;
-    } else if (battery.current_setpoint < 0) {
+    } else if (battery.output.setpoint < 0) {
       // Charge
       const col1 = current_charge_percent;
       const col2 = charge_variation_percent;
@@ -48,10 +48,10 @@
     }
   });
   let current_charge_style = $derived.by(() => {
-    if (battery.current_setpoint > 0) {
+    if (battery.output.setpoint > 0) {
       // Discharge
       return `grid-column-start:1; grid-column-end:3; z-index: 50;`;
-    } else if (battery.current_setpoint < 0) {
+    } else if (battery.output.setpoint < 0) {
       // Charge
       return `grid-column-start:1; grid-column-end:2; z-index: 50;`;
     } else {
@@ -62,7 +62,7 @@
 
   let delta_charge_style = $derived.by(() => {
     let style = "";
-    if (battery.current_setpoint > 0) {
+    if (battery.output.setpoint > 0) {
       // Discharge
       style += `background-image: repeating-linear-gradient(
         -45deg,
@@ -72,7 +72,7 @@
       style += "grid-column-start: 2;";
       style += "grid-column-end: 3;";
       style += "z-index: 60;";
-    } else if (battery.current_setpoint < 0) {
+    } else if (battery.output.setpoint < 0) {
       // Charge
       style += `background-image: repeating-linear-gradient(
         -45deg,
