@@ -4,7 +4,7 @@ use futures_util::future::join_all;
 use serde::{ser::SerializeStruct, Deserialize, Serialize};
 use tokio::sync::{
     mpsc::{channel, Receiver, Sender},
-    watch,
+    oneshot, watch,
 };
 use uuid::Uuid;
 
@@ -27,7 +27,9 @@ pub struct ProgramPlant {
 #[derive(Debug)]
 pub enum StackMessage {
     OpenStack,
-    CloseStack,
+    CloseStack {
+        tx_back: oneshot::Sender<HashMap<String, PlantOutput>>,
+    },
     ProgramSetpoint(ProgramPlant),
     RegisterPlayerConnection(PlayerConnection),
 }
@@ -107,8 +109,14 @@ impl StackActor {
                     self.state = StackState::Open;
                     let _ = self.state_sender.send(StackState::Open);
                 }
-                (StackState::Open, StackMessage::CloseStack) => {
+                (StackState::Open, StackMessage::CloseStack { tx_back }) => {
                     self.state = StackState::Closed;
+                    let plant_outputs = self
+                        .plants
+                        .iter_mut()
+                        .map(|(plant_id, plant)| (plant_id.clone(), plant.dispatch()))
+                        .collect();
+                    let _ = tx_back.send(plant_outputs);
                     let _ = self.state_sender.send(StackState::Closed);
                 }
                 (state, msg) => {
@@ -194,7 +202,10 @@ fn default_plants() -> HashMap<String, Box<dyn PowerPlant + Send + Sync>> {
 mod tests_stack {
     use std::{collections::HashMap, time::Duration};
 
-    use tokio::sync::mpsc::{channel, Receiver, Sender};
+    use tokio::sync::{
+        mpsc::{channel, Receiver, Sender},
+        oneshot,
+    };
     use uuid::Uuid;
 
     use crate::{
@@ -322,7 +333,11 @@ mod tests_stack {
             register_player_connection(&player_id, stack.clone()).await;
 
         // Close the stack
-        let _ = stack.clone().send(StackMessage::CloseStack).await;
+        let (tx_back, _) = oneshot::channel();
+        let _ = stack
+            .clone()
+            .send(StackMessage::CloseStack { tx_back })
+            .await;
 
         // Try to send a dispatch command
         let Some(plant_id) = plants.keys().next() else {
@@ -344,13 +359,29 @@ mod tests_stack {
         _ = tokio::time::sleep(Duration::from_micros(1)) => {}
         };
     }
+    #[tokio::test]
+    async fn test_receive_plant_outputs_when_closing_stack() {
+        let (_, stack) = start_stack();
 
+        // Close the stack
+        let (tx_back, rx_back) = oneshot::channel();
+        let _ = stack
+            .clone()
+            .send(StackMessage::CloseStack { tx_back })
+            .await;
+
+        let plant_outputs = rx_back
+            .await
+            .expect("Should have received a map of plant outputs");
+        assert!(!plant_outputs.is_empty());
+    }
     #[tokio::test]
     async fn test_register_connection_when_stack_closed() {
         let (player_id, stack) = start_stack();
 
         // Close the stack
-        let _ = stack.send(StackMessage::CloseStack).await;
+        let (tx_back, _) = oneshot::channel();
+        let _ = stack.send(StackMessage::CloseStack { tx_back }).await;
 
         // Register a player
         let (tx, mut rx) = channel::<PlayerMessage>(16);
@@ -400,7 +431,8 @@ mod tests_stack {
         assert_eq!(*state_rx.borrow(), StackState::Open);
 
         // Close the Stack
-        let _ = stack_tx.send(StackMessage::CloseStack).await;
+        let (tx_back, _) = oneshot::channel();
+        let _ = stack_tx.send(StackMessage::CloseStack { tx_back }).await;
         assert!(state_rx.changed().await.is_ok());
         assert_eq!(*state_rx.borrow_and_update(), StackState::Closed);
 
