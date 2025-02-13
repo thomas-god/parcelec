@@ -24,8 +24,17 @@
       0,
     ),
   );
+
+  let position = $derived(plants_position + trades_position);
 </script>
 
 <div class="text-2xl text-center">
-  Equilibre: {plants_position + trades_position} MW
+  {#if position > 0}
+    ⚠️ Surplus d'énergie: {Math.abs(position)} MW
+  {:else if position < 0}
+    ⚠️ Manque d'énergie: {Math.abs(position)} MW
+  {:else}
+    ✅ A l'équilibre
+  {/if}
+  <!-- Equilibre: {plants_position + trades_position} MW -->
 </div>
