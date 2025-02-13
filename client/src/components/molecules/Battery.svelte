@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { BatteryState } from "$lib/message";
+  import Toggle from "../atoms/Toggle.svelte";
 
   let {
     battery,
@@ -9,15 +10,23 @@
 
   let current_setpoint = $state("0");
   $effect(() => {
-    current_setpoint = String(battery.output.setpoint);
+    current_setpoint = String(Math.abs(battery.output.setpoint));
+  });
+  let current_charge_state = $state(true);
+  $effect(() => {
+    current_charge_state = battery.output.setpoint > 0;
   });
 
   let debounceTimer: ReturnType<typeof setTimeout>;
-  const deboundedUpdateSetpoint = () => {
+  const debouncedUpdateSetpoint = () => {
+    console.log("updating");
     clearTimeout(debounceTimer);
     debounceTimer = setTimeout(() => {
-      updateSetpoint(Number.parseInt(current_setpoint));
-    }, 500);
+      updateSetpoint(
+        Math.abs(Number.parseInt(current_setpoint)) *
+          (current_charge_state ? 1 : -1),
+      );
+    }, 400);
   };
 
   let current_charge_percent = $derived(
@@ -110,23 +119,29 @@
       ></div>
     </div>
   </div>
-  <div class="flex flex-col @xs:flex-row @xs:justify-between">
-    <div>
-      <label
-        >Consigne
+  <div class="flex flex-col">
+    <div class="flex flex-row items-center justify-between">
+      <label>
+        Consigne
         <input
           type="text"
           inputmode="numeric"
           pattern="[0-9]*"
           bind:value={current_setpoint}
-          oninput={deboundedUpdateSetpoint}
+          oninput={debouncedUpdateSetpoint}
           class="max-w-[60px] text-center"
           step="10"
         />
         MW
       </label>
+      <Toggle
+        off_label={"Charge"}
+        on_label="Décharge"
+        bind:checked={current_charge_state}
+        onInput={debouncedUpdateSetpoint}
+      />
     </div>
-    <div class="justify-self-start">
+    <div class="text-right">
       <span class="hidden @sm:inline pr-1">Charge:</span>{battery.charge} / {battery.max_charge}
       MWh
     </div>
