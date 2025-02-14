@@ -21,6 +21,7 @@
   let plants: StackSnapshot = $state(new Map());
   let market_state: "Open" | "Closed" = $state("Open");
   let stack_state: "Open" | "Closed" = $state("Open");
+  let game_state: "Open" | "Running" = $state("Open");
 
   const connect = () => {
     const socket = new WebSocket(`${PUBLIC_WS_URL}/ws`);
@@ -56,6 +57,9 @@
             }
           }
           trades = trades.concat(trades_to_add);
+        })
+        .with({ type: "GameState" }, ({ state }) => {
+          game_state = state;
         })
         .with({ type: "MarketState" }, ({ state }) => {
           market_state = state;
@@ -95,33 +99,37 @@
 
 <main class="p-2 max-w-[600px] mx-auto">
   {#if socketIsOpen}
-    <div class="flex flex-col gap-6 items-stretch">
-      <Scores {plants} {trades} />
-      <Stack {plants} send={sendMessage} />
-      <OrderBookElement {orderBook} send={sendMessage} {trades} />
-      {#if show_last_trade && trades.length > 0}
-        <div
-          transition:fade
-          id="bottom-banner"
-          tabindex="-1"
-          class="fixed bottom-0 start-0 z-50 flex justify-between w-full p-4 border-t border-gray-200 bg-gray-50 dark:bg-gray-700 dark:border-gray-600"
-        >
-          <div class="flex items-center mx-auto">
-            <p
-              class="flex items-center text-md font-normal text-gray-500 dark:text-gray-400"
-            >
-              <span
-                >Nouveau trade: {trades.at(-1)?.direction === "Buy"
-                  ? "achetés"
-                  : "vendus"}
-                {trades.at(-1)?.volume}MW @ {0.01 *
-                  (trades.at(-1)?.price as number)}€ 🤑</span
+    {#if game_state === "Running"}
+      <div class="flex flex-col gap-6 items-stretch">
+        <Scores {plants} {trades} />
+        <Stack {plants} send={sendMessage} />
+        <OrderBookElement {orderBook} send={sendMessage} {trades} />
+        {#if show_last_trade && trades.length > 0}
+          <div
+            transition:fade
+            id="bottom-banner"
+            tabindex="-1"
+            class="fixed bottom-0 start-0 z-50 flex justify-between w-full p-4 border-t border-gray-200 bg-gray-50 dark:bg-gray-700 dark:border-gray-600"
+          >
+            <div class="flex items-center mx-auto">
+              <p
+                class="flex items-center text-md font-normal text-gray-500 dark:text-gray-400"
               >
-            </p>
+                <span
+                  >Nouveau trade: {trades.at(-1)?.direction === "Buy"
+                    ? "achetés"
+                    : "vendus"}
+                  {trades.at(-1)?.volume}MW @ {0.01 *
+                    (trades.at(-1)?.price as number)}€ 🤑</span
+                >
+              </p>
+            </div>
           </div>
-        </div>
-      {/if}
-    </div>
+        {/if}
+      </div>
+    {:else}
+      <p>Game not running yet</p>
+    {/if}
   {:else}
     <p>Not connected</p>
   {/if}

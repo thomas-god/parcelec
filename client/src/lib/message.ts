@@ -84,6 +84,10 @@ const WSMessageSchema = z.discriminatedUnion("type", [
     type: z.literal("StackState"),
     state: z.enum(["Open", "Closed"]),
   }),
+  z.object({
+    type: z.literal("GameState"),
+    state: z.enum(["Open", "Running"]),
+  }),
 ]);
 
 type WSMessage = z.infer<typeof WSMessageSchema>;

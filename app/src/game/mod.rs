@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
 use delivery_period::DeliveryPeriod;
+use serde::{ser::SerializeStruct, Serialize};
 use tokio::sync::{
     mpsc::{self, channel, Receiver, Sender},
     oneshot, watch,
@@ -47,6 +48,7 @@ pub enum RegisterPlayerResponse {
 #[derive(Debug)]
 pub enum ConnectPlayerResponse {
     OK {
+        game_state: watch::Receiver<GameState>,
         market: mpsc::Sender<MarketMessage>,
         market_state: watch::Receiver<MarketState>,
         player_stack: Sender<StackMessage>,
@@ -65,10 +67,28 @@ pub struct GameContext {
     pub stacks: HashMap<String, Sender<StackMessage>>,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum GameState {
     Open,
     Running,
+}
+
+impl Serialize for GameState {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        let mut state = serializer.serialize_struct("GameState", 2)?;
+        state.serialize_field("type", "GameState")?;
+        state.serialize_field(
+            "state",
+            match self {
+                Self::Running => "Running",
+                Self::Open => "Open",
+            },
+        )?;
+        state.end()
+    }
 }
 
 /// Main entrypoint for a given game of parcelec. Responsible for:
@@ -160,6 +180,7 @@ impl Game {
         };
 
         let _ = tx_back.send(ConnectPlayerResponse::OK {
+            game_state: self.state_watch.subscribe(),
             market: self.market.clone(),
             market_state: self.market_state.clone(),
             player_stack: player_stack.clone(),

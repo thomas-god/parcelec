@@ -17,6 +17,7 @@ use tokio::{
 use uuid::Uuid;
 
 use crate::{
+    game::GameState,
     market::{
         order_book::{OrderRequest, TradeLeg},
         MarketMessage, MarketState, OrderRepr,
@@ -71,6 +72,7 @@ impl PlayerConnectionActor {
     pub async fn start(
         mut ws: WebSocket,
         player_id: String,
+        game_state: watch::Receiver<GameState>,
         market: Sender<MarketMessage>,
         market_state: watch::Receiver<MarketState>,
         stack: Sender<StackMessage>,
@@ -99,6 +101,7 @@ impl PlayerConnectionActor {
         let sink_handle = tokio::spawn(process_internal_messages(
             sink,
             rx,
+            game_state,
             market_state,
             stack_state,
         ));
@@ -206,10 +209,15 @@ async fn process_ws_messages(
 async fn process_internal_messages(
     mut sink: SplitSink<WebSocket, Message>,
     mut rx: Receiver<PlayerMessage>,
+    mut game_state: watch::Receiver<GameState>,
     mut market_state: watch::Receiver<MarketState>,
     mut stack_state: watch::Receiver<StackState>,
 ) {
-    // Send initial market and stack states before processing further messages
+    // Send initial game, market and stack states before processing further messages
+    let initial_game_state = serde_json::to_string(&game_state.borrow_and_update().clone());
+    if send_msg(&mut sink, initial_game_state).await.is_err() {
+        return;
+    }
     let initial_market_state = serde_json::to_string(&market_state.borrow_and_update().clone());
     if send_msg(&mut sink, initial_market_state).await.is_err() {
         return;
@@ -222,6 +230,9 @@ async fn process_internal_messages(
     loop {
         let msg = select! {
             Some(msg) = rx.recv() => serde_json::to_string(&msg),
+            Ok(()) = game_state.changed() => {
+                serde_json::to_string(&game_state.borrow_and_update().clone())
+            }
             Ok(()) = market_state.changed() => {
                 serde_json::to_string(&market_state.borrow_and_update().clone())
             }

@@ -22,7 +22,7 @@ use crate::{
     bots::start_bots,
     game::{
         game_repository::{CreateNewGameResponse, GameId, GameRepositoryMessage, GetGameResponse},
-        ConnectPlayerResponse, GameMessage, RegisterPlayerResponse,
+        ConnectPlayerResponse, GameMessage, GameState, RegisterPlayerResponse,
     },
     market::{MarketMessage, MarketState},
     plants::stack::{StackMessage, StackState},
@@ -100,15 +100,16 @@ pub async fn handle_ws_connection(
         })
         .await;
 
-    let (player_stack, stack_state, market, market_state) = match rx.await {
+    let (player_stack, game_state, stack_state, market, market_state) = match rx.await {
         Ok(ConnectPlayerResponse::OK {
+            game_state,
             market,
             market_state,
             player_stack,
             stack_state,
         }) => {
             println!("Player is connected, continuing with processing WS");
-            (player_stack, stack_state, market, market_state)
+            (player_stack, game_state, stack_state, market, market_state)
         }
         Ok(ConnectPlayerResponse::DoesNotExist) => {
             println!("Player does not exist, invalidating its cookies");
@@ -145,21 +146,38 @@ pub async fn handle_ws_connection(
     let market = market.clone();
     let market_state = market_state.clone();
     ws.on_upgrade(move |socket| {
-        handle_socket(socket, id, market, market_state, player_stack, stack_state)
+        handle_socket(
+            socket,
+            id,
+            game_state,
+            market,
+            market_state,
+            player_stack,
+            stack_state,
+        )
     })
 }
 
 async fn handle_socket(
     socket: WebSocket,
     player_id: String,
+    game_state: watch::Receiver<GameState>,
     market: mpsc::Sender<MarketMessage>,
     market_state: watch::Receiver<MarketState>,
     stack: mpsc::Sender<StackMessage>,
     stack_state: watch::Receiver<StackState>,
 ) {
     tokio::spawn(async move {
-        PlayerConnectionActor::start(socket, player_id, market, market_state, stack, stack_state)
-            .await;
+        PlayerConnectionActor::start(
+            socket,
+            player_id,
+            game_state,
+            market,
+            market_state,
+            stack,
+            stack_state,
+        )
+        .await;
     });
 }
 
