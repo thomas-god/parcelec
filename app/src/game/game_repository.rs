@@ -53,8 +53,10 @@ impl AsRef<str> for GameId {
     }
 }
 
+#[derive(Debug)]
 pub struct CreateNewGameResponse {
-    game_id: GameId,
+    pub game_id: GameId,
+    pub game_tx: mpsc::Sender<GameMessage>,
 }
 
 pub enum GetGameResponse {
@@ -88,12 +90,14 @@ impl GameRepository {
             match msg {
                 GameRepositoryMessage::CreateNewGame { tx_back } => {
                     let game_id = GameId::default();
-                    let game = Game::new().await;
+                    let mut game = Game::new().await;
                     let game_tx = game.get_tx();
 
-                    self.games.insert(game_id.clone(), game_tx);
+                    self.games.insert(game_id.clone(), game_tx.clone());
 
-                    let _ = tx_back.send(CreateNewGameResponse { game_id });
+                    tokio::spawn(async move { game.run().await });
+
+                    let _ = tx_back.send(CreateNewGameResponse { game_id, game_tx });
                 }
                 GameRepositoryMessage::GetGame { game_id, tx_back } => {
                     let _ = tx_back.send(match self.games.get(&game_id) {
@@ -110,8 +114,11 @@ impl GameRepository {
 mod tests {
     use tokio::sync::oneshot;
 
-    use crate::game::game_repository::{
-        CreateNewGameResponse, GameId, GameRepository, GameRepositoryMessage, GetGameResponse,
+    use crate::game::{
+        game_repository::{
+            CreateNewGameResponse, GameId, GameRepository, GameRepositoryMessage, GetGameResponse,
+        },
+        GameMessage,
     };
 
     #[tokio::test]
@@ -126,8 +133,35 @@ mod tests {
             .send(GameRepositoryMessage::CreateNewGame { tx_back })
             .await;
 
-        let Ok(CreateNewGameResponse { game_id: _ }) = rx.await else {
+        let Ok(CreateNewGameResponse { .. }) = rx.await else {
             unreachable!("Should have received a game ID")
+        };
+    }
+
+    #[tokio::test]
+    async fn test_created_game_should_be_running() {
+        let mut repository = GameRepository::new();
+        let repository_tx = repository.get_tx();
+
+        tokio::spawn(async move { repository.start().await });
+
+        let (tx_back, rx) = oneshot::channel();
+        let _ = repository_tx
+            .send(GameRepositoryMessage::CreateNewGame { tx_back })
+            .await;
+        let Ok(CreateNewGameResponse { game_tx, .. }) = rx.await else {
+            unreachable!("Should have received a game ID")
+        };
+
+        let (tx_back, rx) = oneshot::channel();
+        let _ = game_tx
+            .send(GameMessage::ConnectPlayer {
+                id: "toto".to_string(),
+                tx_back,
+            })
+            .await;
+        let Ok(_) = rx.await else {
+            unreachable!("Should have received any message");
         };
     }
 
@@ -143,7 +177,7 @@ mod tests {
             .send(GameRepositoryMessage::CreateNewGame { tx_back })
             .await;
 
-        let Ok(CreateNewGameResponse { game_id }) = rx.await else {
+        let Ok(CreateNewGameResponse { game_id, .. }) = rx.await else {
             unreachable!("Should have received a game ID")
         };
 
