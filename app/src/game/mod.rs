@@ -11,6 +11,8 @@ use crate::{
     plants::stack::{StackActor, StackMessage, StackState},
 };
 
+pub mod game_repository;
+
 #[derive(Debug)]
 pub struct Player {
     pub id: String,
