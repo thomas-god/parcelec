@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use delivery_period::DeliveryPeriod;
 use tokio::sync::{
     mpsc::{self, channel, Receiver, Sender},
     oneshot, watch,
@@ -11,6 +12,7 @@ use crate::{
     plants::stack::{StackActor, StackMessage, StackState},
 };
 
+pub mod delivery_period;
 pub mod game_repository;
 
 #[derive(Debug)]
@@ -33,12 +35,14 @@ pub enum GameMessage {
     GetMarketTx {
         tx_back: oneshot::Sender<mpsc::Sender<MarketMessage>>,
     },
+    StartGame,
 }
 
 #[derive(Debug)]
 pub enum RegisterPlayerResponse {
     Success { id: String },
     PlayerAlreadyExist,
+    GameIsRunning,
 }
 #[derive(Debug)]
 pub enum ConnectPlayerResponse {
@@ -55,12 +59,25 @@ pub enum ConnectPlayerResponse {
 #[derive(Clone)]
 pub struct GameContext {
     pub game: Sender<GameMessage>,
+    pub game_state: watch::Receiver<GameState>,
     pub market: Sender<MarketMessage>,
     pub market_state: watch::Receiver<MarketState>,
     pub stacks: HashMap<String, Sender<StackMessage>>,
 }
 
+#[derive(Debug, PartialEq)]
+pub enum GameState {
+    Open,
+    Running,
+}
+
+/// Main entrypoint for a given game of parcelec. Responsible for:
+/// - new player registration,
+/// - passing game context to new player connection (market and player's stack tx),
+/// - delivery period lifecycle
 pub struct Game {
+    state: GameState,
+    state_watch: watch::Sender<GameState>,
     players: Vec<Player>,
     market: Sender<MarketMessage>,
     market_state: watch::Receiver<MarketState>,
@@ -81,8 +98,11 @@ impl Game {
         });
 
         let (tx, rx) = channel::<GameMessage>(32);
+        let (state_tx, _) = watch::channel(GameState::Open);
 
         Game {
+            state: GameState::Open,
+            state_watch: state_tx,
             market: market_tx,
             market_state,
             players: Vec::new(),
@@ -95,15 +115,30 @@ impl Game {
 
     pub async fn run(&mut self) {
         while let Some(msg) = self.rx.recv().await {
-            match msg {
-                GameMessage::RegisterPlayer { name, tx_back } => {
+            match (&self.state, msg) {
+                (GameState::Open, GameMessage::RegisterPlayer { name, tx_back }) => {
                     self.register_player(name, tx_back);
                 }
-                GameMessage::ConnectPlayer { id, tx_back } => {
+                (GameState::Running, GameMessage::RegisterPlayer { tx_back, .. }) => {
+                    let _ = tx_back.send(RegisterPlayerResponse::GameIsRunning);
+                }
+                (_, GameMessage::ConnectPlayer { id, tx_back }) => {
                     self.connect_player(id, tx_back);
                 }
-                GameMessage::GetMarketTx { tx_back } => {
+                (_, GameMessage::GetMarketTx { tx_back }) => {
                     let _ = tx_back.send(self.market.clone());
+                }
+                (GameState::Open, GameMessage::StartGame) => {
+                    self.state = GameState::Running;
+                    let mut delivery_period =
+                        DeliveryPeriod::new(self.market.clone(), self.stacks.clone());
+                    tokio::spawn(async move {
+                        delivery_period.start().await;
+                    });
+                    let _ = self.state_watch.send(GameState::Running);
+                }
+                (GameState::Running, GameMessage::StartGame) => {
+                    println!("Game already running")
                 }
             }
         }
@@ -169,6 +204,7 @@ impl Game {
     pub fn get_context(&self) -> GameContext {
         GameContext {
             game: self.get_tx(),
+            game_state: self.state_watch.subscribe(),
             market: self.get_market(),
             market_state: self.market_state.clone(),
             stacks: self.stacks.clone(),
@@ -180,7 +216,10 @@ impl Game {
 mod tests {
     use tokio::sync::oneshot::channel;
 
-    use crate::game::{ConnectPlayerResponse, Game, RegisterPlayerResponse};
+    use crate::{
+        game::{ConnectPlayerResponse, Game, GameMessage, GameState, RegisterPlayerResponse},
+        market::MarketState,
+    };
 
     use super::GameContext;
 
@@ -202,7 +241,7 @@ mod tests {
         context
             .game
             .clone()
-            .send(crate::game::GameMessage::RegisterPlayer {
+            .send(GameMessage::RegisterPlayer {
                 name: "toto".to_owned(),
                 tx_back: tx,
             })
@@ -218,7 +257,7 @@ mod tests {
         context
             .game
             .clone()
-            .send(crate::game::GameMessage::RegisterPlayer {
+            .send(GameMessage::RegisterPlayer {
                 name: "tutu".to_owned(),
                 tx_back: tx,
             })
@@ -234,7 +273,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_register_player_same_name() {
+    async fn test_fails_register_player_with_existing_name() {
         let context = start_game().await;
 
         // Register a player
@@ -242,7 +281,7 @@ mod tests {
         context
             .game
             .clone()
-            .send(crate::game::GameMessage::RegisterPlayer {
+            .send(GameMessage::RegisterPlayer {
                 name: "toto".to_owned(),
                 tx_back: tx,
             })
@@ -258,7 +297,7 @@ mod tests {
         context
             .game
             .clone()
-            .send(crate::game::GameMessage::RegisterPlayer {
+            .send(GameMessage::RegisterPlayer {
                 name: "toto".to_owned(),
                 tx_back: tx,
             })
@@ -273,7 +312,7 @@ mod tests {
         context
             .game
             .clone()
-            .send(crate::game::GameMessage::RegisterPlayer {
+            .send(GameMessage::RegisterPlayer {
                 name: "tata".to_owned(),
                 tx_back: tx,
             })
@@ -286,7 +325,29 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_connect_unregistered_player() {
+    async fn test_fails_register_player_game_is_running() {
+        let GameContext { game, .. } = start_game().await;
+
+        // Start the game
+        let _ = game.send(GameMessage::StartGame).await;
+
+        // Try to register a new player
+        let (tx, rx) = channel::<RegisterPlayerResponse>();
+        let _ = game
+            .send(GameMessage::RegisterPlayer {
+                name: "toto".to_owned(),
+                tx_back: tx,
+            })
+            .await;
+
+        match rx.await {
+            Ok(RegisterPlayerResponse::GameIsRunning) => {}
+            _ => unreachable!("Should have rejected the request"),
+        };
+    }
+
+    #[tokio::test]
+    async fn test_fails_connect_unregistered_player() {
         let context = start_game().await;
 
         // Try to connect a player that is not registered
@@ -294,7 +355,7 @@ mod tests {
         context
             .game
             .clone()
-            .send(crate::game::GameMessage::ConnectPlayer {
+            .send(GameMessage::ConnectPlayer {
                 id: "random_id".to_owned(),
                 tx_back: tx,
             })
@@ -312,7 +373,7 @@ mod tests {
         let game = context.game.clone();
         // Register a player
         let (tx, rx) = channel::<RegisterPlayerResponse>();
-        game.send(crate::game::GameMessage::RegisterPlayer {
+        game.send(GameMessage::RegisterPlayer {
             name: "toto".to_owned(),
             tx_back: tx,
         })
@@ -325,7 +386,7 @@ mod tests {
 
         // Connect the player
         let (tx, rx) = channel::<ConnectPlayerResponse>();
-        game.send(crate::game::GameMessage::ConnectPlayer {
+        game.send(GameMessage::ConnectPlayer {
             id: id.clone(),
             tx_back: tx,
         })
@@ -338,7 +399,7 @@ mod tests {
 
         // Connection should be idempotent
         let (tx, rx) = channel::<ConnectPlayerResponse>();
-        game.send(crate::game::GameMessage::ConnectPlayer {
+        game.send(GameMessage::ConnectPlayer {
             id: id.clone(),
             tx_back: tx,
         })
@@ -348,5 +409,40 @@ mod tests {
             Ok(ConnectPlayerResponse::OK { .. }) => {}
             _ => unreachable!("Should have connected the player"),
         };
+    }
+
+    #[tokio::test]
+    async fn test_starting_the_game_should_open_market_and_stacks() {
+        let GameContext {
+            game,
+            mut market_state,
+            ..
+        } = start_game().await;
+
+        // Start the game
+        let _ = game.send(GameMessage::StartGame).await;
+
+        // Market should be open
+        if *market_state.borrow_and_update() == MarketState::Closed {
+            assert!(market_state.changed().await.is_ok());
+            assert_eq!(*market_state.borrow_and_update(), MarketState::Open);
+        }
+    }
+
+    #[tokio::test]
+    async fn test_starting_the_game_should_publish_game_state_running() {
+        let GameContext {
+            game,
+            mut game_state,
+            ..
+        } = start_game().await;
+
+        assert_eq!(*game_state.borrow_and_update(), GameState::Open);
+        // Start the game
+        let _ = game.send(GameMessage::StartGame).await;
+
+        // Market should be open
+        assert!(game_state.changed().await.is_ok());
+        assert_eq!(*game_state.borrow_and_update(), GameState::Running);
     }
 }

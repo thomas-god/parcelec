@@ -212,6 +212,10 @@ pub async fn join_game(
             println!("Player with name {} already exist", input.name);
             return StatusCode::CONFLICT;
         }
+        Ok(RegisterPlayerResponse::GameIsRunning) => {
+            println!("Cannot register a player to a running game");
+            return StatusCode::CONFLICT;
+        }
         Err(err) => {
             println!("{err:?}");
             println!("Error while sending message to game instance");
