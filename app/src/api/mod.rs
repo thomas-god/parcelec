@@ -19,14 +19,17 @@ use tower_cookies::{
 use tower_http::cors::CorsLayer;
 
 use crate::{
-    game::{ConnectPlayerResponse, GameContext, GameMessage, RegisterPlayerResponse},
+    game::{
+        game_repository::{CreateNewGameResponse, GameId, GameRepositoryMessage, GetGameResponse},
+        ConnectPlayerResponse, GameMessage, RegisterPlayerResponse,
+    },
     market::{MarketMessage, MarketState},
     plants::stack::{StackMessage, StackState},
     player::PlayerConnectionActor,
 };
 
 pub struct AppState {
-    pub context: GameContext,
+    pub game_repository: mpsc::Sender<GameRepositoryMessage>,
 }
 
 pub fn build_router(app_state: Arc<AppState>) -> Option<Router> {
@@ -54,16 +57,40 @@ pub async fn handle_ws_connection(
     State(state): State<Arc<AppState>>,
     cookies: Cookies,
 ) -> impl IntoResponse {
-    let Some(id) = cookies.get("id").map(|c| c.value_trimmed().to_string()) else {
+    let Some(id) = cookies
+        .get("player_id")
+        .map(|c| c.value_trimmed().to_string())
+    else {
         return StatusCode::UNAUTHORIZED.into_response();
     };
-    let Some(_) = cookies.get("name").map(|c| c.value_trimmed().to_string()) else {
+    let Some(_) = cookies
+        .get("player_name")
+        .map(|c| c.value_trimmed().to_string())
+    else {
         return StatusCode::UNAUTHORIZED.into_response();
     };
-    let (tx, rx) = oneshot::channel::<ConnectPlayerResponse>();
+    let Some(game_id) = cookies
+        .get("game_id")
+        .map(|c| GameId::from(c.value_trimmed()))
+    else {
+        return StatusCode::UNAUTHORIZED.into_response();
+    };
+
+    let (tx_back, rx) = oneshot::channel();
     let _ = state
-        .context
-        .game
+        .game_repository
+        .send(GameRepositoryMessage::GetGame {
+            game_id: game_id.clone(),
+            tx_back,
+        })
+        .await;
+    let Ok(GetGameResponse::Found(game)) = rx.await else {
+        println!("No game found for ID: {game_id:?}");
+        return StatusCode::INTERNAL_SERVER_ERROR.into_response();
+    };
+
+    let (tx, rx) = oneshot::channel();
+    let _ = game
         .clone()
         .send(GameMessage::ConnectPlayer {
             id: id.clone(),
@@ -71,24 +98,31 @@ pub async fn handle_ws_connection(
         })
         .await;
 
-    let (player_stack, stack_state) = match rx.await {
+    let (player_stack, stack_state, market, market_state) = match rx.await {
         Ok(ConnectPlayerResponse::OK {
+            market,
+            market_state,
             player_stack,
             stack_state,
         }) => {
             println!("Player is connected, continuing with processing WS");
-            (player_stack, stack_state)
+            (player_stack, stack_state, market, market_state)
         }
         Ok(ConnectPlayerResponse::DoesNotExist) => {
             println!("Player does not exist, invalidating its cookies");
-            let id_cookie = Cookie::build(("id", "".to_string()))
+            let game_id_cookie = Cookie::build(("game_id", "".to_string()))
                 .max_age(Duration::seconds(0))
                 .same_site(SameSite::Strict)
                 .path("/")
                 .build();
-            cookies.add(id_cookie);
-
-            let name_cookie = Cookie::build(("name", "".to_string()))
+            cookies.add(game_id_cookie);
+            let player_id_cookie = Cookie::build(("player_id", "".to_string()))
+                .max_age(Duration::seconds(0))
+                .same_site(SameSite::Strict)
+                .path("/")
+                .build();
+            cookies.add(player_id_cookie);
+            let name_cookie = Cookie::build(("player_name", "".to_string()))
                 .max_age(Duration::seconds(0))
                 .same_site(SameSite::Strict)
                 .path("/")
@@ -106,8 +140,8 @@ pub async fn handle_ws_connection(
             return StatusCode::INTERNAL_SERVER_ERROR.into_response();
         }
     };
-    let market = state.context.market.clone();
-    let market_state = state.context.market_state.clone();
+    let market = market.clone();
+    let market_state = market_state.clone();
     ws.on_upgrade(move |socket| {
         handle_socket(socket, id, market, market_state, player_stack, stack_state)
     })
@@ -129,6 +163,7 @@ async fn handle_socket(
 
 #[derive(Debug, Deserialize)]
 pub struct JoinGame {
+    game_id: String,
     name: String,
 }
 
@@ -138,17 +173,29 @@ pub async fn join_game(
     Json(input): Json<JoinGame>,
 ) -> impl IntoResponse {
     println!("{input:?}");
-    if input.name.is_empty() {
+    if input.name.is_empty() || input.game_id.is_empty() {
         return StatusCode::BAD_REQUEST;
     }
+    let game_id = GameId::from(input.game_id);
 
     let Ok(domain) = env::var("DOMAIN") else {
         println!("No DOMAIN environnement variable");
         return StatusCode::INTERNAL_SERVER_ERROR;
     };
+    let (tx_back, rx) = oneshot::channel();
+    let _ = state
+        .game_repository
+        .send(GameRepositoryMessage::GetGame {
+            game_id: game_id.clone(),
+            tx_back,
+        })
+        .await;
+    let Ok(GetGameResponse::Found(game)) = rx.await else {
+        println!("No game found for ID: {game_id:?}");
+        return StatusCode::INTERNAL_SERVER_ERROR;
+    };
 
     let (tx, rx) = oneshot::channel::<RegisterPlayerResponse>();
-    let game = state.context.game.clone();
 
     let _ = game
         .send(GameMessage::RegisterPlayer {
@@ -157,7 +204,7 @@ pub async fn join_game(
         })
         .await;
 
-    let id = match rx.await {
+    let player_id = match rx.await {
         Ok(RegisterPlayerResponse::Success { id }) => id,
         Ok(RegisterPlayerResponse::PlayerAlreadyExist) => {
             println!("Player with name {} already exist", input.name);
@@ -170,21 +217,29 @@ pub async fn join_game(
         }
     };
 
-    let id_cookie = Cookie::build(("id", id.clone()))
+    let player_id_cookie = Cookie::build(("player_id", player_id.clone()))
         .max_age(Duration::days(1))
         .same_site(SameSite::Strict)
         .domain(domain.clone())
         .path("/")
         .build();
-    cookies.add(id_cookie);
-
-    let name_cookie = Cookie::build(("name", input.name.clone()))
+    cookies.add(player_id_cookie);
+    let game_id_cookie = Cookie::build(("game_id", game_id.to_string()))
+        .max_age(Duration::days(1))
+        .same_site(SameSite::Strict)
+        .domain(domain.clone())
+        .path("/")
+        .build();
+    cookies.add(game_id_cookie);
+    let player_name_cookie = Cookie::build(("player_name", input.name.clone()))
         .max_age(Duration::days(1))
         .same_site(SameSite::Strict)
         .domain(domain)
         .path("/")
         .build();
-    cookies.add(name_cookie);
-    println!("Registered player {} with id {id}", input.name);
+    cookies.add(player_name_cookie);
+    println!("Registered player {} with id {player_id}", input.name);
     StatusCode::CREATED
 }
+
+

@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use tokio::sync::{
-    mpsc::{channel, Receiver, Sender},
+    mpsc::{self, channel, Receiver, Sender},
     oneshot, watch,
 };
 use uuid::Uuid;
@@ -40,6 +40,8 @@ pub enum RegisterPlayerResponse {
 #[derive(Debug)]
 pub enum ConnectPlayerResponse {
     OK {
+        market: mpsc::Sender<MarketMessage>,
+        market_state: watch::Receiver<MarketState>,
         player_stack: Sender<StackMessage>,
         stack_state: watch::Receiver<StackState>,
     },
@@ -117,6 +119,8 @@ impl Game {
         };
 
         let _ = tx_back.send(ConnectPlayerResponse::OK {
+            market: self.market.clone(),
+            market_state: self.market_state.clone(),
             player_stack: player_stack.clone(),
             stack_state: player_stack_state.clone(),
         });
