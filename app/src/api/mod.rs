@@ -19,6 +19,7 @@ use tower_cookies::{
 use tower_http::cors::CorsLayer;
 
 use crate::{
+    bots::start_bots,
     game::{
         game_repository::{CreateNewGameResponse, GameId, GameRepositoryMessage, GetGameResponse},
         ConnectPlayerResponse, GameMessage, RegisterPlayerResponse,
@@ -257,6 +258,9 @@ pub async fn create_tutorial_game(
         println!("Unable to create a game");
         return StatusCode::INTERNAL_SERVER_ERROR;
     };
+
+    // Start the bots
+    start_bots(game_tx.clone()).await;
 
     // Register a player for this game
     let player_name = "tutorial_player".to_string();

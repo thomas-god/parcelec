@@ -71,7 +71,7 @@
     };
     socket.onclose = () => {
       socketIsOpen = false;
-      goto("/game/join");
+      goto("/");
     };
     return socket;
   };

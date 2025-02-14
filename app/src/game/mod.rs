@@ -30,6 +30,9 @@ pub enum GameMessage {
         id: String,
         tx_back: oneshot::Sender<ConnectPlayerResponse>,
     },
+    GetMarketTx {
+        tx_back: oneshot::Sender<mpsc::Sender<MarketMessage>>,
+    },
 }
 
 #[derive(Debug)]
@@ -98,6 +101,9 @@ impl Game {
                 }
                 GameMessage::ConnectPlayer { id, tx_back } => {
                     self.connect_player(id, tx_back);
+                }
+                GameMessage::GetMarketTx { tx_back } => {
+                    let _ = tx_back.send(self.market.clone());
                 }
             }
         }
