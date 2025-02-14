@@ -40,6 +40,7 @@ pub fn build_router(app_state: Arc<AppState>) -> Option<Router> {
     Some(
         Router::new()
             .route("/game/join", post(join_game))
+            .route("/tutorial", post(create_tutorial_game))
             .route("/ws", get(handle_ws_connection))
             .with_state(app_state)
             .layer(CookieManagerLayer::new())
@@ -242,4 +243,61 @@ pub async fn join_game(
     StatusCode::CREATED
 }
 
+pub async fn create_tutorial_game(
+    cookies: Cookies,
+    State(state): State<Arc<AppState>>,
+) -> impl IntoResponse {
+    // Create a new game
+    let (tx_back, rx) = oneshot::channel();
+    let _ = state
+        .game_repository
+        .send(GameRepositoryMessage::CreateNewGame { tx_back })
+        .await;
+    let Ok(CreateNewGameResponse { game_id, game_tx }) = rx.await else {
+        println!("Unable to create a game");
+        return StatusCode::INTERNAL_SERVER_ERROR;
+    };
 
+    // Register a player for this game
+    let player_name = "tutorial_player".to_string();
+    let (tx_back, rx) = oneshot::channel();
+    let _ = game_tx
+        .send(GameMessage::RegisterPlayer {
+            name: player_name.clone(),
+            tx_back,
+        })
+        .await;
+    let Ok(RegisterPlayerResponse::Success { id: player_id }) = rx.await else {
+        println!("Unable to register tutorial player");
+        return StatusCode::INTERNAL_SERVER_ERROR;
+    };
+
+    // Write cookies back
+    let Ok(domain) = env::var("DOMAIN") else {
+        println!("No DOMAIN environnement variable");
+        return StatusCode::INTERNAL_SERVER_ERROR;
+    };
+    let player_id_cookie = Cookie::build(("player_id", player_id.clone()))
+        .max_age(Duration::days(1))
+        .same_site(SameSite::Strict)
+        .domain(domain.clone())
+        .path("/")
+        .build();
+    cookies.add(player_id_cookie);
+    let game_id_cookie = Cookie::build(("game_id", game_id.to_string()))
+        .max_age(Duration::days(1))
+        .same_site(SameSite::Strict)
+        .domain(domain.clone())
+        .path("/")
+        .build();
+    cookies.add(game_id_cookie);
+    let name_cookie = Cookie::build(("player_name", player_name.clone()))
+        .max_age(Duration::days(1))
+        .same_site(SameSite::Strict)
+        .domain(domain)
+        .path("/")
+        .build();
+    cookies.add(name_cookie);
+    println!("Tutorial game created");
+    StatusCode::CREATED
+}
