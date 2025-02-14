@@ -149,6 +149,7 @@ pub async fn handle_ws_connection(
         handle_socket(
             socket,
             id,
+            game.clone(),
             game_state,
             market,
             market_state,
@@ -161,6 +162,7 @@ pub async fn handle_ws_connection(
 async fn handle_socket(
     socket: WebSocket,
     player_id: String,
+    game: mpsc::Sender<GameMessage>,
     game_state: watch::Receiver<GameState>,
     market: mpsc::Sender<MarketMessage>,
     market_state: watch::Receiver<MarketState>,
@@ -171,6 +173,7 @@ async fn handle_socket(
         PlayerConnectionActor::start(
             socket,
             player_id,
+            game,
             game_state,
             market,
             market_state,

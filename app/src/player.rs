@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 use tokio::{
     select,
     sync::{
-        mpsc::{channel, Receiver, Sender},
+        mpsc::{self, channel, Receiver, Sender},
         watch,
     },
     task::JoinSet,
@@ -17,7 +17,7 @@ use tokio::{
 use uuid::Uuid;
 
 use crate::{
-    game::GameState,
+    game::{GameMessage, GameState},
     market::{
         order_book::{OrderRequest, TradeLeg},
         MarketMessage, MarketState, OrderRepr,
@@ -46,6 +46,7 @@ impl Debug for PlayerConnection {
 #[derive(Deserialize, Debug)]
 enum WebSocketIncomingMessage {
     ConnectionReady,
+    PlayerIsReady,
     OrderRequest(OrderRequest),
     DeleteOrder { order_id: String },
     ProgramPlant(ProgramPlant),
@@ -72,6 +73,7 @@ impl PlayerConnectionActor {
     pub async fn start(
         mut ws: WebSocket,
         player_id: String,
+        game_tx: mpsc::Sender<GameMessage>,
         game_state: watch::Receiver<GameState>,
         market: Sender<MarketMessage>,
         market_state: watch::Receiver<MarketState>,
@@ -107,6 +109,7 @@ impl PlayerConnectionActor {
         ));
         let stream_handle = tokio::spawn(process_ws_messages(
             stream,
+            game_tx.clone(),
             market.clone(),
             stack.clone(),
             player_id.clone(),
@@ -182,12 +185,18 @@ async fn connect_to_market(
 
 async fn process_ws_messages(
     mut stream: SplitStream<WebSocket>,
+    game_tx: Sender<GameMessage>,
     market_tx: Sender<MarketMessage>,
     stack_tx: Sender<StackMessage>,
     player_id: String,
 ) {
     while let Some(Ok(Message::Text(msg))) = stream.next().await {
         match serde_json::from_str::<WebSocketIncomingMessage>(msg.as_str()) {
+            Ok(WebSocketIncomingMessage::PlayerIsReady) => {
+                let _ = game_tx
+                    .send(GameMessage::PlayerIsReady(player_id.clone()))
+                    .await;
+            }
             Ok(WebSocketIncomingMessage::OrderRequest(mut request)) => {
                 request.owner = player_id.clone();
                 let _ = market_tx.send(MarketMessage::OrderRequest(request)).await;

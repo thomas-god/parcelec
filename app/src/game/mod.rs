@@ -17,9 +17,10 @@ pub mod delivery_period;
 pub mod game_repository;
 
 #[derive(Debug)]
-pub struct Player {
-    pub id: String,
-    pub name: String,
+struct Player {
+    id: String,
+    name: String,
+    ready: bool,
 }
 
 pub struct Stack {}
@@ -36,7 +37,7 @@ pub enum GameMessage {
     GetMarketTx {
         tx_back: oneshot::Sender<mpsc::Sender<MarketMessage>>,
     },
-    StartGame,
+    PlayerIsReady(String),
 }
 
 #[derive(Debug)]
@@ -135,7 +136,7 @@ impl Game {
 
     pub async fn run(&mut self) {
         while let Some(msg) = self.rx.recv().await {
-            match (&self.state, msg) {
+            match (&mut self.state, msg) {
                 (GameState::Open, GameMessage::RegisterPlayer { name, tx_back }) => {
                     self.register_player(name, tx_back);
                 }
@@ -148,17 +149,28 @@ impl Game {
                 (_, GameMessage::GetMarketTx { tx_back }) => {
                     let _ = tx_back.send(self.market.clone());
                 }
-                (GameState::Open, GameMessage::StartGame) => {
-                    self.state = GameState::Running;
-                    let mut delivery_period =
-                        DeliveryPeriod::new(self.market.clone(), self.stacks.clone());
-                    tokio::spawn(async move {
-                        delivery_period.start().await;
-                    });
-                    let _ = self.state_watch.send(GameState::Running);
+                (GameState::Open, GameMessage::PlayerIsReady(player_id)) => {
+                    if let Some(player) = self
+                        .players
+                        .iter_mut()
+                        .find(|player| player.id == player_id)
+                    {
+                        player.ready = true;
+                    }
+
+                    // If all players are ready, start the game
+                    if self.players.iter().all(|player| player.ready) {
+                        println!("All players ready, starting game");
+                        self.state = GameState::Running;
+                        let mut delivery_period =
+                            DeliveryPeriod::new(self.market.clone(), self.stacks.clone());
+                        tokio::spawn(async move {
+                            delivery_period.start().await;
+                        });
+                        let _ = self.state_watch.send(GameState::Running);
+                    }
                 }
-                (GameState::Running, GameMessage::StartGame) => {
-                    println!("Game already running")
+                (GameState::Running, GameMessage::PlayerIsReady(_)) => { /* Game is already running */
                 }
             }
         }
@@ -198,6 +210,7 @@ impl Game {
         let player = Player {
             id: player_id.clone(),
             name,
+            ready: false,
         };
         self.players.push(player);
 
@@ -235,7 +248,8 @@ impl Game {
 
 #[cfg(test)]
 mod tests {
-    use tokio::sync::oneshot::channel;
+    use tokio::sync::{mpsc, oneshot::channel};
+    use uuid::Uuid;
 
     use crate::{
         game::{ConnectPlayerResponse, Game, GameMessage, GameState, RegisterPlayerResponse},
@@ -244,7 +258,7 @@ mod tests {
 
     use super::GameContext;
 
-    async fn start_game() -> GameContext {
+    async fn open_game() -> GameContext {
         let mut game = Game::new().await;
         let context = game.get_context();
         tokio::spawn(async move {
@@ -253,9 +267,29 @@ mod tests {
         context
     }
 
+    async fn register_player(game: mpsc::Sender<GameMessage>) -> String {
+        let player = Uuid::new_v4().to_string();
+        let (tx, rx) = channel::<RegisterPlayerResponse>();
+        let _ = game
+            .send(GameMessage::RegisterPlayer {
+                name: player,
+                tx_back: tx,
+            })
+            .await;
+        match rx.await {
+            Ok(RegisterPlayerResponse::Success { id }) => id,
+            _ => unreachable!("Should have register the player"),
+        }
+    }
+
+    async fn start_game(game: mpsc::Sender<GameMessage>) {
+        let player = register_player(game.clone()).await;
+        let _ = game.send(GameMessage::PlayerIsReady(player)).await;
+    }
+
     #[tokio::test]
     async fn test_register_players() {
-        let context = start_game().await;
+        let context = open_game().await;
 
         // Register a player
         let (tx, rx) = channel::<RegisterPlayerResponse>();
@@ -295,7 +329,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_fails_register_player_with_existing_name() {
-        let context = start_game().await;
+        let context = open_game().await;
 
         // Register a player
         let (tx, rx) = channel::<RegisterPlayerResponse>();
@@ -347,10 +381,10 @@ mod tests {
 
     #[tokio::test]
     async fn test_fails_register_player_game_is_running() {
-        let GameContext { game, .. } = start_game().await;
+        let GameContext { game, .. } = open_game().await;
 
         // Start the game
-        let _ = game.send(GameMessage::StartGame).await;
+        start_game(game.clone()).await;
 
         // Try to register a new player
         let (tx, rx) = channel::<RegisterPlayerResponse>();
@@ -369,7 +403,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_fails_connect_unregistered_player() {
-        let context = start_game().await;
+        let context = open_game().await;
 
         // Try to connect a player that is not registered
         let (tx, rx) = channel::<ConnectPlayerResponse>();
@@ -390,7 +424,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_connect_player_ok() {
-        let context = start_game().await;
+        let context = open_game().await;
         let game = context.game.clone();
         // Register a player
         let (tx, rx) = channel::<RegisterPlayerResponse>();
@@ -438,10 +472,10 @@ mod tests {
             game,
             mut market_state,
             ..
-        } = start_game().await;
+        } = open_game().await;
 
         // Start the game
-        let _ = game.send(GameMessage::StartGame).await;
+        start_game(game.clone()).await;
 
         // Market should be open
         if *market_state.borrow_and_update() == MarketState::Closed {
@@ -456,14 +490,43 @@ mod tests {
             game,
             mut game_state,
             ..
-        } = start_game().await;
+        } = open_game().await;
 
         assert_eq!(*game_state.borrow_and_update(), GameState::Open);
         // Start the game
-        let _ = game.send(GameMessage::StartGame).await;
+        start_game(game).await;
 
         // Market should be open
         assert!(game_state.changed().await.is_ok());
         assert_eq!(*game_state.borrow_and_update(), GameState::Running);
+    }
+
+    #[tokio::test]
+    async fn test_game_should_start_when_all_players_ready() {
+        let mut context = open_game().await;
+
+        assert_eq!(*context.game_state.borrow_and_update(), GameState::Open);
+
+        // Register 2 players
+        let first_player = register_player(context.game.clone()).await;
+        let second_player = register_player(context.game.clone()).await;
+        assert_eq!(*context.game_state.borrow_and_update(), GameState::Open);
+
+        // First player is ready
+        let _ = context
+            .game
+            .send(GameMessage::PlayerIsReady(first_player.clone()))
+            .await;
+        assert_eq!(*context.game_state.borrow_and_update(), GameState::Open);
+
+        // Second player is ready
+        let _ = context
+            .game
+            .send(GameMessage::PlayerIsReady(second_player.clone()))
+            .await;
+
+        // Game should be running
+        assert!(context.game_state.changed().await.is_ok());
+        assert_eq!(*context.game_state.borrow_and_update(), GameState::Running);
     }
 }

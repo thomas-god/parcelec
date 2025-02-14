@@ -86,7 +86,9 @@
   const sendMessage = (msg: string) => {
     socket.send(msg);
   };
-
+  const startGame = () => {
+    sendMessage(JSON.stringify("PlayerIsReady"));
+  };
   let show_last_trade = $state(false);
   let debounceTimer: ReturnType<typeof setTimeout>;
   const debouncedHideLastTrade = () => {
@@ -129,6 +131,7 @@
       </div>
     {:else}
       <p>Game not running yet</p>
+      <button onclick={startGame}>Commencer</button>
     {/if}
   {:else}
     <p>Not connected</p>
