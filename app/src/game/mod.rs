@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use delivery_period::{DeliveryPeriod, DeliveryPeriodId};
+use delivery_period::{start_delivery_period, DeliveryPeriodId, DeliveryPeriodResults};
 use serde::{ser::SerializeStruct, Serialize};
 use tokio::sync::{
     mpsc::{self, channel, Receiver, Sender},
@@ -38,6 +38,7 @@ pub enum GameMessage {
         tx_back: oneshot::Sender<mpsc::Sender<MarketMessage>>,
     },
     PlayerIsReady(String),
+    DeliveryPeriodResults(DeliveryPeriodResults),
 }
 
 #[derive(Debug)]
@@ -156,20 +157,22 @@ impl Game {
                     if self.players.iter().all(|player| player.ready) {
                         println!("All players ready, starting game");
                         self.state = GameState::Running;
-                        let mut delivery_period = DeliveryPeriod::new(
-                            self.market_context.tx.clone(),
-                            self.stacks_context
-                                .iter()
-                                .map(|(id, context)| (id.clone(), context.tx.clone()))
-                                .collect(),
-                            self.delivery_period.next(),
-                        );
+                        let delivery_period = self.delivery_period.next();
+                        let game_tx = self.tx.clone();
+                        let market_tx = self.market_context.tx.clone();
+                        let stacks_tx = self
+                            .stacks_context
+                            .iter()
+                            .map(|(id, context)| (id.clone(), context.tx.clone()))
+                            .collect();
                         tokio::spawn(async move {
-                            delivery_period.start().await;
+                            start_delivery_period(delivery_period, game_tx, market_tx, stacks_tx)
+                                .await;
                         });
                         let _ = self.state_watch.send(GameState::Running);
                     }
                 }
+                (_, GameMessage::DeliveryPeriodResults(results)) => {}
                 (GameState::Running, GameMessage::PlayerIsReady(_)) => { /* Game is already running */
                 }
             }
