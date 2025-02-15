@@ -67,62 +67,67 @@ pub enum PlayerMessage {
         plants: HashMap<String, PowerPlantPublicRepr>,
     },
 }
-pub struct PlayerConnectionActor {}
+pub struct PlayerConnectionContext {
+    pub player_id: String,
+    pub game_tx: mpsc::Sender<GameMessage>,
+    pub game_state: watch::Receiver<GameState>,
+    pub market: Sender<MarketMessage>,
+    pub market_state: watch::Receiver<MarketState>,
+    pub stack: Sender<StackMessage>,
+    pub stack_state: watch::Receiver<StackState>,
+}
 
-impl PlayerConnectionActor {
-    pub async fn start(
-        mut ws: WebSocket,
-        player_id: String,
-        game_tx: mpsc::Sender<GameMessage>,
-        game_state: watch::Receiver<GameState>,
-        market: Sender<MarketMessage>,
-        market_state: watch::Receiver<MarketState>,
-        stack: Sender<StackMessage>,
-        stack_state: watch::Receiver<StackState>,
-    ) {
-        let connection_id = Uuid::new_v4().to_string();
-        let (tx, rx) = channel::<PlayerMessage>(16);
+pub async fn start_player_connection(mut ws: WebSocket, context: PlayerConnectionContext) {
+    let connection_id = Uuid::new_v4().to_string();
+    let (tx, rx) = channel::<PlayerMessage>(16);
 
-        let Some(Ok(Message::Text(msg))) = ws.recv().await else {
-            println!("Haven't received Message::Text for connection readines, closing WS");
+    let Some(Ok(Message::Text(msg))) = ws.recv().await else {
+        println!("Haven't received Message::Text for connection readines, closing WS");
+        let _ = ws.close().await;
+        return;
+    };
+    match serde_json::from_str::<WebSocketIncomingMessage>(&msg) {
+        Ok(WebSocketIncomingMessage::ConnectionReady) => {}
+        _ => {
+            println!("First message is not a ConnectionReady, closing WS");
             let _ = ws.close().await;
             return;
-        };
-        match serde_json::from_str::<WebSocketIncomingMessage>(&msg) {
-            Ok(WebSocketIncomingMessage::ConnectionReady) => {}
-            _ => {
-                println!("First message is not a ConnectionReady, closing WS");
-                let _ = ws.close().await;
-                return;
-            }
         }
-
-        register_connection(&player_id, &market, &stack, &connection_id, tx).await;
-
-        let (sink, stream) = ws.split();
-        let sink_handle = tokio::spawn(process_internal_messages(
-            sink,
-            rx,
-            game_state,
-            market_state,
-            stack_state,
-        ));
-        let stream_handle = tokio::spawn(process_ws_messages(
-            stream,
-            game_tx.clone(),
-            market.clone(),
-            stack.clone(),
-            player_id.clone(),
-        ));
-        let _ = tokio::try_join!(sink_handle, stream_handle);
-
-        // One side of the WS is closed and/or cannot be processed, disconnect player connection
-        // from market and return
-        println!("Disconnecting {player_id:?} from market");
-        let _ = market
-            .send(MarketMessage::PlayerDisconnection { connection_id })
-            .await;
     }
+
+    register_connection(
+        &context.player_id,
+        &context.market,
+        &context.stack,
+        &connection_id,
+        tx,
+    )
+    .await;
+
+    let (sink, stream) = ws.split();
+    let sink_handle = tokio::spawn(process_internal_messages(
+        sink,
+        rx,
+        context.game_state,
+        context.market_state,
+        context.stack_state,
+    ));
+    let stream_handle = tokio::spawn(process_ws_messages(
+        stream,
+        context.game_tx.clone(),
+        context.market.clone(),
+        context.stack.clone(),
+        context.player_id.clone(),
+    ));
+    let _ = tokio::try_join!(sink_handle, stream_handle);
+
+    // One side of the WS is closed and/or cannot be processed, disconnect player connection
+    // from market and return
+    println!("Disconnecting {:?} from market", context.player_id);
+    let _ = context
+        .market
+        .send(MarketMessage::PlayerDisconnection { connection_id })
+        .await;
 }
 
 async fn register_connection(

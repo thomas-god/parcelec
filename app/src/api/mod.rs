@@ -11,7 +11,7 @@ use axum::{
     Json, Router,
 };
 use serde::Deserialize;
-use tokio::sync::{mpsc, oneshot, watch};
+use tokio::sync::{mpsc, oneshot};
 use tower_cookies::{
     cookie::{time::Duration, SameSite},
     Cookie, CookieManagerLayer, Cookies,
@@ -22,11 +22,9 @@ use crate::{
     bots::start_bots,
     game::{
         game_repository::{CreateNewGameResponse, GameId, GameRepositoryMessage, GetGameResponse},
-        ConnectPlayerResponse, GameMessage, GameState, RegisterPlayerResponse,
+        ConnectPlayerResponse, GameMessage, RegisterPlayerResponse,
     },
-    market::{MarketMessage, MarketState},
-    plants::stack::{StackMessage, StackState},
-    player::PlayerConnectionActor,
+    player::{start_player_connection, PlayerConnectionContext},
 };
 
 pub struct AppState {
@@ -145,42 +143,21 @@ pub async fn handle_ws_connection(
     };
     let market = market.clone();
     let market_state = market_state.clone();
-    ws.on_upgrade(move |socket| {
-        handle_socket(
-            socket,
-            id,
-            game.clone(),
-            game_state,
-            market,
-            market_state,
-            player_stack,
-            stack_state,
-        )
-    })
+    let context = PlayerConnectionContext {
+        player_id: id,
+        game_tx: game,
+        game_state,
+        market,
+        market_state,
+        stack: player_stack,
+        stack_state,
+    };
+    ws.on_upgrade(move |socket| handle_socket(socket, context))
 }
 
-async fn handle_socket(
-    socket: WebSocket,
-    player_id: String,
-    game: mpsc::Sender<GameMessage>,
-    game_state: watch::Receiver<GameState>,
-    market: mpsc::Sender<MarketMessage>,
-    market_state: watch::Receiver<MarketState>,
-    stack: mpsc::Sender<StackMessage>,
-    stack_state: watch::Receiver<StackState>,
-) {
+async fn handle_socket(socket: WebSocket, context: PlayerConnectionContext) {
     tokio::spawn(async move {
-        PlayerConnectionActor::start(
-            socket,
-            player_id,
-            game,
-            game_state,
-            market,
-            market_state,
-            stack,
-            stack_state,
-        )
-        .await;
+        start_player_connection(socket, context).await;
     });
 }
 

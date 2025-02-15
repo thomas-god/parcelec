@@ -46,6 +46,7 @@ pub enum RegisterPlayerResponse {
     PlayerAlreadyExist,
     GameIsRunning,
 }
+
 #[derive(Debug)]
 pub enum ConnectPlayerResponse {
     OK {
@@ -57,15 +58,6 @@ pub enum ConnectPlayerResponse {
     },
     NoStackFound,
     DoesNotExist,
-}
-
-#[derive(Clone)]
-pub struct GameContext {
-    pub game: Sender<GameMessage>,
-    pub game_state: watch::Receiver<GameState>,
-    pub market: Sender<MarketMessage>,
-    pub market_state: watch::Receiver<MarketState>,
-    pub stacks: HashMap<String, Sender<StackMessage>>,
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -234,16 +226,6 @@ impl Game {
     pub fn get_market(&self) -> Sender<MarketMessage> {
         self.market.clone()
     }
-
-    pub fn get_context(&self) -> GameContext {
-        GameContext {
-            game: self.get_tx(),
-            game_state: self.state_watch.subscribe(),
-            market: self.get_market(),
-            market_state: self.market_state.clone(),
-            stacks: self.stacks.clone(),
-        }
-    }
 }
 
 #[cfg(test)]
@@ -256,15 +238,13 @@ mod tests {
         market::MarketState,
     };
 
-    use super::GameContext;
-
-    async fn open_game() -> GameContext {
+    async fn open_game() -> mpsc::Sender<GameMessage> {
         let mut game = Game::new().await;
-        let context = game.get_context();
+        let tx = game.get_tx();
         tokio::spawn(async move {
             game.run().await;
         });
-        context
+        tx
     }
 
     async fn register_player(game: mpsc::Sender<GameMessage>) -> String {
@@ -289,19 +269,16 @@ mod tests {
 
     #[tokio::test]
     async fn test_register_players() {
-        let context = open_game().await;
+        let game = open_game().await;
 
         // Register a player
         let (tx, rx) = channel::<RegisterPlayerResponse>();
-        context
-            .game
-            .clone()
-            .send(GameMessage::RegisterPlayer {
-                name: "toto".to_owned(),
-                tx_back: tx,
-            })
-            .await
-            .unwrap();
+        game.send(GameMessage::RegisterPlayer {
+            name: "toto".to_owned(),
+            tx_back: tx,
+        })
+        .await
+        .unwrap();
         let first_id = match rx.await {
             Ok(RegisterPlayerResponse::Success { id }) => id,
             _ => unreachable!("Should have register the player"),
@@ -309,15 +286,12 @@ mod tests {
 
         // Register another player
         let (tx, rx) = channel::<RegisterPlayerResponse>();
-        context
-            .game
-            .clone()
-            .send(GameMessage::RegisterPlayer {
-                name: "tutu".to_owned(),
-                tx_back: tx,
-            })
-            .await
-            .unwrap();
+        game.send(GameMessage::RegisterPlayer {
+            name: "tutu".to_owned(),
+            tx_back: tx,
+        })
+        .await
+        .unwrap();
         let second_id = match rx.await {
             Ok(RegisterPlayerResponse::Success { id }) => id,
             _ => unreachable!("Should have register the player"),
@@ -329,19 +303,16 @@ mod tests {
 
     #[tokio::test]
     async fn test_fails_register_player_with_existing_name() {
-        let context = open_game().await;
+        let game = open_game().await;
 
         // Register a player
         let (tx, rx) = channel::<RegisterPlayerResponse>();
-        context
-            .game
-            .clone()
-            .send(GameMessage::RegisterPlayer {
-                name: "toto".to_owned(),
-                tx_back: tx,
-            })
-            .await
-            .unwrap();
+        game.send(GameMessage::RegisterPlayer {
+            name: "toto".to_owned(),
+            tx_back: tx,
+        })
+        .await
+        .unwrap();
         match rx.await {
             Ok(RegisterPlayerResponse::Success { id }) => id,
             _ => unreachable!("Should have register the player"),
@@ -349,30 +320,24 @@ mod tests {
 
         // Register a player with the same name
         let (tx, rx) = channel::<RegisterPlayerResponse>();
-        context
-            .game
-            .clone()
-            .send(GameMessage::RegisterPlayer {
-                name: "toto".to_owned(),
-                tx_back: tx,
-            })
-            .await
-            .unwrap();
+        game.send(GameMessage::RegisterPlayer {
+            name: "toto".to_owned(),
+            tx_back: tx,
+        })
+        .await
+        .unwrap();
         match rx.await {
             Ok(RegisterPlayerResponse::PlayerAlreadyExist) => {}
             _ => unreachable!("Should have refused the registration"),
         };
         // Register another player with a different name
         let (tx, rx) = channel::<RegisterPlayerResponse>();
-        context
-            .game
-            .clone()
-            .send(GameMessage::RegisterPlayer {
-                name: "tata".to_owned(),
-                tx_back: tx,
-            })
-            .await
-            .unwrap();
+        game.send(GameMessage::RegisterPlayer {
+            name: "tata".to_owned(),
+            tx_back: tx,
+        })
+        .await
+        .unwrap();
         match rx.await {
             Ok(RegisterPlayerResponse::Success { id }) => id,
             _ => unreachable!("Should have register the player"),
@@ -381,7 +346,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_fails_register_player_game_is_running() {
-        let GameContext { game, .. } = open_game().await;
+        let game = open_game().await;
 
         // Start the game
         start_game(game.clone()).await;
@@ -403,19 +368,16 @@ mod tests {
 
     #[tokio::test]
     async fn test_fails_connect_unregistered_player() {
-        let context = open_game().await;
+        let game = open_game().await;
 
         // Try to connect a player that is not registered
         let (tx, rx) = channel::<ConnectPlayerResponse>();
-        context
-            .game
-            .clone()
-            .send(GameMessage::ConnectPlayer {
-                id: "random_id".to_owned(),
-                tx_back: tx,
-            })
-            .await
-            .unwrap();
+        game.send(GameMessage::ConnectPlayer {
+            id: "random_id".to_owned(),
+            tx_back: tx,
+        })
+        .await
+        .unwrap();
         match rx.await {
             Ok(ConnectPlayerResponse::DoesNotExist) => {}
             _ => unreachable!("Should have refused the connection"),
@@ -424,8 +386,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_connect_player_ok() {
-        let context = open_game().await;
-        let game = context.game.clone();
+        let game = open_game().await;
         // Register a player
         let (tx, rx) = channel::<RegisterPlayerResponse>();
         game.send(GameMessage::RegisterPlayer {
@@ -468,14 +429,15 @@ mod tests {
 
     #[tokio::test]
     async fn test_starting_the_game_should_open_market_and_stacks() {
-        let GameContext {
-            game,
-            mut market_state,
-            ..
-        } = open_game().await;
+        let mut game = Game::new().await;
+        let game_tx = game.get_tx();
+        let mut market_state = game.market_state.clone();
+        tokio::spawn(async move {
+            game.run().await;
+        });
 
         // Start the game
-        start_game(game.clone()).await;
+        start_game(game_tx).await;
 
         // Market should be open
         if *market_state.borrow_and_update() == MarketState::Closed {
@@ -486,15 +448,16 @@ mod tests {
 
     #[tokio::test]
     async fn test_starting_the_game_should_publish_game_state_running() {
-        let GameContext {
-            game,
-            mut game_state,
-            ..
-        } = open_game().await;
+        let mut game = Game::new().await;
+        let game_tx = game.get_tx();
+        let mut game_state = game.state_watch.subscribe();
+        tokio::spawn(async move {
+            game.run().await;
+        });
 
         assert_eq!(*game_state.borrow_and_update(), GameState::Open);
         // Start the game
-        start_game(game).await;
+        start_game(game_tx).await;
 
         // Market should be open
         assert!(game_state.changed().await.is_ok());
@@ -503,30 +466,33 @@ mod tests {
 
     #[tokio::test]
     async fn test_game_should_start_when_all_players_ready() {
-        let mut context = open_game().await;
+        let mut game = Game::new().await;
+        let game_tx = game.get_tx();
+        let mut game_state = game.state_watch.subscribe();
+        tokio::spawn(async move {
+            game.run().await;
+        });
 
-        assert_eq!(*context.game_state.borrow_and_update(), GameState::Open);
+        assert_eq!(*game_state.borrow_and_update(), GameState::Open);
 
         // Register 2 players
-        let first_player = register_player(context.game.clone()).await;
-        let second_player = register_player(context.game.clone()).await;
-        assert_eq!(*context.game_state.borrow_and_update(), GameState::Open);
+        let first_player = register_player(game_tx.clone()).await;
+        let second_player = register_player(game_tx.clone()).await;
+        assert_eq!(*game_state.borrow_and_update(), GameState::Open);
 
         // First player is ready
-        let _ = context
-            .game
+        let _ = game_tx
             .send(GameMessage::PlayerIsReady(first_player.clone()))
             .await;
-        assert_eq!(*context.game_state.borrow_and_update(), GameState::Open);
+        assert_eq!(*game_state.borrow_and_update(), GameState::Open);
 
         // Second player is ready
-        let _ = context
-            .game
+        let _ = game_tx
             .send(GameMessage::PlayerIsReady(second_player.clone()))
             .await;
 
         // Game should be running
-        assert!(context.game_state.changed().await.is_ok());
-        assert_eq!(*context.game_state.borrow_and_update(), GameState::Running);
+        assert!(game_state.changed().await.is_ok());
+        assert_eq!(*game_state.borrow_and_update(), GameState::Running);
     }
 }
