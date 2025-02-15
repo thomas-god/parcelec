@@ -8,7 +8,10 @@ use tokio::sync::{mpsc, oneshot, watch};
 
 use order_book::{Bid, Offer, OrderBook, OrderRequest, Trade, TradeLeg};
 
-use crate::player::{PlayerConnection, PlayerMessage};
+use crate::{
+    game::delivery_period::DeliveryPeriodId,
+    player::{PlayerConnection, PlayerMessage},
+};
 
 pub mod models;
 pub mod order_book;
@@ -48,8 +51,9 @@ impl OrderRepr {
 
 #[derive(Debug)]
 pub enum MarketMessage {
-    OpenMarket,
+    OpenMarket(DeliveryPeriodId),
     CloseMarket {
+        period_id: DeliveryPeriodId,
         tx_back: oneshot::Sender<Vec<Trade>>,
     },
     OrderRequest(OrderRequest),
@@ -95,6 +99,7 @@ pub struct MarketContext {
 pub struct Market {
     state: MarketState,
     state_sender: watch::Sender<MarketState>,
+    delivery_period: DeliveryPeriodId,
     rx: mpsc::Receiver<MarketMessage>,
     tx: mpsc::Sender<MarketMessage>,
     order_book: OrderBook,
@@ -102,12 +107,13 @@ pub struct Market {
 }
 
 impl Market {
-    pub fn new() -> Market {
-        let (state_tx, _) = watch::channel(MarketState::Open);
+    pub fn new(state: MarketState, delivery_period: DeliveryPeriodId) -> Market {
+        let (state_tx, _) = watch::channel(state);
         let (tx, rx) = mpsc::channel::<MarketMessage>(128);
 
         Market {
-            state: MarketState::Open,
+            state,
+            delivery_period,
             state_sender: state_tx,
             rx,
             tx,
@@ -143,15 +149,20 @@ impl Market {
                 (_, MarketMessage::PlayerDisconnection { connection_id }) => {
                     self.players.retain(|conn| conn.id != connection_id);
                 }
-                (MarketState::Closed, MarketMessage::OpenMarket) => {
-                    self.state = MarketState::Open;
-                    let _ = self.state_sender.send(MarketState::Open);
+                (MarketState::Closed, MarketMessage::OpenMarket(period_id)) => {
+                    if period_id == self.delivery_period {
+                        self.state = MarketState::Open;
+                        self.delivery_period = self.delivery_period.next();
+                        let _ = self.state_sender.send(MarketState::Open);
+                    }
                 }
-                (MarketState::Open, MarketMessage::CloseMarket { tx_back }) => {
-                    let trades = self.order_book.drain();
-                    self.state = MarketState::Closed;
-                    let _ = tx_back.send(trades);
-                    let _ = self.state_sender.send(MarketState::Closed);
+                (MarketState::Open, MarketMessage::CloseMarket { tx_back, period_id }) => {
+                    if period_id == self.delivery_period {
+                        let trades = self.order_book.drain();
+                        self.state = MarketState::Closed;
+                        let _ = tx_back.send(trades);
+                        let _ = self.state_sender.send(MarketState::Closed);
+                    }
                 }
                 (state, msg) => {
                     println!("Msg {msg:?} unsupported in state: {state:?}")
@@ -244,7 +255,7 @@ impl Market {
 
 impl Default for Market {
     fn default() -> Self {
-        Self::new()
+        Self::new(MarketState::Open, DeliveryPeriodId::from(0))
     }
 }
 
@@ -258,14 +269,15 @@ mod tests {
     };
     use uuid::Uuid;
 
-    use crate::market::{
-        models::Direction, order_book::OrderRequest, MarketState, PlayerConnection,
+    use crate::{
+        game::delivery_period::DeliveryPeriodId,
+        market::{models::Direction, order_book::OrderRequest, MarketState, PlayerConnection},
     };
 
     use super::{Market, MarketContext, MarketMessage, PlayerMessage};
 
     fn start_market_actor() -> MarketContext {
-        let mut market = Market::new();
+        let mut market = Market::default();
         let context = market.get_context();
         tokio::spawn(async move {
             market.process().await;
@@ -537,20 +549,20 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_closed_state_does_not_process_order_request() {
-        let market = start_market_actor();
+    async fn test_closed_market_does_not_process_order_request() {
+        let mut market = Market::new(MarketState::Closed, DeliveryPeriodId::from(0));
+        let context = market.get_context();
+        tokio::spawn(async move {
+            market.process().await;
+        });
 
-        // Register player to market actor
+        // Register a player to market actor
         let PlayerConn {
             player_id, mut rx, ..
-        } = register_player(market.tx.clone()).await;
-
-        // Close the market
-        let (tx_back, _) = oneshot::channel();
-        let _ = market.tx.send(MarketMessage::CloseMarket { tx_back }).await;
+        } = register_player(context.tx.clone()).await;
 
         // Send an OrderRequest to the market
-        let _ = market
+        let _ = context
             .tx
             .send(MarketMessage::OrderRequest(OrderRequest {
                 direction: Direction::Buy,
@@ -570,7 +582,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_closed_state_and_reopen() {
+    async fn test_close_market_and_reopen() {
         let market = start_market_actor();
 
         // Register player to market actor
@@ -580,10 +592,19 @@ mod tests {
 
         // Close the market
         let (tx_back, _) = oneshot::channel();
-        let _ = market.tx.send(MarketMessage::CloseMarket { tx_back }).await;
+        let _ = market
+            .tx
+            .send(MarketMessage::CloseMarket {
+                tx_back,
+                period_id: DeliveryPeriodId::from(0),
+            })
+            .await;
 
         // Reopen the market
-        let _ = market.tx.send(MarketMessage::OpenMarket).await;
+        let _ = market
+            .tx
+            .send(MarketMessage::OpenMarket(DeliveryPeriodId::from(0)))
+            .await;
 
         // Send an OrderRequest to the market
         let _ = market
@@ -604,17 +625,17 @@ mod tests {
 
     #[tokio::test]
     async fn test_register_player_during_market_closed() {
-        let market = start_market_actor();
-
-        // Close the market immediately
-        let (tx_back, _) = oneshot::channel();
-        let _ = market.tx.send(MarketMessage::CloseMarket { tx_back }).await;
+        let mut market = Market::new(MarketState::Closed, DeliveryPeriodId::from(0));
+        let context = market.get_context();
+        tokio::spawn(async move {
+            market.process().await;
+        });
 
         // Register player to market actor while market is closed
         let player_id = Uuid::new_v4().to_string();
         let conn_id = Uuid::new_v4().to_string();
         let (tx, mut rx) = channel::<PlayerMessage>(16);
-        let _ = market
+        let _ = context
             .tx
             .send(MarketMessage::NewPlayerConnection(PlayerConnection {
                 id: conn_id.clone(),
@@ -635,10 +656,13 @@ mod tests {
         assert_eq!(trades.len(), 0);
 
         // Reopen the market
-        let _ = market.tx.send(MarketMessage::OpenMarket).await;
+        let _ = context
+            .tx
+            .send(MarketMessage::OpenMarket(DeliveryPeriodId::from(0)))
+            .await;
 
         // Send an OrderRequest to the market
-        let _ = market
+        let _ = context
             .tx
             .send(MarketMessage::OrderRequest(OrderRequest {
                 direction: Direction::Buy,
@@ -683,7 +707,13 @@ mod tests {
 
         // Close the market and receive the trade list back
         let (tx_back, rx_back) = oneshot::channel();
-        let _ = market.tx.send(MarketMessage::CloseMarket { tx_back }).await;
+        let _ = market
+            .tx
+            .send(MarketMessage::CloseMarket {
+                tx_back,
+                period_id: DeliveryPeriodId::from(0),
+            })
+            .await;
         let trades = rx_back
             .await
             .expect("Should have received a list of trades");
@@ -692,7 +722,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_market_state_watch() {
-        let mut market = Market::new();
+        let mut market = Market::default();
         let MarketContext {
             tx: market_tx,
             mut state_rx,
@@ -705,13 +735,114 @@ mod tests {
 
         // Close the market
         let (tx_back, _) = oneshot::channel();
-        let _ = market_tx.send(MarketMessage::CloseMarket { tx_back }).await;
+        let _ = market_tx
+            .send(MarketMessage::CloseMarket {
+                tx_back,
+                period_id: DeliveryPeriodId::from(0),
+            })
+            .await;
         assert!(state_rx.changed().await.is_ok());
         assert_eq!(*state_rx.borrow_and_update(), MarketState::Closed);
 
         // Reopen the market
-        let _ = market_tx.send(MarketMessage::OpenMarket).await;
+        let _ = market_tx
+            .send(MarketMessage::OpenMarket(DeliveryPeriodId::from(0)))
+            .await;
         assert!(state_rx.changed().await.is_ok());
         assert_eq!(*state_rx.borrow_and_update(), MarketState::Open);
+    }
+
+    #[tokio::test]
+    async fn test_try_closing_market_wrong_period_id_does_not_close_it() {
+        let mut market = Market::new(MarketState::Open, DeliveryPeriodId::from(1));
+        let MarketContext {
+            tx: market_tx,
+            mut state_rx,
+        } = market.get_context();
+        tokio::spawn(async move {
+            market.process().await;
+        });
+
+        assert_eq!(*state_rx.borrow_and_update(), MarketState::Open);
+
+        // Try closing the market with period ID greater than the actual one
+        let (tx_back, _) = oneshot::channel();
+        let _ = market_tx
+            .send(MarketMessage::CloseMarket {
+                tx_back,
+                period_id: DeliveryPeriodId::from(2),
+            })
+            .await;
+        tokio::time::sleep(Duration::from_micros(1)).await;
+        assert_eq!(*state_rx.borrow_and_update(), MarketState::Open);
+
+        // Try closing the market with period ID smaller than the actual one
+        let (tx_back, _) = oneshot::channel();
+        let _ = market_tx
+            .send(MarketMessage::CloseMarket {
+                tx_back,
+                period_id: DeliveryPeriodId::from(0),
+            })
+            .await;
+        tokio::time::sleep(Duration::from_micros(1)).await;
+        assert_eq!(*state_rx.borrow_and_update(), MarketState::Open);
+    }
+
+    #[tokio::test]
+    async fn test_opening_market_wrong_period_id_does_not_open_it() {
+        let mut market = Market::new(MarketState::Closed, DeliveryPeriodId::from(1));
+        let MarketContext {
+            tx: market_tx,
+            mut state_rx,
+        } = market.get_context();
+        tokio::spawn(async move {
+            market.process().await;
+        });
+
+        assert_eq!(*state_rx.borrow_and_update(), MarketState::Closed);
+
+        // Try openning the market with period ID greater than the actual one
+        let _ = market_tx
+            .send(MarketMessage::OpenMarket(DeliveryPeriodId::from(2)))
+            .await;
+        tokio::time::sleep(Duration::from_micros(1)).await;
+        assert_eq!(*state_rx.borrow_and_update(), MarketState::Closed);
+
+        // Try closing the market with period ID smaller than the actual one
+        let _ = market_tx
+            .send(MarketMessage::OpenMarket(DeliveryPeriodId::from(0)))
+            .await;
+        tokio::time::sleep(Duration::from_micros(1)).await;
+        assert_eq!(*state_rx.borrow_and_update(), MarketState::Closed);
+    }
+
+    #[tokio::test]
+    async fn test_open_market_then_close_next_period() {
+        let mut market = Market::new(MarketState::Closed, DeliveryPeriodId::from(1));
+        let MarketContext {
+            tx: market_tx,
+            mut state_rx,
+        } = market.get_context();
+        tokio::spawn(async move {
+            market.process().await;
+        });
+
+        // Open the market
+        let _ = market_tx
+            .send(MarketMessage::OpenMarket(DeliveryPeriodId::from(1)))
+            .await;
+        assert!(state_rx.changed().await.is_ok());
+        assert_eq!(*state_rx.borrow_and_update(), MarketState::Open);
+
+        // Close the market with next period id
+        let (tx_back, _) = oneshot::channel();
+        let _ = market_tx
+            .send(MarketMessage::CloseMarket {
+                tx_back,
+                period_id: DeliveryPeriodId::from(2),
+            })
+            .await;
+        assert!(state_rx.changed().await.is_ok());
+        assert_eq!(*state_rx.borrow_and_update(), MarketState::Closed);
     }
 }

@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use delivery_period::DeliveryPeriod;
+use delivery_period::{DeliveryPeriod, DeliveryPeriodId};
 use serde::{ser::SerializeStruct, Serialize};
 use tokio::sync::{
     mpsc::{self, channel, Receiver, Sender},
@@ -10,7 +10,7 @@ use uuid::Uuid;
 
 use crate::{
     market::{Market, MarketContext, MarketMessage},
-    plants::stack::{StackActor, StackContext},
+    plants::stack::{StackActor, StackContext, StackState},
 };
 
 pub mod delivery_period;
@@ -104,7 +104,7 @@ pub struct Game {
 
 impl Game {
     pub async fn new() -> Game {
-        let mut market = Market::new();
+        let mut market = Market::default();
         let market_context = market.get_context();
 
         tokio::spawn(async move {
@@ -205,7 +205,11 @@ impl Game {
         self.players.push(player);
 
         // Create a new stack for the player
-        let mut player_stack = StackActor::new(player_id.clone());
+        let mut player_stack = StackActor::new(
+            player_id.clone(),
+            StackState::Open,
+            DeliveryPeriodId::from(0),
+        );
         self.stacks_context
             .insert(player_id.clone(), player_stack.get_context());
         tokio::spawn(async move {

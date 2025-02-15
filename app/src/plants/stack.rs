@@ -9,6 +9,7 @@ use tokio::sync::{
 use uuid::Uuid;
 
 use crate::{
+    game::delivery_period::DeliveryPeriodId,
     plants::PlantOutput,
     player::{PlayerConnection, PlayerMessage},
 };
@@ -26,8 +27,9 @@ pub struct ProgramPlant {
 
 #[derive(Debug)]
 pub enum StackMessage {
-    OpenStack,
+    OpenStack(DeliveryPeriodId),
     CloseStack {
+        period_id: DeliveryPeriodId,
         tx_back: oneshot::Sender<HashMap<String, PlantOutput>>,
     },
     ProgramSetpoint(ProgramPlant),
@@ -68,6 +70,7 @@ pub struct StackContext {
 pub struct StackActor {
     state: StackState,
     state_sender: watch::Sender<StackState>,
+    delivery_period: DeliveryPeriodId,
     player_id: String,
     plants: HashMap<String, Box<dyn PowerPlant + Send + Sync>>,
     tx: Sender<StackMessage>,
@@ -76,13 +79,18 @@ pub struct StackActor {
 }
 
 impl StackActor {
-    pub fn new(player_id: String) -> StackActor {
-        let (state_tx, _) = watch::channel(StackState::Open);
+    pub fn new(
+        player_id: String,
+        state: StackState,
+        delivery_period: DeliveryPeriodId,
+    ) -> StackActor {
+        let (state_tx, _) = watch::channel(state);
         let (tx, rx) = channel::<StackMessage>(16);
 
         StackActor {
-            state: StackState::Open,
+            state,
             state_sender: state_tx,
+            delivery_period,
             player_id,
             plants: default_plants(),
             player_connections: Vec::new(),
@@ -109,19 +117,24 @@ impl StackActor {
                 ) => {
                     self.program_plant_setpoint(plant_id, setpoint).await;
                 }
-                (StackState::Closed, StackMessage::OpenStack) => {
-                    self.state = StackState::Open;
-                    let _ = self.state_sender.send(StackState::Open);
+                (StackState::Closed, StackMessage::OpenStack(period_id)) => {
+                    if period_id == self.delivery_period {
+                        self.state = StackState::Open;
+                        self.delivery_period = self.delivery_period.next().clone();
+                        let _ = self.state_sender.send(StackState::Open);
+                    }
                 }
-                (StackState::Open, StackMessage::CloseStack { tx_back }) => {
-                    self.state = StackState::Closed;
-                    let plant_outputs = self
-                        .plants
-                        .iter_mut()
-                        .map(|(plant_id, plant)| (plant_id.clone(), plant.dispatch()))
-                        .collect();
-                    let _ = tx_back.send(plant_outputs);
-                    let _ = self.state_sender.send(StackState::Closed);
+                (StackState::Open, StackMessage::CloseStack { tx_back, period_id }) => {
+                    if period_id == self.delivery_period {
+                        self.state = StackState::Closed;
+                        let plant_outputs = self
+                            .plants
+                            .iter_mut()
+                            .map(|(plant_id, plant)| (plant_id.clone(), plant.dispatch()))
+                            .collect();
+                        let _ = tx_back.send(plant_outputs);
+                        let _ = self.state_sender.send(StackState::Closed);
+                    }
                 }
                 (state, msg) => {
                     println!("Msg {msg:?} unsupported in state: {state:?}")
@@ -213,6 +226,7 @@ mod tests_stack {
     use uuid::Uuid;
 
     use crate::{
+        game::delivery_period::DeliveryPeriodId,
         plants::{
             stack::{ProgramPlant, StackActor, StackMessage, StackState},
             PowerPlantPublicRepr,
@@ -224,7 +238,11 @@ mod tests_stack {
 
     fn start_stack() -> (String, StackContext) {
         let player_id = Uuid::new_v4().to_string();
-        let mut stack = StackActor::new(player_id.clone());
+        let mut stack = StackActor::new(
+            player_id.clone(),
+            StackState::Open,
+            DeliveryPeriodId::from(0),
+        );
         let stack_context = stack.get_context();
         tokio::spawn(async move {
             stack.start().await;
@@ -343,7 +361,13 @@ mod tests_stack {
 
         // Close the stack
         let (tx_back, _) = oneshot::channel();
-        let _ = stack.tx.send(StackMessage::CloseStack { tx_back }).await;
+        let _ = stack
+            .tx
+            .send(StackMessage::CloseStack {
+                tx_back,
+                period_id: DeliveryPeriodId::from(0),
+            })
+            .await;
 
         // Try to send a dispatch command
         let Some(plant_id) = plants.keys().next() else {
@@ -371,7 +395,13 @@ mod tests_stack {
 
         // Close the stack
         let (tx_back, rx_back) = oneshot::channel();
-        let _ = stack.tx.send(StackMessage::CloseStack { tx_back }).await;
+        let _ = stack
+            .tx
+            .send(StackMessage::CloseStack {
+                tx_back,
+                period_id: DeliveryPeriodId::from(0),
+            })
+            .await;
 
         let plant_outputs = rx_back
             .await
@@ -384,7 +414,13 @@ mod tests_stack {
 
         // Close the stack
         let (tx_back, _) = oneshot::channel();
-        let _ = stack.tx.send(StackMessage::CloseStack { tx_back }).await;
+        let _ = stack
+            .tx
+            .send(StackMessage::CloseStack {
+                tx_back,
+                period_id: DeliveryPeriodId::from(0),
+            })
+            .await;
 
         // Register a player
         let (tx, mut rx) = channel::<PlayerMessage>(16);
@@ -405,7 +441,10 @@ mod tests_stack {
         assert!(!plants.is_empty());
 
         // Reopen the stack
-        let _ = stack.tx.send(StackMessage::OpenStack).await;
+        let _ = stack
+            .tx
+            .send(StackMessage::OpenStack(DeliveryPeriodId::from(0)))
+            .await;
 
         // Check dispatch is working
         let Some(plant_id) = plants.keys().next() else {
@@ -426,7 +465,11 @@ mod tests_stack {
     #[tokio::test]
     async fn test_stack_state_watch() {
         let player_id = Uuid::new_v4().to_string();
-        let mut stack = StackActor::new(player_id.clone());
+        let mut stack = StackActor::new(
+            player_id.clone(),
+            StackState::Open,
+            DeliveryPeriodId::from(0),
+        );
         let StackContext {
             tx: stack_tx,
             mut state_rx,
@@ -439,13 +482,126 @@ mod tests_stack {
 
         // Close the Stack
         let (tx_back, _) = oneshot::channel();
-        let _ = stack_tx.send(StackMessage::CloseStack { tx_back }).await;
+        let _ = stack_tx
+            .send(StackMessage::CloseStack {
+                tx_back,
+                period_id: DeliveryPeriodId::from(0),
+            })
+            .await;
         assert!(state_rx.changed().await.is_ok());
         assert_eq!(*state_rx.borrow_and_update(), StackState::Closed);
 
         // Reopen the Stack
-        let _ = stack_tx.send(StackMessage::OpenStack).await;
+        let _ = stack_tx
+            .send(StackMessage::OpenStack(DeliveryPeriodId::from(0)))
+            .await;
         assert!(state_rx.changed().await.is_ok());
         assert_eq!(*state_rx.borrow_and_update(), StackState::Open);
+    }
+
+    #[tokio::test]
+    async fn test_try_closing_stack_wrong_period_id_does_not_close_it() {
+        let mut stack = StackActor::new(
+            Uuid::new_v4().to_string(),
+            StackState::Open,
+            DeliveryPeriodId::from(1),
+        );
+        let StackContext {
+            tx: stack_tx,
+            mut state_rx,
+        } = stack.get_context();
+        tokio::spawn(async move {
+            stack.start().await;
+        });
+
+        assert_eq!(*state_rx.borrow_and_update(), StackState::Open);
+
+        // Try closing the stack with period ID greater than the actual one
+        let (tx_back, _) = oneshot::channel();
+        let _ = stack_tx
+            .send(StackMessage::CloseStack {
+                tx_back,
+                period_id: DeliveryPeriodId::from(2),
+            })
+            .await;
+        tokio::time::sleep(Duration::from_micros(1)).await;
+        assert_eq!(*state_rx.borrow_and_update(), StackState::Open);
+
+        // Try closing the stack with period ID smaller than the actual one
+        let (tx_back, _) = oneshot::channel();
+        let _ = stack_tx
+            .send(StackMessage::CloseStack {
+                tx_back,
+                period_id: DeliveryPeriodId::from(0),
+            })
+            .await;
+        tokio::time::sleep(Duration::from_micros(1)).await;
+        assert_eq!(*state_rx.borrow_and_update(), StackState::Open);
+    }
+
+    #[tokio::test]
+    async fn test_opening_stack_wrong_period_id_does_not_open_it() {
+        let mut stack = StackActor::new(
+            Uuid::new_v4().to_string(),
+            StackState::Closed,
+            DeliveryPeriodId::from(1),
+        );
+        let StackContext {
+            tx: stack_tx,
+            mut state_rx,
+        } = stack.get_context();
+        tokio::spawn(async move {
+            stack.start().await;
+        });
+
+        assert_eq!(*state_rx.borrow_and_update(), StackState::Closed);
+
+        // Try openning the stack with period ID greater than the actual one
+        let _ = stack_tx
+            .send(StackMessage::OpenStack(DeliveryPeriodId::from(2)))
+            .await;
+        tokio::time::sleep(Duration::from_micros(1)).await;
+        assert_eq!(*state_rx.borrow_and_update(), StackState::Closed);
+
+        // Try closing the stack with period ID smaller than the actual one
+        let _ = stack_tx
+            .send(StackMessage::OpenStack(DeliveryPeriodId::from(0)))
+            .await;
+        tokio::time::sleep(Duration::from_micros(1)).await;
+        assert_eq!(*state_rx.borrow_and_update(), StackState::Closed);
+    }
+
+    #[tokio::test]
+    async fn test_open_stack_then_close_next_period() {
+        let mut stack = StackActor::new(
+            Uuid::new_v4().to_string(),
+            StackState::Closed,
+            DeliveryPeriodId::from(1),
+        );
+        let StackContext {
+            tx: stack_tx,
+            mut state_rx,
+        } = stack.get_context();
+        tokio::spawn(async move {
+            stack.start().await;
+        });
+
+        // Open the stack
+        let _ = stack_tx
+            .send(StackMessage::OpenStack(DeliveryPeriodId::from(1)))
+            .await;
+        assert!(state_rx.changed().await.is_ok());
+        assert_eq!(*state_rx.borrow_and_update(), StackState::Open);
+
+        // Close the stack with next period id
+        let (tx_back, _) = oneshot::channel();
+        let _ = stack_tx
+            .send(StackMessage::CloseStack {
+                tx_back,
+                period_id: DeliveryPeriodId::from(2),
+            })
+            .await;
+        assert!(state_rx.changed().await.is_ok());
+        assert_eq!(*state_rx.borrow_and_update(), StackState::Closed);
     }
 }
