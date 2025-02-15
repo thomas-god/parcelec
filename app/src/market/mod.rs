@@ -1,4 +1,4 @@
-use std::fmt::Debug;
+use std::{collections::HashMap, fmt::Debug};
 
 use chrono::{DateTime, Utc};
 use futures_util::future::join_all;
@@ -104,6 +104,7 @@ pub struct Market {
     tx: mpsc::Sender<MarketMessage>,
     order_book: OrderBook,
     players: Vec<PlayerConnection>,
+    past_trades: HashMap<DeliveryPeriodId, Vec<Trade>>,
 }
 
 impl Market {
@@ -119,6 +120,7 @@ impl Market {
             tx,
             players: Vec::new(),
             order_book: OrderBook::new(),
+            past_trades: HashMap::new(),
         }
     }
 
@@ -159,9 +161,15 @@ impl Market {
                 (MarketState::Open, MarketMessage::CloseMarket { tx_back, period_id }) => {
                     if period_id == self.delivery_period {
                         let trades = self.order_book.drain();
+                        self.past_trades.insert(period_id, trades.clone());
                         self.state = MarketState::Closed;
                         let _ = tx_back.send(trades);
                         let _ = self.state_sender.send(MarketState::Closed);
+                    }
+                }
+                (MarketState::Closed, MarketMessage::CloseMarket { period_id, tx_back }) => {
+                    if let Some(trades) = self.past_trades.get(&period_id) {
+                        let _ = tx_back.send(trades.clone());
                     }
                 }
                 (state, msg) => {
@@ -844,5 +852,63 @@ mod tests {
             .await;
         assert!(state_rx.changed().await.is_ok());
         assert_eq!(*state_rx.borrow_and_update(), MarketState::Closed);
+    }
+
+    #[tokio::test]
+    async fn test_closing_twice_should_return_the_same_trades() {
+        let mut market = start_market_actor();
+
+        // Register player to market actor
+        let PlayerConn { player_id, .. } = register_player(market.tx.clone()).await;
+
+        // Make a trade with ourself
+        let _ = market
+            .tx
+            .send(MarketMessage::OrderRequest(OrderRequest {
+                direction: Direction::Buy,
+                volume: 10,
+                price: 50_00,
+                owner: player_id.to_owned(),
+            }))
+            .await;
+        let _ = market
+            .tx
+            .send(MarketMessage::OrderRequest(OrderRequest {
+                direction: Direction::Sell,
+                volume: 10,
+                price: 50_00,
+                owner: player_id.to_owned(),
+            }))
+            .await;
+
+        // Close the market and receive the trade list back
+        let (tx_back, rx_back) = oneshot::channel();
+        let _ = market
+            .tx
+            .send(MarketMessage::CloseMarket {
+                tx_back,
+                period_id: DeliveryPeriodId::from(0),
+            })
+            .await;
+        let trades = rx_back
+            .await
+            .expect("Should have received a list of trades");
+        assert_eq!(trades.len(), 1);
+        assert!(market.state_rx.changed().await.is_ok());
+        assert_eq!(*market.state_rx.borrow_and_update(), MarketState::Closed);
+
+        // Close the market again and receive the same trades
+        let (tx_back, rx_back) = oneshot::channel();
+        let _ = market
+            .tx
+            .send(MarketMessage::CloseMarket {
+                tx_back,
+                period_id: DeliveryPeriodId::from(0),
+            })
+            .await;
+        let same_trades = rx_back
+            .await
+            .expect("Should have received a list of trades");
+        assert_eq!(trades, same_trades);
     }
 }

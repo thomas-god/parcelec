@@ -76,6 +76,7 @@ pub struct StackActor {
     tx: Sender<StackMessage>,
     rx: Receiver<StackMessage>,
     player_connections: Vec<PlayerConnection>,
+    past_outputs: HashMap<DeliveryPeriodId, HashMap<String, PlantOutput>>,
 }
 
 impl StackActor {
@@ -94,6 +95,7 @@ impl StackActor {
             player_id,
             plants: default_plants(),
             player_connections: Vec::new(),
+            past_outputs: HashMap::new(),
             tx,
             rx,
         }
@@ -127,13 +129,19 @@ impl StackActor {
                 (StackState::Open, StackMessage::CloseStack { tx_back, period_id }) => {
                     if period_id == self.delivery_period {
                         self.state = StackState::Closed;
-                        let plant_outputs = self
+                        let plant_outputs: HashMap<String, PlantOutput> = self
                             .plants
                             .iter_mut()
                             .map(|(plant_id, plant)| (plant_id.clone(), plant.dispatch()))
                             .collect();
+                        self.past_outputs.insert(period_id, plant_outputs.clone());
                         let _ = tx_back.send(plant_outputs);
                         let _ = self.state_sender.send(StackState::Closed);
+                    }
+                }
+                (StackState::Closed, StackMessage::CloseStack { period_id, tx_back }) => {
+                    if let Some(outputs) = self.past_outputs.get(&period_id) {
+                        let _ = tx_back.send(outputs.clone());
                     }
                 }
                 (state, msg) => {
@@ -603,5 +611,40 @@ mod tests_stack {
             .await;
         assert!(state_rx.changed().await.is_ok());
         assert_eq!(*state_rx.borrow_and_update(), StackState::Closed);
+    }
+
+    #[tokio::test]
+    async fn test_closing_twice_should_return_the_same_plants_outputs() {
+        let (_, stack) = start_stack();
+
+        // Close the stack
+        let (tx_back, rx_back) = oneshot::channel();
+        let _ = stack
+            .tx
+            .send(StackMessage::CloseStack {
+                tx_back,
+                period_id: DeliveryPeriodId::from(0),
+            })
+            .await;
+
+        let plant_outputs = rx_back
+            .await
+            .expect("Should have received a map of plant outputs");
+        assert!(!plant_outputs.is_empty());
+
+        // Close the stack again
+        let (tx_back, rx_back) = oneshot::channel();
+        let _ = stack
+            .tx
+            .send(StackMessage::CloseStack {
+                tx_back,
+                period_id: DeliveryPeriodId::from(0),
+            })
+            .await;
+
+        let same_plant_outputs = rx_back
+            .await
+            .expect("Should have received a map of plant outputs");
+        assert_eq!(same_plant_outputs, plant_outputs);
     }
 }
