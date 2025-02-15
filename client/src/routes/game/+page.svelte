@@ -21,7 +21,7 @@
   let plants: StackSnapshot = $state(new Map());
   let market_state: "Open" | "Closed" = $state("Open");
   let stack_state: "Open" | "Closed" = $state("Open");
-  let game_state: "Open" | "Running" = $state("Open");
+  let game_state: "Open" | "Running" | "PostDelivery" = $state("Open");
 
   const connect = () => {
     const socket = new WebSocket(`${PUBLIC_WS_URL}/ws`);
@@ -106,6 +106,7 @@
         <Scores {plants} {trades} />
         <Stack {plants} send={sendMessage} />
         <OrderBookElement {orderBook} send={sendMessage} {trades} />
+        <button onclick={startGame}>Passer</button>
         {#if show_last_trade && trades.length > 0}
           <div
             transition:fade

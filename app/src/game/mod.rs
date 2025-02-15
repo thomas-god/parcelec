@@ -63,6 +63,7 @@ pub enum ConnectPlayerResponse {
 pub enum GameState {
     Open,
     Running,
+    PostDelivery,
 }
 
 impl Serialize for GameState {
@@ -77,6 +78,7 @@ impl Serialize for GameState {
             match self {
                 Self::Running => "Running",
                 Self::Open => "Open",
+                Self::PostDelivery => "PostDelivery",
             },
         )?;
         state.end()
@@ -144,7 +146,8 @@ impl Game {
                 (_, GameMessage::GetMarketTx { tx_back }) => {
                     let _ = tx_back.send(self.market_context.tx.clone());
                 }
-                (GameState::Open, GameMessage::PlayerIsReady(player_id)) => {
+                (GameState::PostDelivery, GameMessage::PlayerIsReady(player_id))
+                | (GameState::Open, GameMessage::PlayerIsReady(player_id)) => {
                     if let Some(player) = self
                         .players
                         .iter_mut()
@@ -153,11 +156,18 @@ impl Game {
                         player.ready = true;
                     }
 
-                    // If all players are ready, start the game
+                    // If all players are ready, start the next delivery period
                     if self.players.iter().all(|player| player.ready) {
-                        println!("All players ready, starting game");
+                        println!(
+                            "All players ready, starting delivery period {}",
+                            self.delivery_period.next()
+                        );
                         self.state = GameState::Running;
-                        let delivery_period = self.delivery_period.next();
+                        self.delivery_period = self.delivery_period.next();
+                        for player in self.players.iter_mut() {
+                            player.ready = false;
+                        }
+                        let delivery_period = self.delivery_period;
                         let game_tx = self.tx.clone();
                         let market_tx = self.market_context.tx.clone();
                         let stacks_tx = self
@@ -172,9 +182,13 @@ impl Game {
                         let _ = self.state_watch.send(GameState::Running);
                     }
                 }
-                (_, GameMessage::DeliveryPeriodResults(results)) => {}
+                (GameState::Running, GameMessage::DeliveryPeriodResults(_)) => {
+                    self.state = GameState::PostDelivery;
+                    let _ = self.state_watch.send(GameState::PostDelivery);
+                }
                 (GameState::Running, GameMessage::PlayerIsReady(_)) => { /* Game is already running */
                 }
+                _ => todo!(),
             }
         }
     }

@@ -133,7 +133,6 @@ async fn close_stack(
     period_id: DeliveryPeriodId,
     stack: mpsc::Sender<StackMessage>,
 ) -> (String, HashMap<String, PlantOutput>) {
-    println!("Closing stack for period: {period_id:?}");
     let (tx_back, rx) = oneshot::channel();
 
     let _ = stack
