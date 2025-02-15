@@ -9,8 +9,8 @@ use tokio::sync::{
 use uuid::Uuid;
 
 use crate::{
-    market::{Market, MarketMessage, MarketState},
-    plants::stack::{StackActor, StackMessage, StackState},
+    market::{Market, MarketContext, MarketMessage},
+    plants::stack::{StackActor, StackContext},
 };
 
 pub mod delivery_period;
@@ -50,11 +50,9 @@ pub enum RegisterPlayerResponse {
 #[derive(Debug)]
 pub enum ConnectPlayerResponse {
     OK {
-        game_state: watch::Receiver<GameState>,
-        market: mpsc::Sender<MarketMessage>,
-        market_state: watch::Receiver<MarketState>,
-        player_stack: Sender<StackMessage>,
-        stack_state: watch::Receiver<StackState>,
+        game: GameContext,
+        market: MarketContext,
+        player_stack: StackContext,
     },
     NoStackFound,
     DoesNotExist,
@@ -84,6 +82,12 @@ impl Serialize for GameState {
     }
 }
 
+#[derive(Debug, Clone)]
+pub struct GameContext {
+    pub tx: mpsc::Sender<GameMessage>,
+    pub state_rx: watch::Receiver<GameState>,
+}
+
 /// Main entrypoint for a given game of parcelec. Responsible for:
 /// - new player registration,
 /// - passing game context to new player connection (market and player's stack tx),
@@ -92,10 +96,8 @@ pub struct Game {
     state: GameState,
     state_watch: watch::Sender<GameState>,
     players: Vec<Player>,
-    market: Sender<MarketMessage>,
-    market_state: watch::Receiver<MarketState>,
-    stacks: HashMap<String, Sender<StackMessage>>,
-    stack_states: HashMap<String, watch::Receiver<StackState>>,
+    market_context: MarketContext,
+    stacks_context: HashMap<String, StackContext>,
     rx: Receiver<GameMessage>,
     tx: Sender<GameMessage>,
 }
@@ -103,8 +105,7 @@ pub struct Game {
 impl Game {
     pub async fn new() -> Game {
         let mut market = Market::new();
-        let market_tx = market.get_tx();
-        let market_state = market.get_state_rx();
+        let market_context = market.get_context();
 
         tokio::spawn(async move {
             market.process().await;
@@ -116,11 +117,9 @@ impl Game {
         Game {
             state: GameState::Open,
             state_watch: state_tx,
-            market: market_tx,
-            market_state,
+            market_context,
             players: Vec::new(),
-            stacks: HashMap::new(),
-            stack_states: HashMap::new(),
+            stacks_context: HashMap::new(),
             rx,
             tx,
         }
@@ -139,7 +138,7 @@ impl Game {
                     self.connect_player(id, tx_back);
                 }
                 (_, GameMessage::GetMarketTx { tx_back }) => {
-                    let _ = tx_back.send(self.market.clone());
+                    let _ = tx_back.send(self.market_context.tx.clone());
                 }
                 (GameState::Open, GameMessage::PlayerIsReady(player_id)) => {
                     if let Some(player) = self
@@ -154,8 +153,13 @@ impl Game {
                     if self.players.iter().all(|player| player.ready) {
                         println!("All players ready, starting game");
                         self.state = GameState::Running;
-                        let mut delivery_period =
-                            DeliveryPeriod::new(self.market.clone(), self.stacks.clone());
+                        let mut delivery_period = DeliveryPeriod::new(
+                            self.market_context.tx.clone(),
+                            self.stacks_context
+                                .iter()
+                                .map(|(id, context)| (id.clone(), context.tx.clone()))
+                                .collect(),
+                        );
                         tokio::spawn(async move {
                             delivery_period.start().await;
                         });
@@ -174,21 +178,15 @@ impl Game {
             return;
         }
 
-        let Some(player_stack) = self.stacks.get(&id) else {
-            let _ = tx_back.send(ConnectPlayerResponse::NoStackFound);
-            return;
-        };
-        let Some(player_stack_state) = self.stack_states.get(&id) else {
+        let Some(stack) = self.stacks_context.get(&id) else {
             let _ = tx_back.send(ConnectPlayerResponse::NoStackFound);
             return;
         };
 
         let _ = tx_back.send(ConnectPlayerResponse::OK {
-            game_state: self.state_watch.subscribe(),
-            market: self.market.clone(),
-            market_state: self.market_state.clone(),
-            player_stack: player_stack.clone(),
-            stack_state: player_stack_state.clone(),
+            game: self.get_context(),
+            market: self.market_context.clone(),
+            player_stack: stack.clone(),
         });
     }
 
@@ -208,9 +206,8 @@ impl Game {
 
         // Create a new stack for the player
         let mut player_stack = StackActor::new(player_id.clone());
-        self.stacks.insert(player_id.clone(), player_stack.get_tx());
-        self.stack_states
-            .insert(player_id.clone(), player_stack.get_state_rx());
+        self.stacks_context
+            .insert(player_id.clone(), player_stack.get_context());
         tokio::spawn(async move {
             player_stack.start().await;
         });
@@ -219,12 +216,11 @@ impl Game {
         let _ = tx_back.send(RegisterPlayerResponse::Success { id: player_id });
     }
 
-    pub fn get_tx(&self) -> Sender<GameMessage> {
-        self.tx.clone()
-    }
-
-    pub fn get_market(&self) -> Sender<MarketMessage> {
-        self.market.clone()
+    pub fn get_context(&self) -> GameContext {
+        GameContext {
+            tx: self.tx.clone(),
+            state_rx: self.state_watch.subscribe(),
+        }
     }
 }
 
@@ -238,13 +234,15 @@ mod tests {
         market::MarketState,
     };
 
-    async fn open_game() -> mpsc::Sender<GameMessage> {
+    use super::GameContext;
+
+    async fn open_game() -> GameContext {
         let mut game = Game::new().await;
-        let tx = game.get_tx();
+        let context = game.get_context();
         tokio::spawn(async move {
             game.run().await;
         });
-        tx
+        context
     }
 
     async fn register_player(game: mpsc::Sender<GameMessage>) -> String {
@@ -273,12 +271,13 @@ mod tests {
 
         // Register a player
         let (tx, rx) = channel::<RegisterPlayerResponse>();
-        game.send(GameMessage::RegisterPlayer {
-            name: "toto".to_owned(),
-            tx_back: tx,
-        })
-        .await
-        .unwrap();
+        game.tx
+            .send(GameMessage::RegisterPlayer {
+                name: "toto".to_owned(),
+                tx_back: tx,
+            })
+            .await
+            .unwrap();
         let first_id = match rx.await {
             Ok(RegisterPlayerResponse::Success { id }) => id,
             _ => unreachable!("Should have register the player"),
@@ -286,12 +285,13 @@ mod tests {
 
         // Register another player
         let (tx, rx) = channel::<RegisterPlayerResponse>();
-        game.send(GameMessage::RegisterPlayer {
-            name: "tutu".to_owned(),
-            tx_back: tx,
-        })
-        .await
-        .unwrap();
+        game.tx
+            .send(GameMessage::RegisterPlayer {
+                name: "tutu".to_owned(),
+                tx_back: tx,
+            })
+            .await
+            .unwrap();
         let second_id = match rx.await {
             Ok(RegisterPlayerResponse::Success { id }) => id,
             _ => unreachable!("Should have register the player"),
@@ -307,12 +307,13 @@ mod tests {
 
         // Register a player
         let (tx, rx) = channel::<RegisterPlayerResponse>();
-        game.send(GameMessage::RegisterPlayer {
-            name: "toto".to_owned(),
-            tx_back: tx,
-        })
-        .await
-        .unwrap();
+        game.tx
+            .send(GameMessage::RegisterPlayer {
+                name: "toto".to_owned(),
+                tx_back: tx,
+            })
+            .await
+            .unwrap();
         match rx.await {
             Ok(RegisterPlayerResponse::Success { id }) => id,
             _ => unreachable!("Should have register the player"),
@@ -320,24 +321,26 @@ mod tests {
 
         // Register a player with the same name
         let (tx, rx) = channel::<RegisterPlayerResponse>();
-        game.send(GameMessage::RegisterPlayer {
-            name: "toto".to_owned(),
-            tx_back: tx,
-        })
-        .await
-        .unwrap();
+        game.tx
+            .send(GameMessage::RegisterPlayer {
+                name: "toto".to_owned(),
+                tx_back: tx,
+            })
+            .await
+            .unwrap();
         match rx.await {
             Ok(RegisterPlayerResponse::PlayerAlreadyExist) => {}
             _ => unreachable!("Should have refused the registration"),
         };
         // Register another player with a different name
         let (tx, rx) = channel::<RegisterPlayerResponse>();
-        game.send(GameMessage::RegisterPlayer {
-            name: "tata".to_owned(),
-            tx_back: tx,
-        })
-        .await
-        .unwrap();
+        game.tx
+            .send(GameMessage::RegisterPlayer {
+                name: "tata".to_owned(),
+                tx_back: tx,
+            })
+            .await
+            .unwrap();
         match rx.await {
             Ok(RegisterPlayerResponse::Success { id }) => id,
             _ => unreachable!("Should have register the player"),
@@ -349,11 +352,12 @@ mod tests {
         let game = open_game().await;
 
         // Start the game
-        start_game(game.clone()).await;
+        start_game(game.tx.clone()).await;
 
         // Try to register a new player
         let (tx, rx) = channel::<RegisterPlayerResponse>();
         let _ = game
+            .tx
             .send(GameMessage::RegisterPlayer {
                 name: "toto".to_owned(),
                 tx_back: tx,
@@ -372,12 +376,13 @@ mod tests {
 
         // Try to connect a player that is not registered
         let (tx, rx) = channel::<ConnectPlayerResponse>();
-        game.send(GameMessage::ConnectPlayer {
-            id: "random_id".to_owned(),
-            tx_back: tx,
-        })
-        .await
-        .unwrap();
+        game.tx
+            .send(GameMessage::ConnectPlayer {
+                id: "random_id".to_owned(),
+                tx_back: tx,
+            })
+            .await
+            .unwrap();
         match rx.await {
             Ok(ConnectPlayerResponse::DoesNotExist) => {}
             _ => unreachable!("Should have refused the connection"),
@@ -389,12 +394,13 @@ mod tests {
         let game = open_game().await;
         // Register a player
         let (tx, rx) = channel::<RegisterPlayerResponse>();
-        game.send(GameMessage::RegisterPlayer {
-            name: "toto".to_owned(),
-            tx_back: tx,
-        })
-        .await
-        .unwrap();
+        game.tx
+            .send(GameMessage::RegisterPlayer {
+                name: "toto".to_owned(),
+                tx_back: tx,
+            })
+            .await
+            .unwrap();
         let id = match rx.await {
             Ok(RegisterPlayerResponse::Success { id }) => id,
             _ => unreachable!("Should have register the player"),
@@ -402,12 +408,13 @@ mod tests {
 
         // Connect the player
         let (tx, rx) = channel::<ConnectPlayerResponse>();
-        game.send(GameMessage::ConnectPlayer {
-            id: id.clone(),
-            tx_back: tx,
-        })
-        .await
-        .unwrap();
+        game.tx
+            .send(GameMessage::ConnectPlayer {
+                id: id.clone(),
+                tx_back: tx,
+            })
+            .await
+            .unwrap();
         match rx.await {
             Ok(ConnectPlayerResponse::OK { .. }) => {}
             _ => unreachable!("Should have connected the player"),
@@ -415,12 +422,13 @@ mod tests {
 
         // Connection should be idempotent
         let (tx, rx) = channel::<ConnectPlayerResponse>();
-        game.send(GameMessage::ConnectPlayer {
-            id: id.clone(),
-            tx_back: tx,
-        })
-        .await
-        .unwrap();
+        game.tx
+            .send(GameMessage::ConnectPlayer {
+                id: id.clone(),
+                tx_back: tx,
+            })
+            .await
+            .unwrap();
         match rx.await {
             Ok(ConnectPlayerResponse::OK { .. }) => {}
             _ => unreachable!("Should have connected the player"),
@@ -430,14 +438,14 @@ mod tests {
     #[tokio::test]
     async fn test_starting_the_game_should_open_market_and_stacks() {
         let mut game = Game::new().await;
-        let game_tx = game.get_tx();
-        let mut market_state = game.market_state.clone();
+        let context = game.get_context();
+        let mut market_state = game.market_context.state_rx.clone();
         tokio::spawn(async move {
             game.run().await;
         });
 
         // Start the game
-        start_game(game_tx).await;
+        start_game(context.tx).await;
 
         // Market should be open
         if *market_state.borrow_and_update() == MarketState::Closed {
@@ -449,8 +457,10 @@ mod tests {
     #[tokio::test]
     async fn test_starting_the_game_should_publish_game_state_running() {
         let mut game = Game::new().await;
-        let game_tx = game.get_tx();
-        let mut game_state = game.state_watch.subscribe();
+        let GameContext {
+            tx: game_tx,
+            state_rx: mut game_state,
+        } = game.get_context();
         tokio::spawn(async move {
             game.run().await;
         });
@@ -467,8 +477,10 @@ mod tests {
     #[tokio::test]
     async fn test_game_should_start_when_all_players_ready() {
         let mut game = Game::new().await;
-        let game_tx = game.get_tx();
-        let mut game_state = game.state_watch.subscribe();
+        let GameContext {
+            tx: game_tx,
+            state_rx: mut game_state,
+        } = game.get_context();
         tokio::spawn(async move {
             game.run().await;
         });

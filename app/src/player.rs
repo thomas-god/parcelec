@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 use tokio::{
     select,
     sync::{
-        mpsc::{self, channel, Receiver, Sender},
+        mpsc::{channel, Receiver, Sender},
         watch,
     },
     task::JoinSet,
@@ -17,13 +17,13 @@ use tokio::{
 use uuid::Uuid;
 
 use crate::{
-    game::{GameMessage, GameState},
+    game::{GameContext, GameMessage, GameState},
     market::{
         order_book::{OrderRequest, TradeLeg},
-        MarketMessage, MarketState, OrderRepr,
+        MarketContext, MarketMessage, MarketState, OrderRepr,
     },
     plants::{
-        stack::{ProgramPlant, StackMessage, StackState},
+        stack::{ProgramPlant, StackContext, StackMessage, StackState},
         PowerPlantPublicRepr,
     },
 };
@@ -69,12 +69,9 @@ pub enum PlayerMessage {
 }
 pub struct PlayerConnectionContext {
     pub player_id: String,
-    pub game_tx: mpsc::Sender<GameMessage>,
-    pub game_state: watch::Receiver<GameState>,
-    pub market: Sender<MarketMessage>,
-    pub market_state: watch::Receiver<MarketState>,
-    pub stack: Sender<StackMessage>,
-    pub stack_state: watch::Receiver<StackState>,
+    pub game: GameContext,
+    pub market: MarketContext,
+    pub stack: StackContext,
 }
 
 pub async fn start_player_connection(mut ws: WebSocket, context: PlayerConnectionContext) {
@@ -97,8 +94,8 @@ pub async fn start_player_connection(mut ws: WebSocket, context: PlayerConnectio
 
     register_connection(
         &context.player_id,
-        &context.market,
-        &context.stack,
+        &context.market.tx,
+        &context.stack.tx,
         &connection_id,
         tx,
     )
@@ -108,15 +105,15 @@ pub async fn start_player_connection(mut ws: WebSocket, context: PlayerConnectio
     let sink_handle = tokio::spawn(process_internal_messages(
         sink,
         rx,
-        context.game_state,
-        context.market_state,
-        context.stack_state,
+        context.game.state_rx,
+        context.market.state_rx,
+        context.stack.state_rx,
     ));
     let stream_handle = tokio::spawn(process_ws_messages(
         stream,
-        context.game_tx.clone(),
-        context.market.clone(),
-        context.stack.clone(),
+        context.game.tx.clone(),
+        context.market.tx.clone(),
+        context.stack.tx.clone(),
         context.player_id.clone(),
     ));
     let _ = tokio::try_join!(sink_handle, stream_handle);
@@ -126,6 +123,7 @@ pub async fn start_player_connection(mut ws: WebSocket, context: PlayerConnectio
     println!("Disconnecting {:?} from market", context.player_id);
     let _ = context
         .market
+        .tx
         .send(MarketMessage::PlayerDisconnection { connection_id })
         .await;
 }

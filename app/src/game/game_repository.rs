@@ -91,7 +91,7 @@ impl GameRepository {
                 GameRepositoryMessage::CreateNewGame { tx_back } => {
                     let game_id = GameId::default();
                     let mut game = Game::new().await;
-                    let game_tx = game.get_tx();
+                    let game_tx = game.get_context().tx;
 
                     self.games.insert(game_id.clone(), game_tx.clone());
 

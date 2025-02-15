@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use futures_util::future::join_all;
 use serde::{ser::SerializeStruct, Deserialize, Serialize};
 use tokio::sync::{
-    mpsc::{channel, Receiver, Sender},
+    mpsc::{self, channel, Receiver, Sender},
     oneshot, watch,
 };
 use uuid::Uuid;
@@ -58,6 +58,12 @@ impl Serialize for StackState {
     }
 }
 
+#[derive(Debug, Clone)]
+pub struct StackContext {
+    pub tx: mpsc::Sender<StackMessage>,
+    pub state_rx: watch::Receiver<StackState>,
+}
+
 /// A stack is the collection of power plants owned by a given player
 pub struct StackActor {
     state: StackState,
@@ -84,13 +90,11 @@ impl StackActor {
             rx,
         }
     }
-
-    pub fn get_tx(&self) -> Sender<StackMessage> {
-        self.tx.clone()
-    }
-
-    pub fn get_state_rx(&self) -> watch::Receiver<StackState> {
-        self.state_sender.subscribe()
+    pub fn get_context(&self) -> StackContext {
+        StackContext {
+            tx: self.tx.clone(),
+            state_rx: self.state_sender.subscribe(),
+        }
     }
 
     pub async fn start(&mut self) {
@@ -216,25 +220,28 @@ mod tests_stack {
         player::{PlayerConnection, PlayerMessage},
     };
 
-    fn start_stack() -> (String, Sender<StackMessage>) {
+    use super::StackContext;
+
+    fn start_stack() -> (String, StackContext) {
         let player_id = Uuid::new_v4().to_string();
         let mut stack = StackActor::new(player_id.clone());
-        let stack_tx = stack.get_tx();
+        let stack_context = stack.get_context();
         tokio::spawn(async move {
             stack.start().await;
         });
-        (player_id, stack_tx)
+        (player_id, stack_context)
     }
 
     #[tokio::test]
     async fn test_register_player_connection() {
-        let (player_id, stack_tx) = start_stack();
+        let (player_id, stack) = start_stack();
 
         let (tx, mut rx) = channel::<PlayerMessage>(16);
 
         // Register player connection
         let connection_id = Uuid::new_v4().to_string();
-        let _ = stack_tx
+        let _ = stack
+            .tx
             .send(StackMessage::RegisterPlayerConnection(PlayerConnection {
                 id: connection_id,
                 player_id,
@@ -275,15 +282,16 @@ mod tests_stack {
 
     #[tokio::test]
     async fn test_programm_a_plant_setpoint() {
-        let (player_id, stack_tx) = start_stack();
+        let (player_id, stack) = start_stack();
         let (_, mut player_rx, plants) =
-            register_player_connection(&player_id, stack_tx.clone()).await;
+            register_player_connection(&player_id, stack.tx.clone()).await;
 
         // Program a plant's setpoint
         let Some(plant_id) = plants.keys().next() else {
             unreachable!("Stack should contain at least one power plant");
         };
-        let _ = stack_tx
+        let _ = stack
+            .tx
             .send(StackMessage::ProgramSetpoint(ProgramPlant {
                 plant_id: plant_id.to_owned(),
                 setpoint: 100,
@@ -298,19 +306,20 @@ mod tests_stack {
 
     #[tokio::test]
     async fn test_programm_a_plant_setpoint_multiple_connections() {
-        let (player_id, stack_tx) = start_stack();
+        let (player_id, stack) = start_stack();
 
         // Register two players
         let (_, mut player_rx_1, plants) =
-            register_player_connection(&player_id, stack_tx.clone()).await;
+            register_player_connection(&player_id, stack.tx.clone()).await;
         let (_, mut player_rx_2, _) =
-            register_player_connection(&player_id, stack_tx.clone()).await;
+            register_player_connection(&player_id, stack.tx.clone()).await;
 
         // Program a plant's setpoint
         let Some(plant_id) = plants.keys().next() else {
             unreachable!("Stack should contain at least one power plant");
         };
-        let _ = stack_tx
+        let _ = stack
+            .tx
             .send(StackMessage::ProgramSetpoint(ProgramPlant {
                 plant_id: plant_id.to_owned(),
                 setpoint: 100,
@@ -330,21 +339,18 @@ mod tests_stack {
     async fn test_no_dispatch_when_stack_closed() {
         let (player_id, stack) = start_stack();
         let (_, mut player_rx, plants) =
-            register_player_connection(&player_id, stack.clone()).await;
+            register_player_connection(&player_id, stack.tx.clone()).await;
 
         // Close the stack
         let (tx_back, _) = oneshot::channel();
-        let _ = stack
-            .clone()
-            .send(StackMessage::CloseStack { tx_back })
-            .await;
+        let _ = stack.tx.send(StackMessage::CloseStack { tx_back }).await;
 
         // Try to send a dispatch command
         let Some(plant_id) = plants.keys().next() else {
             unreachable!("Stack should contain at least one power plant");
         };
         let _ = stack
-            .clone()
+            .tx
             .send(StackMessage::ProgramSetpoint(ProgramPlant {
                 plant_id: plant_id.to_owned(),
                 setpoint: 100,
@@ -365,10 +371,7 @@ mod tests_stack {
 
         // Close the stack
         let (tx_back, rx_back) = oneshot::channel();
-        let _ = stack
-            .clone()
-            .send(StackMessage::CloseStack { tx_back })
-            .await;
+        let _ = stack.tx.send(StackMessage::CloseStack { tx_back }).await;
 
         let plant_outputs = rx_back
             .await
@@ -381,12 +384,13 @@ mod tests_stack {
 
         // Close the stack
         let (tx_back, _) = oneshot::channel();
-        let _ = stack.send(StackMessage::CloseStack { tx_back }).await;
+        let _ = stack.tx.send(StackMessage::CloseStack { tx_back }).await;
 
         // Register a player
         let (tx, mut rx) = channel::<PlayerMessage>(16);
         let connection_id = Uuid::new_v4().to_string();
         let _ = stack
+            .tx
             .send(StackMessage::RegisterPlayerConnection(PlayerConnection {
                 id: connection_id.clone(),
                 player_id: player_id.to_string(),
@@ -401,13 +405,14 @@ mod tests_stack {
         assert!(!plants.is_empty());
 
         // Reopen the stack
-        let _ = stack.send(StackMessage::OpenStack).await;
+        let _ = stack.tx.send(StackMessage::OpenStack).await;
 
         // Check dispatch is working
         let Some(plant_id) = plants.keys().next() else {
             unreachable!("Stack should contain at least one power plant");
         };
         let _ = stack
+            .tx
             .send(StackMessage::ProgramSetpoint(ProgramPlant {
                 plant_id: plant_id.to_owned(),
                 setpoint: 0,
@@ -422,8 +427,10 @@ mod tests_stack {
     async fn test_stack_state_watch() {
         let player_id = Uuid::new_v4().to_string();
         let mut stack = StackActor::new(player_id.clone());
-        let stack_tx = stack.get_tx();
-        let mut state_rx = stack.get_state_rx();
+        let StackContext {
+            tx: stack_tx,
+            mut state_rx,
+        } = stack.get_context();
         tokio::spawn(async move {
             stack.start().await;
         });

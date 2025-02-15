@@ -98,16 +98,14 @@ pub async fn handle_ws_connection(
         })
         .await;
 
-    let (player_stack, game_state, stack_state, market, market_state) = match rx.await {
+    let (game, market, player_stack) = match rx.await {
         Ok(ConnectPlayerResponse::OK {
-            game_state,
+            game,
             market,
-            market_state,
             player_stack,
-            stack_state,
         }) => {
             println!("Player is connected, continuing with processing WS");
-            (player_stack, game_state, stack_state, market, market_state)
+            (game, market, player_stack)
         }
         Ok(ConnectPlayerResponse::DoesNotExist) => {
             println!("Player does not exist, invalidating its cookies");
@@ -141,16 +139,11 @@ pub async fn handle_ws_connection(
             return StatusCode::INTERNAL_SERVER_ERROR.into_response();
         }
     };
-    let market = market.clone();
-    let market_state = market_state.clone();
     let context = PlayerConnectionContext {
         player_id: id,
-        game_tx: game,
-        game_state,
+        game,
         market,
-        market_state,
         stack: player_stack,
-        stack_state,
     };
     ws.on_upgrade(move |socket| handle_socket(socket, context))
 }
