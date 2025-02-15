@@ -91,7 +91,7 @@ pub async fn handle_ws_connection(
 
     let (tx, rx) = oneshot::channel();
     let _ = game
-        .clone()
+        .tx
         .send(GameMessage::ConnectPlayer {
             id: id.clone(),
             tx_back: tx,
@@ -191,6 +191,7 @@ pub async fn join_game(
     let (tx, rx) = oneshot::channel::<RegisterPlayerResponse>();
 
     let _ = game
+        .tx
         .send(GameMessage::RegisterPlayer {
             name: input.name.clone(),
             tx_back: tx,
@@ -249,18 +250,26 @@ pub async fn create_tutorial_game(
         .game_repository
         .send(GameRepositoryMessage::CreateNewGame { tx_back })
         .await;
-    let Ok(CreateNewGameResponse { game_id, game_tx }) = rx.await else {
+    let Ok(CreateNewGameResponse {
+        game_id,
+        game_context,
+    }) = rx.await
+    else {
         println!("Unable to create a game");
         return StatusCode::INTERNAL_SERVER_ERROR;
     };
 
     // Start the bots
-    start_bots(game_tx.clone()).await;
+    let cloned_game_context = game_context.clone();
+    tokio::spawn(async move {
+        start_bots(cloned_game_context).await;
+    });
 
     // Register a player for this game
     let player_name = "tutorial_player".to_string();
     let (tx_back, rx) = oneshot::channel();
-    let _ = game_tx
+    let _ = game_context
+        .tx
         .send(GameMessage::RegisterPlayer {
             name: player_name.clone(),
             tx_back,

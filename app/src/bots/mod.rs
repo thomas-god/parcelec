@@ -1,13 +1,17 @@
 use initial_orders::InitialOrdersBot;
-use tokio::sync::{mpsc::Sender, oneshot};
+use tokio::sync::oneshot;
 
-use crate::game::GameMessage;
+use crate::game::{GameContext, GameMessage, GameState};
 
 pub mod initial_orders;
 
-pub async fn start_bots(game: Sender<GameMessage>) {
+pub async fn start_bots(mut game: GameContext) {
+    while *game.state_rx.borrow_and_update() != GameState::Running {
+        let _ = game.state_rx.changed().await;
+    }
+
     let (tx_back, rx) = oneshot::channel();
-    let _ = game.send(GameMessage::GetMarketTx { tx_back }).await;
+    let _ = game.tx.send(GameMessage::GetMarketTx { tx_back }).await;
     let Ok(market) = rx.await else {
         println!("Unable to get market tx for starting bots");
         return;

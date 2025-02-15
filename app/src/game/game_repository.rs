@@ -3,7 +3,7 @@ use std::{collections::HashMap, fmt};
 use tokio::sync::{mpsc, oneshot};
 use uuid::Uuid;
 
-use super::{Game, GameMessage};
+use super::{Game, GameContext};
 
 pub enum GameRepositoryMessage {
     CreateNewGame {
@@ -56,16 +56,16 @@ impl AsRef<str> for GameId {
 #[derive(Debug)]
 pub struct CreateNewGameResponse {
     pub game_id: GameId,
-    pub game_tx: mpsc::Sender<GameMessage>,
+    pub game_context: GameContext,
 }
 
 pub enum GetGameResponse {
-    Found(mpsc::Sender<GameMessage>),
+    Found(GameContext),
     NotFound,
 }
 
 pub struct GameRepository {
-    games: HashMap<GameId, mpsc::Sender<GameMessage>>,
+    games: HashMap<GameId, GameContext>,
     tx: mpsc::Sender<GameRepositoryMessage>,
     rx: mpsc::Receiver<GameRepositoryMessage>,
 }
@@ -91,13 +91,16 @@ impl GameRepository {
                 GameRepositoryMessage::CreateNewGame { tx_back } => {
                     let game_id = GameId::default();
                     let mut game = Game::new().await;
-                    let game_tx = game.get_context().tx;
+                    let game_context = game.get_context();
 
-                    self.games.insert(game_id.clone(), game_tx.clone());
+                    self.games.insert(game_id.clone(), game_context.clone());
 
                     tokio::spawn(async move { game.run().await });
 
-                    let _ = tx_back.send(CreateNewGameResponse { game_id, game_tx });
+                    let _ = tx_back.send(CreateNewGameResponse {
+                        game_id,
+                        game_context,
+                    });
                 }
                 GameRepositoryMessage::GetGame { game_id, tx_back } => {
                     let _ = tx_back.send(match self.games.get(&game_id) {
@@ -149,12 +152,13 @@ mod tests {
         let _ = repository_tx
             .send(GameRepositoryMessage::CreateNewGame { tx_back })
             .await;
-        let Ok(CreateNewGameResponse { game_tx, .. }) = rx.await else {
+        let Ok(CreateNewGameResponse { game_context, .. }) = rx.await else {
             unreachable!("Should have received a game ID")
         };
 
         let (tx_back, rx) = oneshot::channel();
-        let _ = game_tx
+        let _ = game_context
+            .tx
             .send(GameMessage::ConnectPlayer {
                 id: "toto".to_string(),
                 tx_back,
