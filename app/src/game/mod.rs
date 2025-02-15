@@ -104,6 +104,7 @@ pub struct Game {
     rx: Receiver<GameMessage>,
     tx: Sender<GameMessage>,
     delivery_period: DeliveryPeriodId,
+    all_players_ready_tx: Option<oneshot::Sender<()>>,
 }
 
 impl Game {
@@ -128,6 +129,7 @@ impl Game {
             rx,
             tx,
             delivery_period,
+            all_players_ready_tx: None,
         }
     }
 
@@ -148,47 +150,74 @@ impl Game {
                 }
                 (GameState::PostDelivery, GameMessage::PlayerIsReady(player_id))
                 | (GameState::Open, GameMessage::PlayerIsReady(player_id)) => {
-                    if let Some(player) = self
-                        .players
-                        .iter_mut()
-                        .find(|player| player.id == player_id)
-                    {
-                        player.ready = true;
-                    }
-
-                    // If all players are ready, start the next delivery period
-                    if self.players.iter().all(|player| player.ready) {
-                        println!(
-                            "All players ready, starting delivery period {}",
-                            self.delivery_period.next()
-                        );
-                        self.state = GameState::Running;
-                        self.delivery_period = self.delivery_period.next();
-                        for player in self.players.iter_mut() {
-                            player.ready = false;
-                        }
-                        let delivery_period = self.delivery_period;
-                        let game_tx = self.tx.clone();
-                        let market_tx = self.market_context.tx.clone();
-                        let stacks_tx = self
-                            .stacks_context
-                            .iter()
-                            .map(|(id, context)| (id.clone(), context.tx.clone()))
-                            .collect();
-                        tokio::spawn(async move {
-                            start_delivery_period(delivery_period, game_tx, market_tx, stacks_tx)
-                                .await;
-                        });
-                        let _ = self.state_watch.send(GameState::Running);
-                    }
+                    self.register_player_ready(player_id);
                 }
                 (GameState::Running, GameMessage::DeliveryPeriodResults(_)) => {
                     self.state = GameState::PostDelivery;
                     let _ = self.state_watch.send(GameState::PostDelivery);
                 }
-                (GameState::Running, GameMessage::PlayerIsReady(_)) => { /* Game is already running */
+                (GameState::Running, GameMessage::PlayerIsReady(player_id)) => {
+                    self.register_player_ready_game_is_running(player_id);
                 }
                 _ => todo!(),
+            }
+        }
+    }
+
+    fn register_player_ready(&mut self, player_id: String) {
+        if let Some(player) = self
+            .players
+            .iter_mut()
+            .find(|player| player.id == player_id)
+        {
+            player.ready = true;
+        }
+
+        // If all players are ready, start the next delivery period
+        if self.players.iter().all(|player| player.ready) {
+            println!(
+                "All players ready, starting delivery period {}",
+                self.delivery_period.next()
+            );
+            self.state = GameState::Running;
+            self.delivery_period = self.delivery_period.next();
+            for player in self.players.iter_mut() {
+                player.ready = false;
+            }
+            let delivery_period = self.delivery_period;
+            let game_tx = self.tx.clone();
+            let market_tx = self.market_context.tx.clone();
+            let stacks_tx = self
+                .stacks_context
+                .iter()
+                .map(|(id, context)| (id.clone(), context.tx.clone()))
+                .collect();
+            let (results_tx, results_rx) = oneshot::channel();
+            tokio::spawn(async move {
+                start_delivery_period(delivery_period, game_tx, market_tx, stacks_tx, results_rx)
+                    .await;
+            });
+            self.all_players_ready_tx = Some(results_tx);
+            let _ = self.state_watch.send(GameState::Running);
+        }
+    }
+
+    fn register_player_ready_game_is_running(&mut self, player_id: String) {
+        if let Some(player) = self
+            .players
+            .iter_mut()
+            .find(|player| player.id == player_id)
+        {
+            player.ready = true;
+        }
+
+        if self.players.iter().all(|player| player.ready) {
+            println!("All players ready, ending delivery period");
+            if let Some(tx) = self.all_players_ready_tx.take() {
+                let _ = tx.send(());
+                for player in self.players.iter_mut() {
+                    player.ready = false;
+                }
             }
         }
     }
@@ -286,9 +315,10 @@ mod tests {
         }
     }
 
-    async fn start_game(game: mpsc::Sender<GameMessage>) {
+    async fn start_game(game: mpsc::Sender<GameMessage>) -> String {
         let player = register_player(game.clone()).await;
         let _ = game.send(GameMessage::PlayerIsReady(player.clone())).await;
+        player
     }
 
     async fn get_player_stack(game: mpsc::Sender<GameMessage>, player_id: &str) -> StackContext {
@@ -561,5 +591,21 @@ mod tests {
         // Game should be running
         assert!(game_state.changed().await.is_ok());
         assert_eq!(*game_state.borrow_and_update(), GameState::Running);
+    }
+
+    #[tokio::test]
+    async fn test_delivery_period_should_end_when_all_players_ready() {
+        let mut game = open_game().await;
+        let player = start_game(game.tx.clone()).await;
+        assert!(game.state_rx.changed().await.is_ok());
+        assert_eq!(*game.state_rx.borrow_and_update(), GameState::Running);
+
+        let _ = game
+            .tx
+            .send(GameMessage::PlayerIsReady(player.clone()))
+            .await;
+
+        assert!(game.state_rx.changed().await.is_ok());
+        assert_eq!(*game.state_rx.borrow_and_update(), GameState::PostDelivery);
     }
 }
