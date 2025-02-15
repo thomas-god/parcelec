@@ -153,6 +153,7 @@ impl Market {
                 }
                 (MarketState::Closed, MarketMessage::OpenMarket(period_id)) => {
                     if period_id == self.delivery_period {
+                        println!("Opening market for period {period_id:?}");
                         self.state = MarketState::Open;
                         self.delivery_period = self.delivery_period.next();
                         let _ = self.state_sender.send(MarketState::Open);
@@ -160,6 +161,7 @@ impl Market {
                 }
                 (MarketState::Open, MarketMessage::CloseMarket { tx_back, period_id }) => {
                     if period_id == self.delivery_period {
+                        println!("Closing market for period: {period_id:?}");
                         let trades = self.order_book.drain();
                         self.past_trades.insert(period_id, trades.clone());
                         self.state = MarketState::Closed;

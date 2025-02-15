@@ -121,13 +121,15 @@ impl StackActor {
                 }
                 (StackState::Closed, StackMessage::OpenStack(period_id)) => {
                     if period_id == self.delivery_period {
+                        println!("Opening stack for period: {period_id:?}");
                         self.state = StackState::Open;
-                        self.delivery_period = self.delivery_period.next().clone();
+                        self.delivery_period = self.delivery_period.next();
                         let _ = self.state_sender.send(StackState::Open);
                     }
                 }
                 (StackState::Open, StackMessage::CloseStack { tx_back, period_id }) => {
                     if period_id == self.delivery_period {
+                        println!("Closing stack for period: {period_id:?}");
                         self.state = StackState::Closed;
                         let plant_outputs: HashMap<String, PlantOutput> = self
                             .plants

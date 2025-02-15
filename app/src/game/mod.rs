@@ -9,7 +9,7 @@ use tokio::sync::{
 use uuid::Uuid;
 
 use crate::{
-    market::{Market, MarketContext, MarketMessage},
+    market::{Market, MarketContext, MarketMessage, MarketState},
     plants::stack::{StackActor, StackContext, StackState},
 };
 
@@ -100,11 +100,13 @@ pub struct Game {
     stacks_context: HashMap<String, StackContext>,
     rx: Receiver<GameMessage>,
     tx: Sender<GameMessage>,
+    delivery_period: DeliveryPeriodId,
 }
 
 impl Game {
     pub async fn new() -> Game {
-        let mut market = Market::default();
+        let delivery_period = DeliveryPeriodId::from(0);
+        let mut market = Market::new(MarketState::Closed, delivery_period);
         let market_context = market.get_context();
 
         tokio::spawn(async move {
@@ -122,6 +124,7 @@ impl Game {
             stacks_context: HashMap::new(),
             rx,
             tx,
+            delivery_period,
         }
     }
 
@@ -159,6 +162,7 @@ impl Game {
                                 .iter()
                                 .map(|(id, context)| (id.clone(), context.tx.clone()))
                                 .collect(),
+                            self.delivery_period.next(),
                         );
                         tokio::spawn(async move {
                             delivery_period.start().await;
@@ -205,11 +209,8 @@ impl Game {
         self.players.push(player);
 
         // Create a new stack for the player
-        let mut player_stack = StackActor::new(
-            player_id.clone(),
-            StackState::Open,
-            DeliveryPeriodId::from(0),
-        );
+        let mut player_stack =
+            StackActor::new(player_id.clone(), StackState::Closed, self.delivery_period);
         self.stacks_context
             .insert(player_id.clone(), player_stack.get_context());
         tokio::spawn(async move {
@@ -230,12 +231,16 @@ impl Game {
 
 #[cfg(test)]
 mod tests {
-    use tokio::sync::{mpsc, oneshot::channel};
+    use tokio::sync::{
+        mpsc,
+        oneshot::{self, channel},
+    };
     use uuid::Uuid;
 
     use crate::{
         game::{ConnectPlayerResponse, Game, GameMessage, GameState, RegisterPlayerResponse},
         market::MarketState,
+        plants::stack::{StackContext, StackState},
     };
 
     use super::GameContext;
@@ -266,7 +271,23 @@ mod tests {
 
     async fn start_game(game: mpsc::Sender<GameMessage>) {
         let player = register_player(game.clone()).await;
-        let _ = game.send(GameMessage::PlayerIsReady(player)).await;
+        let _ = game.send(GameMessage::PlayerIsReady(player.clone())).await;
+    }
+
+    async fn get_player_stack(game: mpsc::Sender<GameMessage>, player_id: &str) -> StackContext {
+        let (tx, rx) = oneshot::channel();
+        let _ = game
+            .send(GameMessage::ConnectPlayer {
+                id: player_id.to_string(),
+                tx_back: tx,
+            })
+            .await;
+        let ConnectPlayerResponse::OK { player_stack, .. } =
+            rx.await.expect("Should have received a msg")
+        else {
+            unreachable!("Should have received player connection info");
+        };
+        player_stack
     }
 
     #[tokio::test]
@@ -439,7 +460,7 @@ mod tests {
         };
     }
 
-    #[tokio::test]
+    #[tokio::test(start_paused = true)]
     async fn test_starting_the_game_should_open_market_and_stacks() {
         let mut game = Game::new().await;
         let context = game.get_context();
@@ -447,15 +468,28 @@ mod tests {
         tokio::spawn(async move {
             game.run().await;
         });
+        assert_eq!(*market_state.borrow_and_update(), MarketState::Closed);
+
+        let player = register_player(context.tx.clone()).await;
+        let mut player_stack = get_player_stack(context.tx.clone(), &player).await;
+        assert_eq!(
+            *player_stack.state_rx.borrow_and_update(),
+            StackState::Closed
+        );
 
         // Start the game
-        start_game(context.tx).await;
+        let _ = context
+            .tx
+            .send(GameMessage::PlayerIsReady(player.clone()))
+            .await;
 
         // Market should be open
-        if *market_state.borrow_and_update() == MarketState::Closed {
-            assert!(market_state.changed().await.is_ok());
-            assert_eq!(*market_state.borrow_and_update(), MarketState::Open);
-        }
+        assert!(market_state.changed().await.is_ok());
+        assert_eq!(*market_state.borrow_and_update(), MarketState::Open);
+
+        // // Player's stack should be open
+        assert!(player_stack.state_rx.changed().await.is_ok());
+        assert_eq!(*player_stack.state_rx.borrow_and_update(), StackState::Open);
     }
 
     #[tokio::test]
