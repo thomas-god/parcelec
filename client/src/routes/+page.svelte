@@ -1,14 +1,11 @@
 <script lang="ts">
 </script>
 
-<div class="flex flex-row mt-5 gap-3 items-center content-center">
-  <!-- <div>
-    <a href="/game/join">register</a>
-  </div> -->
-  <!-- <div>
-    <a href="/game">play</a>
-  </div> -->
-  <div>
-    <a href="/tutorial">tutorial</a>
+<div class="flex flex-col mt-5 gap-5">
+  <h1 class="text-2xl text-center font-semibold mt-4">
+    Bienvue sur Parcelec ⚡
+  </h1>
+  <div class="text-lg text-center">
+    <a href="/tutorial">➡️ Tutoriel</a>
   </div>
 </div>

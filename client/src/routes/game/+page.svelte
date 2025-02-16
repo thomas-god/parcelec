@@ -130,9 +130,18 @@
           </div>
         {/if}
       </div>
-    {:else}
-      <p>Game not running yet</p>
-      <button onclick={startGame}>Commencer</button>
+    {:else if game_state === "Open"}
+      <p>En attente d'autres joueurs</p>
+      <button onclick={startGame}>Ready!</button>
+    {:else if game_state === "PostDelivery"}
+      <div class="flex flex-col">
+        <h2 class="text-center font-semibold text-xl mt-6">
+          Période de livraison terminée !
+        </h2>
+        <div class="mt-8 self-center text-lg">
+          <button onclick={startGame}> ➡️ Partie suivante</button>
+        </div>
+      </div>
     {/if}
   {:else}
     <p>Not connected</p>

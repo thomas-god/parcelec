@@ -280,6 +280,12 @@ pub async fn create_tutorial_game(
         return StatusCode::INTERNAL_SERVER_ERROR;
     };
 
+    // Start the game
+    let _ = game_context
+        .tx
+        .send(GameMessage::PlayerIsReady(player_id.clone()))
+        .await;
+
     // Write cookies back
     let Ok(domain) = env::var("DOMAIN") else {
         println!("No DOMAIN environnement variable");
