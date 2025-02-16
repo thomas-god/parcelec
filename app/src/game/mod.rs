@@ -193,9 +193,17 @@ impl Game {
                 .map(|(id, context)| (id.clone(), context.tx.clone()))
                 .collect();
             let (results_tx, results_rx) = oneshot::channel();
+            let timers = None;
             tokio::spawn(async move {
-                start_delivery_period(delivery_period, game_tx, market_tx, stacks_tx, results_rx)
-                    .await;
+                start_delivery_period(
+                    delivery_period,
+                    game_tx,
+                    market_tx,
+                    stacks_tx,
+                    results_rx,
+                    timers,
+                )
+                .await;
             });
             self.all_players_ready_tx = Some(results_tx);
             let _ = self.state_watch.send(GameState::Running);

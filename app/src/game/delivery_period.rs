@@ -35,6 +35,12 @@ impl DeliveryPeriodId {
         DeliveryPeriodId(self.0 + 1)
     }
 }
+
+pub struct DeliveryPeriodTimers {
+    pub market: Duration,
+    pub stacks: Duration,
+}
+
 #[derive(Debug)]
 pub struct DeliveryPeriodResults {
     pub period_id: DeliveryPeriodId,
@@ -46,6 +52,7 @@ pub async fn start_delivery_period(
     market_tx: mpsc::Sender<MarketMessage>,
     stacks_tx: HashMap<String, mpsc::Sender<StackMessage>>,
     players_ready_rx: oneshot::Receiver<()>,
+    timers: Option<DeliveryPeriodTimers>,
 ) {
     // First, open market and stacks
     let market_tx_cloned = market_tx.clone();
@@ -61,21 +68,25 @@ pub async fn start_delivery_period(
     let _ = open_market.await;
     let _ = open_stacks.await;
 
-    // Close market and stacks when time has elapsed
-    let current_period = period_id;
-    let market_tx_cloned = market_tx.clone();
-    let stacks_tx_cloned = stacks_tx.clone();
-    let timers_handle = tokio::spawn(async move {
-        join!(
-            close_market_future(market_tx_cloned, current_period),
-            close_stacks_future(stacks_tx_cloned, current_period)
-        )
-    });
+    let mut set = tokio::task::JoinSet::new();
+
+    if let Some(timers) = timers {
+        // Close market and stacks when time has elapsed
+        let current_period = period_id;
+        let market_tx_cloned = market_tx.clone();
+        let stacks_tx_cloned = stacks_tx.clone();
+        set.spawn(async move {
+            join!(
+                close_market_future(market_tx_cloned, current_period, timers.market),
+                close_stacks_future(stacks_tx_cloned, current_period, timers.stacks)
+            )
+        });
+    }
 
     // Close market and stacks if all players are ready
     let market_tx_cloned = market_tx.clone();
     let stacks_tx_cloned = stacks_tx.clone();
-    let players_ready_handle = tokio::spawn(async move {
+    set.spawn(async move {
         let _ = players_ready_rx.await;
         println!("All players ready, closing delivery period early");
         join!(
@@ -84,9 +95,23 @@ pub async fn start_delivery_period(
         )
     });
 
-    let (trades, plants_outputs) = tokio::select! {
-        Ok(res_timers) = timers_handle => res_timers,
-        Ok(res_players) = players_ready_handle => res_players,
+    let (trades, plants_outputs) = loop {
+        match set.join_next().await {
+            Some(Ok(result)) => {
+                // Got successful result, abort remaining tasks and break
+                set.abort_all();
+                break result;
+            }
+            Some(Err(e)) => {
+                println!("Task failed: {e}, trying next task");
+                // Continue to next task if there is one
+                continue;
+            }
+            None => {
+                // No more tasks to try
+                panic!("All tasks failed or JoinSet was empty");
+            }
+        }
     };
 
     println!("Delivery period ended with trades: {trades:?} and plant outputs: {plants_outputs:?}");
@@ -100,8 +125,9 @@ pub async fn start_delivery_period(
 async fn close_market_future(
     market_tx: mpsc::Sender<MarketMessage>,
     period_id: DeliveryPeriodId,
+    duration: Duration,
 ) -> Vec<Trade> {
-    sleep(Duration::from_secs(240)).await;
+    sleep(duration).await;
     close_market(market_tx, period_id).await
 }
 
@@ -136,8 +162,9 @@ async fn open_stacks(
 async fn close_stacks_future(
     stacks_tx: HashMap<String, mpsc::Sender<StackMessage>>,
     period_id: DeliveryPeriodId,
+    duration: Duration,
 ) -> HashMap<String, HashMap<String, PlantOutput>> {
-    sleep(Duration::from_secs(300)).await;
+    sleep(duration).await;
     close_stacks(stacks_tx, period_id).await
 }
 
@@ -194,9 +221,18 @@ mod tests {
         let (stack_tx, mut stack_rx) = mpsc::channel(16);
         let stacks_tx = HashMap::from([("toto".to_string(), stack_tx)]);
         let (_, players_ready_rx) = oneshot::channel();
+        let timers = None;
 
         tokio::spawn(async move {
-            start_delivery_period(period, game_tx, market_tx, stacks_tx, players_ready_rx).await;
+            start_delivery_period(
+                period,
+                game_tx,
+                market_tx,
+                stacks_tx,
+                players_ready_rx,
+                timers,
+            )
+            .await;
         });
 
         // Open the market and the stacks
@@ -238,9 +274,18 @@ mod tests {
         let (stack_tx, mut stack_rx) = mpsc::channel(16);
         let (players_ready_tx, players_ready_rx) = oneshot::channel();
         let stacks_tx = HashMap::from([("toto".to_string(), stack_tx)]);
+        let timers = None;
 
         tokio::spawn(async move {
-            start_delivery_period(period, game_tx, market_tx, stacks_tx, players_ready_rx).await;
+            start_delivery_period(
+                period,
+                game_tx,
+                market_tx,
+                stacks_tx,
+                players_ready_rx,
+                timers,
+            )
+            .await;
         });
 
         // Open the market and the stacks
