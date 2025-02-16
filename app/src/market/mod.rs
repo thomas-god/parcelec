@@ -16,7 +16,7 @@ use crate::{
 pub mod models;
 pub mod order_book;
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, PartialEq)]
 pub struct OrderRepr {
     pub order_id: String,
     pub direction: Direction,

@@ -15,7 +15,9 @@ use tower_http::cors::CorsLayer;
 use tutorial::create_tutorial_game;
 use ws::handle_ws_connection;
 
-use crate::game::game_repository::GameRepositoryMessage;
+use crate::{
+    game::game_repository::GameRepositoryMessage, player::repository::ConnectionRepositoryMessage,
+};
 
 mod join_game;
 mod tutorial;
@@ -23,6 +25,7 @@ mod ws;
 
 pub struct AppState {
     pub game_repository: mpsc::Sender<GameRepositoryMessage>,
+    pub player_connections_repository: mpsc::Sender<ConnectionRepositoryMessage>,
 }
 
 pub fn build_router(app_state: Arc<AppState>) -> Option<Router> {
