@@ -137,6 +137,7 @@ impl StackActor {
                         self.past_outputs.insert(period_id, plant_outputs.clone());
                         let _ = tx_back.send(plant_outputs);
                         let _ = self.state_sender.send(StackState::Closed);
+                        self.send_stack_snapshot_to_all().await;
                     }
                 }
                 (StackState::Closed, StackMessage::CloseStack { period_id, tx_back }) => {
@@ -376,6 +377,8 @@ mod tests_stack {
                 period_id: DeliveryPeriodId::from(0),
             })
             .await;
+        // Consume the stack snapshot message sent on stack closing
+        let _ = player_rx.recv().await;
 
         // Try to send a dispatch command
         let Some(plant_id) = plants.keys().next() else {
@@ -646,5 +649,44 @@ mod tests_stack {
             .await
             .expect("Should have received a map of plant outputs");
         assert_eq!(same_plant_outputs, plant_outputs);
+    }
+
+    #[tokio::test]
+    async fn test_closing_the_stack_should_send_an_updated_snapshot() {
+        let (player_id, stack) = start_stack();
+        let (_, mut player_rx, plants) =
+            register_player_connection(&player_id, stack.tx.clone()).await;
+
+        // Program a plant's setpoint
+        let Some(plant_id) = plants.keys().next() else {
+            unreachable!("Stack should contain at least one power plant");
+        };
+        let _ = stack
+            .tx
+            .send(StackMessage::ProgramSetpoint(ProgramPlant {
+                plant_id: plant_id.to_owned(),
+                setpoint: 100,
+            }))
+            .await;
+
+        // Should receive a stack snapshot back
+        let Some(PlayerMessage::StackSnapshot { plants: _ }) = player_rx.recv().await else {
+            unreachable!("Should have received a snapshot of the player's stack");
+        };
+
+        // Close the stack
+        let (tx_back, _) = oneshot::channel();
+        let _ = stack
+            .tx
+            .send(StackMessage::CloseStack {
+                tx_back,
+                period_id: DeliveryPeriodId::from(0),
+            })
+            .await;
+
+        // Should receive a stack snapshot back
+        let Some(PlayerMessage::StackSnapshot { plants: _ }) = player_rx.recv().await else {
+            unreachable!("Should have received a snapshot of the player's stack");
+        };
     }
 }
