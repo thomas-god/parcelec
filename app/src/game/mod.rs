@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
 use delivery_period::{start_delivery_period, DeliveryPeriodId, DeliveryPeriodResults};
+use game_repository::GameId;
 use serde::{ser::SerializeStruct, Serialize};
 use tokio::sync::{
     mpsc::{self, channel, Receiver, Sender},
@@ -11,6 +12,7 @@ use uuid::Uuid;
 use crate::{
     market::{Market, MarketContext, MarketMessage, MarketState},
     plants::stack::{StackActor, StackContext, StackState},
+    player::repository::ConnectionRepositoryMessage,
 };
 
 pub mod delivery_period;
@@ -109,9 +111,17 @@ pub struct Game {
 }
 
 impl Game {
-    pub async fn new() -> Game {
+    pub async fn new(
+        game_id: GameId,
+        player_connections: mpsc::Sender<ConnectionRepositoryMessage>,
+    ) -> Game {
         let delivery_period = DeliveryPeriodId::from(0);
-        let mut market = Market::new(MarketState::Closed, delivery_period);
+        let mut market = Market::new(
+            game_id,
+            MarketState::Closed,
+            delivery_period,
+            player_connections,
+        );
         let market_context = market.get_context();
 
         tokio::spawn(async move {
@@ -301,10 +311,12 @@ mod tests {
         plants::stack::{StackContext, StackState},
     };
 
-    use super::GameContext;
+    use super::{game_repository::GameId, GameContext};
 
     async fn open_game() -> GameContext {
-        let mut game = Game::new().await;
+        let (tx, _) = mpsc::channel(16);
+        let game_id = GameId::default();
+        let mut game = Game::new(game_id, tx).await;
         let context = game.get_context();
         tokio::spawn(async move {
             game.run().await;
@@ -521,7 +533,9 @@ mod tests {
 
     #[tokio::test(start_paused = true)]
     async fn test_starting_the_game_should_open_market_and_stacks() {
-        let mut game = Game::new().await;
+        let (tx, _) = mpsc::channel(16);
+        let game_id = GameId::default();
+        let mut game = Game::new(game_id, tx).await;
         let context = game.get_context();
         let mut market_state = game.market_context.state_rx.clone();
         tokio::spawn(async move {
@@ -553,7 +567,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_starting_the_game_should_publish_game_state_running() {
-        let mut game = Game::new().await;
+        let (tx, _) = mpsc::channel(16);
+        let game_id = GameId::default();
+        let mut game = Game::new(game_id, tx).await;
         let GameContext {
             tx: game_tx,
             state_rx: mut game_state,
@@ -573,7 +589,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_game_should_start_when_all_players_ready() {
-        let mut game = Game::new().await;
+        let (tx, _) = mpsc::channel(16);
+        let game_id = GameId::default();
+        let mut game = Game::new(game_id, tx).await;
         let GameContext {
             tx: game_tx,
             state_rx: mut game_state,

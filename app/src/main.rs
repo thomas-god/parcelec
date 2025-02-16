@@ -14,13 +14,13 @@ pub mod player;
 
 #[tokio::main]
 async fn main() {
-    let mut game_repository = GameRepository::new();
-    let game_repository_tx = game_repository.get_tx();
-    tokio::spawn(async move { game_repository.start().await });
-
     let mut player_connections_repository = PlayerConnectionRepository::new();
     let player_connection_tx = player_connections_repository.get_tx();
     tokio::spawn(async move { player_connections_repository.run().await });
+
+    let mut game_repository = GameRepository::new(player_connection_tx.clone());
+    let game_repository_tx = game_repository.get_tx();
+    tokio::spawn(async move { game_repository.start().await });
 
     let addr = "0.0.0.0:9002";
     let listener = TcpListener::bind(&addr)

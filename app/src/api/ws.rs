@@ -26,22 +26,7 @@ pub async fn handle_ws_connection(
     State(state): State<Arc<AppState>>,
     cookies: Cookies,
 ) -> impl IntoResponse {
-    let Some(id) = cookies
-        .get("player_id")
-        .map(|c| c.value_trimmed().to_string())
-    else {
-        return StatusCode::UNAUTHORIZED.into_response();
-    };
-    let Some(_) = cookies
-        .get("player_name")
-        .map(|c| c.value_trimmed().to_string())
-    else {
-        return StatusCode::UNAUTHORIZED.into_response();
-    };
-    let Some(game_id) = cookies
-        .get("game_id")
-        .map(|c| GameId::from(c.value_trimmed()))
-    else {
+    let Ok((id, game_id)) = extract_cookies(&cookies) else {
         return StatusCode::UNAUTHORIZED.into_response();
     };
 
@@ -78,24 +63,7 @@ pub async fn handle_ws_connection(
         }
         Ok(ConnectPlayerResponse::DoesNotExist) => {
             println!("Player does not exist, invalidating its cookies");
-            let game_id_cookie = Cookie::build(("game_id", "".to_string()))
-                .max_age(Duration::seconds(0))
-                .same_site(SameSite::Strict)
-                .path("/")
-                .build();
-            cookies.add(game_id_cookie);
-            let player_id_cookie = Cookie::build(("player_id", "".to_string()))
-                .max_age(Duration::seconds(0))
-                .same_site(SameSite::Strict)
-                .path("/")
-                .build();
-            cookies.add(player_id_cookie);
-            let name_cookie = Cookie::build(("player_name", "".to_string()))
-                .max_age(Duration::seconds(0))
-                .same_site(SameSite::Strict)
-                .path("/")
-                .build();
-            cookies.add(name_cookie);
+            invalidate_cookies(cookies);
             return StatusCode::UNAUTHORIZED.into_response();
         }
         Ok(ConnectPlayerResponse::NoStackFound) => {
@@ -109,12 +77,57 @@ pub async fn handle_ws_connection(
         }
     };
     let context = PlayerConnectionContext {
+        game_id,
         player_id: id,
+        connections_repository: state.player_connections_repository.clone(),
         game,
         market,
         stack: player_stack,
     };
     ws.on_upgrade(move |socket| handle_socket(socket, context))
+}
+
+fn invalidate_cookies(cookies: Cookies) {
+    let game_id_cookie = Cookie::build(("game_id", "".to_string()))
+        .max_age(Duration::seconds(0))
+        .same_site(SameSite::Strict)
+        .path("/")
+        .build();
+    cookies.add(game_id_cookie);
+    let player_id_cookie = Cookie::build(("player_id", "".to_string()))
+        .max_age(Duration::seconds(0))
+        .same_site(SameSite::Strict)
+        .path("/")
+        .build();
+    cookies.add(player_id_cookie);
+    let name_cookie = Cookie::build(("player_name", "".to_string()))
+        .max_age(Duration::seconds(0))
+        .same_site(SameSite::Strict)
+        .path("/")
+        .build();
+    cookies.add(name_cookie);
+}
+
+fn extract_cookies(cookies: &Cookies) -> Result<(String, GameId), ()> {
+    let Some(id) = cookies
+        .get("player_id")
+        .map(|c| c.value_trimmed().to_string())
+    else {
+        return Err(());
+    };
+    let Some(_) = cookies
+        .get("player_name")
+        .map(|c| c.value_trimmed().to_string())
+    else {
+        return Err(());
+    };
+    let Some(game_id) = cookies
+        .get("game_id")
+        .map(|c| GameId::from(c.value_trimmed()))
+    else {
+        return Err(());
+    };
+    Ok((id, game_id))
 }
 
 async fn handle_socket(socket: WebSocket, context: PlayerConnectionContext) {

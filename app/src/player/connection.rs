@@ -9,15 +9,14 @@ use serde::{Deserialize, Serialize};
 use tokio::{
     select,
     sync::{
-        mpsc::{channel, Receiver, Sender},
+        mpsc::{self, channel, Receiver, Sender},
         watch,
     },
-    task::JoinSet,
 };
 use uuid::Uuid;
 
 use crate::{
-    game::{GameContext, GameMessage, GameState},
+    game::{game_repository::GameId, GameContext, GameMessage, GameState},
     market::{
         order_book::{OrderRequest, TradeLeg},
         MarketContext, MarketMessage, MarketState, OrderRepr,
@@ -27,6 +26,8 @@ use crate::{
         PowerPlantPublicRepr,
     },
 };
+
+use super::repository::ConnectionRepositoryMessage;
 
 #[derive(Clone)]
 pub struct PlayerConnection {
@@ -68,7 +69,9 @@ pub enum PlayerMessage {
     },
 }
 pub struct PlayerConnectionContext {
+    pub game_id: GameId,
     pub player_id: String,
+    pub connections_repository: mpsc::Sender<ConnectionRepositoryMessage>,
     pub game: GameContext,
     pub market: MarketContext,
     pub stack: StackContext,
@@ -92,14 +95,7 @@ pub async fn start_player_connection(mut ws: WebSocket, context: PlayerConnectio
         }
     }
 
-    register_connection(
-        &context.player_id,
-        &context.market.tx,
-        &context.stack.tx,
-        &connection_id,
-        tx,
-    )
-    .await;
+    register_connection(tx, connection_id, &context).await;
 
     let (sink, stream) = ws.split();
     let sink_handle = tokio::spawn(process_internal_messages(
@@ -117,73 +113,40 @@ pub async fn start_player_connection(mut ws: WebSocket, context: PlayerConnectio
         context.player_id.clone(),
     ));
     let _ = tokio::try_join!(sink_handle, stream_handle);
-
-    // One side of the WS is closed and/or cannot be processed, disconnect player connection
-    // from market and return
-    println!("Disconnecting {:?} from market", context.player_id);
-    let _ = context
-        .market
-        .tx
-        .send(MarketMessage::PlayerDisconnection { connection_id })
-        .await;
 }
 
 async fn register_connection(
-    player_id: &str,
-    market: &Sender<MarketMessage>,
-    stack: &Sender<StackMessage>,
-    connection_id: &str,
     tx: Sender<PlayerMessage>,
-) {
-    let mut set = JoinSet::new();
-    let p_id = player_id.to_owned();
-    let m_tx = market.clone();
-    let c_id = connection_id.to_owned();
-    let tx_cloned = tx.clone();
-    set.spawn(async move {
-        connect_to_market(p_id, m_tx, c_id, tx_cloned).await;
-    });
-
-    let p_id = player_id.to_owned();
-    let s_tx = stack.clone();
-    let c_id = connection_id.to_owned();
-    let tx_cloned = tx.clone();
-    set.spawn(async move {
-        connect_to_stack(p_id, s_tx, c_id, tx_cloned).await;
-    });
-    set.join_all().await;
-}
-
-async fn connect_to_stack(
-    player_id: String,
-    stack: Sender<StackMessage>,
     connection_id: String,
-    tx: Sender<PlayerMessage>,
-) -> Option<()> {
-    stack
+    context: &PlayerConnectionContext,
+) {
+    let _ = context
+        .connections_repository
+        .send(ConnectionRepositoryMessage::RegisterConnection(
+            context.game_id.clone(),
+            PlayerConnection {
+                id: connection_id.clone(),
+                player_id: context.player_id.clone(),
+                tx: tx.clone(),
+            },
+        ))
+        .await;
+    let _ = context
+        .market
+        .tx
+        .send(MarketMessage::NewPlayerConnection(
+            context.player_id.clone(),
+        ))
+        .await;
+    let _ = context
+        .stack
+        .tx
         .send(StackMessage::RegisterPlayerConnection(PlayerConnection {
             id: connection_id,
-            player_id,
+            player_id: context.player_id.clone(),
             tx,
         }))
-        .await
-        .ok()
-}
-
-async fn connect_to_market(
-    player_id: String,
-    market: Sender<MarketMessage>,
-    connection_id: String,
-    tx: Sender<PlayerMessage>,
-) -> Option<()> {
-    market
-        .send(MarketMessage::NewPlayerConnection(PlayerConnection {
-            id: connection_id,
-            player_id,
-            tx,
-        }))
-        .await
-        .ok()
+        .await;
 }
 
 async fn process_ws_messages(

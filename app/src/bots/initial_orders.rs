@@ -3,39 +3,32 @@ use uuid::Uuid;
 
 use crate::{
     market::{models::Direction, order_book::OrderRequest, MarketMessage},
-    player::connection::{PlayerConnection, PlayerMessage},
+    player::connection::PlayerMessage,
 };
 
 pub struct InitialOrdersBot {
     id: String,
     market_tx: Sender<MarketMessage>,
-    tx: Sender<PlayerMessage>,
     rx: Receiver<PlayerMessage>,
 }
 
 impl InitialOrdersBot {
     pub fn new(market_tx: Sender<MarketMessage>) -> InitialOrdersBot {
         let bot_id = Uuid::new_v4().to_string();
-        let (tx, rx) = channel(16);
+        let (_, rx) = channel(16);
 
         InitialOrdersBot {
             id: bot_id,
             market_tx,
             rx,
-            tx,
         }
     }
 
     pub async fn start(&mut self) {
-        let connection_id = Uuid::new_v4().to_string();
         if self
             .market_tx
             .clone()
-            .send(MarketMessage::NewPlayerConnection(PlayerConnection {
-                id: connection_id.clone(),
-                player_id: self.id.clone(),
-                tx: self.tx.clone(),
-            }))
+            .send(MarketMessage::NewPlayerConnection(self.id.clone()))
             .await
             .is_err()
         {
