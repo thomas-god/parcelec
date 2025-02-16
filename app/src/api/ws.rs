@@ -16,7 +16,7 @@ use crate::{
         game_repository::{GameId, GameRepositoryMessage, GetGameResponse},
         ConnectPlayerResponse, GameMessage,
     },
-    player::{start_player_connection, PlayerConnectionContext},
+    player::connection::{start_player_connection, PlayerConnectionContext},
 };
 
 use super::AppState;

@@ -3,7 +3,7 @@ use uuid::Uuid;
 
 use crate::{
     market::{models::Direction, order_book::OrderRequest, MarketMessage},
-    player::{PlayerConnection, PlayerMessage},
+    player::connection::{PlayerConnection, PlayerMessage},
 };
 
 pub struct InitialOrdersBot {

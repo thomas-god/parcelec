@@ -10,7 +10,7 @@ use order_book::{Bid, Offer, OrderBook, OrderRequest, Trade, TradeLeg};
 
 use crate::{
     game::delivery_period::DeliveryPeriodId,
-    player::{PlayerConnection, PlayerMessage},
+    player::connection::{PlayerConnection, PlayerMessage},
 };
 
 pub mod models;

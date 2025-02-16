@@ -11,7 +11,7 @@ use uuid::Uuid;
 use crate::{
     game::delivery_period::DeliveryPeriodId,
     plants::PlantOutput,
-    player::{PlayerConnection, PlayerMessage},
+    player::connection::{PlayerConnection, PlayerMessage},
 };
 
 use super::{
@@ -240,7 +240,7 @@ mod tests_stack {
             stack::{ProgramPlant, StackActor, StackMessage, StackState},
             PowerPlantPublicRepr,
         },
-        player::{PlayerConnection, PlayerMessage},
+        player::connection::{PlayerConnection, PlayerMessage},
     };
 
     use super::StackContext;
