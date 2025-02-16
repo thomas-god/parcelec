@@ -141,11 +141,7 @@ async fn register_connection(
     let _ = context
         .stack
         .tx
-        .send(StackMessage::RegisterPlayerConnection(PlayerConnection {
-            id: connection_id,
-            player_id: context.player_id.clone(),
-            tx,
-        }))
+        .send(StackMessage::NewPlayerConnection(context.player_id.clone()))
         .await;
 }
 

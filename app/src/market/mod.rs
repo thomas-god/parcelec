@@ -184,28 +184,6 @@ impl Market {
         }
     }
 
-    // async fn send_to_connection(&self, connection_id: &str, message: PlayerMessage) {
-    //     join_all(
-    //         self.players
-    //             .iter()
-    //             .filter(|conn| conn.id == *connection_id)
-    //             .map(|conn| conn.tx.send(message.clone()))
-    //             .collect::<Vec<_>>(),
-    //     )
-    //     .await;
-    // }
-
-    // async fn send_to_player(&self, player_id: String, message: PlayerMessage) {
-    //     join_all(
-    //         self.players
-    //             .iter()
-    //             .filter(|conn| conn.player_id == *player_id)
-    //             .map(|conn| conn.tx.send(message.clone()))
-    //             .collect::<Vec<_>>(),
-    //     )
-    //     .await;
-    // }
-
     async fn send_order_book_snapshot_to_all(&self) {
         join_all(
             self.players

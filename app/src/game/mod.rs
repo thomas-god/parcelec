@@ -99,9 +99,11 @@ pub struct GameContext {
 /// - passing game context to new player connection (market and player's stack tx),
 /// - delivery period lifecycle
 pub struct Game {
+    game_id: GameId,
     state: GameState,
     state_watch: watch::Sender<GameState>,
     players: Vec<Player>,
+    players_connections: mpsc::Sender<ConnectionRepositoryMessage>,
     market_context: MarketContext,
     stacks_context: HashMap<String, StackContext>,
     rx: Receiver<GameMessage>,
@@ -113,14 +115,14 @@ pub struct Game {
 impl Game {
     pub async fn new(
         game_id: GameId,
-        player_connections: mpsc::Sender<ConnectionRepositoryMessage>,
+        players_connections: mpsc::Sender<ConnectionRepositoryMessage>,
     ) -> Game {
         let delivery_period = DeliveryPeriodId::from(0);
         let mut market = Market::new(
-            game_id,
+            game_id.clone(),
             MarketState::Closed,
             delivery_period,
-            player_connections,
+            players_connections.clone(),
         );
         let market_context = market.get_context();
 
@@ -132,10 +134,12 @@ impl Game {
         let (state_tx, _) = watch::channel(GameState::Open);
 
         Game {
+            game_id,
             state: GameState::Open,
             state_watch: state_tx,
             market_context,
             players: Vec::new(),
+            players_connections,
             stacks_context: HashMap::new(),
             rx,
             tx,
@@ -277,8 +281,13 @@ impl Game {
         self.players.push(player);
 
         // Create a new stack for the player
-        let mut player_stack =
-            StackActor::new(player_id.clone(), StackState::Closed, self.delivery_period);
+        let mut player_stack = StackActor::new(
+            self.game_id.clone(),
+            player_id.clone(),
+            StackState::Closed,
+            self.delivery_period,
+            self.players_connections.clone(),
+        );
         self.stacks_context
             .insert(player_id.clone(), player_stack.get_context());
         tokio::spawn(async move {
