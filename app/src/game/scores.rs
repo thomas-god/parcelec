@@ -1,5 +1,7 @@
 use std::{collections::HashMap, ops::Add};
 
+use serde::Serialize;
+
 use crate::{
     market::{
         models::Direction,
@@ -8,7 +10,7 @@ use crate::{
     plants::PlantOutput,
 };
 
-#[derive(Debug, PartialEq, Default)]
+#[derive(Debug, PartialEq, Default, Clone, Serialize)]
 pub struct PlayerScore {
     pub balance: isize,
     pub pnl: isize,

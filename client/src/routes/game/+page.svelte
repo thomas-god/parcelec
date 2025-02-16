@@ -2,6 +2,7 @@
   import { match } from "ts-pattern";
   import {
     parseMessage,
+    type DeliveryPeriodScore,
     type OrderBook,
     type StackSnapshot,
     type Trade,
@@ -12,6 +13,7 @@
   import Stack from "../../components/organisms/Stack.svelte";
   import Scores from "../../components/molecules/Scores.svelte";
   import { fade } from "svelte/transition";
+  import { isSome, none, some, unwrap, type Option } from "$lib/Options";
 
   let orderBook: OrderBook = $state({
     bids: [],
@@ -22,6 +24,7 @@
   let market_state: "Open" | "Closed" = $state("Open");
   let stack_state: "Open" | "Closed" = $state("Open");
   let game_state: "Open" | "Running" | "PostDelivery" = $state("Open");
+  let post_delivery_score: Option<DeliveryPeriodScore> = $state(none());
 
   const connect = () => {
     const socket = new WebSocket(`${PUBLIC_WS_URL}/ws`);
@@ -66,6 +69,9 @@
         })
         .with({ type: "StackState" }, ({ state }) => {
           stack_state = state;
+        })
+        .with({ type: "DeliveryPeriodResults" }, (score) => {
+          post_delivery_score = some(score);
         })
         .exhaustive();
     };
@@ -138,6 +144,14 @@
         <h2 class="text-center font-semibold text-xl mt-6">
           Période de livraison terminée !
         </h2>
+        {#if isSome(post_delivery_score)}
+          <div class="mt-8 self-center text-lg">
+            <ul>
+              <li>Equilibre: {unwrap(post_delivery_score).balance}MW</li>
+              <li>PnL: {unwrap(post_delivery_score).pnl}€</li>
+            </ul>
+          </div>
+        {/if}
         <div class="mt-8 self-center text-lg">
           <button onclick={startGame}> ➡️ Partie suivante</button>
         </div>

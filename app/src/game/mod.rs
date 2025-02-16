@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
 use delivery_period::{start_delivery_period, DeliveryPeriodId, DeliveryPeriodResults};
+use futures_util::future::join_all;
 use game_repository::GameId;
 use serde::{ser::SerializeStruct, Serialize};
 use tokio::sync::{
@@ -168,9 +169,20 @@ impl Game {
                 | (GameState::Open, GameMessage::PlayerIsReady(player_id)) => {
                     self.register_player_ready(player_id);
                 }
-                (GameState::Running, GameMessage::DeliveryPeriodResults(_)) => {
+                (GameState::Running, GameMessage::DeliveryPeriodResults(results)) => {
                     self.state = GameState::PostDelivery;
                     let _ = self.state_watch.send(GameState::PostDelivery);
+                    join_all(results.players_scores.iter().map(|(player, score)| {
+                        self.players_connections
+                            .send(ConnectionRepositoryMessage::SendToPlayer(
+                                self.game_id.clone(),
+                                player.to_string(),
+                                crate::player::connection::PlayerMessage::DeliveryPeriodResults(
+                                    score.clone(),
+                                ),
+                            ))
+                    }))
+                    .await;
                 }
                 (_, GameMessage::DeliveryPeriodResults(results)) => {
                     println!("Warning, received results for delivery period {:?} while game is not running", results.period_id);
@@ -318,6 +330,7 @@ mod tests {
         game::{ConnectPlayerResponse, Game, GameMessage, GameState, RegisterPlayerResponse},
         market::MarketState,
         plants::stack::{StackContext, StackState},
+        player::{connection::PlayerMessage, repository::ConnectionRepositoryMessage},
     };
 
     use super::{game_repository::GameId, GameContext};
@@ -646,5 +659,37 @@ mod tests {
 
         assert!(game.state_rx.changed().await.is_ok());
         assert_eq!(*game.state_rx.borrow_and_update(), GameState::PostDelivery);
+    }
+
+    #[tokio::test]
+    async fn test_send_results_to_player_at_the_end_of_delivery_period() {
+        let (conn_tx, mut conn_rx) = mpsc::channel(16);
+        let game_id = GameId::default();
+        let mut game = Game::new(game_id, conn_tx).await;
+        let context = game.get_context();
+        tokio::spawn(async move {
+            game.run().await;
+        });
+
+        // Start game
+        let player = start_game(context.tx.clone()).await;
+
+        // End delivery period
+        let _ = context
+            .tx
+            .send(GameMessage::PlayerIsReady(player.clone()))
+            .await;
+        // Flush snapshot sent at the end of the delivery
+        let _ = conn_rx.recv().await;
+
+        let Some(ConnectionRepositoryMessage::SendToPlayer(
+            _,
+            target_player,
+            PlayerMessage::DeliveryPeriodResults(_),
+        )) = conn_rx.recv().await
+        else {
+            unreachable!("Should have received player's results");
+        };
+        assert_eq!(target_player, player);
     }
 }

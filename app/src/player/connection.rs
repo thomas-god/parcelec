@@ -16,7 +16,7 @@ use tokio::{
 use uuid::Uuid;
 
 use crate::{
-    game::{game_repository::GameId, GameContext, GameMessage, GameState},
+    game::{game_repository::GameId, scores::PlayerScore, GameContext, GameMessage, GameState},
     market::{
         order_book::{OrderRequest, TradeLeg},
         MarketContext, MarketMessage, MarketState, OrderRepr,
@@ -67,6 +67,7 @@ pub enum PlayerMessage {
     StackSnapshot {
         plants: HashMap<String, PowerPlantPublicRepr>,
     },
+    DeliveryPeriodResults(PlayerScore),
 }
 pub struct PlayerConnectionContext {
     pub game_id: GameId,

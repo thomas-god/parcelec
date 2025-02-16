@@ -88,6 +88,11 @@ const WSMessageSchema = z.discriminatedUnion("type", [
     type: z.literal("GameState"),
     state: z.enum(["Open", "Running", "PostDelivery"]),
   }),
+  z.object({
+    type: z.literal("DeliveryPeriodResults"),
+    balance: z.number(),
+    pnl: z.number(),
+  }),
 ]);
 
 type WSMessage = z.infer<typeof WSMessageSchema>;
@@ -116,6 +121,10 @@ export type RenewablePlantState = Extract<
 export type ConsumersState = Extract<
   StackSnapshot extends Map<any, infer I> ? I : never,
   { type: "Consumers" }
+>;
+export type DeliveryPeriodScore = Omit<
+  Extract<WSMessage, { type: "DeliveryPeriodResults" }>,
+  "type"
 >;
 
 export const parseMessage = (
