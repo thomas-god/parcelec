@@ -21,8 +21,8 @@ pub enum PowerPlantPublicRepr {
 
 #[derive(Debug, PartialEq, Serialize, Clone, Copy)]
 pub struct PlantOutput {
-    setpoint: isize,
-    cost: isize,
+    pub setpoint: isize,
+    pub cost: isize,
 }
 
 pub trait PowerPlant {

@@ -8,11 +8,11 @@ use super::models::Direction;
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct Trade {
-    buyer: String,
-    seller: String,
-    volume: usize,
-    price: isize,
-    execution_time: DateTime<Utc>,
+    pub buyer: String,
+    pub seller: String,
+    pub volume: usize,
+    pub price: isize,
+    pub execution_time: DateTime<Utc>,
 }
 
 impl Trade {

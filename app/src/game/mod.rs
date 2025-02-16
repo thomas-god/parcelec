@@ -15,6 +15,7 @@ use crate::{
 
 pub mod delivery_period;
 pub mod game_repository;
+pub mod scores;
 
 #[derive(Debug)]
 struct Player {
@@ -139,7 +140,8 @@ impl Game {
                 (GameState::Open, GameMessage::RegisterPlayer { name, tx_back }) => {
                     self.register_player(name, tx_back);
                 }
-                (GameState::Running, GameMessage::RegisterPlayer { tx_back, .. }) => {
+                (GameState::PostDelivery, GameMessage::RegisterPlayer { tx_back, .. })
+                | (GameState::Running, GameMessage::RegisterPlayer { tx_back, .. }) => {
                     let _ = tx_back.send(RegisterPlayerResponse::GameIsRunning);
                 }
                 (_, GameMessage::ConnectPlayer { id, tx_back }) => {
@@ -156,10 +158,12 @@ impl Game {
                     self.state = GameState::PostDelivery;
                     let _ = self.state_watch.send(GameState::PostDelivery);
                 }
+                (_, GameMessage::DeliveryPeriodResults(results)) => {
+                    println!("Warning, received results for delivery period {:?} while game is not running", results.period_id);
+                }
                 (GameState::Running, GameMessage::PlayerIsReady(player_id)) => {
                     self.register_player_ready_game_is_running(player_id);
                 }
-                _ => todo!(),
             }
         }
     }

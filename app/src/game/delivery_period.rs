@@ -9,11 +9,12 @@ use tokio::{
 };
 
 use crate::{
+    game::scores::compute_players_scores,
     market::{order_book::Trade, MarketMessage},
     plants::{stack::StackMessage, PlantOutput},
 };
 
-use super::GameMessage;
+use super::{scores::PlayerScore, GameMessage};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Copy)]
 pub struct DeliveryPeriodId(isize);
@@ -44,6 +45,7 @@ pub struct DeliveryPeriodTimers {
 #[derive(Debug)]
 pub struct DeliveryPeriodResults {
     pub period_id: DeliveryPeriodId,
+    pub players_scores: HashMap<String, PlayerScore>,
 }
 
 pub async fn start_delivery_period(
@@ -114,10 +116,12 @@ pub async fn start_delivery_period(
         }
     };
 
-    println!("Delivery period ended with trades: {trades:?} and plant outputs: {plants_outputs:?}");
+    let scores = compute_players_scores(trades, plants_outputs);
+    println!("Delivery period ended: {scores:?}");
     let _ = game_tx
         .send(GameMessage::DeliveryPeriodResults(DeliveryPeriodResults {
             period_id,
+            players_scores: scores,
         }))
         .await;
 }
