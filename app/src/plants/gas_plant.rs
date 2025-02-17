@@ -5,7 +5,7 @@ use super::{PlantOutput, PowerPlant, PowerPlantPublicRepr};
 /// Plant with no dynamic constraints.
 pub struct GasPlant {
     settings: GasPlantSettings,
-    setpoint: Option<isize>,
+    setpoint: isize,
 }
 #[derive(Debug, Serialize, Clone, Copy)]
 pub struct GasPlantSettings {
@@ -20,14 +20,12 @@ impl GasPlant {
                 energy_cost,
                 max_setpoint,
             },
-            setpoint: None,
+            setpoint: 0,
         }
     }
 
     fn cost(&self) -> isize {
-        self.setpoint
-            .map(|p| p * self.settings.energy_cost)
-            .unwrap_or(0)
+        self.setpoint * self.settings.energy_cost
     }
 }
 
@@ -39,9 +37,9 @@ pub struct GasPlantPublicRepr {
 
 impl PowerPlant for GasPlant {
     fn program_setpoint(&mut self, setpoint: isize) -> PlantOutput {
-        self.setpoint = Some(setpoint.max(0).min(self.settings.max_setpoint));
+        self.setpoint = setpoint.max(0).min(self.settings.max_setpoint);
         PlantOutput {
-            setpoint: self.setpoint.unwrap_or(0),
+            setpoint: self.setpoint,
             cost: self.cost(),
         }
     }
@@ -50,19 +48,17 @@ impl PowerPlant for GasPlant {
         PowerPlantPublicRepr::GasPlant(GasPlantPublicRepr {
             settings: self.settings,
             output: PlantOutput {
-                setpoint: self.setpoint.unwrap_or(0),
+                setpoint: self.setpoint,
                 cost: self.cost(),
             },
         })
     }
 
     fn dispatch(&mut self) -> PlantOutput {
-        let output = PlantOutput {
-            setpoint: self.setpoint.unwrap_or(0),
+        PlantOutput {
+            setpoint: self.setpoint,
             cost: self.cost(),
-        };
-        self.setpoint = None;
-        output
+        }
     }
 }
 
@@ -77,6 +73,7 @@ mod tests {
     fn test_gas_plant() {
         let mut plant = GasPlant::new(47, 1000);
 
+        // Program plant's setpoint
         assert_eq!(
             plant.program_setpoint(100),
             PlantOutput {
@@ -85,6 +82,7 @@ mod tests {
             }
         );
 
+        // Dispatch the plant, get previous setpoint
         assert_eq!(
             plant.dispatch(),
             PlantOutput {
@@ -92,7 +90,10 @@ mod tests {
                 cost: 47 * 100
             }
         );
+        // Setpoint should be kept after dispatching
+        assert_eq!(plant.setpoint, 100);
 
+        // No cost if no setpoint
         assert_eq!(
             plant.program_setpoint(0),
             PlantOutput {
