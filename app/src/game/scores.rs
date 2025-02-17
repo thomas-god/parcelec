@@ -11,10 +11,14 @@ use crate::{
     player::PlayerId,
 };
 
+const POSITIVE_IMBALANCE_COST: isize = 50;
+const NEGATIVE_IMBALANCE_COST: isize = 100;
+
 #[derive(Debug, PartialEq, Default, Clone, Serialize)]
 pub struct PlayerScore {
     pub balance: isize,
     pub pnl: isize,
+    pub imbalance_cost: isize,
 }
 
 impl Add<PlayerScore> for PlayerScore {
@@ -23,6 +27,7 @@ impl Add<PlayerScore> for PlayerScore {
         PlayerScore {
             balance: self.balance + rhs.balance,
             pnl: self.pnl + rhs.pnl,
+            imbalance_cost: self.imbalance_cost + rhs.imbalance_cost,
         }
     }
 }
@@ -33,6 +38,7 @@ impl Add<&PlantOutput> for PlayerScore {
         PlayerScore {
             balance: self.balance + rhs.setpoint,
             pnl: self.pnl - rhs.cost,
+            imbalance_cost: self.imbalance_cost,
         }
     }
 }
@@ -54,6 +60,7 @@ impl Add<TradeLeg> for PlayerScore {
         PlayerScore {
             balance: self.balance + trade_volume,
             pnl: self.pnl + trade_pnl,
+            imbalance_cost: self.imbalance_cost,
         }
     }
 }
@@ -86,7 +93,13 @@ fn compute_player_score(
         .values()
         .fold(PlayerScore::default(), |acc, output| acc + output);
 
-    plant_position + market_position
+    let mut player_position = plant_position + market_position;
+    player_position.imbalance_cost = match player_position.balance {
+        balance if balance > 0 => balance * POSITIVE_IMBALANCE_COST,
+        balance if balance < 0 => balance * NEGATIVE_IMBALANCE_COST,
+        _ => 0,
+    };
+    player_position
 }
 
 #[cfg(test)]
@@ -96,7 +109,9 @@ mod tests {
     use chrono::Utc;
 
     use crate::{
-        game::scores::{compute_players_scores, PlayerScore},
+        game::scores::{
+            compute_players_scores, PlayerScore, NEGATIVE_IMBALANCE_COST, POSITIVE_IMBALANCE_COST,
+        },
         market::order_book::Trade,
         plants::{PlantId, PlantOutput},
         player::PlayerId,
@@ -111,7 +126,7 @@ mod tests {
     }
 
     #[test]
-    fn test_scores_no_trades_single_player_single_plant() {
+    fn test_scores_no_trades_single_player_imbalanced() {
         let trades = Vec::new();
         let plants_outputs = HashMap::from([(
             PlayerId::from("player_1"),
@@ -139,14 +154,15 @@ mod tests {
                 PlayerId::from("player_1"),
                 PlayerScore {
                     balance: 300,
-                    pnl: -600
+                    pnl: -600,
+                    imbalance_cost: 300 * POSITIVE_IMBALANCE_COST
                 }
             )])
         )
     }
 
     #[test]
-    fn test_scores_with_trades_single_player_single_plant() {
+    fn test_scores_with_trades_single_player_single_plant_imbalanced() {
         let trades = Vec::from([Trade {
             buyer: PlayerId::from("player_1"),
             seller: PlayerId::from("another_player"),
@@ -180,7 +196,8 @@ mod tests {
                 PlayerId::from("player_1"),
                 PlayerScore {
                     balance: 300 + 100,
-                    pnl: -600 - (80 * 100)
+                    pnl: -600 - (80 * 100),
+                    imbalance_cost: 400 * POSITIVE_IMBALANCE_COST
                 }
             )])
         )
@@ -234,7 +251,8 @@ mod tests {
                     PlayerId::from("player_1"),
                     PlayerScore {
                         balance: 300 + 100,
-                        pnl: -600 - (80 * 100)
+                        pnl: -600 - (80 * 100),
+                        imbalance_cost: 400 * POSITIVE_IMBALANCE_COST
                     }
                 ),
                 (
@@ -242,7 +260,8 @@ mod tests {
                     PlayerScore {
                         balance: -1000 - 100,
                         #[allow(clippy::identity_op)] // Make test more explicit
-                        pnl: 0 + (80 * 100)
+                        pnl: 0 + (80 * 100),
+                        imbalance_cost: -1100 * NEGATIVE_IMBALANCE_COST
                     }
                 )
             ])

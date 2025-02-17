@@ -147,8 +147,23 @@
         {#if isSome(post_delivery_score)}
           <div class="mt-8 self-center text-lg">
             <ul>
-              <li>Equilibre: {unwrap(post_delivery_score).balance}MW</li>
-              <li>PnL: {unwrap(post_delivery_score).pnl}€</li>
+              <li>
+                Equilibre: {unwrap(post_delivery_score).balance.toLocaleString(
+                  "fr-FR",
+                )} MW
+              </li>
+              <li>
+                PnL: {unwrap(post_delivery_score).pnl.toLocaleString("fr-FR")} €
+              </li>
+              <li>
+                Ecarts: {unwrap(
+                  post_delivery_score,
+                ).imbalance_cost.toLocaleString("fr-FR")} €
+              </li>
+              <li class="font-semibold">
+                Total: {unwrap(post_delivery_score).pnl +
+                  unwrap(post_delivery_score).imbalance_cost} €
+              </li>
             </ul>
           </div>
         {/if}

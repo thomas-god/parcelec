@@ -92,6 +92,7 @@ const WSMessageSchema = z.discriminatedUnion("type", [
     type: z.literal("DeliveryPeriodResults"),
     balance: z.number(),
     pnl: z.number(),
+    imbalance_cost: z.number(),
   }),
 ]);
 
