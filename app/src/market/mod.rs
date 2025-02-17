@@ -10,7 +10,7 @@ use order_book::{Bid, Offer, OrderBook, OrderRequest, Trade, TradeLeg};
 
 use crate::{
     game::{delivery_period::DeliveryPeriodId, game_repository::GameId},
-    player::{connection::PlayerMessage, repository::ConnectionRepositoryMessage},
+    player::{connection::PlayerMessage, repository::ConnectionRepositoryMessage, PlayerId},
 };
 
 pub mod models;
@@ -27,7 +27,7 @@ pub struct OrderRepr {
 }
 
 impl OrderRepr {
-    fn from_offer(offer: &Offer, player_id: Option<&str>) -> Self {
+    fn from_offer(offer: &Offer, player_id: Option<&PlayerId>) -> Self {
         OrderRepr {
             order_id: offer.0.id.clone(),
             direction: offer.0.direction.clone(),
@@ -37,7 +37,7 @@ impl OrderRepr {
             owned: player_id.map(|id| *id == offer.0.owner).unwrap_or(false),
         }
     }
-    fn from_bid(bid: &Bid, player_id: Option<&str>) -> Self {
+    fn from_bid(bid: &Bid, player_id: Option<&PlayerId>) -> Self {
         OrderRepr {
             order_id: bid.0.id.clone(),
             direction: bid.0.direction.clone(),
@@ -51,7 +51,7 @@ impl OrderRepr {
 
 #[derive(Debug)]
 pub enum MarketMessage {
-    NewPlayerConnection(String),
+    NewPlayerConnection(PlayerId),
     OpenMarket(DeliveryPeriodId),
     CloseMarket {
         period_id: DeliveryPeriodId,
@@ -101,7 +101,7 @@ pub struct Market {
     rx: mpsc::Receiver<MarketMessage>,
     tx: mpsc::Sender<MarketMessage>,
     order_book: OrderBook,
-    players: Vec<String>,
+    players: Vec<PlayerId>,
     players_connections: mpsc::Sender<ConnectionRepositoryMessage>,
     past_trades: HashMap<DeliveryPeriodId, Vec<Trade>>,
 }
@@ -194,7 +194,7 @@ impl Market {
         .await;
     }
 
-    async fn send_order_book_snapshot_to_player(&self, player_id: &str) {
+    async fn send_order_book_snapshot_to_player(&self, player_id: &PlayerId) {
         let snapshot = self.order_book.snapshot();
 
         let message = PlayerMessage::OrderBookSnapshot {
@@ -213,13 +213,13 @@ impl Market {
             .players_connections
             .send(ConnectionRepositoryMessage::SendToPlayer(
                 self.game_id.clone(),
-                player_id.to_string(),
+                player_id.clone(),
                 message,
             ))
             .await;
     }
 
-    async fn send_trade_list_to_player(&self, player_id: &str) {
+    async fn send_trade_list_to_player(&self, player_id: &PlayerId) {
         let trade_legs: Vec<TradeLeg> = self
             .order_book
             .trades
@@ -230,7 +230,7 @@ impl Market {
             .players_connections
             .send(ConnectionRepositoryMessage::SendToPlayer(
                 self.game_id.clone(),
-                player_id.to_string(),
+                player_id.clone(),
                 PlayerMessage::TradeList { trades: trade_legs },
             ))
             .await;
@@ -266,12 +266,11 @@ mod tests {
         mpsc::{self},
         oneshot,
     };
-    use uuid::Uuid;
 
     use crate::{
         game::{delivery_period::DeliveryPeriodId, game_repository::GameId},
         market::{models::Direction, order_book::OrderRequest, MarketState},
-        player::repository::ConnectionRepositoryMessage,
+        player::{repository::ConnectionRepositoryMessage, PlayerId},
     };
 
     use super::{Market, MarketContext, MarketMessage, PlayerMessage};
@@ -296,8 +295,8 @@ mod tests {
     async fn register_player(
         market: mpsc::Sender<MarketMessage>,
         rx: &mut mpsc::Receiver<ConnectionRepositoryMessage>,
-    ) -> String {
-        let player_id = Uuid::new_v4().to_string();
+    ) -> PlayerId {
+        let player_id = PlayerId::default();
         let _ = market
             .send(MarketMessage::NewPlayerConnection(player_id.clone()))
             .await;
@@ -313,7 +312,7 @@ mod tests {
         let (conn_tx, mut conn_rx) = mpsc::channel(16);
         let market = start_market_actor(&game_id, conn_tx);
 
-        let player_id = Uuid::new_v4().to_string();
+        let player_id = PlayerId::default();
         let _ = market
             .tx
             .send(MarketMessage::NewPlayerConnection(player_id.clone()))

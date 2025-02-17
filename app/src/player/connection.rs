@@ -27,12 +27,12 @@ use crate::{
     },
 };
 
-use super::repository::ConnectionRepositoryMessage;
+use super::{repository::ConnectionRepositoryMessage, PlayerId};
 
 #[derive(Clone)]
 pub struct PlayerConnection {
     pub id: String,
-    pub player_id: String,
+    pub player_id: PlayerId,
     pub tx: Sender<PlayerMessage>,
 }
 
@@ -71,7 +71,7 @@ pub enum PlayerMessage {
 }
 pub struct PlayerConnectionContext {
     pub game_id: GameId,
-    pub player_id: String,
+    pub player_id: PlayerId,
     pub connections_repository: mpsc::Sender<ConnectionRepositoryMessage>,
     pub game: GameContext,
     pub market: MarketContext,
@@ -151,7 +151,7 @@ async fn process_ws_messages(
     game_tx: Sender<GameMessage>,
     market_tx: Sender<MarketMessage>,
     stack_tx: Sender<StackMessage>,
-    player_id: String,
+    player_id: PlayerId,
 ) {
     while let Some(Ok(Message::Text(msg))) = stream.next().await {
         match serde_json::from_str::<WebSocketIncomingMessage>(msg.as_str()) {

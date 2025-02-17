@@ -12,6 +12,7 @@ use crate::{
     game::scores::compute_players_scores,
     market::{order_book::Trade, MarketMessage},
     plants::{stack::StackMessage, PlantOutput},
+    player::PlayerId,
 };
 
 use super::{scores::PlayerScore, GameMessage};
@@ -45,14 +46,14 @@ pub struct DeliveryPeriodTimers {
 #[derive(Debug)]
 pub struct DeliveryPeriodResults {
     pub period_id: DeliveryPeriodId,
-    pub players_scores: HashMap<String, PlayerScore>,
+    pub players_scores: HashMap<PlayerId, PlayerScore>,
 }
 
 pub async fn start_delivery_period(
     period_id: DeliveryPeriodId,
     game_tx: mpsc::Sender<GameMessage>,
     market_tx: mpsc::Sender<MarketMessage>,
-    stacks_tx: HashMap<String, mpsc::Sender<StackMessage>>,
+    stacks_tx: HashMap<PlayerId, mpsc::Sender<StackMessage>>,
     players_ready_rx: oneshot::Receiver<()>,
     timers: Option<DeliveryPeriodTimers>,
 ) {
@@ -152,7 +153,7 @@ async fn open_market(market_tx: mpsc::Sender<MarketMessage>, period_id: Delivery
 }
 
 async fn open_stacks(
-    stacks_tx: HashMap<String, mpsc::Sender<StackMessage>>,
+    stacks_tx: HashMap<PlayerId, mpsc::Sender<StackMessage>>,
     period_id: DeliveryPeriodId,
 ) {
     join_all(
@@ -164,18 +165,18 @@ async fn open_stacks(
 }
 
 async fn close_stacks_future(
-    stacks_tx: HashMap<String, mpsc::Sender<StackMessage>>,
+    stacks_tx: HashMap<PlayerId, mpsc::Sender<StackMessage>>,
     period_id: DeliveryPeriodId,
     duration: Duration,
-) -> HashMap<String, HashMap<String, PlantOutput>> {
+) -> HashMap<PlayerId, HashMap<String, PlantOutput>> {
     sleep(duration).await;
     close_stacks(stacks_tx, period_id).await
 }
 
 async fn close_stacks(
-    stacks_tx: HashMap<String, mpsc::Sender<StackMessage>>,
+    stacks_tx: HashMap<PlayerId, mpsc::Sender<StackMessage>>,
     period_id: DeliveryPeriodId,
-) -> HashMap<String, HashMap<String, PlantOutput>> {
+) -> HashMap<PlayerId, HashMap<String, PlantOutput>> {
     join_all(
         stacks_tx
             .iter()
@@ -187,10 +188,10 @@ async fn close_stacks(
 }
 
 async fn close_stack(
-    player_id: &str,
+    player_id: &PlayerId,
     period_id: DeliveryPeriodId,
     stack: mpsc::Sender<StackMessage>,
-) -> (String, HashMap<String, PlantOutput>) {
+) -> (PlayerId, HashMap<String, PlantOutput>) {
     let (tx_back, rx) = oneshot::channel();
 
     let _ = stack
@@ -199,7 +200,7 @@ async fn close_stack(
 
     let plant_outputs = rx.await.unwrap();
 
-    (player_id.to_string(), plant_outputs)
+    (player_id.clone(), plant_outputs)
 }
 
 #[cfg(test)]
@@ -215,6 +216,7 @@ mod tests {
         },
         market::MarketMessage,
         plants::stack::StackMessage,
+        player::PlayerId,
     };
 
     #[tokio::test(start_paused = true)]
@@ -223,7 +225,7 @@ mod tests {
         let (game_tx, mut game_rx) = mpsc::channel(16);
         let (market_tx, mut market_rx) = mpsc::channel(16);
         let (stack_tx, mut stack_rx) = mpsc::channel(16);
-        let stacks_tx = HashMap::from([("toto".to_string(), stack_tx)]);
+        let stacks_tx = HashMap::from([(PlayerId::from("toto"), stack_tx)]);
         let (_, players_ready_rx) = oneshot::channel();
         let timers = None;
 
@@ -277,7 +279,7 @@ mod tests {
         let (market_tx, mut market_rx) = mpsc::channel(16);
         let (stack_tx, mut stack_rx) = mpsc::channel(16);
         let (players_ready_tx, players_ready_rx) = oneshot::channel();
-        let stacks_tx = HashMap::from([("toto".to_string(), stack_tx)]);
+        let stacks_tx = HashMap::from([(PlayerId::from("toto"), stack_tx)]);
         let timers = None;
 
         tokio::spawn(async move {

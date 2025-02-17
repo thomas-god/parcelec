@@ -1,20 +1,19 @@
 use tokio::sync::mpsc::{channel, Receiver, Sender};
-use uuid::Uuid;
 
 use crate::{
     market::{models::Direction, order_book::OrderRequest, MarketMessage},
-    player::connection::PlayerMessage,
+    player::{connection::PlayerMessage, PlayerId},
 };
 
 pub struct InitialOrdersBot {
-    id: String,
+    id: PlayerId,
     market_tx: Sender<MarketMessage>,
     rx: Receiver<PlayerMessage>,
 }
 
 impl InitialOrdersBot {
     pub fn new(market_tx: Sender<MarketMessage>) -> InitialOrdersBot {
-        let bot_id = Uuid::new_v4().to_string();
+        let bot_id = PlayerId::default();
         let (_, rx) = channel(16);
 
         InitialOrdersBot {

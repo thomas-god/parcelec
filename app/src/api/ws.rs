@@ -16,7 +16,10 @@ use crate::{
         game_repository::{GameId, GameRepositoryMessage, GetGameResponse},
         ConnectPlayerResponse, GameMessage,
     },
-    player::connection::{start_player_connection, PlayerConnectionContext},
+    player::{
+        connection::{start_player_connection, PlayerConnectionContext},
+        PlayerId,
+    },
 };
 
 use super::AppState;
@@ -108,10 +111,10 @@ fn invalidate_cookies(cookies: Cookies) {
     cookies.add(name_cookie);
 }
 
-fn extract_cookies(cookies: &Cookies) -> Result<(String, GameId), ()> {
+fn extract_cookies(cookies: &Cookies) -> Result<(PlayerId, GameId), ()> {
     let Some(id) = cookies
         .get("player_id")
-        .map(|c| c.value_trimmed().to_string())
+        .map(|c| PlayerId::from(c.value_trimmed()))
     else {
         return Err(());
     };

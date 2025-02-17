@@ -118,11 +118,15 @@ impl GameRepository {
 mod tests {
     use tokio::sync::{mpsc, oneshot};
 
-    use crate::game::{
-        game_repository::{
-            CreateNewGameResponse, GameId, GameRepository, GameRepositoryMessage, GetGameResponse,
+    use crate::{
+        game::{
+            game_repository::{
+                CreateNewGameResponse, GameId, GameRepository, GameRepositoryMessage,
+                GetGameResponse,
+            },
+            GameMessage,
         },
-        GameMessage,
+        player::PlayerId,
     };
 
     #[tokio::test]
@@ -163,7 +167,7 @@ mod tests {
         let _ = game_context
             .tx
             .send(GameMessage::ConnectPlayer {
-                id: "toto".to_string(),
+                id: PlayerId::from("toto"),
                 tx_back,
             })
             .await;

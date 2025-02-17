@@ -10,7 +10,7 @@ use uuid::Uuid;
 use crate::{
     game::{delivery_period::DeliveryPeriodId, game_repository::GameId},
     plants::PlantOutput,
-    player::{connection::PlayerMessage, repository::ConnectionRepositoryMessage},
+    player::{connection::PlayerMessage, repository::ConnectionRepositoryMessage, PlayerId},
 };
 
 use super::{
@@ -32,7 +32,7 @@ pub enum StackMessage {
         tx_back: oneshot::Sender<HashMap<String, PlantOutput>>,
     },
     ProgramSetpoint(ProgramPlant),
-    NewPlayerConnection(String),
+    NewPlayerConnection(PlayerId),
 }
 
 #[derive(Debug, PartialEq, Clone, Copy)]
@@ -71,7 +71,7 @@ pub struct StackActor {
     state: StackState,
     state_sender: watch::Sender<StackState>,
     delivery_period: DeliveryPeriodId,
-    player_id: String,
+    player_id: PlayerId,
     plants: HashMap<String, Box<dyn PowerPlant + Send + Sync>>,
     tx: Sender<StackMessage>,
     rx: Receiver<StackMessage>,
@@ -82,7 +82,7 @@ pub struct StackActor {
 impl StackActor {
     pub fn new(
         game_id: GameId,
-        player_id: String,
+        player_id: PlayerId,
         state: StackState,
         delivery_period: DeliveryPeriodId,
         players_connections: mpsc::Sender<ConnectionRepositoryMessage>,
@@ -155,7 +155,7 @@ impl StackActor {
         }
     }
 
-    async fn handle_player_connection(&mut self, player_id: String) {
+    async fn handle_player_connection(&mut self, player_id: PlayerId) {
         if player_id != self.player_id {
             return;
         }
@@ -230,19 +230,19 @@ mod tests_stack {
             stack::{ProgramPlant, StackActor, StackMessage, StackState},
             PowerPlantPublicRepr,
         },
-        player::{connection::PlayerMessage, repository::ConnectionRepositoryMessage},
+        player::{connection::PlayerMessage, repository::ConnectionRepositoryMessage, PlayerId},
     };
 
     use super::StackContext;
 
     fn start_stack() -> (
-        String,
+        PlayerId,
         StackContext,
         mpsc::Receiver<ConnectionRepositoryMessage>,
     ) {
         let game_id = GameId::default();
         let (conn_tx, conn_rx) = mpsc::channel(16);
-        let player_id = Uuid::new_v4().to_string();
+        let player_id = PlayerId::default();
         let mut stack = StackActor::new(
             game_id,
             player_id.clone(),
@@ -280,7 +280,7 @@ mod tests_stack {
     }
 
     async fn register_player_connection(
-        player_id: &str,
+        player_id: &PlayerId,
         stack_tx: Sender<StackMessage>,
         conn_rx: &mut mpsc::Receiver<ConnectionRepositoryMessage>,
     ) -> (
@@ -291,7 +291,7 @@ mod tests_stack {
         let (_, rx) = channel::<PlayerMessage>(16);
         let connection_id = Uuid::new_v4().to_string();
         let _ = stack_tx
-            .send(StackMessage::NewPlayerConnection(player_id.to_string()))
+            .send(StackMessage::NewPlayerConnection(player_id.clone()))
             .await;
 
         // Should receive a snapshot of the stack
@@ -409,7 +409,7 @@ mod tests_stack {
         // Register a player
         let _ = stack
             .tx
-            .send(StackMessage::NewPlayerConnection(player_id.to_string()))
+            .send(StackMessage::NewPlayerConnection(player_id.clone()))
             .await;
 
         // Should receive a snapshot of the stack, even if the stack is closed
@@ -454,7 +454,7 @@ mod tests_stack {
     async fn test_stack_state_watch() {
         let game_id = GameId::default();
         let (conn_tx, _) = mpsc::channel(16);
-        let player_id = Uuid::new_v4().to_string();
+        let player_id = PlayerId::default();
         let mut stack = StackActor::new(
             game_id,
             player_id.clone(),
@@ -497,7 +497,7 @@ mod tests_stack {
         let (conn_tx, _) = mpsc::channel(16);
         let mut stack = StackActor::new(
             game_id,
-            Uuid::new_v4().to_string(),
+            PlayerId::default(),
             StackState::Open,
             DeliveryPeriodId::from(1),
             conn_tx,
@@ -541,7 +541,7 @@ mod tests_stack {
         let (conn_tx, _) = mpsc::channel(16);
         let mut stack = StackActor::new(
             game_id,
-            Uuid::new_v4().to_string(),
+            PlayerId::default(),
             StackState::Closed,
             DeliveryPeriodId::from(1),
             conn_tx,
@@ -577,7 +577,7 @@ mod tests_stack {
         let (conn_tx, _) = mpsc::channel(16);
         let mut stack = StackActor::new(
             game_id,
-            Uuid::new_v4().to_string(),
+            PlayerId::default(),
             StackState::Closed,
             DeliveryPeriodId::from(1),
             conn_tx,

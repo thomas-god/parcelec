@@ -68,7 +68,7 @@ pub async fn create_tutorial_game(
         println!("No DOMAIN environnement variable");
         return StatusCode::INTERNAL_SERVER_ERROR;
     };
-    let player_id_cookie = Cookie::build(("player_id", player_id.clone()))
+    let player_id_cookie = Cookie::build(("player_id", player_id.to_string()))
         .max_age(Duration::days(1))
         .same_site(SameSite::Strict)
         .domain(domain.clone())

@@ -4,12 +4,14 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
+use crate::player::PlayerId;
+
 use super::models::Direction;
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct Trade {
-    pub buyer: String,
-    pub seller: String,
+    pub buyer: PlayerId,
+    pub seller: PlayerId,
     pub volume: usize,
     pub price: isize,
     pub execution_time: DateTime<Utc>,
@@ -34,10 +36,10 @@ impl Trade {
         [buy_trade_leg, sell_trade_leg]
     }
 
-    pub fn for_player(&self, player_id: &str) -> Vec<TradeLeg> {
+    pub fn for_player(&self, player_id: &PlayerId) -> Vec<TradeLeg> {
         self.split()
             .iter()
-            .filter(|leg| leg.owner == player_id)
+            .filter(|leg| leg.owner == *player_id)
             .cloned()
             .collect()
     }
@@ -48,7 +50,7 @@ pub struct TradeLeg {
     pub direction: Direction,
     pub volume: usize,
     pub price: isize,
-    pub owner: String,
+    pub owner: PlayerId,
     pub execution_time: DateTime<Utc>,
 }
 
@@ -57,7 +59,7 @@ pub struct OrderRequest {
     pub direction: Direction,
     pub price: isize,
     pub volume: usize,
-    pub owner: String,
+    pub owner: PlayerId,
 }
 
 #[derive(Debug)]
@@ -67,7 +69,7 @@ pub struct Order {
     pub price: isize,
     pub volume: usize,
     pub timestamp: DateTime<Utc>,
-    pub owner: String,
+    pub owner: PlayerId,
 }
 
 impl From<OrderRequest> for Order {
@@ -344,7 +346,7 @@ fn build_order_request(
     direction: Direction,
     price: isize,
     volume: usize,
-    owner: String,
+    owner: PlayerId,
 ) -> OrderRequest {
     OrderRequest {
         direction,
@@ -356,7 +358,10 @@ fn build_order_request(
 
 #[cfg(test)]
 mod tests {
-    use crate::market::{models::Direction, order_book::build_order_request};
+    use crate::{
+        market::{models::Direction, order_book::build_order_request},
+        player::PlayerId,
+    };
 
     use super::OrderBook;
 
@@ -364,7 +369,7 @@ mod tests {
     fn test_register_order_empty_repository() {
         let mut repository = OrderBook::new();
 
-        let order = build_order_request(Direction::Buy, 50_00, 10, "toto".to_string());
+        let order = build_order_request(Direction::Buy, 50_00, 10, PlayerId::from("toto"));
 
         let res = repository.register_order_request(order);
         assert!(res.is_empty());
@@ -374,8 +379,8 @@ mod tests {
     fn test_register_two_orders_doesnt_match() {
         let mut repository = OrderBook::new();
 
-        let buy_order = build_order_request(Direction::Buy, 50_00, 10, "toto".to_string());
-        let sell_order = build_order_request(Direction::Sell, 50_01, 10, "tata".to_string());
+        let buy_order = build_order_request(Direction::Buy, 50_00, 10, PlayerId::from("toto"));
+        let sell_order = build_order_request(Direction::Sell, 50_01, 10, PlayerId::from("tata"));
 
         let res = repository.register_order_request(buy_order);
         assert!(res.is_empty());
@@ -387,16 +392,16 @@ mod tests {
     fn test_match_2_orders_same_price_same_volume() {
         let mut repository = OrderBook::new();
 
-        let buy_order = build_order_request(Direction::Buy, 50_00, 10, "toto".to_string());
-        let sell_order = build_order_request(Direction::Sell, 50_00, 10, "tata".to_string());
+        let buy_order = build_order_request(Direction::Buy, 50_00, 10, PlayerId::from("toto"));
+        let sell_order = build_order_request(Direction::Sell, 50_00, 10, PlayerId::from("tata"));
 
         let res = repository.register_order_request(buy_order);
         assert!(res.is_empty(),);
 
         let res = repository.register_order_request(sell_order);
         assert_eq!(res.len(), 1);
-        assert_eq!(res[0].buyer, "toto".to_string());
-        assert_eq!(res[0].seller, "tata".to_string());
+        assert_eq!(res[0].buyer, PlayerId::from("toto"));
+        assert_eq!(res[0].seller, PlayerId::from("tata"));
         assert_eq!(res[0].volume, 10);
         assert_eq!(res[0].price, 50_00);
     }
@@ -405,16 +410,16 @@ mod tests {
     fn test_match_2_orders_same_price_existing_order_lesser_volume() {
         let mut repository = OrderBook::new();
 
-        let buy_order = build_order_request(Direction::Buy, 50_00, 5, "toto".to_string());
-        let sell_order = build_order_request(Direction::Sell, 50_00, 10, "tata".to_string());
+        let buy_order = build_order_request(Direction::Buy, 50_00, 5, PlayerId::from("toto"));
+        let sell_order = build_order_request(Direction::Sell, 50_00, 10, PlayerId::from("tata"));
 
         let res = repository.register_order_request(buy_order);
         assert!(res.is_empty(),);
 
         let res = repository.register_order_request(sell_order);
         assert_eq!(res.len(), 1);
-        assert_eq!(res[0].buyer, "toto".to_string());
-        assert_eq!(res[0].seller, "tata".to_string());
+        assert_eq!(res[0].buyer, PlayerId::from("toto"));
+        assert_eq!(res[0].seller, PlayerId::from("tata"));
         assert_eq!(res[0].volume, 5);
         assert_eq!(res[0].price, 50_00);
     }
@@ -423,16 +428,16 @@ mod tests {
     fn test_match_2_orders_same_price_existing_order_greater_volume() {
         let mut repository = OrderBook::new();
 
-        let buy_order = build_order_request(Direction::Buy, 50_00, 15, "toto".to_string());
-        let sell_order = build_order_request(Direction::Sell, 50_00, 10, "tata".to_string());
+        let buy_order = build_order_request(Direction::Buy, 50_00, 15, PlayerId::from("toto"));
+        let sell_order = build_order_request(Direction::Sell, 50_00, 10, PlayerId::from("tata"));
 
         let res = repository.register_order_request(buy_order);
         assert!(res.is_empty(),);
 
         let res = repository.register_order_request(sell_order);
         assert_eq!(res.len(), 1);
-        assert_eq!(res[0].buyer, "toto".to_string());
-        assert_eq!(res[0].seller, "tata".to_string());
+        assert_eq!(res[0].buyer, PlayerId::from("toto"));
+        assert_eq!(res[0].seller, PlayerId::from("tata"));
         assert_eq!(res[0].volume, 10);
         assert_eq!(res[0].price, 50_00);
     }
@@ -441,24 +446,25 @@ mod tests {
     fn test_match_multiple_bids() {
         let mut order_book = OrderBook::new();
 
-        let first_bid = build_order_request(Direction::Buy, 50_00, 10, "buyer_1".to_string());
-        let second_bid = build_order_request(Direction::Buy, 49_00, 5, "buyer_2".to_string());
+        let first_bid = build_order_request(Direction::Buy, 50_00, 10, PlayerId::from("buyer_1"));
+        let second_bid = build_order_request(Direction::Buy, 49_00, 5, PlayerId::from("buyer_2"));
 
         order_book.register_order_request(first_bid);
         order_book.register_order_request(second_bid);
 
-        let matching_offer = build_order_request(Direction::Sell, 49_00, 15, "seller".to_string());
+        let matching_offer =
+            build_order_request(Direction::Sell, 49_00, 15, PlayerId::from("seller"));
         let res = order_book.register_order_request(matching_offer);
         assert_eq!(res.len(), 2);
 
         println!("{res:?}");
-        assert_eq!(res[0].buyer, "buyer_1".to_string());
-        assert_eq!(res[0].seller, "seller".to_string());
+        assert_eq!(res[0].buyer, PlayerId::from("buyer_1"));
+        assert_eq!(res[0].seller, PlayerId::from("seller"));
         assert_eq!(res[0].volume, 10);
         assert_eq!(res[0].price, 50_00);
 
-        assert_eq!(res[1].buyer, "buyer_2".to_string());
-        assert_eq!(res[1].seller, "seller".to_string());
+        assert_eq!(res[1].buyer, PlayerId::from("buyer_2"));
+        assert_eq!(res[1].seller, PlayerId::from("seller"));
         assert_eq!(res[1].volume, 5);
         assert_eq!(res[1].price, 49_00);
     }
@@ -467,24 +473,26 @@ mod tests {
     fn test_match_multiple_offers() {
         let mut order_book = OrderBook::new();
 
-        let first_offer = build_order_request(Direction::Sell, 50_00, 10, "seller_1".to_string());
-        let second_offer = build_order_request(Direction::Sell, 51_00, 5, "seller_2".to_string());
+        let first_offer =
+            build_order_request(Direction::Sell, 50_00, 10, PlayerId::from("seller_1"));
+        let second_offer =
+            build_order_request(Direction::Sell, 51_00, 5, PlayerId::from("seller_2"));
 
         order_book.register_order_request(first_offer);
         order_book.register_order_request(second_offer);
 
-        let matching_bid = build_order_request(Direction::Buy, 51_00, 15, "buyer".to_string());
+        let matching_bid = build_order_request(Direction::Buy, 51_00, 15, PlayerId::from("buyer"));
         let res = order_book.register_order_request(matching_bid);
         assert_eq!(res.len(), 2);
 
         println!("{res:?}");
-        assert_eq!(res[0].buyer, "buyer".to_string());
-        assert_eq!(res[0].seller, "seller_1".to_string());
+        assert_eq!(res[0].buyer, PlayerId::from("buyer"));
+        assert_eq!(res[0].seller, PlayerId::from("seller_1"));
         assert_eq!(res[0].volume, 10);
         assert_eq!(res[0].price, 50_00);
 
-        assert_eq!(res[1].buyer, "buyer".to_string());
-        assert_eq!(res[1].seller, "seller_2".to_string());
+        assert_eq!(res[1].buyer, PlayerId::from("buyer"));
+        assert_eq!(res[1].seller, PlayerId::from("seller_2"));
         assert_eq!(res[1].volume, 5);
         assert_eq!(res[1].price, 51_00);
 
@@ -496,8 +504,8 @@ mod tests {
     fn test_no_match_dont_touch_existing_orders() {
         let mut order_book = OrderBook::new();
 
-        let first_order = build_order_request(Direction::Sell, 51_00, 10, "seller".to_string());
-        let second_order = build_order_request(Direction::Buy, 50_00, 5, "buyer".to_string());
+        let first_order = build_order_request(Direction::Sell, 51_00, 10, PlayerId::from("seller"));
+        let second_order = build_order_request(Direction::Buy, 50_00, 5, PlayerId::from("buyer"));
 
         order_book.register_order_request(first_order);
         let trades = order_book.register_order_request(second_order);
@@ -505,7 +513,7 @@ mod tests {
         assert_eq!(order_book.bids.len(), 1);
         assert_eq!(order_book.offers.len(), 1);
 
-        let third_order = build_order_request(Direction::Sell, 52_00, 10, "toto".to_string());
+        let third_order = build_order_request(Direction::Sell, 52_00, 10, PlayerId::from("toto"));
         let trades = order_book.register_order_request(third_order);
         assert_eq!(trades.len(), 0);
         assert_eq!(order_book.bids.len(), 1);
@@ -515,6 +523,8 @@ mod tests {
 
 #[cfg(test)]
 mod test_remove_order {
+    use crate::player::PlayerId;
+
     use super::{OrderBook, OrderRequest};
 
     #[test]
@@ -526,7 +536,7 @@ mod test_remove_order {
             direction: super::Direction::Buy,
             volume: 10,
             price: 50_00,
-            owner: "buyer".to_string(),
+            owner: PlayerId::from("buyer"),
         };
         order_book.register_order_request(first_order);
 
@@ -539,7 +549,7 @@ mod test_remove_order {
             direction: super::Direction::Sell,
             volume: 10,
             price: 50_00,
-            owner: "seller".to_string(),
+            owner: PlayerId::from("seller"),
         };
         let trades = order_book.register_order_request(offer_that_would_have_matched);
         assert!(trades.is_empty());
@@ -553,7 +563,10 @@ mod test_bid_and_offer {
     use chrono::Utc;
     use uuid::Uuid;
 
-    use crate::market::{models::Direction, order_book::Offer};
+    use crate::{
+        market::{models::Direction, order_book::Offer},
+        player::PlayerId,
+    };
 
     use super::{Bid, Order};
 
@@ -563,7 +576,7 @@ mod test_bid_and_offer {
             Bid(Order {
                 direction: Direction::Buy,
                 price,
-                owner: Uuid::new_v4().to_string(),
+                owner: PlayerId::default(),
                 volume: 10,
                 timestamp: Utc::now(),
                 id: Uuid::new_v4().to_string(),
@@ -589,7 +602,7 @@ mod test_bid_and_offer {
             Offer(Order {
                 direction: Direction::Sell,
                 price,
-                owner: Uuid::new_v4().to_string(),
+                owner: PlayerId::default(),
                 volume: 10,
                 timestamp: Utc::now(),
                 id: Uuid::new_v4().to_string(),
@@ -614,15 +627,18 @@ mod test_bid_and_offer {
 mod test_trade_leg {
     use chrono::Utc;
 
-    use crate::market::{models::Direction, order_book::TradeLeg};
+    use crate::{
+        market::{models::Direction, order_book::TradeLeg},
+        player::PlayerId,
+    };
 
     use super::Trade;
 
     #[test]
     fn test_split_trade() {
         let trade = Trade {
-            buyer: "buyer".to_string(),
-            seller: "seller".to_string(),
+            buyer: PlayerId::from("buyer"),
+            seller: PlayerId::from("seller"),
             volume: 10,
             price: 50_00,
             execution_time: Utc::now(),
@@ -633,14 +649,14 @@ mod test_trade_leg {
             [
                 TradeLeg {
                     direction: Direction::Buy,
-                    owner: "buyer".to_string(),
+                    owner: PlayerId::from("buyer"),
                     volume: 10,
                     price: 50_00,
                     execution_time: trade.execution_time
                 },
                 TradeLeg {
                     direction: Direction::Sell,
-                    owner: "seller".to_string(),
+                    owner: PlayerId::from("seller"),
                     volume: 10,
                     price: 50_00,
                     execution_time: trade.execution_time
@@ -652,55 +668,55 @@ mod test_trade_leg {
     #[test]
     fn test_trade_to_player() {
         let trade = Trade {
-            buyer: "buyer".to_string(),
-            seller: "seller".to_string(),
+            buyer: PlayerId::from("buyer"),
+            seller: PlayerId::from("seller"),
             volume: 10,
             price: 50_00,
             execution_time: Utc::now(),
         };
 
         assert_eq!(
-            trade.for_player("buyer"),
+            trade.for_player(&PlayerId::from("buyer")),
             vec![TradeLeg {
                 direction: Direction::Buy,
-                owner: "buyer".to_string(),
+                owner: PlayerId::from("buyer"),
                 volume: 10,
                 price: 50_00,
                 execution_time: trade.execution_time
             },]
         );
         assert_eq!(
-            trade.for_player("seller"),
+            trade.for_player(&PlayerId::from("seller")),
             vec![TradeLeg {
                 direction: Direction::Sell,
-                owner: "seller".to_string(),
+                owner: PlayerId::from("seller"),
                 volume: 10,
                 price: 50_00,
                 execution_time: trade.execution_time
             },]
         );
-        assert_eq!(trade.for_player("toto"), vec![]);
+        assert_eq!(trade.for_player(&PlayerId::from("toto")), vec![]);
 
         let trade = Trade {
-            buyer: "same_player".to_string(),
-            seller: "same_player".to_string(),
+            buyer: PlayerId::from("same_player"),
+            seller: PlayerId::from("same_player"),
             volume: 10,
             price: 50_00,
             execution_time: Utc::now(),
         };
         assert_eq!(
-            trade.for_player("same_player"),
+            trade.for_player(&PlayerId::from("same_player")),
             vec![
                 TradeLeg {
                     direction: Direction::Buy,
-                    owner: "same_player".to_string(),
+                    owner: PlayerId::from("same_player"),
                     volume: 10,
                     price: 50_00,
                     execution_time: trade.execution_time
                 },
                 TradeLeg {
                     direction: Direction::Sell,
-                    owner: "same_player".to_string(),
+                    owner: PlayerId::from("same_player"),
                     volume: 10,
                     price: 50_00,
                     execution_time: trade.execution_time
@@ -712,7 +728,10 @@ mod test_trade_leg {
 
 #[cfg(test)]
 mod test_drain_order_book {
-    use crate::market::{models::Direction, order_book::build_order_request};
+    use crate::{
+        market::{models::Direction, order_book::build_order_request},
+        player::PlayerId,
+    };
 
     use super::OrderBook;
 
@@ -720,9 +739,10 @@ mod test_drain_order_book {
     fn test_draining_order_book() {
         let mut obs = OrderBook::new();
 
-        let buy_order = build_order_request(Direction::Buy, 50_00, 10, "toto".to_string());
-        let matching_order = build_order_request(Direction::Sell, 50_00, 10, "tata".to_string());
-        let another_order = build_order_request(Direction::Sell, 50_00, 10, "tutu".to_string());
+        let buy_order = build_order_request(Direction::Buy, 50_00, 10, PlayerId::from("toto"));
+        let matching_order =
+            build_order_request(Direction::Sell, 50_00, 10, PlayerId::from("tata"));
+        let another_order = build_order_request(Direction::Sell, 50_00, 10, PlayerId::from("tutu"));
 
         obs.register_order_request(buy_order);
         obs.register_order_request(matching_order);

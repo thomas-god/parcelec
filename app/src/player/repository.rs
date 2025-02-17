@@ -5,12 +5,15 @@ use tokio::sync::mpsc;
 
 use crate::game::game_repository::GameId;
 
-use super::connection::{PlayerConnection, PlayerMessage};
+use super::{
+    connection::{PlayerConnection, PlayerMessage},
+    PlayerId,
+};
 
 #[derive(Debug)]
 pub enum ConnectionRepositoryMessage {
     RegisterConnection(GameId, PlayerConnection),
-    SendToPlayer(GameId, String, PlayerMessage),
+    SendToPlayer(GameId, PlayerId, PlayerMessage),
     SendToAllPlayers(GameId, PlayerMessage),
 }
 pub struct PlayerConnectionRepository {
@@ -94,7 +97,10 @@ mod test {
 
     use crate::{
         game::game_repository::GameId,
-        player::connection::{PlayerConnection, PlayerMessage},
+        player::{
+            connection::{PlayerConnection, PlayerMessage},
+            PlayerId,
+        },
     };
 
     use super::{ConnectionRepositoryMessage, PlayerConnectionRepository};
@@ -111,9 +117,9 @@ mod test {
     async fn register_connection(
         game_id: &GameId,
         repository: mpsc::Sender<ConnectionRepositoryMessage>,
-    ) -> (String, mpsc::Receiver<PlayerMessage>) {
+    ) -> (PlayerId, mpsc::Receiver<PlayerMessage>) {
         let (tx, rx) = mpsc::channel(16);
-        let player_id = Uuid::new_v4().to_string();
+        let player_id = PlayerId::default();
         let player_connection = PlayerConnection {
             id: Uuid::new_v4().to_string(),
             player_id: player_id.clone(),
@@ -131,13 +137,13 @@ mod test {
 
     async fn register_connection_same_player(
         game_id: &GameId,
-        player_id: &str,
+        player_id: &PlayerId,
         repository: mpsc::Sender<ConnectionRepositoryMessage>,
     ) -> mpsc::Receiver<PlayerMessage> {
         let (tx, rx) = mpsc::channel(16);
         let player_connection = PlayerConnection {
             id: Uuid::new_v4().to_string(),
-            player_id: player_id.to_string(),
+            player_id: player_id.clone(),
             tx,
         };
 
@@ -157,7 +163,7 @@ mod test {
         let (tx, _) = mpsc::channel(16);
         let player_connection = PlayerConnection {
             id: "connection_id".to_string(),
-            player_id: "player_id".to_string(),
+            player_id: PlayerId::from("player_id"),
             tx,
         };
 

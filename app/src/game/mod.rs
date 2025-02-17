@@ -8,12 +8,11 @@ use tokio::sync::{
     mpsc::{self, channel, Receiver, Sender},
     oneshot, watch,
 };
-use uuid::Uuid;
 
 use crate::{
     market::{Market, MarketContext, MarketMessage, MarketState},
     plants::stack::{StackActor, StackContext, StackState},
-    player::repository::ConnectionRepositoryMessage,
+    player::{repository::ConnectionRepositoryMessage, PlayerId},
 };
 
 pub mod delivery_period;
@@ -22,7 +21,7 @@ pub mod scores;
 
 #[derive(Debug)]
 struct Player {
-    id: String,
+    id: PlayerId,
     name: String,
     ready: bool,
 }
@@ -35,19 +34,19 @@ pub enum GameMessage {
         tx_back: oneshot::Sender<RegisterPlayerResponse>,
     },
     ConnectPlayer {
-        id: String,
+        id: PlayerId,
         tx_back: oneshot::Sender<ConnectPlayerResponse>,
     },
     GetMarketTx {
         tx_back: oneshot::Sender<mpsc::Sender<MarketMessage>>,
     },
-    PlayerIsReady(String),
+    PlayerIsReady(PlayerId),
     DeliveryPeriodResults(DeliveryPeriodResults),
 }
 
 #[derive(Debug)]
 pub enum RegisterPlayerResponse {
-    Success { id: String },
+    Success { id: PlayerId },
     PlayerAlreadyExist,
     GameIsRunning,
 }
@@ -106,7 +105,7 @@ pub struct Game {
     players: Vec<Player>,
     players_connections: mpsc::Sender<ConnectionRepositoryMessage>,
     market_context: MarketContext,
-    stacks_context: HashMap<String, StackContext>,
+    stacks_context: HashMap<PlayerId, StackContext>,
     rx: Receiver<GameMessage>,
     tx: Sender<GameMessage>,
     delivery_period: DeliveryPeriodId,
@@ -176,7 +175,7 @@ impl Game {
                         self.players_connections
                             .send(ConnectionRepositoryMessage::SendToPlayer(
                                 self.game_id.clone(),
-                                player.to_string(),
+                                player.clone(),
                                 crate::player::connection::PlayerMessage::DeliveryPeriodResults(
                                     score.clone(),
                                 ),
@@ -194,7 +193,7 @@ impl Game {
         }
     }
 
-    fn register_player_ready(&mut self, player_id: String) {
+    fn register_player_ready(&mut self, player_id: PlayerId) {
         if let Some(player) = self
             .players
             .iter_mut()
@@ -240,7 +239,7 @@ impl Game {
         }
     }
 
-    fn register_player_ready_game_is_running(&mut self, player_id: String) {
+    fn register_player_ready_game_is_running(&mut self, player_id: PlayerId) {
         if let Some(player) = self
             .players
             .iter_mut()
@@ -260,7 +259,7 @@ impl Game {
         }
     }
 
-    fn connect_player(&mut self, id: String, tx_back: oneshot::Sender<ConnectPlayerResponse>) {
+    fn connect_player(&mut self, id: PlayerId, tx_back: oneshot::Sender<ConnectPlayerResponse>) {
         if !self.players.iter().any(|player| player.id == id) {
             let _ = tx_back.send(ConnectPlayerResponse::DoesNotExist);
             return;
@@ -284,7 +283,7 @@ impl Game {
             return;
         }
         // Generate player ID
-        let player_id = Uuid::new_v4().to_string();
+        let player_id = PlayerId::default();
         let player = Player {
             id: player_id.clone(),
             name,
@@ -324,13 +323,12 @@ mod tests {
         mpsc,
         oneshot::{self, channel},
     };
-    use uuid::Uuid;
 
     use crate::{
         game::{ConnectPlayerResponse, Game, GameMessage, GameState, RegisterPlayerResponse},
         market::MarketState,
         plants::stack::{StackContext, StackState},
-        player::{connection::PlayerMessage, repository::ConnectionRepositoryMessage},
+        player::{connection::PlayerMessage, repository::ConnectionRepositoryMessage, PlayerId},
     };
 
     use super::{game_repository::GameId, GameContext};
@@ -346,12 +344,12 @@ mod tests {
         context
     }
 
-    async fn register_player(game: mpsc::Sender<GameMessage>) -> String {
-        let player = Uuid::new_v4().to_string();
+    async fn register_player(game: mpsc::Sender<GameMessage>) -> PlayerId {
+        let player = PlayerId::default();
         let (tx, rx) = channel::<RegisterPlayerResponse>();
         let _ = game
             .send(GameMessage::RegisterPlayer {
-                name: player,
+                name: player.to_string(),
                 tx_back: tx,
             })
             .await;
@@ -361,17 +359,20 @@ mod tests {
         }
     }
 
-    async fn start_game(game: mpsc::Sender<GameMessage>) -> String {
+    async fn start_game(game: mpsc::Sender<GameMessage>) -> PlayerId {
         let player = register_player(game.clone()).await;
         let _ = game.send(GameMessage::PlayerIsReady(player.clone())).await;
         player
     }
 
-    async fn get_player_stack(game: mpsc::Sender<GameMessage>, player_id: &str) -> StackContext {
+    async fn get_player_stack(
+        game: mpsc::Sender<GameMessage>,
+        player_id: &PlayerId,
+    ) -> StackContext {
         let (tx, rx) = oneshot::channel();
         let _ = game
             .send(GameMessage::ConnectPlayer {
-                id: player_id.to_string(),
+                id: player_id.clone(),
                 tx_back: tx,
             })
             .await;
@@ -496,7 +497,7 @@ mod tests {
         let (tx, rx) = channel::<ConnectPlayerResponse>();
         game.tx
             .send(GameMessage::ConnectPlayer {
-                id: "random_id".to_owned(),
+                id: PlayerId::from("random_id"),
                 tx_back: tx,
             })
             .await
