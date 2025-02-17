@@ -125,11 +125,11 @@
                 class="flex items-center text-md font-normal text-gray-500 dark:text-gray-400"
               >
                 <span
-                  >Nouveau trade: {trades.at(-1)?.direction === "Buy"
+                  >Nouveau trade: {trades.at(-1)?.volume}MW {trades.at(-1)
+                    ?.direction === "Buy"
                     ? "achetés"
                     : "vendus"}
-                  {trades.at(-1)?.volume}MW @ {0.01 *
-                    (trades.at(-1)?.price as number)}€ 🤑</span
+                  @ {0.01 * (trades.at(-1)?.price as number)}€ 🤑</span
                 >
               </p>
             </div>

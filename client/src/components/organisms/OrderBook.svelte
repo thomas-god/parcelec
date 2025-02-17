@@ -17,12 +17,6 @@
   let price = $state("50");
   let volume = $state("100");
 
-  const spread = $derived.by(() => {
-    if (orderBook.bids.length === 0 || orderBook.offers.length === 0) {
-      return Number.NaN;
-    }
-    return (orderBook.offers[0].price - orderBook.bids[0].price) / 100;
-  });
   let market_position = $derived(
     trades.reduce(
       (acc, trade) =>
@@ -30,14 +24,17 @@
       0,
     ),
   );
+  let sendOrderDebouncedInterval: ReturnType<typeof setTimeout>;
   const sendOrderRequest = (direction: "Sell" | "Buy") => {
-    const orderRequest = {
-      price: Number.parseInt(price) * 100,
-      volume: Number.parseInt(volume),
-      direction,
-      owner: "toto",
-    };
-    send(JSON.stringify({ OrderRequest: orderRequest }));
+    clearTimeout(sendOrderDebouncedInterval);
+    sendOrderDebouncedInterval = setTimeout(() => {
+      const orderRequest = {
+        price: Number.parseInt(price) * 100,
+        volume: Number.parseInt(volume),
+        direction,
+      };
+      send(JSON.stringify({ OrderRequest: orderRequest }));
+    }, 200);
   };
 
   const deleteOrder = (order_id: String) => {
@@ -58,8 +55,7 @@
     </div>
   </div>
   <!-- Add an offer -->
-  <div class="">
-    <!-- <h3 class="text-xl font-semibold mb-2 text-center">Ajouter une offre</h3> -->
+  <div>
     <div class="flex flex-row flex-wrap justify-center gap-2 mb-3">
       <NumberInput bind:value={price} label={"Prix"} bigIncr={some(1)} />
       <NumberInput bind:value={volume} label={"Volume"} bigIncr={some(10)} />
@@ -75,9 +71,6 @@
       >
     </div>
   </div>
-  <!-- {#if !Number.isNaN(spread)}
-    <p class="mb-4 text-center text-lg">Spread: {spread} €</p>
-    {/if} -->
 
   <div
     class="grid grid-cols-2 gap-4 border-4 border-double rounded-2xl border-gray-400 mt-3"

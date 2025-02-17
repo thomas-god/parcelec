@@ -18,7 +18,8 @@ use uuid::Uuid;
 use crate::{
     game::{game_repository::GameId, scores::PlayerScore, GameContext, GameMessage, GameState},
     market::{
-        order_book::{OrderRequest, TradeLeg},
+        models::Direction,
+        order_book::{OrderRequest as MarketOrderRequest, TradeLeg},
         MarketContext, MarketMessage, MarketState, OrderRepr,
     },
     plants::{
@@ -42,6 +43,13 @@ impl Debug for PlayerConnection {
             .field("id", &self.player_id)
             .finish()
     }
+}
+
+#[derive(Deserialize, Debug)]
+pub struct OrderRequest {
+    pub direction: Direction,
+    pub price: isize,
+    pub volume: usize,
 }
 
 #[derive(Deserialize, Debug)]
@@ -161,9 +169,16 @@ async fn process_ws_messages(
                     .send(GameMessage::PlayerIsReady(player_id.clone()))
                     .await;
             }
-            Ok(WebSocketIncomingMessage::OrderRequest(mut request)) => {
-                request.owner = player_id.clone();
-                let _ = market_tx.send(MarketMessage::OrderRequest(request)).await;
+            Ok(WebSocketIncomingMessage::OrderRequest(request)) => {
+                let order_request = MarketOrderRequest {
+                    direction: request.direction,
+                    price: request.price,
+                    volume: request.volume,
+                    owner: player_id.clone(),
+                };
+                let _ = market_tx
+                    .send(MarketMessage::OrderRequest(order_request))
+                    .await;
             }
             Ok(WebSocketIncomingMessage::DeleteOrder { order_id }) => {
                 let _ = market_tx
