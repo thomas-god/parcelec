@@ -11,7 +11,7 @@ use tokio::{
 use crate::{
     game::scores::compute_players_scores,
     market::{order_book::Trade, MarketMessage},
-    plants::{stack::StackMessage, PlantOutput},
+    plants::{stack::StackMessage, PlantId, PlantOutput},
     player::PlayerId,
 };
 
@@ -168,7 +168,7 @@ async fn close_stacks_future(
     stacks_tx: HashMap<PlayerId, mpsc::Sender<StackMessage>>,
     period_id: DeliveryPeriodId,
     duration: Duration,
-) -> HashMap<PlayerId, HashMap<String, PlantOutput>> {
+) -> HashMap<PlayerId, HashMap<PlantId, PlantOutput>> {
     sleep(duration).await;
     close_stacks(stacks_tx, period_id).await
 }
@@ -176,7 +176,7 @@ async fn close_stacks_future(
 async fn close_stacks(
     stacks_tx: HashMap<PlayerId, mpsc::Sender<StackMessage>>,
     period_id: DeliveryPeriodId,
-) -> HashMap<PlayerId, HashMap<String, PlantOutput>> {
+) -> HashMap<PlayerId, HashMap<PlantId, PlantOutput>> {
     join_all(
         stacks_tx
             .iter()
@@ -191,7 +191,7 @@ async fn close_stack(
     player_id: &PlayerId,
     period_id: DeliveryPeriodId,
     stack: mpsc::Sender<StackMessage>,
-) -> (PlayerId, HashMap<String, PlantOutput>) {
+) -> (PlayerId, HashMap<PlantId, PlantOutput>) {
     let (tx_back, rx) = oneshot::channel();
 
     let _ = stack

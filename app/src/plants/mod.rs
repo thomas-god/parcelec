@@ -1,8 +1,11 @@
+use std::fmt;
+
 use battery::BatteryPublicRepr;
 use consumers::ConsumersPublicRepr;
 use gas_plant::GasPlantPublicRepr;
 use renewable::RenewablePlantPublicRepr;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
+use uuid::Uuid;
 
 pub mod battery;
 pub mod consumers;
@@ -34,4 +37,40 @@ pub trait PowerPlant {
 
     /// Retrieve a string representation of the plant's state
     fn current_state(&self) -> PowerPlantPublicRepr;
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub struct PlantId(String);
+
+impl From<&str> for PlantId {
+    fn from(value: &str) -> Self {
+        PlantId(value.to_string())
+    }
+}
+
+impl From<String> for PlantId {
+    fn from(value: String) -> Self {
+        PlantId(value)
+    }
+}
+
+impl Default for PlantId {
+    fn default() -> Self {
+        PlantId(Uuid::new_v4().to_string())
+    }
+}
+impl fmt::Display for PlantId {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+impl PlantId {
+    pub fn into_string(self) -> String {
+        self.0
+    }
+}
+impl AsRef<str> for PlantId {
+    fn as_ref(&self) -> &str {
+        &self.0
+    }
 }

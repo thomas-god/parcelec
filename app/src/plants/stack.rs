@@ -5,7 +5,6 @@ use tokio::sync::{
     mpsc::{self, channel, Receiver, Sender},
     oneshot, watch,
 };
-use uuid::Uuid;
 
 use crate::{
     game::{delivery_period::DeliveryPeriodId, game_repository::GameId},
@@ -15,12 +14,12 @@ use crate::{
 
 use super::{
     battery::Battery, consumers::Consumers, gas_plant::GasPlant, renewable::RenewablePlant,
-    PowerPlant, PowerPlantPublicRepr,
+    PlantId, PowerPlant, PowerPlantPublicRepr,
 };
 
 #[derive(Debug, Deserialize)]
 pub struct ProgramPlant {
-    pub plant_id: String,
+    pub plant_id: PlantId,
     pub setpoint: isize,
 }
 
@@ -29,7 +28,7 @@ pub enum StackMessage {
     OpenStack(DeliveryPeriodId),
     CloseStack {
         period_id: DeliveryPeriodId,
-        tx_back: oneshot::Sender<HashMap<String, PlantOutput>>,
+        tx_back: oneshot::Sender<HashMap<PlantId, PlantOutput>>,
     },
     ProgramSetpoint(ProgramPlant),
     NewPlayerConnection(PlayerId),
@@ -72,11 +71,11 @@ pub struct StackActor {
     state_sender: watch::Sender<StackState>,
     delivery_period: DeliveryPeriodId,
     player_id: PlayerId,
-    plants: HashMap<String, Box<dyn PowerPlant + Send + Sync>>,
+    plants: HashMap<PlantId, Box<dyn PowerPlant + Send + Sync>>,
     tx: Sender<StackMessage>,
     rx: Receiver<StackMessage>,
     players_connections: mpsc::Sender<ConnectionRepositoryMessage>,
-    past_outputs: HashMap<DeliveryPeriodId, HashMap<String, PlantOutput>>,
+    past_outputs: HashMap<DeliveryPeriodId, HashMap<PlantId, PlantOutput>>,
 }
 
 impl StackActor {
@@ -132,7 +131,7 @@ impl StackActor {
                 (StackState::Open, StackMessage::CloseStack { tx_back, period_id }) => {
                     if period_id == self.delivery_period {
                         self.state = StackState::Closed;
-                        let plant_outputs: HashMap<String, PlantOutput> = self
+                        let plant_outputs: HashMap<PlantId, PlantOutput> = self
                             .plants
                             .iter_mut()
                             .map(|(plant_id, plant)| (plant_id.clone(), plant.dispatch()))
@@ -177,14 +176,14 @@ impl StackActor {
             .await;
     }
 
-    fn stack_snapshot(&self) -> HashMap<String, PowerPlantPublicRepr> {
+    fn stack_snapshot(&self) -> HashMap<PlantId, PowerPlantPublicRepr> {
         self.plants
             .iter()
             .map(|(id, p)| (id.to_owned(), p.current_state()))
             .collect()
     }
 
-    async fn program_plant_setpoint(&mut self, plant_id: String, setpoint: isize) {
+    async fn program_plant_setpoint(&mut self, plant_id: PlantId, setpoint: isize) {
         if let Some(plant) = self.plants.get_mut(&plant_id) {
             let PlantOutput { cost, .. } = plant.program_setpoint(setpoint);
             println!("Programmed setpoint {setpoint} for plant {plant_id} (cost: {cost}");
@@ -193,24 +192,12 @@ impl StackActor {
     }
 }
 
-fn default_plants() -> HashMap<String, Box<dyn PowerPlant + Send + Sync>> {
-    let mut map: HashMap<String, Box<dyn PowerPlant + Send + Sync>> = HashMap::new();
-    map.insert(
-        Uuid::new_v4().to_string(),
-        Box::new(Battery::new(1_000, 500)),
-    );
-    map.insert(
-        Uuid::new_v4().to_string(),
-        Box::new(GasPlant::new(85, 1000)),
-    );
-    map.insert(
-        Uuid::new_v4().to_string(),
-        Box::new(RenewablePlant::new(500)),
-    );
-    map.insert(
-        Uuid::new_v4().to_string(),
-        Box::new(Consumers::new(1500, 56)),
-    );
+fn default_plants() -> HashMap<PlantId, Box<dyn PowerPlant + Send + Sync>> {
+    let mut map: HashMap<PlantId, Box<dyn PowerPlant + Send + Sync>> = HashMap::new();
+    map.insert(PlantId::default(), Box::new(Battery::new(1_000, 500)));
+    map.insert(PlantId::default(), Box::new(GasPlant::new(85, 1000)));
+    map.insert(PlantId::default(), Box::new(RenewablePlant::new(500)));
+    map.insert(PlantId::default(), Box::new(Consumers::new(1500, 56)));
     map
 }
 
@@ -228,7 +215,7 @@ mod tests_stack {
         game::{delivery_period::DeliveryPeriodId, game_repository::GameId},
         plants::{
             stack::{ProgramPlant, StackActor, StackMessage, StackState},
-            PowerPlantPublicRepr,
+            PlantId, PowerPlantPublicRepr,
         },
         player::{connection::PlayerMessage, repository::ConnectionRepositoryMessage, PlayerId},
     };
@@ -286,7 +273,7 @@ mod tests_stack {
     ) -> (
         String,
         Receiver<PlayerMessage>,
-        HashMap<String, PowerPlantPublicRepr>,
+        HashMap<PlantId, PowerPlantPublicRepr>,
     ) {
         let (_, rx) = channel::<PlayerMessage>(16);
         let connection_id = Uuid::new_v4().to_string();

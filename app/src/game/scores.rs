@@ -7,7 +7,7 @@ use crate::{
         models::Direction,
         order_book::{Trade, TradeLeg},
     },
-    plants::PlantOutput,
+    plants::{PlantId, PlantOutput},
     player::PlayerId,
 };
 
@@ -60,7 +60,7 @@ impl Add<TradeLeg> for PlayerScore {
 
 pub fn compute_players_scores(
     trades: Vec<Trade>,
-    plants_outputs: HashMap<PlayerId, HashMap<String, PlantOutput>>,
+    plants_outputs: HashMap<PlayerId, HashMap<PlantId, PlantOutput>>,
 ) -> HashMap<PlayerId, PlayerScore> {
     plants_outputs
         .iter()
@@ -75,7 +75,7 @@ pub fn compute_players_scores(
 
 fn compute_player_score(
     player_id: &PlayerId,
-    outputs: &HashMap<String, PlantOutput>,
+    outputs: &HashMap<PlantId, PlantOutput>,
     trades: &[Trade],
 ) -> PlayerScore {
     let market_position = trades
@@ -98,7 +98,7 @@ mod tests {
     use crate::{
         game::scores::{compute_players_scores, PlayerScore},
         market::order_book::Trade,
-        plants::PlantOutput,
+        plants::{PlantId, PlantOutput},
         player::PlayerId,
     };
 
@@ -117,14 +117,14 @@ mod tests {
             PlayerId::from("player_1"),
             HashMap::from([
                 (
-                    "plant_1".to_string(),
+                    PlantId::from("plant_1"),
                     PlantOutput {
                         setpoint: 100,
                         cost: 100,
                     },
                 ),
                 (
-                    "plant_2".to_string(),
+                    PlantId::from("plant_2"),
                     PlantOutput {
                         setpoint: 200,
                         cost: 500,
@@ -158,14 +158,14 @@ mod tests {
             PlayerId::from("player_1"),
             HashMap::from([
                 (
-                    "plant_1".to_string(),
+                    PlantId::from("plant_1"),
                     PlantOutput {
                         setpoint: 100,
                         cost: 100,
                     },
                 ),
                 (
-                    "plant_2".to_string(),
+                    PlantId::from("plant_2"),
                     PlantOutput {
                         setpoint: 200,
                         cost: 500,
@@ -200,14 +200,14 @@ mod tests {
                 PlayerId::from("player_1"),
                 HashMap::from([
                     (
-                        "plant_1".to_string(),
+                        PlantId::from("plant_1"),
                         PlantOutput {
                             setpoint: 100,
                             cost: 100,
                         },
                     ),
                     (
-                        "plant_2".to_string(),
+                        PlantId::from("plant_2"),
                         PlantOutput {
                             setpoint: 200,
                             cost: 500,
@@ -218,7 +218,7 @@ mod tests {
             (
                 PlayerId::from("another_player"),
                 HashMap::from([(
-                    "another_plant".to_string(),
+                    PlantId::from("another_plant"),
                     PlantOutput {
                         setpoint: -1000,
                         cost: 0,

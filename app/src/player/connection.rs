@@ -23,7 +23,7 @@ use crate::{
     },
     plants::{
         stack::{ProgramPlant, StackContext, StackMessage, StackState},
-        PowerPlantPublicRepr,
+        PlantId, PowerPlantPublicRepr,
     },
 };
 
@@ -65,7 +65,7 @@ pub enum PlayerMessage {
         trades: Vec<TradeLeg>,
     },
     StackSnapshot {
-        plants: HashMap<String, PowerPlantPublicRepr>,
+        plants: HashMap<PlantId, PowerPlantPublicRepr>,
     },
     DeliveryPeriodResults(PlayerScore),
 }
