@@ -18,26 +18,22 @@ pub enum ConnectionRepositoryMessage {
 }
 pub struct PlayerConnectionRepository {
     players_connections: HashMap<GameId, Vec<PlayerConnection>>,
-    tx: mpsc::Sender<ConnectionRepositoryMessage>,
     rx: mpsc::Receiver<ConnectionRepositoryMessage>,
 }
 
 impl PlayerConnectionRepository {
-    pub fn new() -> PlayerConnectionRepository {
+    pub fn start() -> mpsc::Sender<ConnectionRepositoryMessage> {
         let (tx, rx) = mpsc::channel(128);
 
-        PlayerConnectionRepository {
+        let mut repo = PlayerConnectionRepository {
             players_connections: HashMap::new(),
-            tx,
             rx,
-        }
+        };
+        tokio::spawn(async move { repo.run().await });
+        tx
     }
 
-    pub fn get_tx(&self) -> mpsc::Sender<ConnectionRepositoryMessage> {
-        self.tx.clone()
-    }
-
-    pub async fn run(&mut self) {
+    async fn run(&mut self) {
         while let Some(msg) = self.rx.recv().await {
             match msg {
                 ConnectionRepositoryMessage::RegisterConnection(game_id, new_conn) => {
@@ -82,12 +78,6 @@ impl PlayerConnectionRepository {
     }
 }
 
-impl Default for PlayerConnectionRepository {
-    fn default() -> Self {
-        PlayerConnectionRepository::new()
-    }
-}
-
 #[cfg(test)]
 mod test {
     use std::time::Duration;
@@ -104,15 +94,6 @@ mod test {
     };
 
     use super::{ConnectionRepositoryMessage, PlayerConnectionRepository};
-
-    fn start_repository() -> mpsc::Sender<ConnectionRepositoryMessage> {
-        let mut repository = PlayerConnectionRepository::new();
-        let tx = repository.get_tx();
-        tokio::spawn(async move {
-            repository.run().await;
-        });
-        tx
-    }
 
     async fn register_connection(
         game_id: &GameId,
@@ -158,7 +139,7 @@ mod test {
 
     #[tokio::test]
     async fn test_register_player_connection() {
-        let repository = start_repository();
+        let repository = PlayerConnectionRepository::start();
 
         let (tx, _) = mpsc::channel(16);
         let player_connection = PlayerConnection {
@@ -177,7 +158,7 @@ mod test {
 
     #[tokio::test]
     async fn test_send_message_to_registered_players() {
-        let repository = start_repository();
+        let repository = PlayerConnectionRepository::start();
         let game_id = GameId::from("game_id");
 
         let (_, mut player1_rx) = register_connection(&game_id, repository.clone()).await;
@@ -210,7 +191,7 @@ mod test {
 
     #[tokio::test]
     async fn test_send_message_to_single_player() {
-        let repository = start_repository();
+        let repository = PlayerConnectionRepository::start();
         let game_id = GameId::from("game_id");
 
         let (player1_id, mut player1_rx) = register_connection(&game_id, repository.clone()).await;
@@ -244,7 +225,7 @@ mod test {
 
     #[tokio::test]
     async fn test_send_message_all_conn_same_player() {
-        let repository = start_repository();
+        let repository = PlayerConnectionRepository::start();
         let game_id = GameId::from("game_id");
 
         let (player_id, mut player_rx_1) = register_connection(&game_id, repository.clone()).await;
@@ -279,7 +260,7 @@ mod test {
 
     #[tokio::test]
     async fn test_should_handle_dropped_connections() {
-        let repository = start_repository();
+        let repository = PlayerConnectionRepository::start();
         let game_id = GameId::from("game_id");
 
         let (_, mut player1_rx) = register_connection(&game_id, repository.clone()).await;

@@ -65,27 +65,25 @@ pub enum GetGameResponse {
 pub struct GameRepository {
     player_connections: mpsc::Sender<ConnectionRepositoryMessage>,
     games: HashMap<GameId, GameContext>,
-    tx: mpsc::Sender<GameRepositoryMessage>,
     rx: mpsc::Receiver<GameRepositoryMessage>,
 }
 
 impl GameRepository {
-    pub fn new(player_connections: mpsc::Sender<ConnectionRepositoryMessage>) -> GameRepository {
+    pub fn start(
+        player_connections: &mpsc::Sender<ConnectionRepositoryMessage>,
+    ) -> mpsc::Sender<GameRepositoryMessage> {
         let (tx, rx) = mpsc::channel(16);
 
-        GameRepository {
-            player_connections,
+        let mut repo = GameRepository {
+            player_connections: player_connections.clone(),
             games: HashMap::new(),
             rx,
-            tx,
-        }
+        };
+        tokio::spawn(async move { repo.run().await });
+        tx
     }
 
-    pub fn get_tx(&self) -> mpsc::Sender<GameRepositoryMessage> {
-        self.tx.clone()
-    }
-
-    pub async fn start(&mut self) {
+    async fn run(&mut self) {
         while let Some(msg) = self.rx.recv().await {
             match msg {
                 GameRepositoryMessage::CreateNewGame { tx_back } => {
@@ -132,10 +130,7 @@ mod tests {
     #[tokio::test]
     async fn test_create_game() {
         let (tx, _) = mpsc::channel(16);
-        let mut repository = GameRepository::new(tx);
-        let repository_tx = repository.get_tx();
-
-        tokio::spawn(async move { repository.start().await });
+        let repository_tx = GameRepository::start(&tx);
 
         let (tx_back, rx) = oneshot::channel();
         let _ = repository_tx
@@ -150,10 +145,7 @@ mod tests {
     #[tokio::test]
     async fn test_created_game_should_be_running() {
         let (tx, _) = mpsc::channel(16);
-        let mut repository = GameRepository::new(tx);
-        let repository_tx = repository.get_tx();
-
-        tokio::spawn(async move { repository.start().await });
+        let repository_tx = GameRepository::start(&tx);
 
         let (tx_back, rx) = oneshot::channel();
         let _ = repository_tx
@@ -179,10 +171,7 @@ mod tests {
     #[tokio::test]
     async fn test_connect_to_existing_game() {
         let (tx, _) = mpsc::channel(16);
-        let mut repository = GameRepository::new(tx);
-        let repository_tx = repository.get_tx();
-
-        tokio::spawn(async move { repository.start().await });
+        let repository_tx = GameRepository::start(&tx);
 
         let (tx_back, rx) = oneshot::channel();
         let _ = repository_tx
@@ -206,10 +195,7 @@ mod tests {
     #[tokio::test]
     async fn test_connect_to_non_existing_game() {
         let (tx, _) = mpsc::channel(16);
-        let mut repository = GameRepository::new(tx);
-        let repository_tx = repository.get_tx();
-
-        tokio::spawn(async move { repository.start().await });
+        let repository_tx = GameRepository::start(&tx);
 
         let non_existing_game_id = GameId::default();
         let (tx_back, rx) = oneshot::channel();
