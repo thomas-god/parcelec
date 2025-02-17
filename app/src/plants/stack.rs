@@ -362,7 +362,29 @@ mod tests_stack {
     }
     #[tokio::test]
     async fn test_receive_plant_outputs_when_closing_stack() {
-        let (_, stack, _) = start_stack();
+        let (player_id, stack, mut conn_rx) = start_stack();
+
+        // Register player connection to receive stack snapshot
+        let _ = stack
+            .tx
+            .send(StackMessage::NewPlayerConnection(player_id.clone()))
+            .await;
+        let Some(ConnectionRepositoryMessage::SendToPlayer(
+            _,
+            _,
+            PlayerMessage::StackSnapshot { plants },
+        )) = conn_rx.recv().await
+        else {
+            unreachable!()
+        };
+        let plants_balance = plants.values().fold(0, |acc, plant| {
+            acc + match plant {
+                PowerPlantPublicRepr::Battery(batt) => batt.output.setpoint,
+                PowerPlantPublicRepr::Consumers(cons) => cons.output.setpoint,
+                PowerPlantPublicRepr::GasPlant(plant) => plant.output.setpoint,
+                PowerPlantPublicRepr::RenewablePlant(plant) => plant.output.setpoint,
+            }
+        });
 
         // Close the stack
         let (tx_back, rx_back) = oneshot::channel();
@@ -378,6 +400,17 @@ mod tests_stack {
             .await
             .expect("Should have received a map of plant outputs");
         assert!(!plant_outputs.is_empty());
+        assert_eq!(
+            plants_balance,
+            plants.values().fold(0, |acc, plant| {
+                acc + match plant {
+                    PowerPlantPublicRepr::Battery(batt) => batt.output.setpoint,
+                    PowerPlantPublicRepr::Consumers(cons) => cons.output.setpoint,
+                    PowerPlantPublicRepr::GasPlant(plant) => plant.output.setpoint,
+                    PowerPlantPublicRepr::RenewablePlant(plant) => plant.output.setpoint,
+                }
+            })
+        );
     }
     #[tokio::test]
     async fn test_register_connection_when_stack_closed() {

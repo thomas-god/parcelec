@@ -32,11 +32,12 @@ impl PowerPlant for Consumers {
         }
     }
     fn dispatch(&mut self) -> PlantOutput {
-        let cost = self.setpoint * self.price_per_mwh;
+        let previous_setpoint = self.setpoint;
+        let cost = previous_setpoint * self.price_per_mwh;
         self.setpoint = rand::rng().random_range(-self.max_power..0);
         PlantOutput {
             cost: cost as isize,
-            setpoint: self.setpoint as isize,
+            setpoint: previous_setpoint as isize,
         }
     }
     fn current_state(&self) -> PowerPlantPublicRepr {
@@ -82,5 +83,10 @@ mod tests {
         // Consumption value changes when dispatched
         plant.dispatch();
         assert_ne!(plant.setpoint as isize, initial_setpoint);
+
+        // Dispatching should return the previous setpoint
+        let previous_value = plant.setpoint;
+        let returned_value = plant.dispatch();
+        assert_eq!(previous_value as isize, returned_value.setpoint);
     }
 }

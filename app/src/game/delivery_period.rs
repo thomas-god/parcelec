@@ -117,6 +117,10 @@ pub async fn start_delivery_period(
         }
     };
 
+    println!("##########################################################");
+    println!("plants: {plants_outputs:?}");
+    println!("##########################################################");
+
     let scores = compute_players_scores(trades, plants_outputs);
     println!("Delivery period ended: {scores:?}");
     let _ = game_tx

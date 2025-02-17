@@ -5,8 +5,8 @@ use super::{PlantOutput, PowerPlant, PowerPlantPublicRepr};
 
 #[derive(Debug, Serialize, Clone, Copy)]
 pub struct RenewablePlantPublicRepr {
-    max_power: i64,
-    output: PlantOutput,
+    pub max_power: i64,
+    pub output: PlantOutput,
 }
 pub struct RenewablePlant {
     max_power: i64,
@@ -30,9 +30,10 @@ impl PowerPlant for RenewablePlant {
         }
     }
     fn dispatch(&mut self) -> PlantOutput {
+        let previous_setpoint = self.setpoint;
         self.setpoint = rand::rng().random_range(0..self.max_power);
         PlantOutput {
-            setpoint: self.setpoint as isize,
+            setpoint: previous_setpoint as isize,
             cost: 0,
         }
     }
@@ -66,9 +67,9 @@ mod tests {
         let PlantOutput { setpoint, .. } = plant.program_setpoint(initial_setpoint + 1);
         assert_eq!(setpoint, initial_setpoint);
 
-        // Setpoint changes when dispatched
-        let PlantOutput { setpoint, cost } = plant.dispatch();
-        assert_ne!(setpoint, initial_setpoint);
-        assert_eq!(cost, 0);
+        // Dispatching should return the previous setpoint
+        let previous_value = plant.setpoint;
+        let returned_value = plant.dispatch();
+        assert_eq!(previous_value as isize, returned_value.setpoint);
     }
 }
