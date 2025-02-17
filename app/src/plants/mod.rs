@@ -74,3 +74,21 @@ impl AsRef<str> for PlantId {
         &self.0
     }
 }
+
+#[cfg(test)]
+mod test {
+    use crate::plants::PlantId;
+
+    #[test]
+    fn test_plant_id_from_into_string() {
+        assert_eq!(
+            PlantId::from(String::from("toto")).into_string(),
+            String::from("toto")
+        );
+    }
+
+    #[test]
+    fn test_plant_id_as_ref() {
+        assert_eq!(PlantId::from("toto").as_ref(), "toto");
+    }
+}

@@ -213,6 +213,39 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn test_unknown_error() {
+        let (conn_tx, _) = mpsc::channel(1024);
+        let (games_tx, mut games_rx) = mpsc::channel(1024);
+        let (game_tx, mut game_rx) = mpsc::channel(1024);
+        let (_, game_state_rx) = watch::channel(GameState::Open);
+        let service = GameService::new(&conn_tx, &games_tx);
+
+        // Respond with game context that will error
+        tokio::spawn(async move {
+            let Some(GameRepositoryMessage::GetGame {
+                game_id: _game_id,
+                tx_back,
+            }) = games_rx.recv().await
+            else {
+                unreachable!()
+            };
+            game_rx.close();
+            let _ = tx_back.send(GetGameResponse::Found(GameContext {
+                tx: game_tx,
+                state_rx: game_state_rx,
+            }));
+        });
+
+        // Should return err
+        let res = service
+            .auth_player(&GameId::default(), &PlayerId::default())
+            .await;
+
+        assert!(res.is_err());
+        assert_eq!(res.unwrap_err(), AuthPlayerToGameError::Unknown);
+    }
+
+    #[tokio::test]
     async fn test_auth_player_to_game_happy_path() {
         let (conn_tx, _) = mpsc::channel(1024);
         let (games_tx, mut games_rx) = mpsc::channel(1024);

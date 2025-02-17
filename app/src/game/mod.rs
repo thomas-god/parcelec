@@ -491,6 +491,34 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn test_fails_register_player_game_is_in_post_delivery() {
+        let game = open_game().await;
+
+        // Start the game
+        let player = start_game(game.tx.clone()).await;
+        // End delivery period
+        let _ = game
+            .tx
+            .send(GameMessage::PlayerIsReady(player.clone()))
+            .await;
+
+        // Try to register a new player
+        let (tx, rx) = channel::<RegisterPlayerResponse>();
+        let _ = game
+            .tx
+            .send(GameMessage::RegisterPlayer {
+                name: "toto".to_owned(),
+                tx_back: tx,
+            })
+            .await;
+
+        match rx.await {
+            Ok(RegisterPlayerResponse::GameIsRunning) => {}
+            _ => unreachable!("Should have rejected the request"),
+        };
+    }
+
+    #[tokio::test]
     async fn test_fails_connect_unregistered_player() {
         let game = open_game().await;
 
@@ -693,5 +721,26 @@ mod tests {
             unreachable!("Should have received player's results");
         };
         assert_eq!(target_player, player);
+    }
+}
+
+#[cfg(test)]
+mod test_game_state {
+    use crate::game::GameState;
+
+    #[test]
+    fn test_game_state_serialize() {
+        assert_eq!(
+            serde_json::to_string(&GameState::Open).unwrap(),
+            "{\"type\":\"GameState\",\"state\":\"Open\"}".to_string()
+        );
+        assert_eq!(
+            serde_json::to_string(&GameState::Running).unwrap(),
+            "{\"type\":\"GameState\",\"state\":\"Running\"}".to_string()
+        );
+        assert_eq!(
+            serde_json::to_string(&GameState::PostDelivery).unwrap(),
+            "{\"type\":\"GameState\",\"state\":\"PostDelivery\"}".to_string()
+        );
     }
 }

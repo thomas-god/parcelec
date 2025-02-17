@@ -41,3 +41,21 @@ impl AsRef<str> for PlayerId {
         &self.0
     }
 }
+
+#[cfg(test)]
+mod test {
+    use crate::player::PlayerId;
+
+    #[test]
+    fn test_player_id_from_into_string() {
+        assert_eq!(
+            PlayerId::from(String::from("toto")).into_string(),
+            String::from("toto")
+        );
+    }
+
+    #[test]
+    fn test_player_id_as_ref() {
+        assert_eq!(PlayerId::from("toto").as_ref(), "toto");
+    }
+}

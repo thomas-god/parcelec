@@ -530,6 +530,7 @@ mod tests {
             .await;
 
         // We should not receive an order book snapshot
+
         tokio::select! {
         _ = conn_rx.recv() => {
             unreachable!("Should not have received a message");
@@ -865,5 +866,70 @@ mod tests {
             .await
             .expect("Should have received a list of trades");
         assert_eq!(trades, same_trades);
+    }
+}
+
+#[cfg(test)]
+mod test_order_repr {
+    use chrono::Utc;
+    use uuid::Uuid;
+
+    use crate::{
+        market::{order_book::Bid, OrderRepr},
+        player::PlayerId,
+    };
+
+    use super::{
+        models::Direction,
+        order_book::{Offer, Order},
+    };
+
+    #[test]
+    fn test_order_repr_ownership_from_offer() {
+        let offer = Offer(Order {
+            direction: Direction::Sell,
+            id: Uuid::new_v4().to_string(),
+            owner: PlayerId::from("toto"),
+            price: 10_00,
+            timestamp: Utc::now(),
+            volume: 100,
+        });
+
+        assert!(!OrderRepr::from_offer(&offer, None).owned);
+        assert!(OrderRepr::from_offer(&offer, Some(&PlayerId::from("toto"))).owned);
+        assert!(!OrderRepr::from_offer(&offer, Some(&PlayerId::from("not_toto"))).owned);
+    }
+
+    #[test]
+    fn test_order_repr_ownership_from_bid() {
+        let bid = Bid(Order {
+            direction: Direction::Buy,
+            id: Uuid::new_v4().to_string(),
+            owner: PlayerId::from("toto"),
+            price: 10_00,
+            timestamp: Utc::now(),
+            volume: 100,
+        });
+
+        assert!(!OrderRepr::from_bid(&bid, None).owned);
+        assert!(OrderRepr::from_bid(&bid, Some(&PlayerId::from("toto"))).owned);
+        assert!(!OrderRepr::from_bid(&bid, Some(&PlayerId::from("not_toto"))).owned);
+    }
+}
+
+#[cfg(test)]
+mod test_market_state {
+    use crate::market::MarketState;
+
+    #[test]
+    fn test_game_state_serialize() {
+        assert_eq!(
+            serde_json::to_string(&MarketState::Open).unwrap(),
+            "{\"type\":\"MarketState\",\"state\":\"Open\"}".to_string()
+        );
+        assert_eq!(
+            serde_json::to_string(&MarketState::Closed).unwrap(),
+            "{\"type\":\"MarketState\",\"state\":\"Closed\"}".to_string()
+        );
     }
 }

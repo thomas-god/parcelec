@@ -205,13 +205,13 @@ async fn close_stack(
 
 #[cfg(test)]
 mod tests {
-    use std::collections::HashMap;
+    use std::{collections::HashMap, time::Duration};
 
     use tokio::sync::{mpsc, oneshot};
 
     use crate::{
         game::{
-            delivery_period::{start_delivery_period, DeliveryPeriodId},
+            delivery_period::{start_delivery_period, DeliveryPeriodId, DeliveryPeriodTimers},
             GameMessage,
         },
         market::MarketMessage,
@@ -227,7 +227,10 @@ mod tests {
         let (stack_tx, mut stack_rx) = mpsc::channel(16);
         let stacks_tx = HashMap::from([(PlayerId::from("toto"), stack_tx)]);
         let (_, players_ready_rx) = oneshot::channel();
-        let timers = None;
+        let timers = Some(DeliveryPeriodTimers {
+            market: Duration::from_micros(1),
+            stacks: Duration::from_micros(1),
+        });
 
         tokio::spawn(async move {
             start_delivery_period(

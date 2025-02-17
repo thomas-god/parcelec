@@ -113,7 +113,30 @@ impl GameRepository {
 }
 
 #[cfg(test)]
-mod tests {
+mod test_game_id {
+    use crate::game::game_repository::GameId;
+
+    #[test]
+    fn test_game_id_to_string() {
+        assert_eq!(GameId::from("toto").to_string(), String::from("toto"));
+    }
+
+    #[test]
+    fn test_game_id_from_and_into_string() {
+        assert_eq!(
+            GameId::from(String::from("toto")).into_string(),
+            String::from("toto")
+        );
+    }
+
+    #[test]
+    fn test_game_id_as_ref() {
+        assert_eq!(GameId::from("toto").as_ref(), "toto");
+    }
+}
+
+#[cfg(test)]
+mod tests_game_repository {
     use tokio::sync::{mpsc, oneshot};
 
     use crate::{

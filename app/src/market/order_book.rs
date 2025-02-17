@@ -85,6 +85,7 @@ impl From<OrderRequest> for Order {
     }
 }
 
+/// Order which directin is BUY
 #[derive(Debug)]
 pub struct Bid(pub Order);
 
@@ -119,6 +120,7 @@ impl Ord for Bid {
     }
 }
 
+/// Order which directin is SELL
 #[derive(Debug)]
 pub struct Offer(pub Order);
 
