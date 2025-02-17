@@ -17,6 +17,7 @@ use crate::{
 
 pub mod delivery_period;
 pub mod game_repository;
+pub mod game_service;
 pub mod scores;
 
 #[derive(Debug)]

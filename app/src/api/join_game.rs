@@ -8,9 +8,12 @@ use tower_cookies::{
     Cookie, Cookies,
 };
 
-use crate::game::{
-    game_repository::{GameId, GameRepositoryMessage, GetGameResponse},
-    GameMessage, RegisterPlayerResponse,
+use crate::{
+    game::{
+        game_repository::{GameId, GameRepositoryMessage, GetGameResponse},
+        GameMessage, RegisterPlayerResponse,
+    },
+    models::AuthPlayerToGame,
 };
 
 use super::AppState;
@@ -21,9 +24,9 @@ pub struct JoinGame {
     name: String,
 }
 
-pub async fn join_game(
+pub async fn join_game<GS: AuthPlayerToGame>(
     cookies: Cookies,
-    State(state): State<Arc<AppState>>,
+    State(state): State<Arc<AppState<GS>>>,
     Json(input): Json<JoinGame>,
 ) -> impl IntoResponse {
     println!("{input:?}");

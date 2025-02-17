@@ -13,13 +13,14 @@ use crate::{
         game_repository::{CreateNewGameResponse, GameRepositoryMessage},
         GameMessage, RegisterPlayerResponse,
     },
+    models::AuthPlayerToGame,
 };
 
 use super::AppState;
 
-pub async fn create_tutorial_game(
+pub async fn create_tutorial_game<GS: AuthPlayerToGame>(
     cookies: Cookies,
-    State(state): State<Arc<AppState>>,
+    State(state): State<Arc<AppState<GS>>>,
 ) -> impl IntoResponse {
     // Create a new game
     let (tx_back, rx) = oneshot::channel();

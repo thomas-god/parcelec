@@ -69,6 +69,7 @@ pub enum PlayerMessage {
     },
     DeliveryPeriodResults(PlayerScore),
 }
+#[derive(Debug, Clone)]
 pub struct PlayerConnectionContext {
     pub game_id: GameId,
     pub player_id: PlayerId,
