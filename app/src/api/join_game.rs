@@ -8,12 +8,10 @@ use tower_cookies::{
     Cookie, Cookies,
 };
 
-use crate::{
-    game::{
-        game_repository::{GameId, GameRepositoryMessage, GetGameResponse},
-        GameMessage, RegisterPlayerResponse,
-    },
-    models::AuthPlayerToGame,
+use crate::game::{
+    game_repository::{GameId, GameRepositoryMessage, GetGameResponse},
+    game_service::AuthPlayerToGame,
+    GameMessage, RegisterPlayerResponse,
 };
 
 use super::AppState;

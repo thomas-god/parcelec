@@ -8,7 +8,6 @@ pub mod api;
 pub mod bots;
 pub mod game;
 pub mod market;
-pub mod models;
 pub mod plants;
 pub mod player;
 

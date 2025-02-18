@@ -11,9 +11,9 @@ use crate::{
     bots::start_bots,
     game::{
         game_repository::{CreateNewGameResponse, GameRepositoryMessage},
+        game_service::AuthPlayerToGame,
         GameMessage, RegisterPlayerResponse,
     },
-    models::AuthPlayerToGame,
 };
 
 use super::AppState;

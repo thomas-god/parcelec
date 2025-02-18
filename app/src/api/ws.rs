@@ -11,8 +11,10 @@ use tower_cookies::{
 };
 
 use crate::{
-    game::game_repository::GameId,
-    models::{AuthPlayerToGame, AuthPlayerToGameError},
+    game::{
+        game_repository::GameId,
+        game_service::{AuthPlayerToGame, AuthPlayerToGameError},
+    },
     player::{
         connection::{start_player_connection, PlayerConnectionContext},
         PlayerId,
@@ -90,7 +92,8 @@ async fn handle_socket(socket: WebSocket, context: PlayerConnectionContext) {
 mod tests {
     use crate::{
         api::{build_app, AppState},
-        models::{AuthPlayerToGame, AuthPlayerToGameError},
+        game::game_service::{AuthPlayerToGame, AuthPlayerToGameError},
+        player::connection::PlayerConnectionContext,
     };
     use axum::http::{Request, StatusCode};
     use std::{
@@ -103,20 +106,14 @@ mod tests {
 
     #[derive(Debug, Clone)]
     struct MockedGameService {
-        res: Result<
-            crate::player::connection::PlayerConnectionContext,
-            crate::models::AuthPlayerToGameError,
-        >,
+        res: Result<PlayerConnectionContext, AuthPlayerToGameError>,
     }
     impl AuthPlayerToGame for MockedGameService {
         async fn auth_player(
             &self,
             _game_id: &crate::game::game_repository::GameId,
             _player_id: &crate::player::PlayerId,
-        ) -> Result<
-            crate::player::connection::PlayerConnectionContext,
-            crate::models::AuthPlayerToGameError,
-        > {
+        ) -> Result<PlayerConnectionContext, AuthPlayerToGameError> {
             self.res.clone()
         }
     }

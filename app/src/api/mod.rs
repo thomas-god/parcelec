@@ -16,7 +16,7 @@ use tutorial::create_tutorial_game;
 use ws::handle_ws_connection;
 
 use crate::{
-    game::game_repository::GameRepositoryMessage, models::AuthPlayerToGame,
+    game::{game_repository::GameRepositoryMessage, game_service::AuthPlayerToGame},
     player::repository::ConnectionRepositoryMessage,
 };
 

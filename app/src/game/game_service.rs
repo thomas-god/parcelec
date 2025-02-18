@@ -1,16 +1,30 @@
 use tokio::sync::{mpsc, oneshot};
 
-use crate::{
-    models::{AuthPlayerToGame, AuthPlayerToGameError},
-    player::{
-        connection::PlayerConnectionContext, repository::ConnectionRepositoryMessage, PlayerId,
-    },
+use crate::player::{
+    connection::PlayerConnectionContext, repository::ConnectionRepositoryMessage, PlayerId,
 };
 
 use super::{
     game_repository::{GameId, GameRepositoryMessage, GetGameResponse},
     ConnectPlayerResponse, GameMessage,
 };
+use std::future::Future;
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum AuthPlayerToGameError {
+    NoGameFound,
+    NoPlayerFound,
+    NoStackFound,
+    Unknown,
+}
+
+pub trait AuthPlayerToGame: Clone + Send + Sync + 'static {
+    fn auth_player(
+        &self,
+        game_id: &GameId,
+        player_id: &PlayerId,
+    ) -> impl Future<Output = Result<PlayerConnectionContext, AuthPlayerToGameError>> + Send;
+}
 
 #[derive(Debug, Clone)]
 pub struct GameService {
@@ -97,11 +111,10 @@ mod tests {
     use crate::{
         game::{
             game_repository::{GameId, GameRepositoryMessage, GetGameResponse},
-            game_service::GameService,
+            game_service::{AuthPlayerToGame, AuthPlayerToGameError, GameService},
             ConnectPlayerResponse, GameContext, GameMessage, GameState,
         },
         market::{MarketContext, MarketState},
-        models::{AuthPlayerToGame, AuthPlayerToGameError},
         plants::stack::{StackContext, StackState},
         player::{connection::PlayerConnectionContext, PlayerId},
     };
