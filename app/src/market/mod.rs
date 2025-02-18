@@ -50,8 +50,17 @@ impl OrderRepr {
 }
 
 #[derive(Debug)]
+pub struct OBS {
+    pub bids: Vec<OrderRepr>,
+    pub offers: Vec<OrderRepr>,
+}
+
+#[derive(Debug)]
 pub enum MarketMessage {
-    NewPlayerConnection(PlayerId),
+    NewPlayerConnection {
+        player_id: PlayerId,
+        tx_back: oneshot::Sender<(Vec<TradeLeg>, OBS)>,
+    },
     OpenMarket(DeliveryPeriodId),
     CloseMarket {
         period_id: DeliveryPeriodId,
@@ -140,7 +149,13 @@ impl Market {
     pub async fn process(&mut self) {
         while let Some(message) = self.rx.recv().await {
             match (&self.state, message) {
-                (_, MarketMessage::NewPlayerConnection(player_id)) => {
+                (
+                    _,
+                    MarketMessage::NewPlayerConnection {
+                        player_id,
+                        tx_back: _,
+                    },
+                ) => {
                     println!("New player: {player_id:?}");
                     self.players.push(player_id.clone());
                     self.send_order_book_snapshot_to_player(&player_id).await;
@@ -297,8 +312,12 @@ mod tests {
         rx: &mut mpsc::Receiver<ConnectionRepositoryMessage>,
     ) -> PlayerId {
         let player_id = PlayerId::default();
+        let (tx, _) = oneshot::channel();
         let _ = market
-            .send(MarketMessage::NewPlayerConnection(player_id.clone()))
+            .send(MarketMessage::NewPlayerConnection {
+                player_id: player_id.clone(),
+                tx_back: tx,
+            })
             .await;
         // Flush 2 first messages (initial OBS + trades list)
         let _ = rx.recv().await;
@@ -313,9 +332,13 @@ mod tests {
         let market = start_market_actor(&game_id, conn_tx);
 
         let player_id = PlayerId::default();
+        let (tx, _) = oneshot::channel();
         let _ = market
             .tx
-            .send(MarketMessage::NewPlayerConnection(player_id.clone()))
+            .send(MarketMessage::NewPlayerConnection {
+                player_id: player_id.clone(),
+                tx_back: tx,
+            })
             .await;
 
         // Initial OBS

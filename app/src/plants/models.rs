@@ -126,10 +126,15 @@ mod tests {
 
     #[tokio::test]
     async fn test_open_stack() {
-        let (tx, _) = mpsc::channel(128);
+        let (tx, mut rx) = mpsc::channel(128);
         let service = Service::new(tx);
 
         let _ = service.open_stack(DeliveryPeriodId::from(0)).await;
+
+        let Some(StackMessage::OpenStack(delivery_period)) = rx.recv().await else {
+            unreachable!();
+        };
+        assert_eq!(delivery_period, DeliveryPeriodId::from(0));
     }
 
     #[tokio::test]

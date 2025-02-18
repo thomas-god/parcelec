@@ -1,4 +1,7 @@
-use tokio::sync::mpsc::{channel, Receiver, Sender};
+use tokio::sync::{
+    mpsc::{channel, Receiver, Sender},
+    oneshot,
+};
 
 use crate::{
     market::{models::Direction, order_book::OrderRequest, MarketMessage},
@@ -24,10 +27,14 @@ impl InitialOrdersBot {
     }
 
     pub async fn start(&mut self) {
+        let (tx, _) = oneshot::channel();
         if self
             .market_tx
             .clone()
-            .send(MarketMessage::NewPlayerConnection(self.id.clone()))
+            .send(MarketMessage::NewPlayerConnection {
+                player_id: self.id.clone(),
+                tx_back: tx,
+            })
             .await
             .is_err()
         {

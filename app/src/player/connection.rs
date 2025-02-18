@@ -10,7 +10,7 @@ use tokio::{
     select,
     sync::{
         mpsc::{self, channel, Receiver, Sender},
-        watch,
+        oneshot, watch,
     },
 };
 use uuid::Uuid;
@@ -141,12 +141,14 @@ async fn register_connection(
             },
         ))
         .await;
+    let (tx, _) = oneshot::channel();
     let _ = context
         .market
         .tx
-        .send(MarketMessage::NewPlayerConnection(
-            context.player_id.clone(),
-        ))
+        .send(MarketMessage::NewPlayerConnection {
+            player_id: context.player_id.clone(),
+            tx_back: tx,
+        })
         .await;
     let _ = context
         .stack

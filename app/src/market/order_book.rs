@@ -54,7 +54,7 @@ pub struct TradeLeg {
     pub execution_time: DateTime<Utc>,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone, PartialEq)]
 pub struct OrderRequest {
     pub direction: Direction,
     pub price: isize,
