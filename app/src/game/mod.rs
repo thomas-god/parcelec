@@ -10,7 +10,7 @@ use tokio::sync::{
 };
 
 use crate::{
-    market::{Market, MarketContext, MarketMessage, MarketState},
+    market::{models::Service as MarketService, Market, MarketContext, MarketMessage, MarketState},
     plants::{
         models::Service as StackService,
         stack::{StackActor, StackContext, StackState},
@@ -219,7 +219,7 @@ impl Game {
             }
             let delivery_period = self.delivery_period;
             let game_tx = self.tx.clone();
-            let market_tx = self.market_context.tx.clone();
+            let market_service = MarketService::new(self.market_context.tx.clone());
             let stacks_tx = self
                 .stacks_context
                 .iter()
@@ -231,7 +231,7 @@ impl Game {
                 start_delivery_period(
                     delivery_period,
                     game_tx,
-                    market_tx,
+                    market_service,
                     stacks_tx,
                     results_rx,
                     timers,

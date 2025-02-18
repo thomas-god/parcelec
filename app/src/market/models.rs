@@ -99,6 +99,33 @@ impl MarketService for Service {
 }
 
 #[cfg(test)]
+mockall::mock! {
+    pub MarketService {}
+
+    impl MarketService for MarketService {
+        fn open_market(&self, delivery_period: DeliveryPeriodId) -> impl Future<Output = ()> + Send;
+
+        fn close_market(
+            &self,
+            delivery_period: DeliveryPeriodId,
+        ) -> impl Future<Output = Vec<Trade>> + Send;
+
+        fn register_player(
+            &self,
+            player: PlayerId,
+        ) -> impl Future<Output = (Vec<TradeLeg>, OBS)> + Send;
+
+        fn new_order(&self, request: OrderRequest) -> impl Future<Output = ()> + Send;
+
+        fn delete_order(&self, order_id: String) -> impl Future<Output = ()> + Send;
+    }
+
+    impl Clone for MarketService {
+        fn clone(&self) -> Self;
+    }
+}
+
+#[cfg(test)]
 mod tests {
     use tokio::sync::mpsc;
 
