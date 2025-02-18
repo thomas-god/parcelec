@@ -14,6 +14,8 @@ pub mod models;
 pub mod renewable;
 pub mod stack;
 
+pub use models::{Stack, StackService};
+
 #[derive(Debug, Serialize, Clone, Copy)]
 #[serde(tag = "type")]
 pub enum PowerPlantPublicRepr {

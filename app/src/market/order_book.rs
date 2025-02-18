@@ -6,7 +6,7 @@ use uuid::Uuid;
 
 use crate::player::PlayerId;
 
-use super::models::Direction;
+use super::Direction;
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct Trade {

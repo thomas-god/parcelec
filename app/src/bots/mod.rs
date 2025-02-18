@@ -1,7 +1,10 @@
 use initial_orders::InitialOrdersBot;
 use tokio::sync::oneshot;
 
-use crate::game::{GameContext, GameMessage, GameState};
+use crate::{
+    game::{GameContext, GameMessage, GameState},
+    market::MarketService,
+};
 
 pub mod initial_orders;
 
@@ -17,7 +20,8 @@ pub async fn start_bots(mut game: GameContext) {
         return;
     };
 
-    let mut initial_orders_bots = InitialOrdersBot::new(market);
+    let market_service = MarketService::new(market);
+    let mut initial_orders_bots = InitialOrdersBot::new(market_service);
 
     tokio::spawn(async move { initial_orders_bots.start().await });
 }

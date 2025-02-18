@@ -18,9 +18,8 @@ use uuid::Uuid;
 use crate::{
     game::{game_repository::GameId, scores::PlayerScore, GameContext, GameMessage, GameState},
     market::{
-        models::Direction,
         order_book::{OrderRequest as MarketOrderRequest, TradeLeg},
-        MarketContext, MarketMessage, MarketState, OrderRepr,
+        Direction, MarketContext, MarketMessage, MarketState, OrderRepr,
     },
     plants::{
         stack::{ProgramPlant, StackContext, StackMessage, StackState},

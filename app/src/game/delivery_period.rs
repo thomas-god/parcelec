@@ -10,8 +10,8 @@ use tokio::{
 
 use crate::{
     game::scores::compute_players_scores,
-    market::{models::MarketService, order_book::Trade},
-    plants::{models::StackService, PlantId, PlantOutput},
+    market::{order_book::Trade, Market},
+    plants::{models::Stack, PlantId, PlantOutput},
     player::PlayerId,
 };
 
@@ -57,8 +57,8 @@ pub async fn start_delivery_period<StkS, MS>(
     players_ready_rx: oneshot::Receiver<()>,
     timers: Option<DeliveryPeriodTimers>,
 ) where
-    StkS: StackService,
-    MS: MarketService,
+    StkS: Stack,
+    MS: Market,
 {
     // First, open market and stacks
     let market_service_cloned = market_service.clone();
@@ -134,7 +134,7 @@ async fn close_market_future<MS>(
     duration: Duration,
 ) -> Vec<Trade>
 where
-    MS: MarketService,
+    MS: Market,
 {
     sleep(duration).await;
     market.close_market(period_id).await
@@ -142,14 +142,14 @@ where
 
 async fn open_market<MS>(market: MS, period_id: DeliveryPeriodId)
 where
-    MS: MarketService,
+    MS: Market,
 {
     let _ = market.open_market(period_id).await;
 }
 
 async fn open_stacks<StkS>(stacks: HashMap<PlayerId, StkS>, period_id: DeliveryPeriodId)
 where
-    StkS: StackService,
+    StkS: Stack,
 {
     join_all(stacks.values().map(|stack| stack.open_stack(period_id))).await;
 }
@@ -160,7 +160,7 @@ async fn close_stacks_future<StkS>(
     duration: Duration,
 ) -> HashMap<PlayerId, HashMap<PlantId, PlantOutput>>
 where
-    StkS: StackService,
+    StkS: Stack,
 {
     sleep(duration).await;
     close_stacks(stacks, period_id).await
@@ -171,7 +171,7 @@ async fn close_stacks<StkS>(
     period_id: DeliveryPeriodId,
 ) -> HashMap<PlayerId, HashMap<PlantId, PlantOutput>>
 where
-    StkS: StackService,
+    StkS: Stack,
 {
     join_all(
         stacks
@@ -189,7 +189,7 @@ async fn close_stack<StkS>(
     stack: &StkS,
 ) -> (PlayerId, HashMap<PlantId, PlantOutput>)
 where
-    StkS: StackService,
+    StkS: Stack,
 {
     let plant_outputs = stack.close_stack(period_id).await.unwrap_or(HashMap::new());
 

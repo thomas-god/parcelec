@@ -16,36 +16,50 @@ pub enum Direction {
     Sell,
 }
 
-pub trait MarketService: Clone + Send + Sync + 'static {
+/// [Market] is the public API for the market domain of Parcelec. The market domain is
+/// responsible for receiving and matching orders from players, as long a providing on update and
+/// on demande snapshots of the order book (the list of currents orders).
+pub trait Market: Clone + Send + Sync + 'static {
+    /// Open the market, allowing players to send orders to the market.
     fn open_market(&self, delivery_period: DeliveryPeriodId) -> impl Future<Output = ()> + Send;
 
+    /// Close the market, deleting outstanding orders and returning a list of the trades from the
+    /// closing delivery period. Trying to close a delivery period already closed will have no side
+    /// effect and will return the trade list for the closed delivery period.
     fn close_market(
         &self,
         delivery_period: DeliveryPeriodId,
     ) -> impl Future<Output = Vec<Trade>> + Send;
 
+    /// Register a player to the market, sending an initial order book snapshot and a list of the
+    /// player's trade for the current delivery period. Player can register even if the market is
+    /// closed.
     fn register_player(
         &self,
         player: PlayerId,
     ) -> impl Future<Output = (Vec<TradeLeg>, OBS)> + Send;
 
+    /// Post a new order for the current delivery period. If the market is closed the request is
+    /// ignored.
     fn new_order(&self, request: OrderRequest) -> impl Future<Output = ()> + Send;
 
+    /// Delete an order from the market. Silently fails if the order does not exist or if the market
+    /// is closed.
     fn delete_order(&self, order_id: String) -> impl Future<Output = ()> + Send;
 }
 
 #[derive(Debug, Clone)]
-pub struct Service {
+pub struct MarketService {
     tx: mpsc::Sender<MarketMessage>,
 }
 
-impl Service {
-    pub fn new(tx: mpsc::Sender<MarketMessage>) -> Service {
-        Service { tx }
+impl MarketService {
+    pub fn new(tx: mpsc::Sender<MarketMessage>) -> MarketService {
+        MarketService { tx }
     }
 }
 
-impl MarketService for Service {
+impl Market for MarketService {
     async fn open_market(&self, delivery_period: DeliveryPeriodId) {
         let _ = self
             .tx
@@ -102,7 +116,7 @@ impl MarketService for Service {
 mockall::mock! {
     pub MarketService {}
 
-    impl MarketService for MarketService {
+    impl Market for MarketService {
         fn open_market(&self, delivery_period: DeliveryPeriodId) -> impl Future<Output = ()> + Send;
 
         fn close_market(
@@ -132,19 +146,19 @@ mod tests {
     use crate::{
         game::delivery_period::DeliveryPeriodId,
         market::{
-            models::{Direction, MarketService, OBS},
+            models::{Direction, Market, OBS},
             order_book::OrderRequest,
             MarketMessage,
         },
         player::PlayerId,
     };
 
-    use super::Service;
+    use super::MarketService;
 
     #[tokio::test]
     async fn test_open_market() {
         let (tx, mut rx) = mpsc::channel(16);
-        let service = Service::new(tx);
+        let service = MarketService::new(tx);
 
         let _ = service.open_market(DeliveryPeriodId::from(0)).await;
 
@@ -157,7 +171,7 @@ mod tests {
     #[tokio::test]
     async fn test_close_market_ok() {
         let (tx, mut rx) = mpsc::channel(128);
-        let service = Service::new(tx);
+        let service = MarketService::new(tx);
 
         tokio::spawn(async move {
             let Some(MarketMessage::CloseMarket {
@@ -176,7 +190,7 @@ mod tests {
     #[tokio::test]
     async fn test_close_market_err() {
         let (tx, mut rx) = mpsc::channel(128);
-        let service = Service::new(tx);
+        let service = MarketService::new(tx);
 
         // Close receiving end to simulate err
         rx.close();
@@ -188,7 +202,7 @@ mod tests {
     #[tokio::test]
     async fn test_register_player_ok() {
         let (tx, mut rx) = mpsc::channel(128);
-        let service = Service::new(tx);
+        let service = MarketService::new(tx);
 
         tokio::spawn(async move {
             let Some(MarketMessage::NewPlayerConnection {
@@ -213,7 +227,7 @@ mod tests {
     #[tokio::test]
     async fn test_register_player_err() {
         let (tx, mut rx) = mpsc::channel(128);
-        let service = Service::new(tx);
+        let service = MarketService::new(tx);
 
         // Close receiving end to simulate err
         rx.close();
@@ -228,7 +242,7 @@ mod tests {
     #[tokio::test]
     async fn test_new_order() {
         let (tx, mut rx) = mpsc::channel(16);
-        let service = Service::new(tx);
+        let service = MarketService::new(tx);
         let request = OrderRequest {
             direction: Direction::Buy,
             owner: PlayerId::default(),
@@ -247,7 +261,7 @@ mod tests {
     #[tokio::test]
     async fn test_delete_order() {
         let (tx, mut rx) = mpsc::channel(16);
-        let service = Service::new(tx);
+        let service = MarketService::new(tx);
         let order_id = String::from("toto");
 
         let _ = service.delete_order(order_id).await;

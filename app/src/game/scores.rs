@@ -4,8 +4,8 @@ use serde::Serialize;
 
 use crate::{
     market::{
-        models::Direction,
         order_book::{Trade, TradeLeg},
+        Direction,
     },
     plants::{PlantId, PlantOutput},
     player::PlayerId,

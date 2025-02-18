@@ -2,7 +2,6 @@ use std::{collections::HashMap, fmt::Debug};
 
 use chrono::{DateTime, Utc};
 use futures_util::future::join_all;
-use models::Direction;
 use serde::{ser::SerializeStruct, Serialize};
 use tokio::sync::{mpsc, oneshot, watch};
 
@@ -15,6 +14,8 @@ use crate::{
 
 pub mod models;
 pub mod order_book;
+
+pub use models::{Direction, Market, MarketService};
 
 #[derive(Debug, Clone, Serialize, PartialEq)]
 pub struct OrderRepr {
@@ -102,7 +103,7 @@ pub struct MarketContext {
     pub state_rx: watch::Receiver<MarketState>,
 }
 
-pub struct Market {
+pub struct MarketActor {
     game_id: GameId,
     delivery_period: DeliveryPeriodId,
     state: MarketState,
@@ -115,17 +116,17 @@ pub struct Market {
     past_trades: HashMap<DeliveryPeriodId, Vec<Trade>>,
 }
 
-impl Market {
+impl MarketActor {
     pub fn new(
         game_id: GameId,
         state: MarketState,
         delivery_period: DeliveryPeriodId,
         players_connections: mpsc::Sender<ConnectionRepositoryMessage>,
-    ) -> Market {
+    ) -> MarketActor {
         let (state_tx, _) = watch::channel(state);
         let (tx, rx) = mpsc::channel::<MarketMessage>(128);
 
-        Market {
+        MarketActor {
             game_id,
             state,
             delivery_period,
@@ -288,13 +289,13 @@ mod tests {
         player::{repository::ConnectionRepositoryMessage, PlayerId},
     };
 
-    use super::{Market, MarketContext, MarketMessage, PlayerMessage};
+    use super::{MarketActor, MarketContext, MarketMessage, PlayerMessage};
 
     fn start_market_actor(
         game_id: &GameId,
         connections: mpsc::Sender<ConnectionRepositoryMessage>,
     ) -> MarketContext {
-        let mut market = Market::new(
+        let mut market = MarketActor::new(
             game_id.clone(),
             MarketState::Open,
             DeliveryPeriodId::from(0),
@@ -529,7 +530,7 @@ mod tests {
     async fn test_closed_market_does_not_process_order_request() {
         let game_id = GameId::default();
         let (conn_tx, mut conn_rx) = mpsc::channel(16);
-        let mut market = Market::new(
+        let mut market = MarketActor::new(
             game_id,
             MarketState::Closed,
             DeliveryPeriodId::from(0),
@@ -606,7 +607,7 @@ mod tests {
     async fn test_register_player_during_market_closed() {
         let game_id = GameId::default();
         let (conn_tx, mut conn_rx) = mpsc::channel(16);
-        let mut market = Market::new(
+        let mut market = MarketActor::new(
             game_id,
             MarketState::Closed,
             DeliveryPeriodId::from(0),
@@ -722,7 +723,7 @@ mod tests {
     async fn test_try_closing_market_wrong_period_id_does_not_close_it() {
         let game_id = GameId::default();
         let (conn_tx, _) = mpsc::channel(16);
-        let mut market = Market::new(
+        let mut market = MarketActor::new(
             game_id,
             MarketState::Open,
             DeliveryPeriodId::from(1),
@@ -765,7 +766,7 @@ mod tests {
     async fn test_opening_market_wrong_period_id_does_not_open_it() {
         let game_id = GameId::default();
         let (conn_tx, _) = mpsc::channel(16);
-        let mut market = Market::new(
+        let mut market = MarketActor::new(
             game_id,
             MarketState::Closed,
             DeliveryPeriodId::from(1),
@@ -800,7 +801,7 @@ mod tests {
     async fn test_open_market_then_close_next_period() {
         let game_id = GameId::default();
         let (conn_tx, _) = mpsc::channel(16);
-        let mut market = Market::new(
+        let mut market = MarketActor::new(
             game_id,
             MarketState::Closed,
             DeliveryPeriodId::from(1),

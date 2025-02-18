@@ -10,9 +10,9 @@ use tokio::sync::{
 };
 
 use crate::{
-    market::{models::Service as MarketService, Market, MarketContext, MarketMessage, MarketState},
+    market::{MarketActor, MarketContext, MarketMessage, MarketService, MarketState},
     plants::{
-        models::Service as StackService,
+        models::StackService,
         stack::{StackActor, StackContext, StackState},
     },
     player::{repository::ConnectionRepositoryMessage, PlayerId},
@@ -122,7 +122,7 @@ impl Game {
         players_connections: mpsc::Sender<ConnectionRepositoryMessage>,
     ) -> Game {
         let delivery_period = DeliveryPeriodId::from(0);
-        let mut market = Market::new(
+        let mut market = MarketActor::new(
             game_id.clone(),
             MarketState::Closed,
             delivery_period,

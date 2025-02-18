@@ -1,46 +1,30 @@
-use tokio::sync::{
-    mpsc::{channel, Receiver, Sender},
-    oneshot,
-};
+use tokio::sync::mpsc::{channel, Receiver};
 
 use crate::{
-    market::{models::Direction, order_book::OrderRequest, MarketMessage},
+    market::{order_book::OrderRequest, Direction, Market},
     player::{connection::PlayerMessage, PlayerId},
 };
 
-pub struct InitialOrdersBot {
+pub struct InitialOrdersBot<MS: Market> {
     id: PlayerId,
-    market_tx: Sender<MarketMessage>,
+    market: MS,
     rx: Receiver<PlayerMessage>,
 }
 
-impl InitialOrdersBot {
-    pub fn new(market_tx: Sender<MarketMessage>) -> InitialOrdersBot {
+impl<MS: Market> InitialOrdersBot<MS> {
+    pub fn new(market: MS) -> InitialOrdersBot<MS> {
         let bot_id = PlayerId::default();
         let (_, rx) = channel(16);
 
         InitialOrdersBot {
             id: bot_id,
-            market_tx,
+            market,
             rx,
         }
     }
 
     pub async fn start(&mut self) {
-        let (tx, _) = oneshot::channel();
-        if self
-            .market_tx
-            .clone()
-            .send(MarketMessage::NewPlayerConnection {
-                player_id: self.id.clone(),
-                tx_back: tx,
-            })
-            .await
-            .is_err()
-        {
-            println!("Unable to connect bot to market");
-            return;
-        }
+        let _ = self.market.register_player(self.id.clone()).await;
 
         self.send_orders().await;
 
@@ -50,26 +34,21 @@ impl InitialOrdersBot {
     }
 
     async fn send_orders(&self) {
-        let _ = self
-            .market_tx
-            .clone()
-            .send(MarketMessage::OrderRequest(OrderRequest {
+        self.market
+            .new_order(OrderRequest {
                 direction: Direction::Buy,
                 price: 20_00,
                 volume: 250,
                 owner: self.id.clone(),
-            }))
+            })
             .await;
-
-        let _ = self
-            .market_tx
-            .clone()
-            .send(MarketMessage::OrderRequest(OrderRequest {
+        self.market
+            .new_order(OrderRequest {
                 direction: Direction::Sell,
                 price: 90_00,
                 volume: 250,
                 owner: self.id.clone(),
-            }))
+            })
             .await;
     }
 }

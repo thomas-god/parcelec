@@ -14,37 +14,45 @@ pub struct CloseStackError(DeliveryPeriodId);
 #[derive(Debug)]
 pub struct GetSnashotError;
 
-pub trait StackService: Clone + Send + Sync + 'static {
+/// [Stack] is the public API of Parcelec power plants/consumption domain. A stack refers to the
+/// set of power plants and consumers belonging to a player. A player can program power setpoints
+/// on its plants to try to match energy consumption and production.
+pub trait Stack: Clone + Send + Sync + 'static {
     /// Open the stack so that its plants can be programmed.
     fn open_stack(&self, delivery_period: DeliveryPeriodId) -> impl Future<Output = ()> + Send;
 
-    /// Close the stack and disptach its plants based on their last setpoints
+    /// Close the stack and disptach its plants based on their last setpoints. Return a map of each
+    /// stack's plant output (power and cost) for the delivery period. When trying to close an already
+    /// closed stack, there will be no side effects and the maps of plants outptus for that delivery
+    /// period will be returned.
     fn close_stack(
         &self,
         delivery_period: DeliveryPeriodId,
     ) -> impl Future<Output = Result<HashMap<PlantId, PlantOutput>, CloseStackError>> + Send;
 
-    /// Program a setpoint on a power plant of the stack
+    /// Program a setpoint on a power plant of the stack. Each plant can be programmed any number of
+    /// times a player wants. The last setpoint will be used when closing the stack for the delivery
+    /// period.
     fn program_setpoint(&self, plant: PlantId, setpoint: isize) -> impl Future<Output = ()> + Send;
 
-    /// Get a snapshot of the stack's power plant current setpoint and cost
+    /// Get a snapshot of the stack's power plants current setpoint and cost.
     fn get_snapshot(
         &self,
     ) -> impl Future<Output = Result<HashMap<PlantId, PowerPlantPublicRepr>, GetSnashotError>> + Send;
 }
 
 #[derive(Debug, Clone)]
-pub struct Service {
+pub struct StackService {
     tx: mpsc::Sender<StackMessage>,
 }
 
-impl Service {
-    pub fn new(tx: mpsc::Sender<StackMessage>) -> Service {
-        Service { tx }
+impl StackService {
+    pub fn new(tx: mpsc::Sender<StackMessage>) -> StackService {
+        StackService { tx }
     }
 }
 
-impl StackService for Service {
+impl Stack for StackService {
     async fn open_stack(&self, delivery_period: DeliveryPeriodId) {
         let _ = self.tx.send(StackMessage::OpenStack(delivery_period)).await;
     }
@@ -89,7 +97,7 @@ impl StackService for Service {
 mockall::mock! {
     pub StackService {}
 
-    impl StackService for StackService {
+    impl Stack for StackService {
         fn open_stack(&self, delivery_period: DeliveryPeriodId) -> impl Future<Output = ()> + Send;
 
         fn close_stack(
@@ -118,7 +126,7 @@ mod tests {
     use crate::{
         game::delivery_period::DeliveryPeriodId,
         plants::{
-            models::{Service, StackService},
+            models::{Stack, StackService},
             stack::StackMessage,
             PlantId,
         },
@@ -127,7 +135,7 @@ mod tests {
     #[tokio::test]
     async fn test_open_stack() {
         let (tx, mut rx) = mpsc::channel(128);
-        let service = Service::new(tx);
+        let service = StackService::new(tx);
 
         let _ = service.open_stack(DeliveryPeriodId::from(0)).await;
 
@@ -140,7 +148,7 @@ mod tests {
     #[tokio::test]
     async fn test_close_stack_ok() {
         let (tx, mut rx) = mpsc::channel(128);
-        let service = Service::new(tx);
+        let service = StackService::new(tx);
 
         tokio::spawn(async move {
             let Some(StackMessage::CloseStack {
@@ -161,7 +169,7 @@ mod tests {
     #[tokio::test]
     async fn test_close_stack_err() {
         let (tx, mut rx) = mpsc::channel(128);
-        let service = Service::new(tx);
+        let service = StackService::new(tx);
 
         // Close receiving end to simulate err
         rx.close();
@@ -173,7 +181,7 @@ mod tests {
     #[tokio::test]
     async fn test_get_snapshot_ok() {
         let (tx, mut rx) = mpsc::channel(128);
-        let service = Service::new(tx);
+        let service = StackService::new(tx);
 
         tokio::spawn(async move {
             let Some(StackMessage::GetSnapshot(tx_back)) = rx.recv().await else {
@@ -190,7 +198,7 @@ mod tests {
     #[tokio::test]
     async fn test_get_snapshot_err() {
         let (tx, mut rx) = mpsc::channel(128);
-        let service = Service::new(tx);
+        let service = StackService::new(tx);
 
         // Close receiving end to simulate err
         rx.close();
@@ -202,7 +210,7 @@ mod tests {
     #[tokio::test]
     async fn test_program_setpoint() {
         let (tx, _) = mpsc::channel(128);
-        let service = Service::new(tx);
+        let service = StackService::new(tx);
 
         let _ = service.program_setpoint(PlantId::default(), 0).await;
     }
