@@ -11,7 +11,7 @@ use tokio::{
 use crate::{
     game::scores::compute_players_scores,
     market::{order_book::Trade, MarketMessage},
-    plants::{stack::StackMessage, PlantId, PlantOutput},
+    plants::{models::StackService, PlantId, PlantOutput},
     player::PlayerId,
 };
 
@@ -49,24 +49,26 @@ pub struct DeliveryPeriodResults {
     pub players_scores: HashMap<PlayerId, PlayerScore>,
 }
 
-pub async fn start_delivery_period(
+pub async fn start_delivery_period<StkS>(
     period_id: DeliveryPeriodId,
     game_tx: mpsc::Sender<GameMessage>,
     market_tx: mpsc::Sender<MarketMessage>,
-    stacks_tx: HashMap<PlayerId, mpsc::Sender<StackMessage>>,
+    stack_services: HashMap<PlayerId, StkS>,
     players_ready_rx: oneshot::Receiver<()>,
     timers: Option<DeliveryPeriodTimers>,
-) {
+) where
+    StkS: StackService,
+{
     // First, open market and stacks
     let market_tx_cloned = market_tx.clone();
     let previous_period = period_id.previous();
     let open_market =
         tokio::spawn(async move { open_market(market_tx_cloned, previous_period).await });
 
-    let stacks_tx_cloned = stacks_tx.clone();
+    let stack_services_cloned = stack_services.clone();
     let previous_period = period_id.previous();
     let open_stacks =
-        tokio::spawn(async move { open_stacks(stacks_tx_cloned, previous_period).await });
+        tokio::spawn(async move { open_stacks(stack_services_cloned, previous_period).await });
 
     let _ = open_market.await;
     let _ = open_stacks.await;
@@ -77,24 +79,23 @@ pub async fn start_delivery_period(
         // Close market and stacks when time has elapsed
         let current_period = period_id;
         let market_tx_cloned = market_tx.clone();
-        let stacks_tx_cloned = stacks_tx.clone();
+        let stack_services_cloned = stack_services.clone();
         set.spawn(async move {
             join!(
                 close_market_future(market_tx_cloned, current_period, timers.market),
-                close_stacks_future(stacks_tx_cloned, current_period, timers.stacks)
+                close_stacks_future(stack_services_cloned, current_period, timers.stacks)
             )
         });
     }
 
     // Close market and stacks if all players are ready
     let market_tx_cloned = market_tx.clone();
-    let stacks_tx_cloned = stacks_tx.clone();
     set.spawn(async move {
         let _ = players_ready_rx.await;
         println!("All players ready, closing delivery period early");
         join!(
             close_market(market_tx_cloned, period_id),
-            close_stacks(stacks_tx_cloned, period_id)
+            close_stacks(stack_services, period_id)
         )
     });
 
@@ -152,53 +153,51 @@ async fn open_market(market_tx: mpsc::Sender<MarketMessage>, period_id: Delivery
     let _ = market_tx.send(MarketMessage::OpenMarket(period_id)).await;
 }
 
-async fn open_stacks(
-    stacks_tx: HashMap<PlayerId, mpsc::Sender<StackMessage>>,
-    period_id: DeliveryPeriodId,
-) {
-    join_all(
-        stacks_tx
-            .values()
-            .map(|stack_tx| stack_tx.send(StackMessage::OpenStack(period_id))),
-    )
-    .await;
+async fn open_stacks<StkS>(stacks: HashMap<PlayerId, StkS>, period_id: DeliveryPeriodId)
+where
+    StkS: StackService,
+{
+    join_all(stacks.values().map(|stack| stack.open_stack(period_id))).await;
 }
 
-async fn close_stacks_future(
-    stacks_tx: HashMap<PlayerId, mpsc::Sender<StackMessage>>,
+async fn close_stacks_future<StkS>(
+    stacks: HashMap<PlayerId, StkS>,
     period_id: DeliveryPeriodId,
     duration: Duration,
-) -> HashMap<PlayerId, HashMap<PlantId, PlantOutput>> {
+) -> HashMap<PlayerId, HashMap<PlantId, PlantOutput>>
+where
+    StkS: StackService,
+{
     sleep(duration).await;
-    close_stacks(stacks_tx, period_id).await
+    close_stacks(stacks, period_id).await
 }
 
-async fn close_stacks(
-    stacks_tx: HashMap<PlayerId, mpsc::Sender<StackMessage>>,
+async fn close_stacks<StkS>(
+    stacks: HashMap<PlayerId, StkS>,
     period_id: DeliveryPeriodId,
-) -> HashMap<PlayerId, HashMap<PlantId, PlantOutput>> {
+) -> HashMap<PlayerId, HashMap<PlantId, PlantOutput>>
+where
+    StkS: StackService,
+{
     join_all(
-        stacks_tx
+        stacks
             .iter()
-            .map(|(player_id, stack_tx)| close_stack(player_id, period_id, stack_tx.clone())),
+            .map(|(player_id, stack)| close_stack(player_id, period_id, stack)),
     )
     .await
     .into_iter()
     .collect()
 }
 
-async fn close_stack(
+async fn close_stack<StkS>(
     player_id: &PlayerId,
     period_id: DeliveryPeriodId,
-    stack: mpsc::Sender<StackMessage>,
-) -> (PlayerId, HashMap<PlantId, PlantOutput>) {
-    let (tx_back, rx) = oneshot::channel();
-
-    let _ = stack
-        .send(StackMessage::CloseStack { tx_back, period_id })
-        .await;
-
-    let plant_outputs = rx.await.unwrap();
+    stack: &StkS,
+) -> (PlayerId, HashMap<PlantId, PlantOutput>)
+where
+    StkS: StackService,
+{
+    let plant_outputs = stack.close_stack(period_id).await.unwrap_or(HashMap::new());
 
     (player_id.clone(), plant_outputs)
 }
@@ -207,6 +206,8 @@ async fn close_stack(
 mod tests {
     use std::{collections::HashMap, time::Duration};
 
+    use futures::future;
+    use mockall::{predicate::eq, Sequence};
     use tokio::sync::{mpsc, oneshot};
 
     use crate::{
@@ -215,18 +216,51 @@ mod tests {
             GameMessage,
         },
         market::MarketMessage,
-        plants::stack::StackMessage,
+        plants::models::MockStackService,
         player::PlayerId,
     };
 
-    #[tokio::test(start_paused = true)]
+    #[tokio::test]
     async fn test_delivery_period_lifecycle() {
         let period = DeliveryPeriodId::from(1);
         let (game_tx, mut game_rx) = mpsc::channel(16);
         let (market_tx, mut market_rx) = mpsc::channel(16);
-        let (stack_tx, mut stack_rx) = mpsc::channel(16);
-        let stacks_tx = HashMap::from([(PlayerId::from("toto"), stack_tx)]);
-        let (_, players_ready_rx) = oneshot::channel();
+
+        let mut stack_service = MockStackService::new();
+        let mut mocked_stack_seq = Sequence::new();
+        stack_service
+            .expect_clone()
+            .once()
+            .in_sequence(&mut mocked_stack_seq)
+            .returning(|| {
+                // First clone to open the stack
+                let mut mocked = MockStackService::new();
+                mocked
+                    .expect_open_stack()
+                    .once()
+                    .with(eq(DeliveryPeriodId::from(0)))
+                    .returning(|_| Box::pin(future::ready(())));
+                mocked
+            });
+        stack_service
+            .expect_clone()
+            .once()
+            .in_sequence(&mut mocked_stack_seq)
+            .returning(|| {
+                // Second clone to close the stack in the timer branch
+                let mut mocked = MockStackService::new();
+                mocked
+                    .expect_close_stack()
+                    .with(eq(DeliveryPeriodId::from(1)))
+                    .once()
+                    .returning(|_| Box::pin(future::ready(Ok(HashMap::new()))));
+                mocked
+            });
+        stack_service.expect_close_stack().never();
+        let stacks_services = HashMap::from([(PlayerId::from("toto"), stack_service)]);
+
+        // Keep _players_ready_tx around to not dropt the channel and trigger early closing
+        let (_players_ready_tx, players_ready_rx) = oneshot::channel();
         let timers = Some(DeliveryPeriodTimers {
             market: Duration::from_micros(1),
             stacks: Duration::from_micros(1),
@@ -237,7 +271,7 @@ mod tests {
                 period,
                 game_tx,
                 market_tx,
-                stacks_tx,
+                stacks_services,
                 players_ready_rx,
                 timers,
             )
@@ -249,10 +283,6 @@ mod tests {
             unreachable!("Should have opened the market");
         };
         assert_eq!(period_id, period.previous());
-        let Some(StackMessage::OpenStack(period_id)) = stack_rx.recv().await else {
-            unreachable!("Should have opened the stack");
-        };
-        assert_eq!(period_id, period.previous());
 
         // Close the market
         let Some(MarketMessage::CloseMarket { tx_back, period_id }) = market_rx.recv().await else {
@@ -260,13 +290,6 @@ mod tests {
         };
         assert_eq!(period_id, period);
         let _ = tx_back.send(Vec::new());
-
-        // Close the stacks
-        let Some(StackMessage::CloseStack { tx_back, period_id }) = stack_rx.recv().await else {
-            unreachable!("Should have closed the stacks");
-        };
-        assert_eq!(period_id, period);
-        let _ = tx_back.send(HashMap::new());
 
         // Should publish its results back to the game actor
         let Some(GameMessage::DeliveryPeriodResults(results)) = game_rx.recv().await else {
@@ -280,9 +303,33 @@ mod tests {
         let period = DeliveryPeriodId::from(1);
         let (game_tx, mut game_rx) = mpsc::channel(16);
         let (market_tx, mut market_rx) = mpsc::channel(16);
-        let (stack_tx, mut stack_rx) = mpsc::channel(16);
         let (players_ready_tx, players_ready_rx) = oneshot::channel();
-        let stacks_tx = HashMap::from([(PlayerId::from("toto"), stack_tx)]);
+
+        // Mocked stack service
+        let mut stack_service = MockStackService::new();
+        let mut mocked_stack_seq = Sequence::new();
+        stack_service
+            .expect_clone()
+            .once()
+            .in_sequence(&mut mocked_stack_seq)
+            .returning(|| {
+                // First clone to open the stack
+                let mut mocked = MockStackService::new();
+                mocked
+                    .expect_open_stack()
+                    .once()
+                    .with(eq(DeliveryPeriodId::from(0)))
+                    .returning(|_| Box::pin(future::ready(())));
+                mocked
+            });
+        // No second close as timers = None, and corresponding branch will not exist
+        stack_service
+            .expect_close_stack()
+            .with(eq(DeliveryPeriodId::from(1)))
+            .once()
+            .returning(|_| Box::pin(future::ready(Ok(HashMap::new()))));
+        let stacks_services = HashMap::from([(PlayerId::from("toto"), stack_service)]);
+
         let timers = None;
 
         tokio::spawn(async move {
@@ -290,7 +337,7 @@ mod tests {
                 period,
                 game_tx,
                 market_tx,
-                stacks_tx,
+                stacks_services,
                 players_ready_rx,
                 timers,
             )
@@ -300,10 +347,6 @@ mod tests {
         // Open the market and the stacks
         let Some(MarketMessage::OpenMarket(period_id)) = market_rx.recv().await else {
             unreachable!("Should have opened the market");
-        };
-        assert_eq!(period_id, period.previous());
-        let Some(StackMessage::OpenStack(period_id)) = stack_rx.recv().await else {
-            unreachable!("Should have opened the stack");
         };
         assert_eq!(period_id, period.previous());
 
@@ -316,13 +359,6 @@ mod tests {
         };
         assert_eq!(period_id, period);
         let _ = tx_back.send(Vec::new());
-
-        // Close the stacks
-        let Some(StackMessage::CloseStack { tx_back, period_id }) = stack_rx.recv().await else {
-            unreachable!("Should have closed the stacks");
-        };
-        assert_eq!(period_id, period);
-        let _ = tx_back.send(HashMap::new());
 
         // Should publish its results back to the game actor
         let Some(GameMessage::DeliveryPeriodResults(results)) = game_rx.recv().await else {

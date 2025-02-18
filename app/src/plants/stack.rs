@@ -32,6 +32,7 @@ pub enum StackMessage {
     },
     ProgramSetpoint(ProgramPlant),
     NewPlayerConnection(PlayerId),
+    GetSnapshot(oneshot::Sender<HashMap<PlantId, PowerPlantPublicRepr>>),
 }
 
 #[derive(Debug, PartialEq, Clone, Copy)]
@@ -114,6 +115,9 @@ impl StackActor {
             match (&self.state, message) {
                 (_, StackMessage::NewPlayerConnection(player_id)) => {
                     self.handle_player_connection(player_id).await;
+                }
+                (_, StackMessage::GetSnapshot(tx_back)) => {
+                    let _ = tx_back.send(self.stack_snapshot());
                 }
                 (
                     StackState::Open,

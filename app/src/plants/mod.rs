@@ -10,6 +10,7 @@ use uuid::Uuid;
 pub mod battery;
 pub mod consumers;
 pub mod gas_plant;
+pub mod models;
 pub mod renewable;
 pub mod stack;
 

@@ -11,7 +11,10 @@ use tokio::sync::{
 
 use crate::{
     market::{Market, MarketContext, MarketMessage, MarketState},
-    plants::stack::{StackActor, StackContext, StackState},
+    plants::{
+        models::Service as StackService,
+        stack::{StackActor, StackContext, StackState},
+    },
     player::{repository::ConnectionRepositoryMessage, PlayerId},
 };
 
@@ -220,7 +223,7 @@ impl Game {
             let stacks_tx = self
                 .stacks_context
                 .iter()
-                .map(|(id, context)| (id.clone(), context.tx.clone()))
+                .map(|(id, context)| (id.clone(), StackService::new(context.tx.clone())))
                 .collect();
             let (results_tx, results_rx) = oneshot::channel();
             let timers = None;
