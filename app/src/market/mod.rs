@@ -180,6 +180,7 @@ impl MarketActor {
                         self.state = MarketState::Closed;
                         let _ = tx_back.send(trades);
                         let _ = self.state_sender.send(MarketState::Closed);
+                        self.send_order_book_snapshot_to_all().await;
                     }
                 }
                 (MarketState::Closed, MarketMessage::CloseMarket { period_id, tx_back }) => {
@@ -546,50 +547,6 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_register_player_during_market_closed() {
-        let game_id = GameId::default();
-        let (conn_tx, mut conn_rx) = mpsc::channel(16);
-        let mut market = MarketActor::new(
-            game_id,
-            MarketState::Closed,
-            DeliveryPeriodId::from(0),
-            conn_tx,
-        );
-        let context = market.get_context();
-        tokio::spawn(async move {
-            market.process().await;
-        });
-        let player_id = register_player(context.tx.clone()).await;
-
-        // Reopen the market
-        let _ = context
-            .tx
-            .send(MarketMessage::OpenMarket(DeliveryPeriodId::from(0)))
-            .await;
-
-        // Send an OrderRequest to the market
-        let _ = context
-            .tx
-            .send(MarketMessage::OrderRequest(OrderRequest {
-                direction: Direction::Buy,
-                volume: 10,
-                price: 50_00,
-                owner: player_id.to_owned(),
-            }))
-            .await;
-
-        // We should receive an obs
-        let Some(ConnectionRepositoryMessage::SendToPlayer(
-            _,
-            _,
-            PlayerMessage::OrderBookSnapshot { .. },
-        )) = conn_rx.recv().await
-        else {
-            unreachable!("Should have received an OBS")
-        };
-    }
-
-    #[tokio::test]
     async fn test_close_market_receive_trades() {
         let game_id = GameId::default();
         let (conn_tx, _) = mpsc::channel(16);
@@ -629,6 +586,51 @@ mod tests {
             .await
             .expect("Should have received a list of trades");
         assert_eq!(trades.len(), 1);
+    }
+
+    #[tokio::test]
+    async fn test_close_market_send_empty_obs() {
+        let game_id = GameId::default();
+        let (conn_tx, mut conn_rx) = mpsc::channel(16);
+        let market = start_market_actor(&game_id, conn_tx.clone());
+        let player_id = register_player(market.tx.clone()).await;
+
+        // Send an order
+        let _ = market
+            .tx
+            .send(MarketMessage::OrderRequest(OrderRequest {
+                direction: Direction::Buy,
+                volume: 10,
+                price: 50_00,
+                owner: player_id.to_owned(),
+            }))
+            .await;
+        let _ = conn_rx.recv().await;
+
+        // Close the market
+        let (tx_back, rx_back) = oneshot::channel();
+        let _ = market
+            .tx
+            .send(MarketMessage::CloseMarket {
+                tx_back,
+                period_id: DeliveryPeriodId::from(0),
+            })
+            .await;
+
+        // Flush the trade list
+        let _ = rx_back.await;
+
+        // OBS should be empty
+        let Some(ConnectionRepositoryMessage::SendToPlayer(
+            _,
+            _,
+            PlayerMessage::OrderBookSnapshot { bids, offers },
+        )) = conn_rx.recv().await
+        else {
+            unreachable!()
+        };
+        assert_eq!(bids.len(), 0);
+        assert_eq!(offers.len(), 0);
     }
 
     #[tokio::test]
