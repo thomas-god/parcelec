@@ -34,7 +34,7 @@ pub trait Market: Clone + Send + Sync + 'static {
     /// Register a player to the market, sending an initial order book snapshot and a list of the
     /// player's trade for the current delivery period. Player can register even if the market is
     /// closed.
-    fn register_player(
+    fn get_market_snapshot(
         &self,
         player: PlayerId,
     ) -> impl Future<Output = (Vec<TradeLeg>, OBS)> + Send;
@@ -80,12 +80,12 @@ impl Market for MarketService {
         rx.await.unwrap_or(Vec::new())
     }
 
-    async fn register_player(&self, player: PlayerId) -> (Vec<TradeLeg>, OBS) {
+    async fn get_market_snapshot(&self, player: PlayerId) -> (Vec<TradeLeg>, OBS) {
         let (tx, rx) = oneshot::channel();
 
         let _ = self
             .tx
-            .send(MarketMessage::NewPlayerConnection {
+            .send(MarketMessage::GetMarketSnapshot {
                 player_id: player,
                 tx_back: tx,
             })
@@ -124,7 +124,7 @@ mockall::mock! {
             delivery_period: DeliveryPeriodId,
         ) -> impl Future<Output = Vec<Trade>> + Send;
 
-        fn register_player(
+        fn get_market_snapshot(
             &self,
             player: PlayerId,
         ) -> impl Future<Output = (Vec<TradeLeg>, OBS)> + Send;
@@ -205,7 +205,7 @@ mod tests {
         let service = MarketService::new(tx);
 
         tokio::spawn(async move {
-            let Some(MarketMessage::NewPlayerConnection {
+            let Some(MarketMessage::GetMarketSnapshot {
                 player_id: _,
                 tx_back,
             }) = rx.recv().await
@@ -232,7 +232,7 @@ mod tests {
         // Close receiving end to simulate err
         rx.close();
 
-        let (trades, obs) = service.register_player(PlayerId::default()).await;
+        let (trades, obs) = service.get_market_snapshot(PlayerId::default()).await;
         // Should still receive an empty vec
         assert_eq!(trades.len(), 0);
         assert_eq!(obs.offers.len(), 0);

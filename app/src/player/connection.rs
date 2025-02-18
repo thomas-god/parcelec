@@ -5,12 +5,12 @@ use futures_util::{
     stream::{SplitSink, SplitStream},
     SinkExt, StreamExt,
 };
-use serde::{Deserialize, Serialize};
+use serde::{de::Error, Deserialize, Serialize};
 use tokio::{
     select,
     sync::{
         mpsc::{self, channel, Receiver, Sender},
-        oneshot, watch,
+        watch,
     },
 };
 use uuid::Uuid;
@@ -19,11 +19,11 @@ use crate::{
     game::{game_repository::GameId, scores::PlayerScore, GameContext, GameMessage, GameState},
     market::{
         order_book::{OrderRequest as MarketOrderRequest, TradeLeg},
-        Direction, MarketContext, MarketMessage, MarketState, OrderRepr,
+        Direction, Market, MarketContext, MarketMessage, MarketService, MarketState, OrderRepr,
     },
     plants::{
         stack::{ProgramPlant, StackContext, StackMessage, StackState},
-        PlantId, PowerPlantPublicRepr,
+        PlantId, PowerPlantPublicRepr, Stack, StackService,
     },
 };
 
@@ -106,6 +106,20 @@ pub async fn start_player_connection(mut ws: WebSocket, context: PlayerConnectio
 
     register_connection(tx, connection_id, &context).await;
 
+    if send_initial_stack_snapshot(&mut ws, &context)
+        .await
+        .is_none()
+    {
+        return;
+    };
+
+    if send_initial_trades_and_obs(&mut ws, &context)
+        .await
+        .is_none()
+    {
+        return;
+    };
+
     let (sink, stream) = ws.split();
     let sink_handle = tokio::spawn(process_internal_messages(
         sink,
@@ -124,6 +138,69 @@ pub async fn start_player_connection(mut ws: WebSocket, context: PlayerConnectio
     let _ = tokio::try_join!(sink_handle, stream_handle);
 }
 
+async fn send_initial_trades_and_obs(
+    ws: &mut WebSocket,
+    context: &PlayerConnectionContext,
+) -> Option<()> {
+    let (trades, obs) = MarketService::new(context.market.tx.clone())
+        .get_market_snapshot(context.player_id.clone())
+        .await;
+    match serde_json::to_string(&PlayerMessage::TradeList { trades }) {
+        Ok(msg) => {
+            if let Err(err) = ws.send(msg.into()).await {
+                println!("Error when sending through WS: {err:?}");
+                return None;
+            }
+        }
+        Err(err) => {
+            println!(
+                "Unable to send initial trades list because of {err:?}. Aborting player connection"
+            );
+            return None;
+        }
+    }
+    match serde_json::to_string(&PlayerMessage::OrderBookSnapshot {
+        bids: obs.bids,
+        offers: obs.offers,
+    }) {
+        Ok(msg) => {
+            if let Err(err) = ws.send(msg.into()).await {
+                println!("Error when sending through WS: {err:?}");
+                return None;
+            }
+        }
+        Err(err) => {
+            println!("Unable to send initial OBS because of {err:?}. Aborting player connection");
+            return None;
+        }
+    }
+    Some(())
+}
+
+async fn send_initial_stack_snapshot(
+    ws: &mut WebSocket,
+    context: &PlayerConnectionContext,
+) -> Option<()> {
+    match StackService::new(context.stack.tx.clone())
+        .get_snapshot()
+        .await
+        .map_err(|err| serde_json::Error::custom(format!("{err:?}")))
+        .and_then(|plants| serde_json::to_string(&PlayerMessage::StackSnapshot { plants }))
+    {
+        Ok(msg) => {
+            if let Err(err) = ws.send(msg.into()).await {
+                println!("Error when sending through WS: {err:?}");
+                return None;
+            }
+        }
+        Err(err) => {
+            println!("Unable to send initial stack snapshot because of {err:?}. Aborting player connection");
+            return None;
+        }
+    }
+    Some(())
+}
+
 async fn register_connection(
     tx: Sender<PlayerMessage>,
     connection_id: String,
@@ -139,20 +216,6 @@ async fn register_connection(
                 tx: tx.clone(),
             },
         ))
-        .await;
-    let (tx, _) = oneshot::channel();
-    let _ = context
-        .market
-        .tx
-        .send(MarketMessage::NewPlayerConnection {
-            player_id: context.player_id.clone(),
-            tx_back: tx,
-        })
-        .await;
-    let _ = context
-        .stack
-        .tx
-        .send(StackMessage::NewPlayerConnection(context.player_id.clone()))
         .await;
 }
 

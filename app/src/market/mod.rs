@@ -58,7 +58,7 @@ pub struct OBS {
 
 #[derive(Debug)]
 pub enum MarketMessage {
-    NewPlayerConnection {
+    GetMarketSnapshot {
         player_id: PlayerId,
         tx_back: oneshot::Sender<(Vec<TradeLeg>, OBS)>,
     },
@@ -150,17 +150,11 @@ impl MarketActor {
     pub async fn process(&mut self) {
         while let Some(message) = self.rx.recv().await {
             match (&self.state, message) {
-                (
-                    _,
-                    MarketMessage::NewPlayerConnection {
-                        player_id,
-                        tx_back: _,
-                    },
-                ) => {
+                (_, MarketMessage::GetMarketSnapshot { player_id, tx_back }) => {
                     println!("New player: {player_id:?}");
                     self.players.push(player_id.clone());
-                    self.send_order_book_snapshot_to_player(&player_id).await;
-                    self.send_trade_list_to_player(&player_id).await
+                    let _ =
+                        tx_back.send((self.player_trades(&player_id), self.player_obs(&player_id)));
                 }
                 (MarketState::Open, MarketMessage::OrderRequest(request)) => {
                     self.process_new_offer(request).await
@@ -210,10 +204,9 @@ impl MarketActor {
         .await;
     }
 
-    async fn send_order_book_snapshot_to_player(&self, player_id: &PlayerId) {
+    fn player_obs(&self, player_id: &PlayerId) -> OBS {
         let snapshot = self.order_book.snapshot();
-
-        let message = PlayerMessage::OrderBookSnapshot {
+        OBS {
             bids: snapshot
                 .bids
                 .iter()
@@ -224,6 +217,14 @@ impl MarketActor {
                 .iter()
                 .map(|offer| OrderRepr::from_offer(offer, Some(player_id)))
                 .collect(),
+        }
+    }
+
+    async fn send_order_book_snapshot_to_player(&self, player_id: &PlayerId) {
+        let obs = self.player_obs(player_id);
+        let message = PlayerMessage::OrderBookSnapshot {
+            bids: obs.bids,
+            offers: obs.offers,
         };
         let _ = self
             .players_connections
@@ -235,21 +236,12 @@ impl MarketActor {
             .await;
     }
 
-    async fn send_trade_list_to_player(&self, player_id: &PlayerId) {
-        let trade_legs: Vec<TradeLeg> = self
-            .order_book
+    fn player_trades(&self, player_id: &PlayerId) -> Vec<TradeLeg> {
+        self.order_book
             .trades
             .iter()
             .flat_map(|trade| trade.for_player(player_id))
-            .collect();
-        let _ = self
-            .players_connections
-            .send(ConnectionRepositoryMessage::SendToPlayer(
-                self.game_id.clone(),
-                player_id.clone(),
-                PlayerMessage::TradeList { trades: trade_legs },
-            ))
-            .await;
+            .collect()
     }
 
     async fn process_new_offer(&mut self, request: OrderRequest) {
@@ -308,66 +300,16 @@ mod tests {
         context
     }
 
-    async fn register_player(
-        market: mpsc::Sender<MarketMessage>,
-        rx: &mut mpsc::Receiver<ConnectionRepositoryMessage>,
-    ) -> PlayerId {
+    async fn register_player(market: mpsc::Sender<MarketMessage>) -> PlayerId {
         let player_id = PlayerId::default();
         let (tx, _) = oneshot::channel();
         let _ = market
-            .send(MarketMessage::NewPlayerConnection {
+            .send(MarketMessage::GetMarketSnapshot {
                 player_id: player_id.clone(),
                 tx_back: tx,
             })
             .await;
-        // Flush 2 first messages (initial OBS + trades list)
-        let _ = rx.recv().await;
-        let _ = rx.recv().await;
         player_id
-    }
-
-    #[tokio::test]
-    async fn test_register_player_get_initial_obs_and_trades_list() {
-        let game_id = GameId::default();
-        let (conn_tx, mut conn_rx) = mpsc::channel(16);
-        let market = start_market_actor(&game_id, conn_tx);
-
-        let player_id = PlayerId::default();
-        let (tx, _) = oneshot::channel();
-        let _ = market
-            .tx
-            .send(MarketMessage::NewPlayerConnection {
-                player_id: player_id.clone(),
-                tx_back: tx,
-            })
-            .await;
-
-        // Initial OBS
-        let Some(ConnectionRepositoryMessage::SendToPlayer(
-            target_game_id,
-            target_player_id,
-            PlayerMessage::OrderBookSnapshot { bids, offers },
-        )) = conn_rx.recv().await
-        else {
-            unreachable!("Expected OBS")
-        };
-        assert_eq!(target_game_id, game_id);
-        assert_eq!(target_player_id, player_id);
-        assert_eq!(bids.len(), 0);
-        assert_eq!(offers.len(), 0);
-
-        // Initial trades list
-        let Some(ConnectionRepositoryMessage::SendToPlayer(
-            target_game_id,
-            target_player_id,
-            PlayerMessage::TradeList { trades },
-        )) = conn_rx.recv().await
-        else {
-            unreachable!("Expected OBS")
-        };
-        assert_eq!(target_game_id, game_id);
-        assert_eq!(target_player_id, player_id);
-        assert_eq!(trades.len(), 0);
     }
 
     #[tokio::test]
@@ -375,7 +317,7 @@ mod tests {
         let game_id = GameId::default();
         let (conn_tx, mut conn_rx) = mpsc::channel(16);
         let market = start_market_actor(&game_id, conn_tx.clone());
-        let player_id = register_player(market.tx.clone(), &mut conn_rx).await;
+        let player_id = register_player(market.tx.clone()).await;
 
         // Send order request to market actor
         market
@@ -410,7 +352,7 @@ mod tests {
         let game_id = GameId::default();
         let (conn_tx, mut conn_rx) = mpsc::channel(16);
         let market = start_market_actor(&game_id, conn_tx.clone());
-        let player_id = register_player(market.tx.clone(), &mut conn_rx).await;
+        let player_id = register_player(market.tx.clone()).await;
 
         // Send order request to market actor
         market
@@ -461,8 +403,8 @@ mod tests {
         let game_id = GameId::default();
         let (conn_tx, mut conn_rx) = mpsc::channel(16);
         let market = start_market_actor(&game_id, conn_tx.clone());
-        let buyer_id = register_player(market.tx.clone(), &mut conn_rx).await;
-        let seller_id = register_player(market.tx.clone(), &mut conn_rx).await;
+        let buyer_id = register_player(market.tx.clone()).await;
+        let seller_id = register_player(market.tx.clone()).await;
 
         // Send BUY order
         market
@@ -540,7 +482,7 @@ mod tests {
         tokio::spawn(async move {
             market.process().await;
         });
-        let player_id = register_player(context.tx.clone(), &mut conn_rx).await;
+        let player_id = register_player(context.tx.clone()).await;
 
         // Send an OrderRequest to the market
         let _ = context
@@ -568,7 +510,7 @@ mod tests {
         let game_id = GameId::default();
         let (conn_tx, mut conn_rx) = mpsc::channel(16);
         let market = start_market_actor(&game_id, conn_tx.clone());
-        let player_id = register_player(market.tx.clone(), &mut conn_rx).await;
+        let player_id = register_player(market.tx.clone()).await;
 
         // Close the market
         let (tx_back, _) = oneshot::channel();
@@ -617,7 +559,7 @@ mod tests {
         tokio::spawn(async move {
             market.process().await;
         });
-        let player_id = register_player(context.tx.clone(), &mut conn_rx).await;
+        let player_id = register_player(context.tx.clone()).await;
 
         // Reopen the market
         let _ = context
@@ -650,9 +592,9 @@ mod tests {
     #[tokio::test]
     async fn test_close_market_receive_trades() {
         let game_id = GameId::default();
-        let (conn_tx, mut conn_rx) = mpsc::channel(16);
+        let (conn_tx, _) = mpsc::channel(16);
         let market = start_market_actor(&game_id, conn_tx.clone());
-        let player_id = register_player(market.tx.clone(), &mut conn_rx).await;
+        let player_id = register_player(market.tx.clone()).await;
 
         // Make a trade with ourself
         let _ = market
@@ -692,9 +634,9 @@ mod tests {
     #[tokio::test]
     async fn test_market_state_watch() {
         let game_id = GameId::default();
-        let (conn_tx, mut conn_rx) = mpsc::channel(16);
+        let (conn_tx, _) = mpsc::channel(16);
         let mut market = start_market_actor(&game_id, conn_tx.clone());
-        register_player(market.tx.clone(), &mut conn_rx).await;
+        register_player(market.tx.clone()).await;
 
         assert_eq!(*market.state_rx.borrow(), MarketState::Open);
 
@@ -837,9 +779,9 @@ mod tests {
     #[tokio::test]
     async fn test_closing_twice_should_return_the_same_trades() {
         let game_id = GameId::default();
-        let (conn_tx, mut conn_rx) = mpsc::channel(16);
+        let (conn_tx, _) = mpsc::channel(16);
         let mut market = start_market_actor(&game_id, conn_tx);
-        let player_id = register_player(market.tx.clone(), &mut conn_rx).await;
+        let player_id = register_player(market.tx.clone()).await;
 
         // Make a trade with ourself
         let _ = market

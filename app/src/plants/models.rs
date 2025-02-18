@@ -12,7 +12,7 @@ use super::{
 #[derive(Debug)]
 pub struct CloseStackError(DeliveryPeriodId);
 #[derive(Debug)]
-pub struct GetSnashotError;
+pub struct GetSnapshotError;
 
 /// [Stack] is the public API of Parcelec power plants/consumption domain. A stack refers to the
 /// set of power plants and consumers belonging to a player. A player can program power setpoints
@@ -38,7 +38,7 @@ pub trait Stack: Clone + Send + Sync + 'static {
     /// Get a snapshot of the stack's power plants current setpoint and cost.
     fn get_snapshot(
         &self,
-    ) -> impl Future<Output = Result<HashMap<PlantId, PowerPlantPublicRepr>, GetSnashotError>> + Send;
+    ) -> impl Future<Output = Result<HashMap<PlantId, PowerPlantPublicRepr>, GetSnapshotError>> + Send;
 }
 
 #[derive(Debug, Clone)]
@@ -75,11 +75,11 @@ impl Stack for StackService {
 
     async fn get_snapshot(
         &self,
-    ) -> Result<HashMap<PlantId, PowerPlantPublicRepr>, GetSnashotError> {
+    ) -> Result<HashMap<PlantId, PowerPlantPublicRepr>, GetSnapshotError> {
         let (tx_back, rx) = oneshot::channel();
         let _ = self.tx.send(StackMessage::GetSnapshot(tx_back)).await;
 
-        rx.await.map_err(|_| GetSnashotError)
+        rx.await.map_err(|_| GetSnapshotError)
     }
 
     async fn program_setpoint(&self, plant: PlantId, setpoint: isize) {
@@ -109,7 +109,7 @@ mockall::mock! {
 
     fn get_snapshot(
         &self,
-    ) -> impl Future<Output = Result<HashMap<PlantId, PowerPlantPublicRepr>, GetSnashotError>> + Send;
+    ) -> impl Future<Output = Result<HashMap<PlantId, PowerPlantPublicRepr>, GetSnapshotError>> + Send;
     }
 
     impl Clone for StackService {

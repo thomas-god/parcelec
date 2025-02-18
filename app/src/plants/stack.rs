@@ -31,7 +31,6 @@ pub enum StackMessage {
         tx_back: oneshot::Sender<HashMap<PlantId, PlantOutput>>,
     },
     ProgramSetpoint(ProgramPlant),
-    NewPlayerConnection(PlayerId),
     GetSnapshot(oneshot::Sender<HashMap<PlantId, PowerPlantPublicRepr>>),
 }
 
@@ -67,12 +66,12 @@ pub struct StackContext {
 
 /// A stack is the collection of power plants owned by a given player
 pub struct StackActor {
-    game_id: GameId,
+    game: GameId,
     state: StackState,
     state_sender: watch::Sender<StackState>,
     delivery_period: DeliveryPeriodId,
-    player_id: PlayerId,
-    plants: HashMap<PlantId, Box<dyn PowerPlant + Send + Sync>>,
+    player: PlayerId,
+    stack: HashMap<PlantId, Box<dyn PowerPlant + Send + Sync>>,
     tx: Sender<StackMessage>,
     rx: Receiver<StackMessage>,
     players_connections: mpsc::Sender<ConnectionRepositoryMessage>,
@@ -81,22 +80,22 @@ pub struct StackActor {
 
 impl StackActor {
     pub fn new(
-        game_id: GameId,
-        player_id: PlayerId,
-        state: StackState,
+        game: GameId,
+        player: PlayerId,
+        initial_state: StackState,
         delivery_period: DeliveryPeriodId,
         players_connections: mpsc::Sender<ConnectionRepositoryMessage>,
     ) -> StackActor {
-        let (state_tx, _) = watch::channel(state);
+        let (state_tx, _) = watch::channel(initial_state);
         let (tx, rx) = channel::<StackMessage>(16);
 
         StackActor {
-            game_id,
-            state,
+            game,
+            state: initial_state,
             state_sender: state_tx,
             delivery_period,
-            player_id,
-            plants: default_plants(),
+            player,
+            stack: default_stack(),
             players_connections,
             past_outputs: HashMap::new(),
             tx,
@@ -113,9 +112,6 @@ impl StackActor {
     pub async fn start(&mut self) {
         while let Some(message) = self.rx.recv().await {
             match (&self.state, message) {
-                (_, StackMessage::NewPlayerConnection(player_id)) => {
-                    self.handle_player_connection(player_id).await;
-                }
                 (_, StackMessage::GetSnapshot(tx_back)) => {
                     let _ = tx_back.send(self.stack_snapshot());
                 }
@@ -136,7 +132,7 @@ impl StackActor {
                     if period_id == self.delivery_period {
                         self.state = StackState::Closed;
                         let plant_outputs: HashMap<PlantId, PlantOutput> = self
-                            .plants
+                            .stack
                             .iter_mut()
                             .map(|(plant_id, plant)| (plant_id.clone(), plant.dispatch()))
                             .collect();
@@ -158,21 +154,14 @@ impl StackActor {
         }
     }
 
-    async fn handle_player_connection(&mut self, player_id: PlayerId) {
-        if player_id != self.player_id {
-            return;
-        }
-        self.send_stack_snapshot().await;
-    }
-
     async fn send_stack_snapshot(&self) {
         let stack_snapshot = self.stack_snapshot();
 
         let _ = self
             .players_connections
             .send(ConnectionRepositoryMessage::SendToPlayer(
-                self.game_id.clone(),
-                self.player_id.clone(),
+                self.game.clone(),
+                self.player.clone(),
                 PlayerMessage::StackSnapshot {
                     plants: stack_snapshot,
                 },
@@ -181,14 +170,14 @@ impl StackActor {
     }
 
     fn stack_snapshot(&self) -> HashMap<PlantId, PowerPlantPublicRepr> {
-        self.plants
+        self.stack
             .iter()
-            .map(|(id, p)| (id.to_owned(), p.current_state()))
+            .map(|(plant_id, plant)| (plant_id.to_owned(), plant.current_state()))
             .collect()
     }
 
     async fn program_plant_setpoint(&mut self, plant_id: PlantId, setpoint: isize) {
-        if let Some(plant) = self.plants.get_mut(&plant_id) {
+        if let Some(plant) = self.stack.get_mut(&plant_id) {
             let PlantOutput { cost, .. } = plant.program_setpoint(setpoint);
             println!("Programmed setpoint {setpoint} for plant {plant_id} (cost: {cost}");
             self.send_stack_snapshot().await;
@@ -196,7 +185,7 @@ impl StackActor {
     }
 }
 
-fn default_plants() -> HashMap<PlantId, Box<dyn PowerPlant + Send + Sync>> {
+fn default_stack() -> HashMap<PlantId, Box<dyn PowerPlant + Send + Sync>> {
     let mut map: HashMap<PlantId, Box<dyn PowerPlant + Send + Sync>> = HashMap::new();
     map.insert(PlantId::default(), Box::new(Battery::new(1_000, 500)));
     map.insert(PlantId::default(), Box::new(GasPlant::new(85, 1000)));
@@ -210,10 +199,9 @@ mod tests_stack {
     use std::{collections::HashMap, time::Duration};
 
     use tokio::sync::{
-        mpsc::{self, channel, Receiver, Sender},
+        mpsc::{self, Sender},
         oneshot,
     };
-    use uuid::Uuid;
 
     use crate::{
         game::{delivery_period::DeliveryPeriodId, game_repository::GameId},
@@ -249,59 +237,33 @@ mod tests_stack {
     }
 
     #[tokio::test]
-    async fn test_register_player_connection() {
-        let (player_id, stack, mut conn_rx) = start_stack();
+    async fn test_get_snapshot() {
+        let (_, stack, _) = start_stack();
 
-        // Register player connection
-        let _ = stack
-            .tx
-            .send(StackMessage::NewPlayerConnection(player_id.clone()))
-            .await;
+        let (tx, rx) = oneshot::channel();
+        let _ = stack.tx.send(StackMessage::GetSnapshot(tx)).await;
 
-        // Should receive a snapshot of the stack
-        let Some(ConnectionRepositoryMessage::SendToPlayer(
-            _,
-            target_player_id,
-            PlayerMessage::StackSnapshot { plants: _ },
-        )) = conn_rx.recv().await
-        else {
-            unreachable!("Should have received a snapshot of the player's stack");
+        let Ok(_) = rx.await else {
+            unreachable!();
         };
-        assert_eq!(target_player_id, player_id);
     }
 
-    async fn register_player_connection(
-        player_id: &PlayerId,
+    async fn get_stack_snashot(
         stack_tx: Sender<StackMessage>,
-        conn_rx: &mut mpsc::Receiver<ConnectionRepositoryMessage>,
-    ) -> (
-        String,
-        Receiver<PlayerMessage>,
-        HashMap<PlantId, PowerPlantPublicRepr>,
-    ) {
-        let (_, rx) = channel::<PlayerMessage>(16);
-        let connection_id = Uuid::new_v4().to_string();
-        let _ = stack_tx
-            .send(StackMessage::NewPlayerConnection(player_id.clone()))
-            .await;
+    ) -> HashMap<PlantId, PowerPlantPublicRepr> {
+        let (tx, rx) = oneshot::channel();
+        let _ = stack_tx.send(StackMessage::GetSnapshot(tx)).await;
 
-        // Should receive a snapshot of the stack
-        let Some(ConnectionRepositoryMessage::SendToPlayer(
-            _,
-            _,
-            PlayerMessage::StackSnapshot { plants },
-        )) = conn_rx.recv().await
-        else {
-            unreachable!("Should have received a snapshot of the player's stack");
+        let Ok(snapshot) = rx.await else {
+            unreachable!();
         };
-        (connection_id, rx, plants)
+        snapshot
     }
 
     #[tokio::test]
     async fn test_programm_a_plant_setpoint() {
-        let (player_id, stack, mut conn_rx) = start_stack();
-        let (_, _, plants) =
-            register_player_connection(&player_id, stack.tx.clone(), &mut conn_rx).await;
+        let (_, stack, mut conn_rx) = start_stack();
+        let plants = get_stack_snashot(stack.tx.clone()).await;
 
         // Program a plant's setpoint
         let Some(plant_id) = plants.keys().next() else {
@@ -328,9 +290,8 @@ mod tests_stack {
 
     #[tokio::test]
     async fn test_no_dispatch_when_stack_closed() {
-        let (player_id, stack, mut conn_rx) = start_stack();
-        let (_, _, plants) =
-            register_player_connection(&player_id, stack.tx.clone(), &mut conn_rx).await;
+        let (_, stack, mut conn_rx) = start_stack();
+        let plants = get_stack_snashot(stack.tx.clone()).await;
 
         // Close the stack
         let (tx_back, _) = oneshot::channel();
@@ -366,21 +327,9 @@ mod tests_stack {
     }
     #[tokio::test]
     async fn test_receive_plant_outputs_when_closing_stack() {
-        let (player_id, stack, mut conn_rx) = start_stack();
+        let (_, stack, _) = start_stack();
 
-        // Register player connection to receive stack snapshot
-        let _ = stack
-            .tx
-            .send(StackMessage::NewPlayerConnection(player_id.clone()))
-            .await;
-        let Some(ConnectionRepositoryMessage::SendToPlayer(
-            _,
-            _,
-            PlayerMessage::StackSnapshot { plants },
-        )) = conn_rx.recv().await
-        else {
-            unreachable!()
-        };
+        let plants = get_stack_snashot(stack.tx.clone()).await;
         let plants_balance = plants.values().fold(0, |acc, plant| {
             acc + match plant {
                 PowerPlantPublicRepr::Battery(batt) => batt.output.setpoint,
@@ -415,63 +364,6 @@ mod tests_stack {
                 }
             })
         );
-    }
-    #[tokio::test]
-    async fn test_register_connection_when_stack_closed() {
-        let (player_id, stack, mut conn_rx) = start_stack();
-
-        // Close the stack
-        let (tx_back, _) = oneshot::channel();
-        let _ = stack
-            .tx
-            .send(StackMessage::CloseStack {
-                tx_back,
-                period_id: DeliveryPeriodId::from(0),
-            })
-            .await;
-
-        // Register a player
-        let _ = stack
-            .tx
-            .send(StackMessage::NewPlayerConnection(player_id.clone()))
-            .await;
-
-        // Should receive a snapshot of the stack, even if the stack is closed
-        let Some(ConnectionRepositoryMessage::SendToPlayer(
-            _,
-            _,
-            PlayerMessage::StackSnapshot { plants },
-        )) = conn_rx.recv().await
-        else {
-            unreachable!("Should have received a snapshot of the player's stack");
-        };
-        assert!(!plants.is_empty());
-
-        // Reopen the stack
-        let _ = stack
-            .tx
-            .send(StackMessage::OpenStack(DeliveryPeriodId::from(0)))
-            .await;
-
-        // Check dispatch is working
-        let Some(plant_id) = plants.keys().next() else {
-            unreachable!("Stack should contain at least one power plant");
-        };
-        let _ = stack
-            .tx
-            .send(StackMessage::ProgramSetpoint(ProgramPlant {
-                plant_id: plant_id.to_owned(),
-                setpoint: 0,
-            }))
-            .await;
-        let Some(ConnectionRepositoryMessage::SendToPlayer(
-            _,
-            _,
-            PlayerMessage::StackSnapshot { plants: _ },
-        )) = conn_rx.recv().await
-        else {
-            unreachable!("Should have received a snapshot of the player's stack");
-        };
     }
 
     #[tokio::test]
@@ -670,9 +562,8 @@ mod tests_stack {
 
     #[tokio::test]
     async fn test_closing_the_stack_should_send_an_updated_snapshot() {
-        let (player_id, stack, mut conn_rx) = start_stack();
-        let (_, _, plants) =
-            register_player_connection(&player_id, stack.tx.clone(), &mut conn_rx).await;
+        let (_, stack, mut conn_rx) = start_stack();
+        let plants = get_stack_snashot(stack.tx.clone()).await;
 
         // Program a plant's setpoint
         let Some(plant_id) = plants.keys().next() else {

@@ -24,7 +24,7 @@ impl<MS: Market> InitialOrdersBot<MS> {
     }
 
     pub async fn start(&mut self) {
-        let _ = self.market.register_player(self.id.clone()).await;
+        let _ = self.market.get_market_snapshot(self.id.clone()).await;
 
         self.send_orders().await;
 
