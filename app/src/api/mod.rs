@@ -19,10 +19,7 @@ use tutorial::create_tutorial_game;
 use ws::handle_ws_connection;
 
 use crate::{
-    game::{
-        game_repository::{GameId, GameRepositoryMessage},
-        GameContext,
-    },
+    game::{GameContext, GameId},
     market::MarketContext,
     plants::stack::StackContext,
     player::{repository::ConnectionRepositoryMessage, PlayerId},
@@ -37,7 +34,6 @@ pub struct AppState {
     pub market_services: HashMap<GameId, MarketContext>,
     pub game_services: HashMap<GameId, GameContext>,
     pub stack_services: HashMap<GameId, HashMap<PlayerId, StackContext>>,
-    pub game_repository: mpsc::Sender<GameRepositoryMessage>,
     pub player_connections_repository: mpsc::Sender<ConnectionRepositoryMessage>,
 }
 

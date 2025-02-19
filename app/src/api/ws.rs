@@ -9,7 +9,7 @@ use tower_cookies::{
 };
 
 use crate::{
-    game::game_repository::GameId,
+    game::GameId,
     player::{
         connection::{start_player_connection, PlayerConnectionContext},
         PlayerId,
@@ -111,9 +111,7 @@ mod tests {
 
     async fn build_server() -> SocketAddr {
         let (tx_conn, _) = mpsc::channel(1024);
-        let (tx_games, _) = mpsc::channel(1024);
         let state = Arc::new(RwLock::new(AppState {
-            game_repository: tx_games,
             player_connections_repository: tx_conn,
             market_services: HashMap::new(),
             game_services: HashMap::new(),

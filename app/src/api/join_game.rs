@@ -8,7 +8,7 @@ use tower_cookies::{
     Cookie, Cookies,
 };
 
-use crate::game::{game_repository::GameId, GameMessage, RegisterPlayerResponse};
+use crate::game::{GameId, GameMessage, RegisterPlayerResponse};
 
 use super::ApiState;
 

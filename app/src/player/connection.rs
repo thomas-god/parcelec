@@ -16,7 +16,7 @@ use tokio::{
 use uuid::Uuid;
 
 use crate::{
-    game::{game_repository::GameId, scores::PlayerScore, GameContext, GameMessage, GameState},
+    game::{scores::PlayerScore, GameContext, GameId, GameMessage, GameState},
     market::{
         order_book::{OrderRequest as MarketOrderRequest, TradeLeg},
         Direction, Market, MarketContext, MarketMessage, MarketService, MarketState, OrderRepr,

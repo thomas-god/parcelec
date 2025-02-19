@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use futures_util::future::join_all;
 use tokio::sync::mpsc;
 
-use crate::game::game_repository::GameId;
+use crate::game::GameId;
 
 use super::{
     connection::{PlayerConnection, PlayerMessage},
@@ -86,7 +86,7 @@ mod test {
     use uuid::Uuid;
 
     use crate::{
-        game::game_repository::GameId,
+        game::GameId,
         player::{
             connection::{PlayerConnection, PlayerMessage},
             PlayerId,

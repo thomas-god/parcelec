@@ -2,7 +2,6 @@ use std::collections::HashMap;
 
 use delivery_period::{start_delivery_period, DeliveryPeriodId, DeliveryPeriodResults};
 use futures_util::future::join_all;
-use game_repository::GameId;
 use serde::{ser::SerializeStruct, Serialize};
 use tokio::sync::{
     mpsc::{self, channel, Receiver, Sender},
@@ -19,7 +18,6 @@ use crate::{
 };
 
 pub mod delivery_period;
-pub mod game_repository;
 pub mod scores;
 
 #[derive(Debug)]
@@ -85,6 +83,44 @@ impl Serialize for GameState {
             },
         )?;
         state.end()
+    }
+}
+
+use std::fmt;
+
+use uuid::Uuid;
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct GameId(String);
+impl GameId {
+    pub fn into_string(self) -> String {
+        self.0
+    }
+}
+
+impl fmt::Display for GameId {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+impl Default for GameId {
+    fn default() -> Self {
+        GameId(Uuid::new_v4().to_string())
+    }
+}
+impl From<String> for GameId {
+    fn from(value: String) -> Self {
+        GameId(value)
+    }
+}
+impl From<&str> for GameId {
+    fn from(value: &str) -> Self {
+        GameId(value.to_string())
+    }
+}
+impl AsRef<str> for GameId {
+    fn as_ref(&self) -> &str {
+        &self.0
     }
 }
 
@@ -359,7 +395,7 @@ mod tests {
         player::{connection::PlayerMessage, repository::ConnectionRepositoryMessage, PlayerId},
     };
 
-    use super::{game_repository::GameId, GameContext};
+    use super::{GameContext, GameId};
 
     async fn open_game() -> GameContext {
         let (tx, _) = mpsc::channel(16);
@@ -769,5 +805,28 @@ mod test_game_state {
             serde_json::to_string(&GameState::PostDelivery).unwrap(),
             "{\"type\":\"GameState\",\"state\":\"PostDelivery\"}".to_string()
         );
+    }
+}
+
+#[cfg(test)]
+mod test_game_id {
+    use crate::game::GameId;
+
+    #[test]
+    fn test_game_id_to_string() {
+        assert_eq!(GameId::from("toto").to_string(), String::from("toto"));
+    }
+
+    #[test]
+    fn test_game_id_from_and_into_string() {
+        assert_eq!(
+            GameId::from(String::from("toto")).into_string(),
+            String::from("toto")
+        );
+    }
+
+    #[test]
+    fn test_game_id_as_ref() {
+        assert_eq!(GameId::from("toto").as_ref(), "toto");
     }
 }

@@ -8,7 +8,7 @@ use tokio::sync::{mpsc, oneshot, watch};
 use order_book::{Bid, Offer, OrderBook, OrderRequest, Trade, TradeLeg};
 
 use crate::{
-    game::{delivery_period::DeliveryPeriodId, game_repository::GameId},
+    game::{delivery_period::DeliveryPeriodId, GameId},
     player::{connection::PlayerMessage, repository::ConnectionRepositoryMessage, PlayerId},
 };
 
@@ -295,7 +295,7 @@ mod tests {
     };
 
     use crate::{
-        game::{delivery_period::DeliveryPeriodId, game_repository::GameId},
+        game::{delivery_period::DeliveryPeriodId, GameId},
         market::{models::Direction, order_book::OrderRequest, MarketState},
         player::{repository::ConnectionRepositoryMessage, PlayerId},
     };

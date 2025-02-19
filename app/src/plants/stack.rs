@@ -7,7 +7,7 @@ use tokio::sync::{
 };
 
 use crate::{
-    game::{delivery_period::DeliveryPeriodId, game_repository::GameId},
+    game::{delivery_period::DeliveryPeriodId, GameId},
     plants::PlantOutput,
     player::{connection::PlayerMessage, repository::ConnectionRepositoryMessage, PlayerId},
 };
@@ -225,7 +225,7 @@ mod tests_stack {
     };
 
     use crate::{
-        game::{delivery_period::DeliveryPeriodId, game_repository::GameId},
+        game::{delivery_period::DeliveryPeriodId, GameId},
         plants::{
             stack::{ProgramPlant, StackActor, StackMessage, StackState},
             PlantId, PowerPlantPublicRepr,
