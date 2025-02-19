@@ -1,4 +1,4 @@
-use std::{env, sync::Arc};
+use std::{collections::HashMap, env, sync::Arc};
 
 use axum::{
     http::{
@@ -9,28 +9,39 @@ use axum::{
     Router,
 };
 use join_game::join_game;
-use tokio::{net::TcpListener, sync::mpsc};
+use tokio::{
+    net::TcpListener,
+    sync::{mpsc, RwLock},
+};
 use tower_cookies::CookieManagerLayer;
 use tower_http::cors::CorsLayer;
 use tutorial::create_tutorial_game;
 use ws::handle_ws_connection;
 
 use crate::{
-    game::{game_repository::GameRepositoryMessage, game_service::AuthPlayerToGame},
-    player::repository::ConnectionRepositoryMessage,
+    game::{
+        game_repository::{GameId, GameRepositoryMessage},
+        GameContext,
+    },
+    market::MarketContext,
+    plants::stack::StackContext,
+    player::{repository::ConnectionRepositoryMessage, PlayerId},
 };
 
 mod join_game;
 mod tutorial;
 mod ws;
 
-pub struct AppState<GS: AuthPlayerToGame> {
-    pub game_service: GS,
+pub type ApiState = Arc<RwLock<AppState>>;
+pub struct AppState {
+    pub market_services: HashMap<GameId, MarketContext>,
+    pub game_services: HashMap<GameId, GameContext>,
+    pub stack_services: HashMap<GameId, HashMap<PlayerId, StackContext>>,
     pub game_repository: mpsc::Sender<GameRepositoryMessage>,
     pub player_connections_repository: mpsc::Sender<ConnectionRepositoryMessage>,
 }
 
-pub async fn start_server<GS: AuthPlayerToGame>(app_state: Arc<AppState<GS>>) {
+pub async fn start_server(app_state: ApiState) {
     let addr = "0.0.0.0:9002";
     let listener = TcpListener::bind(&addr)
         .await
@@ -46,7 +57,7 @@ pub async fn start_server<GS: AuthPlayerToGame>(app_state: Arc<AppState<GS>>) {
         .unwrap();
 }
 
-fn build_app<GS: AuthPlayerToGame>(app_state: Arc<AppState<GS>>, origin: String) -> Router {
+fn build_app(app_state: ApiState, origin: String) -> Router {
     Router::new()
         .route("/game/join", post(join_game))
         .route("/tutorial", post(create_tutorial_game))

@@ -140,6 +140,24 @@ impl MarketActor {
         }
     }
 
+    pub fn start(
+        game_id: &GameId,
+        players_connections: mpsc::Sender<ConnectionRepositoryMessage>,
+    ) -> MarketContext {
+        let mut market = MarketActor::new(
+            game_id.clone(),
+            MarketState::Closed,
+            DeliveryPeriodId::default(),
+            players_connections,
+        );
+        let context = market.get_context();
+
+        tokio::spawn(async move {
+            market.process().await;
+        });
+        context
+    }
+
     pub fn get_context(&self) -> MarketContext {
         MarketContext {
             tx: self.tx.clone(),

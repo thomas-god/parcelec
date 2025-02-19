@@ -20,7 +20,6 @@ use crate::{
 
 pub mod delivery_period;
 pub mod game_repository;
-pub mod game_service;
 pub mod scores;
 
 #[derive(Debug)]
@@ -50,7 +49,7 @@ pub enum GameMessage {
 
 #[derive(Debug)]
 pub enum RegisterPlayerResponse {
-    Success { id: PlayerId },
+    Success { id: PlayerId, stack: StackContext },
     PlayerAlreadyExist,
     GameIsRunning,
 }
@@ -150,6 +149,33 @@ impl Game {
             delivery_period,
             all_players_ready_tx: None,
         }
+    }
+
+    pub fn start(
+        game_id: &GameId,
+        players_connections: mpsc::Sender<ConnectionRepositoryMessage>,
+        market_context: MarketContext,
+    ) -> GameContext {
+        let (tx, rx) = channel::<GameMessage>(32);
+        let (state_tx, _) = watch::channel(GameState::Open);
+        let mut game = Game {
+            game_id: game_id.clone(),
+            state: GameState::Open,
+            state_watch: state_tx,
+            market_context,
+            players: Vec::new(),
+            players_connections,
+            stacks_context: HashMap::new(),
+            rx,
+            tx,
+            delivery_period: DeliveryPeriodId::default(),
+            all_players_ready_tx: None,
+        };
+        let context = game.get_context();
+
+        tokio::spawn(async move { game.run().await });
+
+        context
     }
 
     pub async fn run(&mut self) {
@@ -303,14 +329,18 @@ impl Game {
             self.delivery_period,
             self.players_connections.clone(),
         );
+        let stack_context = player_stack.get_context();
         self.stacks_context
-            .insert(player_id.clone(), player_stack.get_context());
+            .insert(player_id.clone(), stack_context.clone());
         tokio::spawn(async move {
-            player_stack.start().await;
+            player_stack.run().await;
         });
         println!("Stack created for player {player_id}");
 
-        let _ = tx_back.send(RegisterPlayerResponse::Success { id: player_id });
+        let _ = tx_back.send(RegisterPlayerResponse::Success {
+            id: player_id,
+            stack: stack_context,
+        });
     }
 
     pub fn get_context(&self) -> GameContext {
@@ -358,7 +388,7 @@ mod tests {
             })
             .await;
         match rx.await {
-            Ok(RegisterPlayerResponse::Success { id }) => id,
+            Ok(RegisterPlayerResponse::Success { id, .. }) => id,
             _ => unreachable!("Should have register the player"),
         }
     }
@@ -402,7 +432,7 @@ mod tests {
             .await
             .unwrap();
         let first_id = match rx.await {
-            Ok(RegisterPlayerResponse::Success { id }) => id,
+            Ok(RegisterPlayerResponse::Success { id, .. }) => id,
             _ => unreachable!("Should have register the player"),
         };
 
@@ -416,7 +446,7 @@ mod tests {
             .await
             .unwrap();
         let second_id = match rx.await {
-            Ok(RegisterPlayerResponse::Success { id }) => id,
+            Ok(RegisterPlayerResponse::Success { id, .. }) => id,
             _ => unreachable!("Should have register the player"),
         };
 
@@ -438,7 +468,7 @@ mod tests {
             .await
             .unwrap();
         match rx.await {
-            Ok(RegisterPlayerResponse::Success { id }) => id,
+            Ok(RegisterPlayerResponse::Success { id, .. }) => id,
             _ => unreachable!("Should have register the player"),
         };
 
@@ -465,7 +495,7 @@ mod tests {
             .await
             .unwrap();
         match rx.await {
-            Ok(RegisterPlayerResponse::Success { id }) => id,
+            Ok(RegisterPlayerResponse::Success { id, .. }) => id,
             _ => unreachable!("Should have register the player"),
         };
     }
@@ -553,7 +583,7 @@ mod tests {
             .await
             .unwrap();
         let id = match rx.await {
-            Ok(RegisterPlayerResponse::Success { id }) => id,
+            Ok(RegisterPlayerResponse::Success { id, .. }) => id,
             _ => unreachable!("Should have register the player"),
         };
 

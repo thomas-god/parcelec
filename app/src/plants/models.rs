@@ -10,6 +10,7 @@ use super::{
 };
 
 #[derive(Debug)]
+#[allow(dead_code)]
 pub struct CloseStackError(DeliveryPeriodId);
 #[derive(Debug)]
 pub struct GetSnapshotError;

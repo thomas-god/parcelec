@@ -1,5 +1,3 @@
-use std::sync::Arc;
-
 use axum::{
     extract::{ws::WebSocket, State, WebSocketUpgrade},
     http::StatusCode,
@@ -11,40 +9,50 @@ use tower_cookies::{
 };
 
 use crate::{
-    game::{
-        game_repository::GameId,
-        game_service::{AuthPlayerToGame, AuthPlayerToGameError},
-    },
+    game::game_repository::GameId,
     player::{
         connection::{start_player_connection, PlayerConnectionContext},
         PlayerId,
     },
 };
 
-use super::AppState;
+use super::ApiState;
 
-pub async fn handle_ws_connection<GS: AuthPlayerToGame>(
+pub async fn handle_ws_connection(
     ws: WebSocketUpgrade,
-    State(state): State<Arc<AppState<GS>>>,
+    State(state): State<ApiState>,
     cookies: Cookies,
 ) -> impl IntoResponse {
     let Some((player_id, game_id)) = extract_cookies(&cookies) else {
+        invalidate_cookies(cookies);
         return StatusCode::UNAUTHORIZED.into_response();
     };
-
-    let player_context = match state.game_service.auth_player(&game_id, &player_id).await {
-        Ok(context) => context,
-        Err(AuthPlayerToGameError::NoGameFound)
-        | Err(AuthPlayerToGameError::NoPlayerFound)
-        | Err(AuthPlayerToGameError::NoStackFound) => {
-            invalidate_cookies(cookies);
-            return StatusCode::UNAUTHORIZED.into_response();
-        }
-        Err(_) => {
-            invalidate_cookies(cookies);
-            return StatusCode::INTERNAL_SERVER_ERROR.into_response();
-        }
+    let state = state.read().await;
+    let Some(game_context) = state.game_services.get(&game_id) else {
+        invalidate_cookies(cookies);
+        return StatusCode::UNAUTHORIZED.into_response();
     };
+    let Some(market_context) = state.market_services.get(&game_id) else {
+        invalidate_cookies(cookies);
+        return StatusCode::UNAUTHORIZED.into_response();
+    };
+    let Some(stack_context) = state
+        .stack_services
+        .get(&game_id)
+        .and_then(|game_stacks| game_stacks.get(&player_id))
+    else {
+        invalidate_cookies(cookies);
+        return StatusCode::UNAUTHORIZED.into_response();
+    };
+    let player_context = PlayerConnectionContext {
+        game_id: game_id.clone(),
+        player_id: player_id.clone(),
+        game: game_context.clone(),
+        market: market_context.clone(),
+        stack: stack_context.clone(),
+        connections_repository: state.player_connections_repository.clone(),
+    };
+
     ws.on_upgrade(move |socket| handle_socket(socket, player_context))
 }
 
@@ -90,42 +98,27 @@ async fn handle_socket(socket: WebSocket, context: PlayerConnectionContext) {
 
 #[cfg(test)]
 mod tests {
-    use crate::{
-        api::{build_app, AppState},
-        game::game_service::{AuthPlayerToGame, AuthPlayerToGameError},
-        player::connection::PlayerConnectionContext,
-    };
+    use crate::api::{build_app, AppState};
     use axum::http::{Request, StatusCode};
     use std::{
+        collections::HashMap,
         future::IntoFuture,
         net::{Ipv4Addr, SocketAddr},
         sync::Arc,
     };
-    use tokio::sync::mpsc;
+    use tokio::sync::{mpsc, RwLock};
     use tokio_tungstenite::tungstenite::{client::IntoClientRequest, Error};
 
-    #[derive(Debug, Clone)]
-    struct MockedGameService {
-        res: Result<PlayerConnectionContext, AuthPlayerToGameError>,
-    }
-    impl AuthPlayerToGame for MockedGameService {
-        async fn auth_player(
-            &self,
-            _game_id: &crate::game::game_repository::GameId,
-            _player_id: &crate::player::PlayerId,
-        ) -> Result<PlayerConnectionContext, AuthPlayerToGameError> {
-            self.res.clone()
-        }
-    }
-
-    async fn build_server(gs: MockedGameService) -> SocketAddr {
+    async fn build_server() -> SocketAddr {
         let (tx_conn, _) = mpsc::channel(1024);
         let (tx_games, _) = mpsc::channel(1024);
-        let state = Arc::new(AppState {
-            game_service: gs,
+        let state = Arc::new(RwLock::new(AppState {
             game_repository: tx_games,
             player_connections_repository: tx_conn,
-        });
+            market_services: HashMap::new(),
+            game_services: HashMap::new(),
+            stack_services: HashMap::new(),
+        }));
         let listener = tokio::net::TcpListener::bind(SocketAddr::from((Ipv4Addr::UNSPECIFIED, 0)))
             .await
             .unwrap();
@@ -143,10 +136,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_reject_ws_connection_game_cookie_not_found() {
-        let game_service = MockedGameService {
-            res: Err(AuthPlayerToGameError::NoGameFound),
-        };
-        let addr = build_server(game_service).await;
+        let addr = build_server().await;
         let mut ws_request = format!("ws://{addr}/ws").into_client_request().unwrap();
         ws_request.headers_mut().insert(
             "Cookie",
@@ -168,10 +158,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_reject_ws_connection_player_id_cookie_not_found() {
-        let game_service = MockedGameService {
-            res: Err(AuthPlayerToGameError::NoGameFound),
-        };
-        let addr = build_server(game_service).await;
+        let addr = build_server().await;
         let mut ws_request = format!("ws://{addr}/ws").into_client_request().unwrap();
         ws_request.headers_mut().insert(
             "Cookie",
@@ -193,10 +180,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_reject_ws_connection_player_name_cookie_not_found() {
-        let game_service = MockedGameService {
-            res: Err(AuthPlayerToGameError::NoGameFound),
-        };
-        let addr = build_server(game_service).await;
+        let addr = build_server().await;
         let mut ws_request = format!("ws://{addr}/ws").into_client_request().unwrap();
         ws_request.headers_mut().insert(
             "Cookie",
@@ -218,10 +202,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_reject_ws_connection_if_game_not_found() {
-        let game_service = MockedGameService {
-            res: Err(AuthPlayerToGameError::NoGameFound),
-        };
-        let addr = build_server(game_service).await;
+        let addr = build_server().await;
         let ws_request = default_request(addr);
 
         let res = tokio_tungstenite::connect_async(ws_request)
@@ -237,10 +218,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_reject_ws_connection_if_player_not_found() {
-        let game_service = MockedGameService {
-            res: Err(AuthPlayerToGameError::NoPlayerFound),
-        };
-        let addr = build_server(game_service).await;
+        let addr = build_server().await;
         let ws_request = default_request(addr);
 
         let res = tokio_tungstenite::connect_async(ws_request)
@@ -256,10 +234,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_reject_ws_connection_if_player_stack_not_found() {
-        let game_service = MockedGameService {
-            res: Err(AuthPlayerToGameError::NoStackFound),
-        };
-        let addr = build_server(game_service).await;
+        let addr = build_server().await;
         let ws_request = default_request(addr);
 
         let res = tokio_tungstenite::connect_async(ws_request)
@@ -268,25 +243,6 @@ mod tests {
         match res {
             Error::Http(resp) => {
                 assert_eq!(resp.status(), StatusCode::UNAUTHORIZED);
-            }
-            _ => unreachable!(),
-        }
-    }
-
-    #[tokio::test]
-    async fn test_reject_ws_connection_if_player_auth_fails() {
-        let game_service = MockedGameService {
-            res: Err(AuthPlayerToGameError::Unknown),
-        };
-        let addr = build_server(game_service).await;
-        let ws_request = default_request(addr);
-
-        let res = tokio_tungstenite::connect_async(ws_request)
-            .await
-            .expect_err("Should have rejected the WS connection");
-        match res {
-            Error::Http(resp) => {
-                assert_eq!(resp.status(), StatusCode::INTERNAL_SERVER_ERROR);
             }
             _ => unreachable!(),
         }

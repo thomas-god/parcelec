@@ -1,4 +1,4 @@
-use std::{env, sync::Arc};
+use std::{collections::HashMap, env};
 
 use axum::{extract::State, http::StatusCode, response::IntoResponse};
 use tokio::sync::oneshot;
@@ -9,33 +9,31 @@ use tower_cookies::{
 
 use crate::{
     bots::start_bots,
-    game::{
-        game_repository::{CreateNewGameResponse, GameRepositoryMessage},
-        game_service::AuthPlayerToGame,
-        GameMessage, RegisterPlayerResponse,
-    },
+    game::{game_repository::GameId, Game, GameMessage, RegisterPlayerResponse},
+    market::MarketActor,
 };
 
-use super::AppState;
+use super::ApiState;
 
-pub async fn create_tutorial_game<GS: AuthPlayerToGame>(
+pub async fn create_tutorial_game(
     cookies: Cookies,
-    State(state): State<Arc<AppState<GS>>>,
+    State(state): State<ApiState>,
 ) -> impl IntoResponse {
-    // Create a new game
-    let (tx_back, rx) = oneshot::channel();
-    let _ = state
-        .game_repository
-        .send(GameRepositoryMessage::CreateNewGame { tx_back })
-        .await;
-    let Ok(CreateNewGameResponse {
-        game_id,
-        game_context,
-    }) = rx.await
-    else {
-        println!("Unable to create a game");
-        return StatusCode::INTERNAL_SERVER_ERROR;
-    };
+    let mut state = state.write().await;
+    let game_id = GameId::default();
+    let market_context = MarketActor::start(&game_id, state.player_connections_repository.clone());
+    let game_context = Game::start(
+        &game_id,
+        state.player_connections_repository.clone(),
+        market_context.clone(),
+    );
+
+    state
+        .market_services
+        .insert(game_id.clone(), market_context.clone());
+    state
+        .game_services
+        .insert(game_id.clone(), game_context.clone());
 
     // Start the bots
     let cloned_game_context = game_context.clone();
@@ -53,10 +51,27 @@ pub async fn create_tutorial_game<GS: AuthPlayerToGame>(
             tx_back,
         })
         .await;
-    let Ok(RegisterPlayerResponse::Success { id: player_id }) = rx.await else {
+    let Ok(RegisterPlayerResponse::Success {
+        id: player_id,
+        stack,
+    }) = rx.await
+    else {
         println!("Unable to register tutorial player");
         return StatusCode::INTERNAL_SERVER_ERROR;
     };
+    match state.stack_services.get_mut(&game_id) {
+        Some(game_stacks) => {
+            if game_stacks.get(&player_id).is_some() {
+                println!("A stack already exist for player {player_id:?} in game {game_id:?}");
+                return StatusCode::INTERNAL_SERVER_ERROR;
+            }
+            game_stacks.insert(player_id.clone(), stack.clone());
+        }
+        None => {
+            let game_stacks = HashMap::from([(player_id.clone(), stack)]);
+            state.stack_services.insert(game_id.clone(), game_stacks);
+        }
+    }
 
     // Start the game
     let _ = game_context

@@ -102,6 +102,27 @@ impl StackActor {
             rx,
         }
     }
+
+    pub fn start(
+        game: &GameId,
+        player: &PlayerId,
+        players_connections: mpsc::Sender<ConnectionRepositoryMessage>,
+    ) -> StackContext {
+        let mut stack = StackActor::new(
+            game.clone(),
+            player.clone(),
+            StackState::Closed,
+            DeliveryPeriodId::default(),
+            players_connections,
+        );
+        let context = stack.get_context();
+
+        tokio::spawn(async move {
+            stack.run().await;
+        });
+        context
+    }
+
     pub fn get_context(&self) -> StackContext {
         StackContext {
             tx: self.tx.clone(),
@@ -109,7 +130,7 @@ impl StackActor {
         }
     }
 
-    pub async fn start(&mut self) {
+    pub async fn run(&mut self) {
         while let Some(message) = self.rx.recv().await {
             match (&self.state, message) {
                 (_, StackMessage::GetSnapshot(tx_back)) => {
@@ -231,7 +252,7 @@ mod tests_stack {
         );
         let stack_context = stack.get_context();
         tokio::spawn(async move {
-            stack.start().await;
+            stack.run().await;
         });
         (player_id, stack_context, conn_rx)
     }
@@ -383,7 +404,7 @@ mod tests_stack {
             mut state_rx,
         } = stack.get_context();
         tokio::spawn(async move {
-            stack.start().await;
+            stack.run().await;
         });
 
         assert_eq!(*state_rx.borrow(), StackState::Open);
@@ -423,7 +444,7 @@ mod tests_stack {
             mut state_rx,
         } = stack.get_context();
         tokio::spawn(async move {
-            stack.start().await;
+            stack.run().await;
         });
 
         assert_eq!(*state_rx.borrow_and_update(), StackState::Open);
@@ -467,7 +488,7 @@ mod tests_stack {
             mut state_rx,
         } = stack.get_context();
         tokio::spawn(async move {
-            stack.start().await;
+            stack.run().await;
         });
 
         assert_eq!(*state_rx.borrow_and_update(), StackState::Closed);
@@ -503,7 +524,7 @@ mod tests_stack {
             mut state_rx,
         } = stack.get_context();
         tokio::spawn(async move {
-            stack.start().await;
+            stack.run().await;
         });
 
         // Open the stack
