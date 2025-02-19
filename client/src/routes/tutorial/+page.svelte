@@ -1,6 +1,7 @@
 <script lang="ts">
   import { goto } from "$app/navigation";
   import { PUBLIC_APP_URL } from "$env/static/public";
+  import Scores from "../../components/molecules/Scores.svelte";
 
   let error = $state(false);
   const startTutorial = async () => {
@@ -15,19 +16,39 @@
       error = true;
     }
   };
+  let index = $state(0);
+  let position_values = [-1200, 250, 0];
+  let position = $derived(position_values.at(index)!);
+  let pnl_values = [3000, -550, 1200];
+  let pnl = $derived(pnl_values.at(index)!);
+  setInterval(() => {
+    index = (index + 1) % position_values.length;
+  }, 2000);
 </script>
 
 <div class="flex flex-col">
-  <h1 class="text-center font-semibold text-xl my-3">Tutoriel</h1>
+  <h1 class="text-center font-semibold text-xl my-3">
+    Bienvenue dans Parcelec !
+  </h1>
   <div class="p-4">
-    Lorem ipsum dolor sit, amet consectetur adipisicing elit. Dignissimos,
-    delectus natus. Vero suscipit ducimus sed incidunt expedita harum, aliquam
-    iure? Magnam perferendis in tempore adipisci, cumque natus minima facere
-    cupiditate. Lorem ipsum dolor sit, amet consectetur adipisicing elit.
-    Suscipit dolores quidem voluptatem voluptates error nihil dolorum, quo rem
-    numquam asperiores officiis nisi possimus illo distinctio non, rerum ipsum
-    consequatur quos.
+    L'objectif de Parcelec est d'atteindre l'équilibre énergétique pour produire
+    autant que ce vos clients 🏙️ consomment. Mais attention il vous faudra
+    trouver l'équilibre au meilleur cout !
   </div>
+  <div class="p-4">
+    <Scores {position} {pnl} />
+  </div>
+  <p class="p-4">
+    Pour cela, vous disposez de plusieurs sources d'énergie : les centrales à
+    gaz 🔥, entièrement pilotables mais coûteuses à exploiter ; les énergies
+    renouvelables ☀️, gratuites mais dont la production varie selon les périodes
+    ; et les batteries 🔋 qui permettent de stocker l'énergie entre deux
+    périodes.
+  </p>
+  <p class="p-4">
+    Et ce n'est pas tout : vous avez accès au marché de l'énergie pour acheter
+    et vendre selon vos besoins. Restez à l'affût des bonnes opportunités !
+  </p>
   <div class="self-center">
     <button onclick={startTutorial} class="text-lg mt-3"
       >➡️ Commencer une partie</button
