@@ -27,7 +27,6 @@ struct Player {
     ready: bool,
 }
 
-pub struct Stack {}
 #[derive(Debug)]
 pub enum GameMessage {
     RegisterPlayer {
@@ -40,7 +39,10 @@ pub enum GameMessage {
 
 #[derive(Debug)]
 pub enum RegisterPlayerResponse {
-    Success { id: PlayerId, stack: StackContext },
+    Success {
+        id: PlayerId,
+        stack: StackContext<StackService>,
+    },
     PlayerAlreadyExist,
     GameIsRunning,
 }
@@ -126,7 +128,7 @@ pub struct Game<MS: Market> {
     players: Vec<Player>,
     players_connections: mpsc::Sender<ConnectionRepositoryMessage>,
     market_context: MarketContext<MS>,
-    stacks_context: HashMap<PlayerId, StackContext>,
+    stacks_contexts: HashMap<PlayerId, StackContext<StackService>>,
     rx: Receiver<GameMessage>,
     tx: Sender<GameMessage>,
     delivery_period: DeliveryPeriodId,
@@ -149,7 +151,7 @@ impl<MS: Market> Game<MS> {
             market_context,
             players: Vec::new(),
             players_connections,
-            stacks_context: HashMap::new(),
+            stacks_contexts: HashMap::new(),
             rx,
             tx,
             delivery_period: DeliveryPeriodId::default(),
@@ -225,9 +227,9 @@ impl<MS: Market> Game<MS> {
             let game_tx = self.tx.clone();
             let market_service = self.market_context.service.clone();
             let stacks_tx = self
-                .stacks_context
+                .stacks_contexts
                 .iter()
-                .map(|(id, context)| (id.clone(), StackService::new(context.tx.clone())))
+                .map(|(id, context)| (id.clone(), context.service.clone()))
                 .collect();
             let (results_tx, results_rx) = oneshot::channel();
             let timers = None;
@@ -290,7 +292,7 @@ impl<MS: Market> Game<MS> {
             self.players_connections.clone(),
         );
         let stack_context = player_stack.get_context();
-        self.stacks_context
+        self.stacks_contexts
             .insert(player_id.clone(), stack_context.clone());
         tokio::spawn(async move {
             player_stack.run().await;
@@ -318,7 +320,10 @@ mod tests {
     use crate::{
         game::{Game, GameMessage, GameState, RegisterPlayerResponse},
         market::{Market, MarketContext, MarketState, OBS},
-        plants::actor::{StackContext, StackState},
+        plants::{
+            actor::{StackContext, StackState},
+            StackService,
+        },
         player::{connection::PlayerMessage, repository::ConnectionRepositoryMessage, PlayerId},
     };
 
@@ -374,7 +379,9 @@ mod tests {
         )
     }
 
-    async fn register_player(game: mpsc::Sender<GameMessage>) -> (PlayerId, StackContext) {
+    async fn register_player(
+        game: mpsc::Sender<GameMessage>,
+    ) -> (PlayerId, StackContext<StackService>) {
         let player = PlayerId::default();
         let (tx, rx) = channel::<RegisterPlayerResponse>();
         let _ = game
@@ -389,7 +396,7 @@ mod tests {
         }
     }
 
-    async fn start_game(game: mpsc::Sender<GameMessage>) -> (PlayerId, StackContext) {
+    async fn start_game(game: mpsc::Sender<GameMessage>) -> (PlayerId, StackContext<StackService>) {
         let (player, stack) = register_player(game.clone()).await;
         let _ = game.send(GameMessage::PlayerIsReady(player.clone())).await;
         (player, stack)

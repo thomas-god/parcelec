@@ -22,8 +22,8 @@ use crate::{
         Direction, Market, MarketContext, MarketState, OrderRepr,
     },
     plants::{
-        actor::{ProgramPlant, StackContext, StackMessage, StackState},
-        PlantId, PowerPlantPublicRepr, Stack, StackService,
+        actor::{ProgramPlant, StackContext, StackState},
+        PlantId, PowerPlantPublicRepr, Stack,
     },
 };
 
@@ -77,18 +77,18 @@ pub enum PlayerMessage {
     DeliveryPeriodResults(PlayerScore),
 }
 #[derive(Debug, Clone)]
-pub struct PlayerConnectionContext<MS: Market> {
+pub struct PlayerConnectionContext<MS: Market, PS: Stack> {
     pub game_id: GameId,
     pub player_id: PlayerId,
     pub connections_repository: mpsc::Sender<ConnectionRepositoryMessage>,
     pub game: GameContext,
     pub market: MarketContext<MS>,
-    pub stack: StackContext,
+    pub stack: StackContext<PS>,
 }
 
-pub async fn start_player_connection<MS: Market>(
+pub async fn start_player_connection<MS: Market, PS: Stack>(
     mut ws: WebSocket,
-    context: PlayerConnectionContext<MS>,
+    context: PlayerConnectionContext<MS, PS>,
 ) {
     let connection_id = Uuid::new_v4().to_string();
     let (tx, rx) = channel::<PlayerMessage>(16);
@@ -135,15 +135,15 @@ pub async fn start_player_connection<MS: Market>(
         stream,
         context.game.tx.clone(),
         context.market.service.clone(),
-        context.stack.tx.clone(),
+        context.stack.service.clone(),
         context.player_id.clone(),
     ));
     let _ = tokio::try_join!(sink_handle, stream_handle);
 }
 
-async fn send_initial_trades_and_obs<MS: Market>(
+async fn send_initial_trades_and_obs<MS: Market, PS: Stack>(
     ws: &mut WebSocket,
-    context: &PlayerConnectionContext<MS>,
+    context: &PlayerConnectionContext<MS, PS>,
 ) -> Option<()> {
     let (trades, obs) = context
         .market
@@ -182,11 +182,13 @@ async fn send_initial_trades_and_obs<MS: Market>(
     Some(())
 }
 
-async fn send_initial_stack_snapshot<MS: Market>(
+async fn send_initial_stack_snapshot<MS: Market, PS: Stack>(
     ws: &mut WebSocket,
-    context: &PlayerConnectionContext<MS>,
+    context: &PlayerConnectionContext<MS, PS>,
 ) -> Option<()> {
-    match StackService::new(context.stack.tx.clone())
+    match context
+        .stack
+        .service
         .get_snapshot()
         .await
         .map_err(|err| serde_json::Error::custom(format!("{err:?}")))
@@ -206,10 +208,10 @@ async fn send_initial_stack_snapshot<MS: Market>(
     Some(())
 }
 
-async fn register_connection<MS: Market>(
+async fn register_connection<MS: Market, PS: Stack>(
     tx: Sender<PlayerMessage>,
     connection_id: String,
-    context: &PlayerConnectionContext<MS>,
+    context: &PlayerConnectionContext<MS, PS>,
 ) {
     let _ = context
         .connections_repository
@@ -224,11 +226,11 @@ async fn register_connection<MS: Market>(
         .await;
 }
 
-async fn process_ws_messages<MS: Market>(
+async fn process_ws_messages<MS: Market, PS: Stack>(
     mut stream: SplitStream<WebSocket>,
     game_tx: Sender<GameMessage>,
     market: MS,
-    stack_tx: Sender<StackMessage>,
+    stack: PS,
     player_id: PlayerId,
 ) {
     while let Some(Ok(Message::Text(msg))) = stream.next().await {
@@ -246,19 +248,13 @@ async fn process_ws_messages<MS: Market>(
                     owner: player_id.clone(),
                 };
                 let _ = market.new_order(order_request).await;
-                // let _ = market
-                //     .send(MarketMessage::OrderRequest(order_request))
-                //     .await;
             }
             Ok(WebSocketIncomingMessage::DeleteOrder { order_id }) => {
                 let _ = market.delete_order(order_id).await;
-                // let _ = market
-                //     .send(MarketMessage::OrderDeletionRequest { order_id })
-                //     .await;
             }
             Ok(WebSocketIncomingMessage::ConnectionReady) => { /* Only for WS initialisation */ }
             Ok(WebSocketIncomingMessage::ProgramPlant(req)) => {
-                let _ = stack_tx.send(StackMessage::ProgramSetpoint(req)).await;
+                let _ = stack.program_setpoint(req.plant_id, req.setpoint).await;
             }
             Err(err) => println!("{err:?}"),
         }

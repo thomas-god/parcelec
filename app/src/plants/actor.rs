@@ -13,9 +13,10 @@ use crate::{
 };
 
 use super::{
-    technologies::battery::Battery, technologies::consumers::Consumers,
-    technologies::gas_plant::GasPlant, technologies::renewable::RenewablePlant, PlantId,
-    PowerPlant, PowerPlantPublicRepr,
+    technologies::{
+        battery::Battery, consumers::Consumers, gas_plant::GasPlant, renewable::RenewablePlant,
+    },
+    PlantId, PowerPlant, PowerPlantPublicRepr, Stack, StackService,
 };
 
 #[derive(Debug, Deserialize)]
@@ -60,8 +61,8 @@ impl Serialize for StackState {
 }
 
 #[derive(Debug, Clone)]
-pub struct StackContext {
-    pub tx: mpsc::Sender<StackMessage>,
+pub struct StackContext<PS: Stack> {
+    pub service: PS,
     pub state_rx: watch::Receiver<StackState>,
 }
 
@@ -108,7 +109,7 @@ impl StackActor {
         game: &GameId,
         player: &PlayerId,
         players_connections: mpsc::Sender<ConnectionRepositoryMessage>,
-    ) -> StackContext {
+    ) -> StackContext<StackService> {
         let mut stack = StackActor::new(
             game.clone(),
             player.clone(),
@@ -124,9 +125,9 @@ impl StackActor {
         context
     }
 
-    pub fn get_context(&self) -> StackContext {
+    pub fn get_context(&self) -> StackContext<StackService> {
         StackContext {
-            tx: self.tx.clone(),
+            service: StackService::new(self.tx.clone()),
             state_rx: self.state_sender.subscribe(),
         }
     }
@@ -222,7 +223,7 @@ mod tests_stack {
 
     use tokio::sync::{
         mpsc::{self, Sender},
-        oneshot,
+        oneshot, watch,
     };
 
     use crate::{
@@ -234,11 +235,10 @@ mod tests_stack {
         player::{connection::PlayerMessage, repository::ConnectionRepositoryMessage, PlayerId},
     };
 
-    use super::StackContext;
-
     fn start_stack() -> (
         PlayerId,
-        StackContext,
+        mpsc::Sender<StackMessage>,
+        watch::Receiver<StackState>,
         mpsc::Receiver<ConnectionRepositoryMessage>,
     ) {
         let game_id = GameId::default();
@@ -251,19 +251,20 @@ mod tests_stack {
             DeliveryPeriodId::from(0),
             conn_tx,
         );
-        let stack_context = stack.get_context();
+        let tx = stack.tx.clone();
+        let state_rx = stack.state_sender.subscribe();
         tokio::spawn(async move {
             stack.run().await;
         });
-        (player_id, stack_context, conn_rx)
+        (player_id, tx, state_rx, conn_rx)
     }
 
     #[tokio::test]
     async fn test_get_snapshot() {
-        let (_, stack, _) = start_stack();
+        let (_, tx, _, _) = start_stack();
 
-        let (tx, rx) = oneshot::channel();
-        let _ = stack.tx.send(StackMessage::GetSnapshot(tx)).await;
+        let (tx_back, rx) = oneshot::channel();
+        let _ = tx.send(StackMessage::GetSnapshot(tx_back)).await;
 
         let Ok(_) = rx.await else {
             unreachable!();
@@ -284,15 +285,14 @@ mod tests_stack {
 
     #[tokio::test]
     async fn test_programm_a_plant_setpoint() {
-        let (_, stack, mut conn_rx) = start_stack();
-        let plants = get_stack_snashot(stack.tx.clone()).await;
+        let (_, tx, _, mut conn_rx) = start_stack();
+        let plants = get_stack_snashot(tx.clone()).await;
 
         // Program a plant's setpoint
         let Some(plant_id) = plants.keys().next() else {
             unreachable!("Stack should contain at least one power plant");
         };
-        let _ = stack
-            .tx
+        let _ = tx
             .send(StackMessage::ProgramSetpoint(ProgramPlant {
                 plant_id: plant_id.to_owned(),
                 setpoint: 100,
@@ -312,13 +312,12 @@ mod tests_stack {
 
     #[tokio::test]
     async fn test_no_dispatch_when_stack_closed() {
-        let (_, stack, mut conn_rx) = start_stack();
-        let plants = get_stack_snashot(stack.tx.clone()).await;
+        let (_, tx, _, mut conn_rx) = start_stack();
+        let plants = get_stack_snashot(tx.clone()).await;
 
         // Close the stack
         let (tx_back, _) = oneshot::channel();
-        let _ = stack
-            .tx
+        let _ = tx
             .send(StackMessage::CloseStack {
                 tx_back,
                 period_id: DeliveryPeriodId::from(0),
@@ -331,8 +330,7 @@ mod tests_stack {
         let Some(plant_id) = plants.keys().next() else {
             unreachable!("Stack should contain at least one power plant");
         };
-        let _ = stack
-            .tx
+        let _ = tx
             .send(StackMessage::ProgramSetpoint(ProgramPlant {
                 plant_id: plant_id.to_owned(),
                 setpoint: 100,
@@ -349,9 +347,9 @@ mod tests_stack {
     }
     #[tokio::test]
     async fn test_receive_plant_outputs_when_closing_stack() {
-        let (_, stack, _) = start_stack();
+        let (_, tx, _, _) = start_stack();
 
-        let plants = get_stack_snashot(stack.tx.clone()).await;
+        let plants = get_stack_snashot(tx.clone()).await;
         let plants_balance = plants.values().fold(0, |acc, plant| {
             acc + match plant {
                 PowerPlantPublicRepr::Battery(batt) => batt.output.setpoint,
@@ -363,8 +361,7 @@ mod tests_stack {
 
         // Close the stack
         let (tx_back, rx_back) = oneshot::channel();
-        let _ = stack
-            .tx
+        let _ = tx
             .send(StackMessage::CloseStack {
                 tx_back,
                 period_id: DeliveryPeriodId::from(0),
@@ -400,10 +397,8 @@ mod tests_stack {
             DeliveryPeriodId::from(0),
             conn_tx,
         );
-        let StackContext {
-            tx: stack_tx,
-            mut state_rx,
-        } = stack.get_context();
+        let stack_tx = stack.tx.clone();
+        let mut state_rx = stack.state_sender.subscribe();
         tokio::spawn(async move {
             stack.run().await;
         });
@@ -440,10 +435,8 @@ mod tests_stack {
             DeliveryPeriodId::from(1),
             conn_tx,
         );
-        let StackContext {
-            tx: stack_tx,
-            mut state_rx,
-        } = stack.get_context();
+        let stack_tx = stack.tx.clone();
+        let mut state_rx = stack.state_sender.subscribe();
         tokio::spawn(async move {
             stack.run().await;
         });
@@ -484,10 +477,8 @@ mod tests_stack {
             DeliveryPeriodId::from(1),
             conn_tx,
         );
-        let StackContext {
-            tx: stack_tx,
-            mut state_rx,
-        } = stack.get_context();
+        let stack_tx = stack.tx.clone();
+        let mut state_rx = stack.state_sender.subscribe();
         tokio::spawn(async move {
             stack.run().await;
         });
@@ -520,10 +511,8 @@ mod tests_stack {
             DeliveryPeriodId::from(1),
             conn_tx,
         );
-        let StackContext {
-            tx: stack_tx,
-            mut state_rx,
-        } = stack.get_context();
+        let stack_tx = stack.tx.clone();
+        let mut state_rx = stack.state_sender.subscribe();
         tokio::spawn(async move {
             stack.run().await;
         });
@@ -549,12 +538,11 @@ mod tests_stack {
 
     #[tokio::test]
     async fn test_closing_twice_should_return_the_same_plants_outputs() {
-        let (_, stack, _) = start_stack();
+        let (_, tx, _, _) = start_stack();
 
         // Close the stack
         let (tx_back, rx_back) = oneshot::channel();
-        let _ = stack
-            .tx
+        let _ = tx
             .send(StackMessage::CloseStack {
                 tx_back,
                 period_id: DeliveryPeriodId::from(0),
@@ -568,8 +556,7 @@ mod tests_stack {
 
         // Close the stack again
         let (tx_back, rx_back) = oneshot::channel();
-        let _ = stack
-            .tx
+        let _ = tx
             .send(StackMessage::CloseStack {
                 tx_back,
                 period_id: DeliveryPeriodId::from(0),
@@ -584,15 +571,14 @@ mod tests_stack {
 
     #[tokio::test]
     async fn test_closing_the_stack_should_send_an_updated_snapshot() {
-        let (_, stack, mut conn_rx) = start_stack();
-        let plants = get_stack_snashot(stack.tx.clone()).await;
+        let (_, tx, _, mut conn_rx) = start_stack();
+        let plants = get_stack_snashot(tx.clone()).await;
 
         // Program a plant's setpoint
         let Some(plant_id) = plants.keys().next() else {
             unreachable!("Stack should contain at least one power plant");
         };
-        let _ = stack
-            .tx
+        let _ = tx
             .send(StackMessage::ProgramSetpoint(ProgramPlant {
                 plant_id: plant_id.to_owned(),
                 setpoint: 100,
@@ -611,8 +597,7 @@ mod tests_stack {
 
         // Close the stack
         let (tx_back, _) = oneshot::channel();
-        let _ = stack
-            .tx
+        let _ = tx
             .send(StackMessage::CloseStack {
                 tx_back,
                 period_id: DeliveryPeriodId::from(0),

@@ -44,7 +44,7 @@ pub struct MarketActor {
 }
 
 impl MarketActor {
-    pub fn new(
+    fn new(
         game_id: GameId,
         state: MarketState,
         delivery_period: DeliveryPeriodId,
