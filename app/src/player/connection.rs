@@ -19,7 +19,7 @@ use crate::{
     game::{scores::PlayerScore, GameContext, GameId, GameMessage, GameState},
     market::{
         order_book::{OrderRequest as MarketOrderRequest, TradeLeg},
-        Direction, Market, MarketContext, MarketMessage, MarketService, MarketState, OrderRepr,
+        Direction, Market, MarketContext, MarketState, OrderRepr,
     },
     plants::{
         stack::{ProgramPlant, StackContext, StackMessage, StackState},
@@ -77,16 +77,19 @@ pub enum PlayerMessage {
     DeliveryPeriodResults(PlayerScore),
 }
 #[derive(Debug, Clone)]
-pub struct PlayerConnectionContext {
+pub struct PlayerConnectionContext<MS: Market> {
     pub game_id: GameId,
     pub player_id: PlayerId,
     pub connections_repository: mpsc::Sender<ConnectionRepositoryMessage>,
     pub game: GameContext,
-    pub market: MarketContext,
+    pub market: MarketContext<MS>,
     pub stack: StackContext,
 }
 
-pub async fn start_player_connection(mut ws: WebSocket, context: PlayerConnectionContext) {
+pub async fn start_player_connection<MS: Market>(
+    mut ws: WebSocket,
+    context: PlayerConnectionContext<MS>,
+) {
     let connection_id = Uuid::new_v4().to_string();
     let (tx, rx) = channel::<PlayerMessage>(16);
 
@@ -131,18 +134,20 @@ pub async fn start_player_connection(mut ws: WebSocket, context: PlayerConnectio
     let stream_handle = tokio::spawn(process_ws_messages(
         stream,
         context.game.tx.clone(),
-        context.market.tx.clone(),
+        context.market.service.clone(),
         context.stack.tx.clone(),
         context.player_id.clone(),
     ));
     let _ = tokio::try_join!(sink_handle, stream_handle);
 }
 
-async fn send_initial_trades_and_obs(
+async fn send_initial_trades_and_obs<MS: Market>(
     ws: &mut WebSocket,
-    context: &PlayerConnectionContext,
+    context: &PlayerConnectionContext<MS>,
 ) -> Option<()> {
-    let (trades, obs) = MarketService::new(context.market.tx.clone())
+    let (trades, obs) = context
+        .market
+        .service
         .get_market_snapshot(context.player_id.clone())
         .await;
     match serde_json::to_string(&PlayerMessage::TradeList { trades }) {
@@ -177,9 +182,9 @@ async fn send_initial_trades_and_obs(
     Some(())
 }
 
-async fn send_initial_stack_snapshot(
+async fn send_initial_stack_snapshot<MS: Market>(
     ws: &mut WebSocket,
-    context: &PlayerConnectionContext,
+    context: &PlayerConnectionContext<MS>,
 ) -> Option<()> {
     match StackService::new(context.stack.tx.clone())
         .get_snapshot()
@@ -201,10 +206,10 @@ async fn send_initial_stack_snapshot(
     Some(())
 }
 
-async fn register_connection(
+async fn register_connection<MS: Market>(
     tx: Sender<PlayerMessage>,
     connection_id: String,
-    context: &PlayerConnectionContext,
+    context: &PlayerConnectionContext<MS>,
 ) {
     let _ = context
         .connections_repository
@@ -219,10 +224,10 @@ async fn register_connection(
         .await;
 }
 
-async fn process_ws_messages(
+async fn process_ws_messages<MS: Market>(
     mut stream: SplitStream<WebSocket>,
     game_tx: Sender<GameMessage>,
-    market_tx: Sender<MarketMessage>,
+    market: MS,
     stack_tx: Sender<StackMessage>,
     player_id: PlayerId,
 ) {
@@ -240,14 +245,16 @@ async fn process_ws_messages(
                     volume: request.volume,
                     owner: player_id.clone(),
                 };
-                let _ = market_tx
-                    .send(MarketMessage::OrderRequest(order_request))
-                    .await;
+                let _ = market.new_order(order_request).await;
+                // let _ = market
+                //     .send(MarketMessage::OrderRequest(order_request))
+                //     .await;
             }
             Ok(WebSocketIncomingMessage::DeleteOrder { order_id }) => {
-                let _ = market_tx
-                    .send(MarketMessage::OrderDeletionRequest { order_id })
-                    .await;
+                let _ = market.delete_order(order_id).await;
+                // let _ = market
+                //     .send(MarketMessage::OrderDeletionRequest { order_id })
+                //     .await;
             }
             Ok(WebSocketIncomingMessage::ConnectionReady) => { /* Only for WS initialisation */ }
             Ok(WebSocketIncomingMessage::ProgramPlant(req)) => {

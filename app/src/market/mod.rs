@@ -2,7 +2,7 @@ use std::{fmt::Debug, future::Future};
 
 use chrono::{DateTime, Utc};
 use serde::{ser::SerializeStruct, Deserialize, Serialize};
-use tokio::sync::{mpsc, watch};
+use tokio::sync::watch;
 
 use order_book::{Bid, Offer, OrderRequest, Trade, TradeLeg};
 
@@ -23,7 +23,7 @@ pub enum Direction {
 
 /// [Market] is the public API for the market domain of Parcelec. The market domain is
 /// responsible for receiving and matching orders from players, as long a providing on update and
-/// on demande snapshots of the order book (the list of currents orders).
+/// on demand snapshots of the order book (the list of currents orders).
 pub trait Market: Clone + Send + Sync + 'static {
     /// Open the market, allowing players to send orders to the market.
     fn open_market(&self, delivery_period: DeliveryPeriodId) -> impl Future<Output = ()> + Send;
@@ -117,8 +117,8 @@ impl Serialize for MarketState {
 }
 
 #[derive(Debug, Clone)]
-pub struct MarketContext {
-    pub tx: mpsc::Sender<MarketMessage>,
+pub struct MarketContext<MS: Market> {
+    pub service: MS,
     pub state_rx: watch::Receiver<MarketState>,
 }
 

@@ -5,7 +5,7 @@ use tokio::sync::{mpsc, oneshot, watch};
 
 use super::{
     order_book::{OrderBook, OrderRequest, Trade, TradeLeg},
-    MarketContext, MarketState, OrderRepr, OBS,
+    MarketContext, MarketService, MarketState, OrderRepr, OBS,
 };
 
 use crate::{
@@ -70,7 +70,7 @@ impl MarketActor {
     pub fn start(
         game_id: &GameId,
         players_connections: mpsc::Sender<ConnectionRepositoryMessage>,
-    ) -> MarketContext {
+    ) -> MarketContext<MarketService> {
         let mut market = MarketActor::new(
             game_id.clone(),
             MarketState::Closed,
@@ -85,9 +85,9 @@ impl MarketActor {
         context
     }
 
-    pub fn get_context(&self) -> MarketContext {
+    pub fn get_context(&self) -> MarketContext<MarketService> {
         MarketContext {
-            tx: self.tx.clone(),
+            service: MarketService::new(self.tx.clone()),
             state_rx: self.state_sender.subscribe(),
         }
     }
@@ -218,7 +218,7 @@ mod tests {
 
     use tokio::sync::{
         mpsc::{self},
-        oneshot,
+        oneshot, watch,
     };
 
     use crate::{
@@ -227,23 +227,24 @@ mod tests {
         player::{repository::ConnectionRepositoryMessage, PlayerId},
     };
 
-    use super::{MarketActor, MarketContext, MarketMessage, PlayerMessage};
+    use super::{MarketActor, MarketMessage, PlayerMessage};
 
     fn start_market_actor(
         game_id: &GameId,
         connections: mpsc::Sender<ConnectionRepositoryMessage>,
-    ) -> MarketContext {
+    ) -> (mpsc::Sender<MarketMessage>, watch::Receiver<MarketState>) {
         let mut market = MarketActor::new(
             game_id.clone(),
             MarketState::Open,
             DeliveryPeriodId::from(0),
             connections,
         );
-        let context = market.get_context();
+        let tx = market.tx.clone();
+        let watch = market.state_sender.subscribe();
         tokio::spawn(async move {
             market.process().await;
         });
-        context
+        (tx, watch)
     }
 
     async fn register_player(market: mpsc::Sender<MarketMessage>) -> PlayerId {
@@ -262,20 +263,18 @@ mod tests {
     async fn test_process_request_order() {
         let game_id = GameId::default();
         let (conn_tx, mut conn_rx) = mpsc::channel(16);
-        let market = start_market_actor(&game_id, conn_tx.clone());
-        let player_id = register_player(market.tx.clone()).await;
+        let (tx, _) = start_market_actor(&game_id, conn_tx.clone());
+        let player_id = register_player(tx.clone()).await;
 
         // Send order request to market actor
-        market
-            .tx
-            .send(MarketMessage::OrderRequest(OrderRequest {
-                direction: Direction::Buy,
-                price: 50_00,
-                volume: 10,
-                owner: player_id.clone(),
-            }))
-            .await
-            .unwrap();
+        tx.send(MarketMessage::OrderRequest(OrderRequest {
+            direction: Direction::Buy,
+            price: 50_00,
+            volume: 10,
+            owner: player_id.clone(),
+        }))
+        .await
+        .unwrap();
 
         // The list of offers has been updated to contains our new offer (that we own)
         let Some(ConnectionRepositoryMessage::SendToPlayer(
@@ -297,20 +296,18 @@ mod tests {
     async fn test_process_delete_order() {
         let game_id = GameId::default();
         let (conn_tx, mut conn_rx) = mpsc::channel(16);
-        let market = start_market_actor(&game_id, conn_tx.clone());
-        let player_id = register_player(market.tx.clone()).await;
+        let (tx, _) = start_market_actor(&game_id, conn_tx.clone());
+        let player_id = register_player(tx.clone()).await;
 
         // Send order request to market actor
-        market
-            .tx
-            .send(MarketMessage::OrderRequest(OrderRequest {
-                direction: Direction::Buy,
-                price: 50_00,
-                volume: 10,
-                owner: player_id.clone(),
-            }))
-            .await
-            .unwrap();
+        tx.send(MarketMessage::OrderRequest(OrderRequest {
+            direction: Direction::Buy,
+            price: 50_00,
+            volume: 10,
+            owner: player_id.clone(),
+        }))
+        .await
+        .unwrap();
 
         // The list of offers has been updated to contains our new offer
         let Some(ConnectionRepositoryMessage::SendToPlayer(
@@ -326,9 +323,7 @@ mod tests {
         let order_id = bids.first().unwrap().order_id.clone();
 
         // Send request to delete order
-        market
-            .tx
-            .send(MarketMessage::OrderDeletionRequest { order_id })
+        tx.send(MarketMessage::OrderDeletionRequest { order_id })
             .await
             .unwrap();
         // The list of offers should be empty
@@ -348,36 +343,32 @@ mod tests {
     async fn test_match_offers() {
         let game_id = GameId::default();
         let (conn_tx, mut conn_rx) = mpsc::channel(16);
-        let market = start_market_actor(&game_id, conn_tx.clone());
-        let buyer_id = register_player(market.tx.clone()).await;
-        let seller_id = register_player(market.tx.clone()).await;
+        let (tx, _) = start_market_actor(&game_id, conn_tx.clone());
+        let buyer_id = register_player(tx.clone()).await;
+        let seller_id = register_player(tx.clone()).await;
 
         // Send BUY order
-        market
-            .tx
-            .send(MarketMessage::OrderRequest(OrderRequest {
-                direction: Direction::Buy,
-                volume: 10,
-                price: 50_00,
-                owner: buyer_id.clone(),
-            }))
-            .await
-            .unwrap();
+        tx.send(MarketMessage::OrderRequest(OrderRequest {
+            direction: Direction::Buy,
+            volume: 10,
+            price: 50_00,
+            owner: buyer_id.clone(),
+        }))
+        .await
+        .unwrap();
         // Flush the corresponding OBS updates (1 per player)
         conn_rx.recv().await.unwrap();
         conn_rx.recv().await.unwrap();
 
         // Send SELL order
-        market
-            .tx
-            .send(MarketMessage::OrderRequest(OrderRequest {
-                direction: Direction::Sell,
-                volume: 10,
-                price: 50_00,
-                owner: seller_id.clone(),
-            }))
-            .await
-            .unwrap();
+        tx.send(MarketMessage::OrderRequest(OrderRequest {
+            direction: Direction::Sell,
+            volume: 10,
+            price: 50_00,
+            owner: seller_id.clone(),
+        }))
+        .await
+        .unwrap();
 
         // The order book snapshots should be empty
         for _ in 0..2 {
@@ -424,15 +415,14 @@ mod tests {
             DeliveryPeriodId::from(0),
             conn_tx,
         );
-        let context = market.get_context();
+        let tx = market.tx.clone();
         tokio::spawn(async move {
             market.process().await;
         });
-        let player_id = register_player(context.tx.clone()).await;
+        let player_id = register_player(tx.clone()).await;
 
         // Send an OrderRequest to the market
-        let _ = context
-            .tx
+        let _ = tx
             .send(MarketMessage::OrderRequest(OrderRequest {
                 direction: Direction::Buy,
                 volume: 10,
@@ -455,13 +445,12 @@ mod tests {
     async fn test_close_market_and_reopen() {
         let game_id = GameId::default();
         let (conn_tx, mut conn_rx) = mpsc::channel(16);
-        let market = start_market_actor(&game_id, conn_tx.clone());
-        let player_id = register_player(market.tx.clone()).await;
+        let (tx, _) = start_market_actor(&game_id, conn_tx.clone());
+        let player_id = register_player(tx.clone()).await;
 
         // Close the market
         let (tx_back, _) = oneshot::channel();
-        let _ = market
-            .tx
+        let _ = tx
             .send(MarketMessage::CloseMarket {
                 tx_back,
                 period_id: DeliveryPeriodId::from(0),
@@ -469,14 +458,12 @@ mod tests {
             .await;
 
         // Reopen the market
-        let _ = market
-            .tx
+        let _ = tx
             .send(MarketMessage::OpenMarket(DeliveryPeriodId::from(0)))
             .await;
 
         // Send an OrderRequest to the market
-        let _ = market
-            .tx
+        let _ = tx
             .send(MarketMessage::OrderRequest(OrderRequest {
                 direction: Direction::Buy,
                 volume: 10,
@@ -495,12 +482,11 @@ mod tests {
     async fn test_close_market_receive_trades() {
         let game_id = GameId::default();
         let (conn_tx, _) = mpsc::channel(16);
-        let market = start_market_actor(&game_id, conn_tx.clone());
-        let player_id = register_player(market.tx.clone()).await;
+        let (tx, _) = start_market_actor(&game_id, conn_tx.clone());
+        let player_id = register_player(tx.clone()).await;
 
         // Make a trade with ourself
-        let _ = market
-            .tx
+        let _ = tx
             .send(MarketMessage::OrderRequest(OrderRequest {
                 direction: Direction::Buy,
                 volume: 10,
@@ -508,8 +494,7 @@ mod tests {
                 owner: player_id.to_owned(),
             }))
             .await;
-        let _ = market
-            .tx
+        let _ = tx
             .send(MarketMessage::OrderRequest(OrderRequest {
                 direction: Direction::Sell,
                 volume: 10,
@@ -520,8 +505,7 @@ mod tests {
 
         // Close the market and receive the trade list back
         let (tx_back, rx_back) = oneshot::channel();
-        let _ = market
-            .tx
+        let _ = tx
             .send(MarketMessage::CloseMarket {
                 tx_back,
                 period_id: DeliveryPeriodId::from(0),
@@ -537,12 +521,11 @@ mod tests {
     async fn test_close_market_send_empty_obs() {
         let game_id = GameId::default();
         let (conn_tx, mut conn_rx) = mpsc::channel(16);
-        let market = start_market_actor(&game_id, conn_tx.clone());
-        let player_id = register_player(market.tx.clone()).await;
+        let (tx, _) = start_market_actor(&game_id, conn_tx.clone());
+        let player_id = register_player(tx.clone()).await;
 
         // Send an order
-        let _ = market
-            .tx
+        let _ = tx
             .send(MarketMessage::OrderRequest(OrderRequest {
                 direction: Direction::Buy,
                 volume: 10,
@@ -554,8 +537,7 @@ mod tests {
 
         // Close the market
         let (tx_back, rx_back) = oneshot::channel();
-        let _ = market
-            .tx
+        let _ = tx
             .send(MarketMessage::CloseMarket {
                 tx_back,
                 period_id: DeliveryPeriodId::from(0),
@@ -582,30 +564,28 @@ mod tests {
     async fn test_market_state_watch() {
         let game_id = GameId::default();
         let (conn_tx, _) = mpsc::channel(16);
-        let mut market = start_market_actor(&game_id, conn_tx.clone());
-        register_player(market.tx.clone()).await;
+        let (tx, mut state_rx) = start_market_actor(&game_id, conn_tx.clone());
+        register_player(tx.clone()).await;
 
-        assert_eq!(*market.state_rx.borrow(), MarketState::Open);
+        assert_eq!(*state_rx.borrow(), MarketState::Open);
 
         // Close the market
         let (tx_back, _) = oneshot::channel();
-        let _ = market
-            .tx
+        let _ = tx
             .send(MarketMessage::CloseMarket {
                 tx_back,
                 period_id: DeliveryPeriodId::from(0),
             })
             .await;
-        assert!(market.state_rx.changed().await.is_ok());
-        assert_eq!(*market.state_rx.borrow_and_update(), MarketState::Closed);
+        assert!(state_rx.changed().await.is_ok());
+        assert_eq!(*state_rx.borrow_and_update(), MarketState::Closed);
 
         // Reopen the market
-        let _ = market
-            .tx
+        let _ = tx
             .send(MarketMessage::OpenMarket(DeliveryPeriodId::from(0)))
             .await;
-        assert!(market.state_rx.changed().await.is_ok());
-        assert_eq!(*market.state_rx.borrow_and_update(), MarketState::Open);
+        assert!(state_rx.changed().await.is_ok());
+        assert_eq!(*state_rx.borrow_and_update(), MarketState::Open);
     }
 
     #[tokio::test]
@@ -618,10 +598,8 @@ mod tests {
             DeliveryPeriodId::from(1),
             conn_tx,
         );
-        let MarketContext {
-            tx: market_tx,
-            mut state_rx,
-        } = market.get_context();
+        let market_tx = market.tx.clone();
+        let mut state_rx = market.state_sender.subscribe();
         tokio::spawn(async move {
             market.process().await;
         });
@@ -661,10 +639,8 @@ mod tests {
             DeliveryPeriodId::from(1),
             conn_tx,
         );
-        let MarketContext {
-            tx: market_tx,
-            mut state_rx,
-        } = market.get_context();
+        let market_tx = market.tx.clone();
+        let mut state_rx = market.state_sender.subscribe();
         tokio::spawn(async move {
             market.process().await;
         });
@@ -696,10 +672,8 @@ mod tests {
             DeliveryPeriodId::from(1),
             conn_tx,
         );
-        let MarketContext {
-            tx: market_tx,
-            mut state_rx,
-        } = market.get_context();
+        let market_tx = market.tx.clone();
+        let mut state_rx = market.state_sender.subscribe();
         tokio::spawn(async move {
             market.process().await;
         });
@@ -727,12 +701,11 @@ mod tests {
     async fn test_closing_twice_should_return_the_same_trades() {
         let game_id = GameId::default();
         let (conn_tx, _) = mpsc::channel(16);
-        let mut market = start_market_actor(&game_id, conn_tx);
-        let player_id = register_player(market.tx.clone()).await;
+        let (tx, mut state_rx) = start_market_actor(&game_id, conn_tx);
+        let player_id = register_player(tx.clone()).await;
 
         // Make a trade with ourself
-        let _ = market
-            .tx
+        let _ = tx
             .send(MarketMessage::OrderRequest(OrderRequest {
                 direction: Direction::Buy,
                 volume: 10,
@@ -740,8 +713,7 @@ mod tests {
                 owner: player_id.to_owned(),
             }))
             .await;
-        let _ = market
-            .tx
+        let _ = tx
             .send(MarketMessage::OrderRequest(OrderRequest {
                 direction: Direction::Sell,
                 volume: 10,
@@ -752,8 +724,7 @@ mod tests {
 
         // Close the market and receive the trade list back
         let (tx_back, rx_back) = oneshot::channel();
-        let _ = market
-            .tx
+        let _ = tx
             .send(MarketMessage::CloseMarket {
                 tx_back,
                 period_id: DeliveryPeriodId::from(0),
@@ -763,13 +734,12 @@ mod tests {
             .await
             .expect("Should have received a list of trades");
         assert_eq!(trades.len(), 1);
-        assert!(market.state_rx.changed().await.is_ok());
-        assert_eq!(*market.state_rx.borrow_and_update(), MarketState::Closed);
+        assert!(state_rx.changed().await.is_ok());
+        assert_eq!(*state_rx.borrow_and_update(), MarketState::Closed);
 
         // Close the market again and receive the same trades
         let (tx_back, rx_back) = oneshot::channel();
-        let _ = market
-            .tx
+        let _ = tx
             .send(MarketMessage::CloseMarket {
                 tx_back,
                 period_id: DeliveryPeriodId::from(0),

@@ -10,6 +10,7 @@ use tower_cookies::{
 
 use crate::{
     game::GameId,
+    market::Market,
     player::{
         connection::{start_player_connection, PlayerConnectionContext},
         PlayerId,
@@ -90,7 +91,7 @@ fn extract_cookies(cookies: &Cookies) -> Option<(PlayerId, GameId)> {
     Some((id, game_id))
 }
 
-async fn handle_socket(socket: WebSocket, context: PlayerConnectionContext) {
+async fn handle_socket<MS: Market>(socket: WebSocket, context: PlayerConnectionContext<MS>) {
     tokio::spawn(async move {
         start_player_connection(socket, context).await;
     });

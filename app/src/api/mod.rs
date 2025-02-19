@@ -20,7 +20,7 @@ use ws::handle_ws_connection;
 
 use crate::{
     game::{GameContext, GameId},
-    market::MarketContext,
+    market::{MarketContext, MarketService},
     plants::stack::StackContext,
     player::{repository::ConnectionRepositoryMessage, PlayerId},
 };
@@ -31,7 +31,7 @@ mod ws;
 
 pub type ApiState = Arc<RwLock<AppState>>;
 pub struct AppState {
-    pub market_services: HashMap<GameId, MarketContext>,
+    pub market_services: HashMap<GameId, MarketContext<MarketService>>,
     pub game_services: HashMap<GameId, GameContext>,
     pub stack_services: HashMap<GameId, HashMap<PlayerId, StackContext>>,
     pub player_connections_repository: mpsc::Sender<ConnectionRepositoryMessage>,
