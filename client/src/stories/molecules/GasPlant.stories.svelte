@@ -18,8 +18,10 @@
   args={{
     plant: {
       type: "GasPlant",
-      cost: 0,
-      setpoint: 0,
+      output: {
+        cost: 0,
+        setpoint: 0,
+      },
       settings: {
         energy_cost: 85,
         max_setpoint: 800,
@@ -33,8 +35,10 @@
   args={{
     plant: {
       type: "GasPlant",
-      cost: 550 * 85,
-      setpoint: 550,
+      output: {
+        cost: 550 * 85,
+        setpoint: 550,
+      },
       settings: {
         energy_cost: 85,
         max_setpoint: 800,

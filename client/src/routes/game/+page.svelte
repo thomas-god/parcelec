@@ -14,6 +14,8 @@
   import Scores from "../../components/molecules/Scores.svelte";
   import { fade } from "svelte/transition";
   import { isSome, none, some, unwrap, type Option } from "$lib/Options";
+  import { plantsPosition, marketPosition } from "$lib/position";
+  import { marketPnl, plantsPnl } from "$lib/pnl";
 
   let orderBook: OrderBook = $state({
     bids: [],
@@ -103,13 +105,20 @@
       show_last_trade = false;
     }, 3000);
   };
+  let plants_position = $derived(plantsPosition(plants));
+  let trades_position = $derived(marketPosition(trades));
+  let position = $derived(plants_position + trades_position);
+
+  let plants_pnl = $derived(plantsPnl(plants));
+  let market_pnl = $derived(marketPnl(trades));
+  let pnl = $derived(plants_pnl + market_pnl);
 </script>
 
 <main class="p-2 max-w-[600px] mx-auto">
   {#if socketIsOpen}
     {#if game_state === "Running"}
       <div class="flex flex-col gap-6 items-stretch">
-        <Scores {plants} {trades} />
+        <Scores {position} {pnl} />
         <Stack {plants} send={sendMessage} />
         <OrderBookElement {orderBook} send={sendMessage} {trades} />
         <button onclick={startGame}>Passer</button>

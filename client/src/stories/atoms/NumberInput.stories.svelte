@@ -3,15 +3,13 @@
   import { none, some } from "../../lib/Options";
   import NumberInput from "../../components/atoms/NumberInput.svelte";
 
-  let value = $state(0);
+  let value = $state("0");
 
   const { Story } = defineMeta({
     title: "Atoms/NumberInput",
     component: NumberInput,
     tags: ["autodocs"],
-    parameters: {
-      layout: "fullscreen",
-    },
+    parameters: {},
     args: {
       bigIncr: none(),
       label: "Label",

@@ -20,7 +20,10 @@
       type: "Battery",
       charge: 350,
       max_charge: 1000,
-      current_setpoint: 0,
+      output: {
+        setpoint: 0,
+        cost: 0,
+      },
     },
   }}
 />
@@ -32,7 +35,10 @@
       type: "Battery",
       charge: 350,
       max_charge: 1000,
-      current_setpoint: -250,
+      output: {
+        setpoint: -250,
+        cost: 0,
+      },
     },
   }}
 />
@@ -44,7 +50,10 @@
       type: "Battery",
       charge: 350,
       max_charge: 1000,
-      current_setpoint: 250,
+      output: {
+        setpoint: 250,
+        cost: 0,
+      },
     },
   }}
 />

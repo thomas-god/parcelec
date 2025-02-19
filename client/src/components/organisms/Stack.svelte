@@ -1,6 +1,5 @@
 <script lang="ts">
   import type { StackSnapshot } from "$lib/message";
-  import { match, Pattern } from "ts-pattern";
   import Battery from "../molecules/Battery.svelte";
   import Consumers from "../molecules/Consumers.svelte";
   import GasPlant from "../molecules/GasPlant.svelte";

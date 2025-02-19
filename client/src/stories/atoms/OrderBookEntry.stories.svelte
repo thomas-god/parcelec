@@ -6,9 +6,7 @@
     title: "Atoms/OrderBookEntry",
     component: OrderBookEntry,
     tags: ["autodocs"],
-    parameters: {
-      layout: "fullscreen",
-    },
+    parameters: {},
     args: {},
   });
 </script>

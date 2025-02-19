@@ -34,18 +34,7 @@ pub async fn join_game(
         println!("No DOMAIN environnement variable");
         return StatusCode::INTERNAL_SERVER_ERROR;
     };
-    // let (tx_back, rx) = oneshot::channel();
-    // let _ = state
-    //     .game_repository
-    //     .send(GameRepositoryMessage::GetGame {
-    //         game_id: game_id.clone(),
-    //         tx_back,
-    //     })
-    //     .await;
-    // let Ok(GetGameResponse::Found(game)) = rx.await else {
-    //     println!("No game found for ID: {game_id:?}");
-    //     return StatusCode::INTERNAL_SERVER_ERROR;
-    // };
+
     let Some(game) = state.game_services.get(&game_id) else {
         return StatusCode::INTERNAL_SERVER_ERROR;
     };
