@@ -22,7 +22,7 @@ use crate::{
         Direction, Market, MarketContext, MarketState, OrderRepr,
     },
     plants::{
-        stack::{ProgramPlant, StackContext, StackMessage, StackState},
+        actor::{ProgramPlant, StackContext, StackMessage, StackState},
         PlantId, PowerPlantPublicRepr, Stack, StackService,
     },
 };

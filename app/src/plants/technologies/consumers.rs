@@ -1,7 +1,7 @@
 use rand::Rng;
 use serde::Serialize;
 
-use super::{PlantOutput, PowerPlant, PowerPlantPublicRepr};
+use crate::plants::{PlantOutput, PowerPlant, PowerPlantPublicRepr};
 
 #[derive(Debug, Serialize, Clone, Copy)]
 pub struct ConsumersPublicRepr {
@@ -54,7 +54,7 @@ impl PowerPlant for Consumers {
 #[cfg(test)]
 mod tests {
     use crate::plants::{
-        consumers::ConsumersPublicRepr, PlantOutput, PowerPlant, PowerPlantPublicRepr,
+        technologies::consumers::ConsumersPublicRepr, PlantOutput, PowerPlant, PowerPlantPublicRepr,
     };
 
     use super::Consumers;

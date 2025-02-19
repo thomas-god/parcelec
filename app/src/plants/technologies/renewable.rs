@@ -1,7 +1,7 @@
 use rand::Rng;
 use serde::Serialize;
 
-use super::{PlantOutput, PowerPlant, PowerPlantPublicRepr};
+use crate::plants::{PlantOutput, PowerPlant, PowerPlantPublicRepr};
 
 #[derive(Debug, Serialize, Clone, Copy)]
 pub struct RenewablePlantPublicRepr {

@@ -11,7 +11,7 @@ use tokio::{
 use crate::{
     game::scores::compute_players_scores,
     market::{order_book::Trade, Market},
-    plants::{models::Stack, PlantId, PlantOutput},
+    plants::{PlantId, PlantOutput, Stack},
     player::PlayerId,
 };
 
@@ -210,7 +210,7 @@ mod tests {
             GameMessage,
         },
         market::service::MockMarketService,
-        plants::models::MockStackService,
+        plants::service::MockStackService,
         player::PlayerId,
     };
 

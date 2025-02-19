@@ -13,8 +13,9 @@ use crate::{
 };
 
 use super::{
-    battery::Battery, consumers::Consumers, gas_plant::GasPlant, renewable::RenewablePlant,
-    PlantId, PowerPlant, PowerPlantPublicRepr,
+    technologies::battery::Battery, technologies::consumers::Consumers,
+    technologies::gas_plant::GasPlant, technologies::renewable::RenewablePlant, PlantId,
+    PowerPlant, PowerPlantPublicRepr,
 };
 
 #[derive(Debug, Deserialize)]
@@ -227,7 +228,7 @@ mod tests_stack {
     use crate::{
         game::{delivery_period::DeliveryPeriodId, GameId},
         plants::{
-            stack::{ProgramPlant, StackActor, StackMessage, StackState},
+            actor::{ProgramPlant, StackActor, StackMessage, StackState},
             PlantId, PowerPlantPublicRepr,
         },
         player::{connection::PlayerMessage, repository::ConnectionRepositoryMessage, PlayerId},

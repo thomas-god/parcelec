@@ -1,6 +1,6 @@
 use serde::Serialize;
 
-use super::{PlantOutput, PowerPlant, PowerPlantPublicRepr};
+use crate::plants::{PlantOutput, PowerPlant, PowerPlantPublicRepr};
 
 /// Plant with no dynamic constraints.
 pub struct GasPlant {
@@ -64,10 +64,7 @@ impl PowerPlant for GasPlant {
 
 #[cfg(test)]
 mod tests {
-    use crate::plants::{
-        gas_plant::{GasPlant, PowerPlant},
-        PlantOutput,
-    };
+    use crate::plants::{technologies::gas_plant::GasPlant, PlantOutput, PowerPlant};
 
     #[test]
     fn test_gas_plant() {

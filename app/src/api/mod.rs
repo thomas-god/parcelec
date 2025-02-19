@@ -21,7 +21,7 @@ use ws::handle_ws_connection;
 use crate::{
     game::{GameContext, GameId},
     market::{MarketContext, MarketService},
-    plants::stack::StackContext,
+    plants::actor::StackContext,
     player::{repository::ConnectionRepositoryMessage, PlayerId},
 };
 

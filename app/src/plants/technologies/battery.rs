@@ -1,6 +1,6 @@
 use serde::Serialize;
 
-use super::{PlantOutput, PowerPlant, PowerPlantPublicRepr};
+use crate::plants::{PlantOutput, PowerPlant, PowerPlantPublicRepr};
 
 /// Store energy accros delivery periods
 pub struct Battery {
@@ -82,10 +82,7 @@ impl PowerPlant for Battery {
 
 #[cfg(test)]
 mod tests {
-    use crate::plants::{
-        battery::{Battery, PowerPlant},
-        PlantOutput,
-    };
+    use crate::plants::{technologies::battery::Battery, PlantOutput, PowerPlant};
 
     #[test]
     fn test_battery() {

@@ -11,8 +11,8 @@ use tokio::sync::{
 use crate::{
     market::{Market, MarketContext},
     plants::{
-        models::StackService,
-        stack::{StackActor, StackContext, StackState},
+        actor::{StackActor, StackContext, StackState},
+        service::StackService,
     },
     player::{repository::ConnectionRepositoryMessage, PlayerId},
 };
@@ -317,8 +317,8 @@ mod tests {
 
     use crate::{
         game::{Game, GameMessage, GameState, RegisterPlayerResponse},
-        market::{service::MockMarketService, Market, MarketContext, MarketState, OBS},
-        plants::stack::{StackContext, StackState},
+        market::{Market, MarketContext, MarketState, OBS},
+        plants::actor::{StackContext, StackState},
         player::{connection::PlayerMessage, repository::ConnectionRepositoryMessage, PlayerId},
     };
 
