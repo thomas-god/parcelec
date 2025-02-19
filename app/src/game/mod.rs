@@ -10,7 +10,7 @@ use tokio::sync::{
 };
 
 use crate::{
-    market::{MarketActor, MarketContext, MarketMessage, MarketService, MarketState},
+    market::{MarketActor, MarketContext, MarketService, MarketState},
     plants::{
         models::StackService,
         stack::{StackActor, StackContext, StackState},
@@ -39,9 +39,6 @@ pub enum GameMessage {
     ConnectPlayer {
         id: PlayerId,
         tx_back: oneshot::Sender<ConnectPlayerResponse>,
-    },
-    GetMarketTx {
-        tx_back: oneshot::Sender<mpsc::Sender<MarketMessage>>,
     },
     PlayerIsReady(PlayerId),
     DeliveryPeriodResults(DeliveryPeriodResults),
@@ -190,9 +187,6 @@ impl Game {
                 }
                 (_, GameMessage::ConnectPlayer { id, tx_back }) => {
                     self.connect_player(id, tx_back);
-                }
-                (_, GameMessage::GetMarketTx { tx_back }) => {
-                    let _ = tx_back.send(self.market_context.tx.clone());
                 }
                 (GameState::PostDelivery, GameMessage::PlayerIsReady(player_id))
                 | (GameState::Open, GameMessage::PlayerIsReady(player_id)) => {
