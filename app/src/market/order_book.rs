@@ -361,7 +361,7 @@ fn build_order_request(
 #[cfg(test)]
 mod tests {
     use crate::{
-        market::{models::Direction, order_book::build_order_request},
+        market::{order_book::build_order_request, Direction},
         player::PlayerId,
     };
 
@@ -566,7 +566,7 @@ mod test_bid_and_offer {
     use uuid::Uuid;
 
     use crate::{
-        market::{models::Direction, order_book::Offer},
+        market::{order_book::Offer, Direction},
         player::PlayerId,
     };
 
@@ -630,7 +630,7 @@ mod test_trade_leg {
     use chrono::Utc;
 
     use crate::{
-        market::{models::Direction, order_book::TradeLeg},
+        market::{order_book::TradeLeg, Direction},
         player::PlayerId,
     };
 
@@ -731,7 +731,7 @@ mod test_trade_leg {
 #[cfg(test)]
 mod test_drain_order_book {
     use crate::{
-        market::{models::Direction, order_book::build_order_request},
+        market::{order_book::build_order_request, Direction},
         player::PlayerId,
     };
 

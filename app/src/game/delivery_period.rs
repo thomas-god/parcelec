@@ -209,7 +209,7 @@ mod tests {
             delivery_period::{start_delivery_period, DeliveryPeriodId, DeliveryPeriodTimers},
             GameMessage,
         },
-        market::models::MockMarketService,
+        market::service::MockMarketService,
         plants::models::MockStackService,
         player::PlayerId,
     };

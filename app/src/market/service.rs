@@ -1,52 +1,14 @@
+#[allow(unused_imports)] // To be used in mock!
 use std::future::Future;
 
-use serde::{Deserialize, Serialize};
 use tokio::sync::{mpsc, oneshot};
 
 use crate::{game::delivery_period::DeliveryPeriodId, player::PlayerId};
 
 use super::{
     order_book::{OrderRequest, Trade, TradeLeg},
-    MarketMessage, OBS,
+    Market, MarketMessage, OBS,
 };
-
-#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
-pub enum Direction {
-    Buy,
-    Sell,
-}
-
-/// [Market] is the public API for the market domain of Parcelec. The market domain is
-/// responsible for receiving and matching orders from players, as long a providing on update and
-/// on demande snapshots of the order book (the list of currents orders).
-pub trait Market: Clone + Send + Sync + 'static {
-    /// Open the market, allowing players to send orders to the market.
-    fn open_market(&self, delivery_period: DeliveryPeriodId) -> impl Future<Output = ()> + Send;
-
-    /// Close the market, deleting outstanding orders and returning a list of the trades from the
-    /// closing delivery period. Trying to close a delivery period already closed will have no side
-    /// effect and will return the trade list for the closed delivery period.
-    fn close_market(
-        &self,
-        delivery_period: DeliveryPeriodId,
-    ) -> impl Future<Output = Vec<Trade>> + Send;
-
-    /// Register a player to the market, sending an initial order book snapshot and a list of the
-    /// player's trade for the current delivery period. Player can register even if the market is
-    /// closed.
-    fn get_market_snapshot(
-        &self,
-        player: PlayerId,
-    ) -> impl Future<Output = (Vec<TradeLeg>, OBS)> + Send;
-
-    /// Post a new order for the current delivery period. If the market is closed the request is
-    /// ignored.
-    fn new_order(&self, request: OrderRequest) -> impl Future<Output = ()> + Send;
-
-    /// Delete an order from the market. Silently fails if the order does not exist or if the market
-    /// is closed.
-    fn delete_order(&self, order_id: String) -> impl Future<Output = ()> + Send;
-}
 
 #[derive(Debug, Clone)]
 pub struct MarketService {
@@ -146,9 +108,9 @@ mod tests {
     use crate::{
         game::delivery_period::DeliveryPeriodId,
         market::{
-            models::{Direction, Market, OBS},
             order_book::OrderRequest,
-            MarketMessage,
+            service::{Market, OBS},
+            Direction, MarketMessage,
         },
         player::PlayerId,
     };
