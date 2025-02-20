@@ -341,7 +341,7 @@ mod tests {
             let _ = self.state_tx.send(MarketState::Closed);
             Vec::new()
         }
-        async fn delete_order(&self, _order_id: String) -> () {}
+        async fn delete_order(&self, _order_id: String) {}
         async fn get_market_snapshot(
             &self,
             _player: PlayerId,
@@ -354,11 +354,8 @@ mod tests {
                 },
             )
         }
-        async fn new_order(&self, _request: crate::market::order_book::OrderRequest) -> () {}
-        async fn open_market(
-            &self,
-            _delivery_period: super::delivery_period::DeliveryPeriodId,
-        ) -> () {
+        async fn new_order(&self, _request: crate::market::order_book::OrderRequest) {}
+        async fn open_market(&self, _delivery_period: super::delivery_period::DeliveryPeriodId) {
             let _ = self.state_tx.send(MarketState::Open);
         }
     }

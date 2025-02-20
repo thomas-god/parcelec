@@ -3,26 +3,44 @@ use serde::Serialize;
 
 use crate::plants::{PlantOutput, PowerPlant, PowerPlantPublicRepr};
 
+use super::timeseries::{LoopingTimeseries, RngTimeseries, Timeseries};
+
 #[derive(Debug, Serialize, Clone, Copy)]
 pub struct RenewablePlantPublicRepr {
     pub max_power: i64,
     pub output: PlantOutput,
 }
-pub struct RenewablePlant {
+pub struct RenewablePlant<T: Timeseries> {
     max_power: i64,
     setpoint: i64,
+    timeseries: T,
 }
 
-impl RenewablePlant {
-    pub fn new(max_power: i64) -> RenewablePlant {
+impl<T: Timeseries> RenewablePlant<T> {
+    pub fn new(max_power: i64, timeseries: T) -> RenewablePlant<T> {
         RenewablePlant {
             setpoint: rand::rng().random_range(0..max_power),
             max_power,
+            timeseries,
         }
     }
 }
 
-impl PowerPlant for RenewablePlant {
+impl RenewablePlant<RngTimeseries> {
+    pub fn new_with_rng(max_power: i64) -> RenewablePlant<RngTimeseries> {
+        let timeseries = RngTimeseries::new(0, max_power);
+        RenewablePlant::new(max_power, timeseries)
+    }
+}
+
+impl RenewablePlant<LoopingTimeseries> {
+    pub fn new_with_looping(max_power: i64, values: &[isize]) -> RenewablePlant<LoopingTimeseries> {
+        let timeseries = LoopingTimeseries::from(values);
+        RenewablePlant::new(max_power, timeseries)
+    }
+}
+
+impl<T: Timeseries> PowerPlant for RenewablePlant<T> {
     fn program_setpoint(&mut self, _setpoint: isize) -> PlantOutput {
         PlantOutput {
             setpoint: self.setpoint as isize,
@@ -31,7 +49,7 @@ impl PowerPlant for RenewablePlant {
     }
     fn dispatch(&mut self) -> PlantOutput {
         let previous_setpoint = self.setpoint;
-        self.setpoint = rand::rng().random_range(0..self.max_power);
+        self.setpoint = self.timeseries.next_value() as i64;
         PlantOutput {
             setpoint: previous_setpoint as isize,
             cost: 0,
@@ -56,7 +74,7 @@ mod tests {
 
     #[test]
     fn test_renewable_plant() {
-        let mut plant = RenewablePlant::new(1000);
+        let mut plant = RenewablePlant::new_with_rng(1000);
 
         // Plant has no associated cost
         let PlantOutput { cost, .. } = plant.program_setpoint(100);

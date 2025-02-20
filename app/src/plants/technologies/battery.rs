@@ -35,10 +35,12 @@ impl Battery {
     fn max_positive_power(&self) -> isize {
         isize::try_from(self.charge).unwrap_or(isize::MAX)
     }
+
     fn min_negative_power(&self) -> isize {
         -isize::try_from(self.settings.max_charge.saturating_sub(self.charge)).unwrap_or(isize::MAX)
     }
 }
+
 impl PowerPlant for Battery {
     /// For a battery in generator convention:
     /// - **positive** setpoint will **discharge** the battery (energy provided to the grid)
