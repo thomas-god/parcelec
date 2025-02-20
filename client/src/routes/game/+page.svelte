@@ -55,13 +55,7 @@
           plants = stack_snapshot.plants;
         })
         .with({ type: "TradeList" }, (trade_list) => {
-          const trades_to_add = [];
-          for (const trade of trade_list.trades) {
-            if (!trades.includes(trade)) {
-              trades_to_add.push(trade);
-            }
-          }
-          trades = trades.concat(trades_to_add);
+          trades = trade_list.trades;
         })
         .with({ type: "GameState" }, ({ state }) => {
           game_state = state;

@@ -126,6 +126,7 @@ impl MarketActor {
                         let _ = tx_back.send(trades);
                         let _ = self.state_sender.send(MarketState::Closed);
                         self.send_order_book_snapshot_to_all().await;
+                        self.send_empty_trade_list_to_all().await;
                     }
                 }
                 (MarketState::Closed, MarketMessage::CloseMarket { period_id, tx_back }) => {
@@ -148,6 +149,16 @@ impl MarketActor {
                 .collect::<Vec<_>>(),
         )
         .await;
+    }
+
+    async fn send_empty_trade_list_to_all(&self) {
+        let _ = self
+            .players_connections
+            .send(ConnectionRepositoryMessage::SendToAllPlayers(
+                self.game_id.clone(),
+                PlayerMessage::TradeList { trades: Vec::new() },
+            ))
+            .await;
     }
 
     fn player_obs(&self, player_id: &PlayerId) -> OBS {
@@ -518,7 +529,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_close_market_send_empty_obs() {
+    async fn test_close_market_send_empty_obs_and_trade_list() {
         let game_id = GameId::default();
         let (conn_tx, mut conn_rx) = mpsc::channel(16);
         let (tx, _) = start_market_actor(&game_id, conn_tx.clone());
@@ -558,6 +569,16 @@ mod tests {
         };
         assert_eq!(bids.len(), 0);
         assert_eq!(offers.len(), 0);
+
+        // Trade list should be empty
+        let Some(ConnectionRepositoryMessage::SendToAllPlayers(
+            _,
+            PlayerMessage::TradeList { trades },
+        )) = conn_rx.recv().await
+        else {
+            unreachable!()
+        };
+        assert_eq!(trades.len(), 0);
     }
 
     #[tokio::test]
