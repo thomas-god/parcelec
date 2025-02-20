@@ -1,4 +1,3 @@
-use rand::Rng;
 use serde::Serialize;
 
 use crate::plants::{PlantOutput, PowerPlant, PowerPlantPublicRepr};
@@ -18,9 +17,9 @@ pub struct Consumers<T: Timeseries> {
 }
 
 impl<T: Timeseries> Consumers<T> {
-    pub fn new(max_power: i64, price_per_mwh: i64, timeseries: T) -> Consumers<T> {
+    pub fn new(max_power: i64, price_per_mwh: i64, mut timeseries: T) -> Consumers<T> {
         Consumers {
-            setpoint: rand::rng().random_range(-max_power..0),
+            setpoint: timeseries.next_value() as i64,
             price_per_mwh,
             max_power,
             timeseries,
@@ -30,7 +29,7 @@ impl<T: Timeseries> Consumers<T> {
 
 impl Consumers<RngTimeseries> {
     pub fn new_with_rng(max_power: i64, price_per_mwh: i64) -> Consumers<RngTimeseries> {
-        let timeseries = RngTimeseries::new(0, max_power);
+        let timeseries = RngTimeseries::new(-max_power, 0);
         Consumers::new(max_power, price_per_mwh, timeseries)
     }
 }

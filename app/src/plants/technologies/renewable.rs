@@ -1,4 +1,3 @@
-use rand::Rng;
 use serde::Serialize;
 
 use crate::plants::{PlantOutput, PowerPlant, PowerPlantPublicRepr};
@@ -17,9 +16,9 @@ pub struct RenewablePlant<T: Timeseries> {
 }
 
 impl<T: Timeseries> RenewablePlant<T> {
-    pub fn new(max_power: i64, timeseries: T) -> RenewablePlant<T> {
+    pub fn new(max_power: i64, mut timeseries: T) -> RenewablePlant<T> {
         RenewablePlant {
-            setpoint: rand::rng().random_range(0..max_power),
+            setpoint: timeseries.next_value() as i64,
             max_power,
             timeseries,
         }

@@ -210,15 +210,22 @@ impl StackActor {
 
 fn default_stack() -> HashMap<PlantId, Box<dyn PowerPlant + Send + Sync>> {
     let mut map: HashMap<PlantId, Box<dyn PowerPlant + Send + Sync>> = HashMap::new();
-    map.insert(PlantId::default(), Box::new(Battery::new(1_000, 500)));
-    map.insert(PlantId::default(), Box::new(GasPlant::new(85, 1000)));
+    map.insert(PlantId::default(), Box::new(Battery::new(1_000, 0)));
+    map.insert(PlantId::default(), Box::new(GasPlant::new(85, 900)));
     map.insert(
         PlantId::default(),
-        Box::new(RenewablePlant::new_with_rng(500)),
+        Box::new(RenewablePlant::new_with_looping(
+            700,
+            [0, 250, 700, 200].as_slice(),
+        )),
     );
     map.insert(
         PlantId::default(),
-        Box::new(Consumers::new_with_rng(1500, 56)),
+        Box::new(Consumers::new_with_looping(
+            1500,
+            56,
+            [-600, -900, -600, -1200].as_slice(),
+        )),
     );
     map
 }

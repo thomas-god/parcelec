@@ -1,54 +1,89 @@
 use tokio::sync::mpsc::{channel, Receiver};
 
 use crate::{
-    market::{order_book::OrderRequest, Direction, Market},
+    market::{order_book::OrderRequest, Direction, Market, MarketContext, MarketState},
     player::{connection::PlayerMessage, PlayerId},
 };
 
 pub struct InitialOrdersBot<MS: Market> {
     id: PlayerId,
-    market: MS,
-    rx: Receiver<PlayerMessage>,
+    market: MarketContext<MS>,
+    _rx: Receiver<PlayerMessage>,
 }
 
 impl<MS: Market> InitialOrdersBot<MS> {
-    pub fn new(market: MS) -> InitialOrdersBot<MS> {
+    fn new(market: MarketContext<MS>) -> InitialOrdersBot<MS> {
         let bot_id = PlayerId::default();
         let (_, rx) = channel(16);
 
         InitialOrdersBot {
             id: bot_id,
             market,
-            rx,
+            _rx: rx,
         }
     }
 
-    pub async fn start(&mut self) {
-        let _ = self.market.get_market_snapshot(self.id.clone()).await;
+    pub fn start(market: MarketContext<MS>) {
+        let mut bot = InitialOrdersBot::new(market);
 
-        self.send_orders().await;
+        tokio::spawn(async move {
+            bot.run().await;
+        });
+    }
 
-        while let Some(msg) = self.rx.recv().await {
-            println!("Bot {} received msg: {msg:?}", self.id);
+    async fn wait_for_market_to_open(&mut self) {
+        while *self.market.state_rx.borrow_and_update() != MarketState::Open {
+            let _ = self.market.state_rx.changed().await;
         }
     }
 
-    async fn send_orders(&self) {
-        self.market
-            .new_order(OrderRequest {
-                direction: Direction::Buy,
-                price: 20_00,
-                volume: 250,
-                owner: self.id.clone(),
-            })
+    async fn wait_for_market_to_close(&mut self) {
+        while *self.market.state_rx.borrow_and_update() != MarketState::Closed {
+            let _ = self.market.state_rx.changed().await;
+        }
+    }
+
+    pub async fn run(&mut self) {
+        let _ = self
+            .market
+            .service
+            .get_market_snapshot(self.id.clone())
             .await;
-        self.market
-            .new_order(OrderRequest {
-                direction: Direction::Sell,
-                price: 90_00,
-                volume: 250,
-                owner: self.id.clone(),
-            })
-            .await;
+
+        loop {
+            // 1st period: do nothing
+            self.wait_for_market_to_open().await;
+            self.wait_for_market_to_close().await;
+
+            // 2nd period: do nothing
+            self.wait_for_market_to_open().await;
+            self.wait_for_market_to_close().await;
+
+            // 3rd period: buy 200MW
+            self.wait_for_market_to_open().await;
+            self.market
+                .service
+                .new_order(OrderRequest {
+                    direction: Direction::Buy,
+                    price: 55_00,
+                    volume: 200,
+                    owner: self.id.clone(),
+                })
+                .await;
+            self.wait_for_market_to_close().await;
+
+            // 4rd period: sell 200MW
+            self.wait_for_market_to_open().await;
+            self.market
+                .service
+                .new_order(OrderRequest {
+                    direction: Direction::Sell,
+                    price: 85_00,
+                    volume: 200,
+                    owner: self.id.clone(),
+                })
+                .await;
+            self.wait_for_market_to_close().await;
+        }
     }
 }
