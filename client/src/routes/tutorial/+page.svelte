@@ -26,7 +26,7 @@
   }, 2000);
 </script>
 
-<div class="flex flex-col">
+<div class="flex flex-col max-w-[500px] mx-auto text-justify bg-neutral">
   <h1 class="text-center font-semibold text-xl my-3">
     Bienvenue dans Parcelec !
   </h1>
@@ -35,7 +35,7 @@
     autant que ce vos clients 🏙️ consomment. Mais attention il vous faudra
     trouver l'équilibre au meilleur cout !
   </div>
-  <div class="p-4">
+  <div class="px-4 sm:px-10 py-4 text-white bg-main rounded-md m-2">
     <Scores {position} {pnl} />
   </div>
   <p class="p-4">

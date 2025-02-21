@@ -108,14 +108,18 @@
   let pnl = $derived(plants_pnl + market_pnl);
 </script>
 
-<main class="p-2 max-w-[600px] mx-auto">
+<main class="max-w-[600px] mx-auto">
   {#if socketIsOpen}
     {#if game_state === "Running"}
       <div class="flex flex-col gap-6 items-stretch">
-        <Scores {position} {pnl} />
+        <div
+          class="sticky top-0 px-2 py-5 @sm:p-6 bg-main text-white rounded-b-md"
+        >
+          <Scores {position} {pnl} />
+        </div>
+
         <Stack {plants} send={sendMessage} />
-        <OrderBookElement {orderBook} send={sendMessage} {trades} />
-        <button onclick={startGame}>Passer</button>
+        <!-- <OrderBookElement {orderBook} send={sendMessage} {trades} /> -->
         {#if show_last_trade && trades.length > 0}
           <div
             transition:fade
@@ -138,6 +142,11 @@
             </div>
           </div>
         {/if}
+        <div
+          class="fixed bottom-0 bg-main text-white rounded-t-md p-2 w-screen max-w-[600px] flex flex-col items-center text-xl"
+        >
+          <button onclick={startGame}>Phase suivante ➡️</button>
+        </div>
       </div>
     {:else if game_state === "Open"}
       <p>En attente d'autres joueurs</p>

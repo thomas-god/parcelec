@@ -13,4 +13,11 @@
       transform: scale(1);
     }
   }
+
+  /* --color-*: initial; */
+  --color-main: #386641;
+  --color-accent: #6a994e;
+  --color-light-accent: #a7c957;
+  --color-neutral: #f2e8cf;
+  --color-bold: #bc4749;
 }

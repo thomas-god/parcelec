@@ -2,7 +2,7 @@
   let { position, pnl }: { position: number; pnl: number } = $props();
 </script>
 
-<div class="flex flex-row justify-around text-xl min-[400px]:text-2xl">
+<div class="flex flex-row justify-around text-xl min-[430px]:text-2xl">
   <div class="text-left grow">
     {#if position > 0}
       ⚠️ Surplus : {Math.abs(position)} MW
