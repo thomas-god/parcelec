@@ -47,10 +47,12 @@
     <div class="flex flex-row justify-between">
       <div class="italic">{names[type]}</div>
       <div>
-        {(-cost).toLocaleString("fr-FR")} €
-        <span class="font-light italic">
-          ({energy_cost.toLocaleString("fr-FR")} €/MWh)
-        </span>
+        {(-cost).toLocaleString("fr-FR", { signDisplay: "exceptZero" })} €
+        {#if energy_cost !== 0}
+          <span class="font-light italic">
+            ({energy_cost.toLocaleString("fr-FR")} €/MWh)
+          </span>
+        {/if}
       </div>
     </div>
 

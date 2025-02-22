@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { StackSnapshot } from "$lib/message";
-  import Battery from "../molecules/BatterySlider.svelte";
+  import Battery from "../molecules/BatteryToggle.svelte";
   import PlantSlider from "../molecules/PlantSlider.svelte";
   import { sortStack } from "$lib/sortStack";
 
@@ -26,7 +26,9 @@
     <div class="px-2 mx-auto w-full">
       {#if plant.type === "Battery"}
         <Battery
-          battery={plant}
+          charge={plant.charge}
+          setpoint={plant.output.setpoint}
+          max_charge={plant.max_charge}
           updateSetpoint={(setpoint) => programSetpoint(id, setpoint)}
         />
       {:else if plant.type === "GasPlant"}
