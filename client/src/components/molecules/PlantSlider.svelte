@@ -54,9 +54,9 @@
       </div>
     </div>
 
-    <div class="flex flex-row justify-between p-1.5">
+    <div class="grid grid-cols-[1fr_135px] p-1.5">
       <input
-        class="range block my-auto bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700"
+        class="range block my-auto w-full bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700"
         type="range"
         disabled={!dispatchable}
         bind:value={current_setpoint}
@@ -65,8 +65,10 @@
         oninput={debouncedUpdateSetpoint}
       />
 
-      <div class="shrink-0 pl-2">
-        {current_setpoint} /{max_setpoint.toLocaleString("fr-FR")} MW
+      <div class="pl-2 justify-self-end">
+        {current_setpoint.toLocaleString("fr-FR")} / {max_setpoint.toLocaleString(
+          "fr-FR",
+        )} MW
       </div>
     </div>
   </div>

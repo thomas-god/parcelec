@@ -110,16 +110,20 @@
 
 <main class="max-w-[600px] mx-auto">
   {#if socketIsOpen}
-    {#if game_state === "Running"}
-      <div class="flex flex-col gap-6 items-stretch">
-        <div
-          class="sticky top-0 px-2 py-5 @sm:p-6 text-success-content bg-success rounded-b-md"
-        >
+    <div class="flex flex-col gap-6 items-stretch">
+      <div
+        class="sticky top-0 px-2 py-5 @sm:p-6 text-success-content bg-success rounded-b-md"
+      >
+        {#if game_state === "Running"}
           <Scores {position} {pnl} />
-        </div>
+        {:else}
+          <div class="text-2xl text-center mx-auto">Phase terminée !</div>
+        {/if}
+      </div>
 
+      {#if game_state === "Running"}
         <Stack {plants} send={sendMessage} />
-        <!-- <OrderBookElement {orderBook} send={sendMessage} {trades} /> -->
+        <OrderBookElement {orderBook} send={sendMessage} {trades} />
         {#if show_last_trade && trades.length > 0}
           <div
             transition:fade
@@ -142,48 +146,56 @@
             </div>
           </div>
         {/if}
-        <div
-          class="fixed bottom-0 bg-success text-success-content rounded-t-md p-2 w-screen max-w-[600px] flex flex-col items-center text-xl"
+        <!-- </div> -->
+      {:else if game_state === "Open"}
+        <p>En attente d'autres joueurs</p>
+        <button onclick={startGame}>Ready!</button>
+      {:else if game_state === "PostDelivery"}
+        <div class="flex flex-col">
+          <!-- <h2 class="text-center font-semibold text-xl mt-6">
+            Période de livraison terminée !
+          </h2> -->
+          {#if isSome(post_delivery_score)}
+            <div class="mt-8 self-center text-lg">
+              <ul>
+                <li>
+                  Equilibre: {unwrap(
+                    post_delivery_score,
+                  ).balance.toLocaleString("fr-FR")} MW
+                </li>
+                <li>
+                  PnL: {unwrap(post_delivery_score).pnl.toLocaleString("fr-FR")}
+                  €
+                </li>
+                <li>
+                  Ecarts: {unwrap(
+                    post_delivery_score,
+                  ).imbalance_cost.toLocaleString("fr-FR")} €
+                </li>
+                <li class="font-semibold">
+                  Total: {unwrap(post_delivery_score).pnl +
+                    unwrap(post_delivery_score).imbalance_cost} €
+                </li>
+              </ul>
+            </div>
+          {/if}
+          <!-- <div class="mt-8 self-center text-lg">
+            <button onclick={startGame}> ➡️ Partie suivante</button>
+          </div> -->
+        </div>
+      {/if}
+      <div
+        class="fixed bottom-0 bg-success text-success-content rounded-t-md p-2 w-screen max-w-[600px] flex flex-col items-center text-xl"
+      >
+        <button onclick={startGame}>
+          {#if game_state === "Running"}
+            Terminer la phase ➡️
+          {:else}
+            Phase suivante ➡️
+          {/if}</button
         >
-          <button onclick={startGame}>Phase suivante ➡️</button>
-        </div>
       </div>
-    {:else if game_state === "Open"}
-      <p>En attente d'autres joueurs</p>
-      <button onclick={startGame}>Ready!</button>
-    {:else if game_state === "PostDelivery"}
-      <div class="flex flex-col">
-        <h2 class="text-center font-semibold text-xl mt-6">
-          Période de livraison terminée !
-        </h2>
-        {#if isSome(post_delivery_score)}
-          <div class="mt-8 self-center text-lg">
-            <ul>
-              <li>
-                Equilibre: {unwrap(post_delivery_score).balance.toLocaleString(
-                  "fr-FR",
-                )} MW
-              </li>
-              <li>
-                PnL: {unwrap(post_delivery_score).pnl.toLocaleString("fr-FR")} €
-              </li>
-              <li>
-                Ecarts: {unwrap(
-                  post_delivery_score,
-                ).imbalance_cost.toLocaleString("fr-FR")} €
-              </li>
-              <li class="font-semibold">
-                Total: {unwrap(post_delivery_score).pnl +
-                  unwrap(post_delivery_score).imbalance_cost} €
-              </li>
-            </ul>
-          </div>
-        {/if}
-        <div class="mt-8 self-center text-lg">
-          <button onclick={startGame}> ➡️ Partie suivante</button>
-        </div>
-      </div>
-    {/if}
+    </div>
   {:else}
     <p>Not connected</p>
   {/if}

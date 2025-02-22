@@ -36,7 +36,7 @@
     trouver l'équilibre au meilleur cout !
   </div>
   <div
-    class="px-4 sm:px-10 py-4 text-neutral-content bg-neutral rounded-md m-2"
+    class="px-4 sm:px-10 py-4 text-success-content bg-success rounded-md m-2"
   >
     <Scores {position} {pnl} />
   </div>
