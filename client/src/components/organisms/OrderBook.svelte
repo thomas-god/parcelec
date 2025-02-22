@@ -44,7 +44,7 @@
 
 <div class="flex flex-col">
   <div class="flex flex-row justify-between">
-    <h2 class="text-lg font-bold">Marché</h2>
+    <h2 class="text-lg font-bold pl-2">Marché</h2>
 
     <div>
       {#if market_position > 0}
@@ -72,33 +72,78 @@
     </div>
   </div>
 
-  <div
-    class="grid grid-cols-2 gap-4 border-4 border-double rounded-2xl border-gray-400 mt-3"
-  >
+  <div class="grid grid-cols-2 gap-4 mt-3">
     <div
       class="flex flex-col h-64 overflow-y-auto p-2 max-w-64 justify-self-end"
     >
       <h3 class="text-xl font-semibold mb-2 text-end">Acheteurs</h3>
-      <ul class="space-y-2">
+      <table class="table table-zebra table-sm sm:table-md">
+        <thead>
+          <tr>
+            <th>🗑️</th>
+            <th>Volume</th>
+            <th>Prix</th>
+          </tr>
+        </thead>
+        <tbody>
+          {#each orderBook.bids as bid (bid.created_at)}
+            <tr>
+              <td>
+                {#if bid.owned}
+                  <button onclick={() => deleteOrder(bid.order_id)}>🗑️</button>
+                {/if}
+              </td>
+              <td class="text-center">{bid.volume}</td>
+              <td class="text-right">{bid.price / 100}</td>
+              <!-- <OrderBookEntry entry={bid} deleteEntry={deleteOrder} /> -->
+            </tr>
+          {/each}
+        </tbody>
+      </table>
+      <!-- <ul class="space-y-2">
         {#each orderBook.bids as bid (bid.created_at)}
           <li>
             <OrderBookEntry entry={bid} deleteEntry={deleteOrder} />
           </li>
         {/each}
-      </ul>
+      </ul> -->
     </div>
 
     <div
       class="flex flex-col h-64 overflow-y-auto p-2 max-w-64 justify-self-start"
     >
       <h3 class="text-xl font-semibold mb-2 text-start">Vendeurs</h3>
-      <ul class="space-y-2">
+      <table class="table table-zebra table-sm sm:table-md">
+        <thead>
+          <tr>
+            <th>Prix</th>
+            <th>Volume</th>
+            <th>🗑️</th>
+          </tr>
+        </thead>
+        <tbody>
+          {#each orderBook.offers as offer (offer.created_at)}
+            <tr>
+              <td class="text-left">{offer.price / 100}</td>
+              <td class="text-center">{offer.volume}</td>
+              <td>
+                {#if offer.owned}
+                  <button onclick={() => deleteOrder(offer.order_id)}>🗑️</button
+                  >
+                {/if}
+              </td>
+              <!-- <OrderBookEntry entry={bid} deleteEntry={deleteOrder} /> -->
+            </tr>
+          {/each}
+        </tbody>
+      </table>
+      <!-- <ul class="space-y-2">
         {#each orderBook.offers as offer (offer.created_at)}
           <li>
             <OrderBookEntry entry={offer} deleteEntry={deleteOrder} />
           </li>
         {/each}
-      </ul>
+      </ul> -->
     </div>
   </div>
 </div>
