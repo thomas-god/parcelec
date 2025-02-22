@@ -1,4 +1,7 @@
 @import "tailwindcss";
+@plugin "daisyui" {
+  themes: retro;
+}
 
 @theme {
   --animate-fade-in-scale: fade-in-scale 0.3s ease-out;
@@ -21,3 +24,20 @@
   --color-neutral: #f2e8cf;
   --color-bold: #bc4749;
 }
+/* 
+input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  background: transparent;
+  cursor: pointer;
+}
+
+input[type="range"]::-webkit-slider-runnable-track {
+  background: #053a5f;
+  height: 0.5rem;
+}
+
+input[type="range"]::-moz-range-track {
+  background: #053a5f;
+  height: 0.5rem;
+} */
