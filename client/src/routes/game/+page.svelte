@@ -185,7 +185,7 @@
         </div>
       {/if}
       <div
-        class="fixed bottom-0 bg-success text-success-content rounded-t-md p-2 w-screen max-w-[600px] flex flex-col items-center text-xl"
+        class="fixed bottom-0 bg-success text-success-content rounded-t-md p-2 pb-4 w-screen max-w-[600px] flex flex-col items-center text-xl"
       >
         <button onclick={startGame}>
           {#if game_state === "Running"}

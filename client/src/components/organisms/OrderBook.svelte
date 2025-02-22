@@ -55,12 +55,61 @@
     </div>
   </div>
   <!-- Add an offer -->
-  <div>
-    <div class="flex flex-row flex-wrap justify-center gap-2 mb-3">
+  <div class="flex flex-row justify-center">
+    <!-- <div class="flex flex-row flex-wrap justify-center gap-2 mb-3">
       <NumberInput bind:value={price} label={"Prix"} bigIncr={some(1)} />
       <NumberInput bind:value={volume} label={"Volume"} bigIncr={some(10)} />
-    </div>
-    <div class="flex justify-center space-x-4">
+    </div> -->
+    <button
+      class="btn"
+      onclick={() => document.getElementById("add_order").showModal()}
+      >Ajouter un ordre</button
+    >
+    <dialog id="add_order" class="modal">
+      <div class="modal-box bg-base-200 border border-base-300 p-4 rounded-box">
+        <fieldset class="fieldset">
+          <legend class="fieldset-legend text-xl pb-3">Ajouter un ordre</legend>
+
+          <label class="fieldset-label">
+            Volume (MW)
+            <input
+              type="text"
+              inputmode="numeric"
+              pattern="[0-9]*"
+              class="input max-w-48"
+              bind:value={volume}
+            />
+          </label>
+          <label class="fieldset-label">
+            Prix (€)
+            <input
+              type="text"
+              inputmode="numeric"
+              pattern="[0-9]*"
+              class="input max-w-48"
+              bind:value={price}
+            />
+          </label>
+          <div class="flex flex-row justify-around mt-2">
+            <button
+              class="px-4 py-2 bg-green-500 text-white rounded"
+              onclick={() => {
+                document.getElementById("add_order").close();
+                sendOrderRequest("Buy");
+              }}>BUY</button
+            >
+            <button
+              class="px-4 py-2 bg-red-500 text-white rounded"
+              onclick={() => {
+                document.getElementById("add_order").close();
+                sendOrderRequest("Sell");
+              }}>SELL</button
+            >
+          </div>
+        </fieldset>
+      </div>
+    </dialog>
+    <!-- <div class="flex justify-center space-x-4">
       <button
         class="px-4 py-2 bg-green-500 text-white rounded"
         onclick={() => sendOrderRequest("Buy")}>BUY</button
@@ -69,7 +118,7 @@
         class="px-4 py-2 bg-red-500 text-white rounded"
         onclick={() => sendOrderRequest("Sell")}>SELL</button
       >
-    </div>
+    </div> -->
   </div>
 
   <div class="grid grid-cols-2 gap-4 mt-3">
@@ -95,18 +144,10 @@
               </td>
               <td class="text-center">{bid.volume}</td>
               <td class="text-right">{bid.price / 100}</td>
-              <!-- <OrderBookEntry entry={bid} deleteEntry={deleteOrder} /> -->
             </tr>
           {/each}
         </tbody>
       </table>
-      <!-- <ul class="space-y-2">
-        {#each orderBook.bids as bid (bid.created_at)}
-          <li>
-            <OrderBookEntry entry={bid} deleteEntry={deleteOrder} />
-          </li>
-        {/each}
-      </ul> -->
     </div>
 
     <div
@@ -132,18 +173,10 @@
                   >
                 {/if}
               </td>
-              <!-- <OrderBookEntry entry={bid} deleteEntry={deleteOrder} /> -->
             </tr>
           {/each}
         </tbody>
       </table>
-      <!-- <ul class="space-y-2">
-        {#each orderBook.offers as offer (offer.created_at)}
-          <li>
-            <OrderBookEntry entry={offer} deleteEntry={deleteOrder} />
-          </li>
-        {/each}
-      </ul> -->
     </div>
   </div>
 </div>
