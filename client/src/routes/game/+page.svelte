@@ -10,7 +10,7 @@
   import { PUBLIC_WS_URL } from "$env/static/public";
   import OrderBookElement from "../../components/organisms/OrderBook.svelte";
   import { goto } from "$app/navigation";
-  import Stack from "../../components/organisms/Stack.svelte";
+  import Stack from "../../components/organisms/StackSliders.svelte";
   import Scores from "../../components/molecules/Scores.svelte";
   import { fade } from "svelte/transition";
   import { isSome, none, some, unwrap, type Option } from "$lib/Options";
@@ -113,7 +113,7 @@
     {#if game_state === "Running"}
       <div class="flex flex-col gap-6 items-stretch">
         <div
-          class="sticky top-0 px-2 py-5 @sm:p-6 bg-main text-white rounded-b-md"
+          class="sticky top-0 px-2 py-5 @sm:p-6 text-success-content bg-success rounded-b-md"
         >
           <Scores {position} {pnl} />
         </div>
@@ -143,7 +143,7 @@
           </div>
         {/if}
         <div
-          class="fixed bottom-0 bg-main text-white rounded-t-md p-2 w-screen max-w-[600px] flex flex-col items-center text-xl"
+          class="fixed bottom-0 bg-success text-success-content rounded-t-md p-2 w-screen max-w-[600px] flex flex-col items-center text-xl"
         >
           <button onclick={startGame}>Phase suivante ➡️</button>
         </div>

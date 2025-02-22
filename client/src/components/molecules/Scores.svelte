@@ -7,7 +7,7 @@
     {#if position > 0}
       ⚠️ Surplus : {Math.abs(position)} MW
     {:else if position < 0}
-      ⚠️ Manque : {Math.abs(position)} MW
+      ⚠️ Déficit : {Math.abs(position)} MW
     {:else}
       ✅ A l'équilibre
     {/if}

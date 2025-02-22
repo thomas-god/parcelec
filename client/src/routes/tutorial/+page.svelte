@@ -23,10 +23,10 @@
   let pnl = $derived(pnl_values.at(index)!);
   setInterval(() => {
     index = (index + 1) % position_values.length;
-  }, 2000);
+  }, 1500);
 </script>
 
-<div class="flex flex-col max-w-[500px] mx-auto text-justify bg-neutral">
+<div class="flex flex-col max-w-[500px] mx-auto text-justify">
   <h1 class="text-center font-semibold text-xl my-3">
     Bienvenue dans Parcelec !
   </h1>
@@ -35,7 +35,9 @@
     autant que ce vos clients 🏙️ consomment. Mais attention il vous faudra
     trouver l'équilibre au meilleur cout !
   </div>
-  <div class="px-4 sm:px-10 py-4 text-white bg-main rounded-md m-2">
+  <div
+    class="px-4 sm:px-10 py-4 text-neutral-content bg-neutral rounded-md m-2"
+  >
     <Scores {position} {pnl} />
   </div>
   <p class="p-4">
