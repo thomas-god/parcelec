@@ -21,13 +21,17 @@
   let signed_current_setpoint = $derived(
     current_charge_state ? -current_setpoint : current_setpoint,
   );
-  $inspect(current_charge_state);
 
   let debounceTimer: ReturnType<typeof setTimeout>;
   const debouncedUpdateSetpoint = () => {
     clearTimeout(debounceTimer);
     debounceTimer = setTimeout(() => {
-      console.log("charge state", current_charge_state);
+      const new_setpoint = current_charge_state
+        ? -current_setpoint
+        : current_setpoint;
+      if (new_setpoint === setpoint) {
+        return;
+      }
       updateSetpoint(
         current_charge_state ? -current_setpoint : current_setpoint,
       );
