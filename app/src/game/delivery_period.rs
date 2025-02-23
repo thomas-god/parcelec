@@ -2,6 +2,7 @@ use core::fmt;
 use std::{collections::HashMap, time::Duration};
 
 use futures_util::future::join_all;
+use serde::Serialize;
 use tokio::{
     join,
     sync::{mpsc, oneshot},
@@ -17,7 +18,7 @@ use crate::{
 
 use super::{scores::PlayerScore, GameMessage};
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Copy, Default)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Copy, Default, Serialize)]
 pub struct DeliveryPeriodId(isize);
 impl fmt::Display for DeliveryPeriodId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {

@@ -50,8 +50,8 @@ pub enum RegisterPlayerResponse {
 #[derive(Debug, PartialEq, Clone)]
 pub enum GameState {
     Open,
-    Running,
-    PostDelivery,
+    Running(DeliveryPeriodId),
+    PostDelivery(DeliveryPeriodId),
 }
 
 impl Serialize for GameState {
@@ -59,16 +59,21 @@ impl Serialize for GameState {
     where
         S: serde::Serializer,
     {
-        let mut state = serializer.serialize_struct("GameState", 2)?;
+        let mut state = serializer.serialize_struct("GameState", 3)?;
         state.serialize_field("type", "GameState")?;
         state.serialize_field(
             "state",
             match self {
-                Self::Running => "Running",
+                Self::Running(_) => "Running",
                 Self::Open => "Open",
-                Self::PostDelivery => "PostDelivery",
+                Self::PostDelivery(_) => "PostDelivery",
             },
         )?;
+        let period = match self {
+            Self::Running(period) | Self::PostDelivery(period) => *period,
+            Self::Open => DeliveryPeriodId::from(0),
+        };
+        state.serialize_field("delivery_period", &period)?;
         state.end()
     }
 }
@@ -170,17 +175,19 @@ impl<MS: Market> Game<MS> {
                 (GameState::Open, GameMessage::RegisterPlayer { name, tx_back }) => {
                     self.register_player(name, tx_back);
                 }
-                (GameState::PostDelivery, GameMessage::RegisterPlayer { tx_back, .. })
-                | (GameState::Running, GameMessage::RegisterPlayer { tx_back, .. }) => {
+                (GameState::PostDelivery(_), GameMessage::RegisterPlayer { tx_back, .. })
+                | (GameState::Running(_), GameMessage::RegisterPlayer { tx_back, .. }) => {
                     let _ = tx_back.send(RegisterPlayerResponse::GameIsRunning);
                 }
-                (GameState::PostDelivery, GameMessage::PlayerIsReady(player_id))
+                (GameState::PostDelivery(_), GameMessage::PlayerIsReady(player_id))
                 | (GameState::Open, GameMessage::PlayerIsReady(player_id)) => {
                     self.register_player_ready(player_id);
                 }
-                (GameState::Running, GameMessage::DeliveryPeriodResults(results)) => {
-                    self.state = GameState::PostDelivery;
-                    let _ = self.state_watch.send(GameState::PostDelivery);
+                (GameState::Running(_), GameMessage::DeliveryPeriodResults(results)) => {
+                    self.state = GameState::PostDelivery(self.delivery_period);
+                    let _ = self
+                        .state_watch
+                        .send(GameState::PostDelivery(self.delivery_period));
                     join_all(results.players_scores.iter().map(|(player, score)| {
                         self.players_connections
                             .send(ConnectionRepositoryMessage::SendToPlayer(
@@ -196,7 +203,7 @@ impl<MS: Market> Game<MS> {
                 (_, GameMessage::DeliveryPeriodResults(results)) => {
                     println!("Warning, received results for delivery period {:?} while game is not running", results.period_id);
                 }
-                (GameState::Running, GameMessage::PlayerIsReady(player_id)) => {
+                (GameState::Running(_), GameMessage::PlayerIsReady(player_id)) => {
                     self.register_player_ready_game_is_running(player_id);
                 }
             }
@@ -218,7 +225,7 @@ impl<MS: Market> Game<MS> {
                 "All players ready, starting delivery period {}",
                 self.delivery_period.next()
             );
-            self.state = GameState::Running;
+            self.state = GameState::Running(self.delivery_period);
             self.delivery_period = self.delivery_period.next();
             for player in self.players.iter_mut() {
                 player.ready = false;
@@ -245,7 +252,9 @@ impl<MS: Market> Game<MS> {
                 .await;
             });
             self.all_players_ready_tx = Some(results_tx);
-            let _ = self.state_watch.send(GameState::Running);
+            let _ = self
+                .state_watch
+                .send(GameState::Running(self.delivery_period));
         }
     }
 
@@ -318,7 +327,9 @@ mod tests {
     use tokio::sync::{mpsc, oneshot::channel, watch};
 
     use crate::{
-        game::{Game, GameMessage, GameState, RegisterPlayerResponse},
+        game::{
+            delivery_period::DeliveryPeriodId, Game, GameMessage, GameState, RegisterPlayerResponse,
+        },
         market::{Market, MarketContext, MarketState, OBS},
         plants::{
             actor::{StackContext, StackState},
@@ -564,7 +575,10 @@ mod tests {
 
         // Market should be open
         assert!(game.state_rx.changed().await.is_ok());
-        assert_eq!(*game.state_rx.borrow_and_update(), GameState::Running);
+        assert_eq!(
+            *game.state_rx.borrow_and_update(),
+            GameState::Running(DeliveryPeriodId::from(1))
+        );
     }
 
     #[tokio::test]
@@ -593,7 +607,10 @@ mod tests {
 
         // Game should be running
         assert!(game.state_rx.changed().await.is_ok());
-        assert_eq!(*game.state_rx.borrow_and_update(), GameState::Running);
+        assert_eq!(
+            *game.state_rx.borrow_and_update(),
+            GameState::Running(DeliveryPeriodId::from(1))
+        );
     }
 
     #[tokio::test]
@@ -601,7 +618,10 @@ mod tests {
         let (mut game, _) = open_game();
         let (player, _) = start_game(game.tx.clone()).await;
         assert!(game.state_rx.changed().await.is_ok());
-        assert_eq!(*game.state_rx.borrow_and_update(), GameState::Running);
+        assert_eq!(
+            *game.state_rx.borrow_and_update(),
+            GameState::Running(DeliveryPeriodId::from(1))
+        );
 
         let _ = game
             .tx
@@ -609,7 +629,10 @@ mod tests {
             .await;
 
         assert!(game.state_rx.changed().await.is_ok());
-        assert_eq!(*game.state_rx.borrow_and_update(), GameState::PostDelivery);
+        assert_eq!(
+            *game.state_rx.borrow_and_update(),
+            GameState::PostDelivery(DeliveryPeriodId::from(1))
+        );
     }
 
     #[tokio::test]
@@ -650,19 +673,21 @@ mod tests {
 mod test_game_state {
     use crate::game::GameState;
 
+    use super::delivery_period::DeliveryPeriodId;
+
     #[test]
     fn test_game_state_serialize() {
         assert_eq!(
             serde_json::to_string(&GameState::Open).unwrap(),
-            "{\"type\":\"GameState\",\"state\":\"Open\"}".to_string()
+            "{\"type\":\"GameState\",\"state\":\"Open\",\"delivery_period\":0}".to_string()
         );
         assert_eq!(
-            serde_json::to_string(&GameState::Running).unwrap(),
-            "{\"type\":\"GameState\",\"state\":\"Running\"}".to_string()
+            serde_json::to_string(&GameState::Running(DeliveryPeriodId::from(1))).unwrap(),
+            "{\"type\":\"GameState\",\"state\":\"Running\",\"delivery_period\":1}".to_string()
         );
         assert_eq!(
-            serde_json::to_string(&GameState::PostDelivery).unwrap(),
-            "{\"type\":\"GameState\",\"state\":\"PostDelivery\"}".to_string()
+            serde_json::to_string(&GameState::PostDelivery(DeliveryPeriodId::from(2))).unwrap(),
+            "{\"type\":\"GameState\",\"state\":\"PostDelivery\",\"delivery_period\":2}".to_string()
         );
     }
 }
