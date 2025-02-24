@@ -104,6 +104,19 @@ const WSMessageSchema = z.discriminatedUnion("type", [
       imbalance_cost: z.number(),
     }),
   }),
+  z.object({
+    type: z.literal("PlayerScores"),
+    scores: z
+      .record(
+        z.coerce.number(),
+        z.object({
+          balance: z.number(),
+          pnl: z.number(),
+          imbalance_cost: z.number(),
+        }),
+      )
+      .transform((rec) => new Map(Object.entries(rec))),
+  }),
 ]);
 
 type WSMessage = z.infer<typeof WSMessageSchema>;
@@ -141,6 +154,10 @@ export type DeliveryPeriodScore = Pick<
   Extract<WSMessage, { type: "DeliveryPeriodResults" }>,
   "score"
 >["score"];
+export type PlayerScores = Pick<
+  Extract<WSMessage, { type: "PlayerScores" }>,
+  "scores"
+>["scores"];
 
 export const parseMessage = (
   msg: string,

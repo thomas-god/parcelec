@@ -12,11 +12,12 @@
   import OrderBookElement from "../../components/organisms/OrderBook.svelte";
   import { goto } from "$app/navigation";
   import Stack from "../../components/organisms/StackSliders.svelte";
-  import Scores from "../../components/molecules/Scores.svelte";
+  import LastScore from "../../components/molecules/LastScore.svelte";
   import { fade } from "svelte/transition";
   import { plantsPosition, marketPosition } from "$lib/position";
   import { marketPnl, plantsPnl } from "$lib/pnl";
   import { SvelteMap } from "svelte/reactivity";
+  import Scores from "../../components/organisms/Scores.svelte";
 
   let orderBook: OrderBook = $state({
     bids: [],
@@ -82,6 +83,11 @@
             scores.set(delivery_period, score);
           },
         )
+        .with({ type: "PlayerScores" }, (previous_scores) => {
+          for (const [k, v] of previous_scores.scores.entries()) {
+            scores.set(Number(k), v);
+          }
+        })
         .exhaustive();
     };
     socket.onopen = () => {
@@ -128,7 +134,7 @@
         class="sticky top-0 px-2 py-5 @sm:p-6 text-success-content bg-success rounded-b-md"
       >
         {#if game_state === "Running"}
-          <Scores {position} {pnl} />
+          <LastScore {position} {pnl} />
         {:else}
           <div class="text-2xl text-center mx-auto">Phase terminée !</div>
         {/if}
@@ -165,7 +171,8 @@
         <button onclick={startGame}>Ready!</button>
       {:else if game_state === "PostDelivery"}
         <div class="flex flex-col">
-          {#if scores.has(delivery_period_id)}
+          <Scores {scores} current_period={delivery_period_id} />
+          <!-- {#if scores.has(delivery_period_id)}
             <div class="mt-8 self-center text-lg">
               <ul>
                 <li>
@@ -190,7 +197,7 @@
                 </li>
               </ul>
             </div>
-          {/if}
+          {/if} -->
         </div>
       {/if}
       <div

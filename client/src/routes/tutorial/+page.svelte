@@ -1,7 +1,7 @@
 <script lang="ts">
   import { goto } from "$app/navigation";
   import { PUBLIC_APP_URL } from "$env/static/public";
-  import Scores from "../../components/molecules/Scores.svelte";
+  import Scores from "../../components/molecules/LastScore.svelte";
 
   let error = $state(false);
   const startTutorial = async () => {
