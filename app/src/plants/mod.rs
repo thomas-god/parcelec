@@ -48,6 +48,9 @@ pub trait Stack: Clone + Send + Sync + 'static {
     fn get_snapshot(
         &self,
     ) -> impl Future<Output = Result<HashMap<PlantId, PowerPlantPublicRepr>, GetSnapshotError>> + Send;
+
+    /// Get a forecast, if available, for each plant of the stack, for the next delivery period.
+    fn get_forecasts(&self) -> impl Future<Output = HashMap<PlantId, Option<isize>>> + Send;
 }
 
 #[derive(Debug, Serialize, Clone, Copy)]

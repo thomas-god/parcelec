@@ -77,6 +77,9 @@ pub enum PlayerMessage {
     StackSnapshot {
         plants: HashMap<PlantId, PowerPlantPublicRepr>,
     },
+    StackForecasts {
+        forecasts: HashMap<PlantId, Option<isize>>,
+    },
     DeliveryPeriodResults {
         delivery_period: DeliveryPeriodId,
         score: PlayerScore,
@@ -128,6 +131,8 @@ pub async fn start_player_connection<MS: Market, PS: Stack>(
     {
         return;
     };
+
+    send_stack_forecasts(&mut ws, &context).await;
 
     let (sink, stream) = ws.split();
     let sink_handle = tokio::spawn(process_internal_messages(
@@ -212,6 +217,26 @@ async fn send_initial_stack_snapshot<MS: Market, PS: Stack>(
         }
     }
     Some(())
+}
+
+async fn send_stack_forecasts<MS: Market, PS: Stack>(
+    ws: &mut WebSocket,
+    context: &PlayerConnectionContext<MS, PS>,
+) -> Option<()> {
+    let forecasts = context.stack.service.get_forecasts().await;
+    match serde_json::to_string(&PlayerMessage::StackForecasts { forecasts }) {
+        Ok(msg) => {
+            if let Err(err) = ws.send(msg.into()).await {
+                println!("Error when sending through WS: {err:?}");
+                return None;
+            }
+            Some(())
+        }
+        Err(err) => {
+            println!("Unable to send initial stack snapshot because of {err:?}. Aborting player connection");
+            return None;
+        }
+    }
 }
 
 async fn register_connection<MS: Market, PS: Stack>(

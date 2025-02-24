@@ -77,6 +77,12 @@ const WSMessageSchema = z.discriminatedUnion("type", [
       .transform((rec) => new Map(Object.entries(rec))),
   }),
   z.object({
+    type: z.literal("StackForecasts"),
+    forecasts: z
+      .record(z.string(), z.nullable(z.number()))
+      .transform((rec) => new Map(Object.entries(rec))),
+  }),
+  z.object({
     type: z.literal("MarketState"),
     state: z.enum(["Open", "Closed"]),
   }),
@@ -111,6 +117,10 @@ export type StackSnapshot = Omit<
   Extract<WSMessage, { type: "StackSnapshot" }>,
   "type"
 >["plants"];
+export type StackForecasts = Omit<
+  Extract<WSMessage, { type: "StackForecasts" }>,
+  "type"
+>["forecasts"];
 export type BatteryState = Extract<
   StackSnapshot extends Map<any, infer I> ? I : never,
   { type: "Battery" }

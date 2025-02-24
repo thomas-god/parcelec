@@ -4,6 +4,7 @@
     parseMessage,
     type DeliveryPeriodScore,
     type OrderBook,
+    type StackForecasts,
     type StackSnapshot,
     type Trade,
   } from "$lib/message";
@@ -13,7 +14,6 @@
   import Stack from "../../components/organisms/StackSliders.svelte";
   import Scores from "../../components/molecules/Scores.svelte";
   import { fade } from "svelte/transition";
-  import { isSome, none, some, unwrap, type Option } from "$lib/Options";
   import { plantsPosition, marketPosition } from "$lib/position";
   import { marketPnl, plantsPnl } from "$lib/pnl";
   import { SvelteMap } from "svelte/reactivity";
@@ -24,12 +24,13 @@
   });
   let trades: Trade[] = $state([]);
   let plants: StackSnapshot = $state(new Map());
+  let plant_forecasts: StackForecasts = $state(new Map());
   let market_state: "Open" | "Closed" = $state("Open");
   let stack_state: "Open" | "Closed" = $state("Open");
   let game_state: "Open" | "Running" | "PostDelivery" = $state("Open");
   let delivery_period_id = $state(0);
   let scores: SvelteMap<number, DeliveryPeriodScore> = $state(new SvelteMap());
-
+  $inspect(plant_forecasts);
   const connect = () => {
     const socket = new WebSocket(`${PUBLIC_WS_URL}/ws`);
     socket.onmessage = (msg) => {
@@ -55,6 +56,9 @@
         })
         .with({ type: "StackSnapshot" }, (stack_snapshot) => {
           plants = stack_snapshot.plants;
+        })
+        .with({ type: "StackForecasts" }, ({ forecasts }) => {
+          plant_forecasts = forecasts;
         })
         .with({ type: "TradeList" }, (trade_list) => {
           trades = trade_list.trades;

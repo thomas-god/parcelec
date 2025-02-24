@@ -655,7 +655,8 @@ mod tests {
             .tx
             .send(GameMessage::PlayerIsReady(player.clone()))
             .await;
-        // Flush snapshot sent at the end of the delivery
+        // Flush snapshot and forecasts sent at the end of the delivery
+        let _ = conn_rx.recv().await;
         let _ = conn_rx.recv().await;
 
         let Some(ConnectionRepositoryMessage::SendToPlayer(

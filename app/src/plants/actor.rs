@@ -34,6 +34,7 @@ pub enum StackMessage {
     },
     ProgramSetpoint(ProgramPlant),
     GetSnapshot(oneshot::Sender<HashMap<PlantId, PowerPlantPublicRepr>>),
+    GetForecasts(oneshot::Sender<HashMap<PlantId, Option<isize>>>),
 }
 
 #[derive(Debug, PartialEq, Clone, Copy)]
@@ -138,11 +139,23 @@ impl StackActor {
                 (_, StackMessage::GetSnapshot(tx_back)) => {
                     let _ = tx_back.send(self.stack_snapshot());
                 }
+                (_, StackMessage::GetForecasts(tx_back)) => {
+                    let _ = tx_back.send(self.stack_forecasts());
+                }
                 (
                     StackState::Open,
                     StackMessage::ProgramSetpoint(ProgramPlant { plant_id, setpoint }),
                 ) => {
                     self.program_plant_setpoint(plant_id, setpoint).await;
+                }
+                (
+                    StackState::Closed,
+                    StackMessage::ProgramSetpoint(ProgramPlant {
+                        plant_id,
+                        setpoint: _,
+                    }),
+                ) => {
+                    println!("Trying to program plant {plant_id:?} but stack is closed.");
                 }
                 (StackState::Closed, StackMessage::OpenStack(period_id)) => {
                     if period_id == self.delivery_period {
@@ -150,6 +163,9 @@ impl StackActor {
                         self.delivery_period = self.delivery_period.next();
                         let _ = self.state_sender.send(StackState::Open);
                     }
+                }
+                (StackState::Open, StackMessage::OpenStack(period)) => {
+                    println!("Trying to open stack for delivery period {period:?}, but stack is already open.")
                 }
                 (StackState::Open, StackMessage::CloseStack { tx_back, period_id }) => {
                     if period_id == self.delivery_period {
@@ -163,15 +179,13 @@ impl StackActor {
                         let _ = tx_back.send(plant_outputs);
                         let _ = self.state_sender.send(StackState::Closed);
                         self.send_stack_snapshot().await;
+                        self.send_stack_forecasts().await;
                     }
                 }
                 (StackState::Closed, StackMessage::CloseStack { period_id, tx_back }) => {
                     if let Some(outputs) = self.past_outputs.get(&period_id) {
                         let _ = tx_back.send(outputs.clone());
                     }
-                }
-                (state, msg) => {
-                    println!("Msg {msg:?} unsupported in state: {state:?}")
                 }
             }
         }
@@ -192,10 +206,30 @@ impl StackActor {
             .await;
     }
 
+    async fn send_stack_forecasts(&self) {
+        let forecasts = self.stack_forecasts();
+
+        let _ = self
+            .players_connections
+            .send(ConnectionRepositoryMessage::SendToPlayer(
+                self.game.clone(),
+                self.player.clone(),
+                PlayerMessage::StackForecasts { forecasts },
+            ))
+            .await;
+    }
+
     fn stack_snapshot(&self) -> HashMap<PlantId, PowerPlantPublicRepr> {
         self.stack
             .iter()
             .map(|(plant_id, plant)| (plant_id.to_owned(), plant.current_state()))
+            .collect()
+    }
+
+    fn stack_forecasts(&self) -> HashMap<PlantId, Option<isize>> {
+        self.stack
+            .iter()
+            .map(|(plant_id, plant)| (plant_id.to_owned(), plant.get_forecast()))
             .collect()
     }
 
@@ -297,6 +331,18 @@ mod tests_stack {
     }
 
     #[tokio::test]
+    async fn test_get_forecasts() {
+        let (_, tx, _, _) = start_stack();
+
+        let (tx_back, rx) = oneshot::channel();
+        let _ = tx.send(StackMessage::GetForecasts(tx_back)).await;
+
+        let Ok(_) = rx.await else {
+            unreachable!();
+        };
+    }
+
+    #[tokio::test]
     async fn test_programm_a_plant_setpoint() {
         let (_, tx, _, mut conn_rx) = start_stack();
         let plants = get_stack_snashot(tx.clone()).await;
@@ -336,7 +382,8 @@ mod tests_stack {
                 period_id: DeliveryPeriodId::from(0),
             })
             .await;
-        // Consume the stack snapshot message sent on stack closing
+        // Consume the stack snapshot and forecasts messages sent on stack closing
+        let _ = conn_rx.recv().await;
         let _ = conn_rx.recv().await;
 
         // Try to send a dispatch command
@@ -583,7 +630,7 @@ mod tests_stack {
     }
 
     #[tokio::test]
-    async fn test_closing_the_stack_should_send_an_updated_snapshot() {
+    async fn test_closing_the_stack_should_send_an_updated_snapshot_and_forecasts() {
         let (_, tx, _, mut conn_rx) = start_stack();
         let plants = get_stack_snashot(tx.clone()).await;
 
@@ -625,6 +672,16 @@ mod tests_stack {
         )) = conn_rx.recv().await
         else {
             unreachable!("Should have received a snapshot of the player's stack");
+        };
+
+        // Should receive a stack forecasts back
+        let Some(ConnectionRepositoryMessage::SendToPlayer(
+            _,
+            _,
+            PlayerMessage::StackForecasts { forecasts: _ },
+        )) = conn_rx.recv().await
+        else {
+            unreachable!("Should have received a forecast of the player's stack");
         };
     }
 }

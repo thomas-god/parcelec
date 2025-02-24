@@ -61,6 +61,14 @@ impl Stack for StackService {
             }))
             .await;
     }
+
+    async fn get_forecasts(&self) -> HashMap<PlantId, Option<isize>> {
+        let (tx_back, rx) = oneshot::channel();
+
+        let _ = self.tx.send(StackMessage::GetForecasts(tx_back)).await;
+
+        rx.await.unwrap_or(HashMap::new())
+    }
 }
 
 #[cfg(test)]
@@ -71,15 +79,17 @@ mockall::mock! {
         fn open_stack(&self, delivery_period: DeliveryPeriodId) -> impl Future<Output=()>  + Send;
 
         fn close_stack(
-        &self,
-        delivery_period: DeliveryPeriodId,
-    ) -> impl Future<Output = Result<HashMap<PlantId, PlantOutput>, CloseStackError>> + Send;
+            &self,
+            delivery_period: DeliveryPeriodId,
+        ) -> impl Future<Output = Result<HashMap<PlantId, PlantOutput>, CloseStackError>> + Send;
 
-    fn program_setpoint(&self, plant: PlantId, setpoint: isize) -> impl Future<Output = ()> + Send;
+        fn program_setpoint(&self, plant: PlantId, setpoint: isize) -> impl Future<Output = ()> + Send;
 
-    fn get_snapshot(
-        &self,
-    ) -> impl Future<Output = Result<HashMap<PlantId, PowerPlantPublicRepr>, GetSnapshotError>> + Send;
+        fn get_snapshot(
+            &self,
+        ) -> impl Future<Output = Result<HashMap<PlantId, PowerPlantPublicRepr>, GetSnapshotError>> + Send;
+
+        fn get_forecasts(&self) -> impl Future<Output = HashMap<PlantId, Option<isize>>> + Send;
     }
 
     impl Clone for StackService {
@@ -175,6 +185,34 @@ mod tests {
 
         let res = service.get_snapshot().await;
         assert!(res.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_get_forecasts_ok() {
+        let (tx, mut rx) = mpsc::channel(128);
+        let service = StackService::new(tx);
+
+        tokio::spawn(async move {
+            let Some(StackMessage::GetForecasts(tx_back)) = rx.recv().await else {
+                unreachable!()
+            };
+            let _ = tx_back.send(HashMap::from([(PlantId::default(), Some(0))]));
+        });
+
+        let res = service.get_forecasts().await;
+        assert_eq!(res.len(), 1);
+    }
+
+    #[tokio::test]
+    async fn test_get_forecasts_err() {
+        let (tx, mut rx) = mpsc::channel(128);
+        let service = StackService::new(tx);
+
+        // Close receiving end to simulate err
+        rx.close();
+
+        let res = service.get_forecasts().await;
+        assert_eq!(res, HashMap::new())
     }
 
     #[tokio::test]
