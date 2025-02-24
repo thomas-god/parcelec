@@ -16,7 +16,21 @@
   });
   let current_charge_state = $state(false);
   $effect(() => {
-    current_charge_state = setpoint < 0;
+    if (setpoint !== 0) {
+      current_charge_state = setpoint < 0;
+      return;
+    }
+    // Battery has no setpoint
+    if (charge === 0) {
+      // Battery is empty, set charge mode per default
+      current_charge_state = true;
+    } else if (charge === max_charge) {
+      // Battery is full, set discharge mode per default
+      current_charge_state = false;
+    } else {
+      // Set charge mode by default
+      current_charge_state = true;
+    }
   });
   let signed_current_setpoint = $derived(
     current_charge_state ? -current_setpoint : current_setpoint,
@@ -74,7 +88,7 @@
           })} MWh)
         {/if}
       </span>
-      <label class="swap text-right">
+      <label class="swap text-right font-semibold">
         <input
           type="checkbox"
           bind:checked={current_charge_state}
