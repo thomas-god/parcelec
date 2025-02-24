@@ -38,7 +38,7 @@
     "@storybook/addon-essentials": "^8.5.3",
     "@storybook/addon-interactions": "^8.5.3",
     "@storybook/addon-svelte-csf": "^5.0.0-next.23",
-    "@storybook/blocks": "^8.5.3",
+    "@storybook/blocks": "^8.5.8",
     "@storybook/svelte": "^8.5.3",
     "@storybook/sveltekit": "^8.5.3",
     "@storybook/test": "^8.5.3",
