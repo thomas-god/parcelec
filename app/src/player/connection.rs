@@ -10,7 +10,7 @@ use tokio::{
     select,
     sync::{
         mpsc::{self, channel, Receiver, Sender},
-        watch,
+        oneshot, watch,
     },
 };
 use uuid::Uuid;
@@ -85,6 +85,13 @@ pub enum PlayerMessage {
         score: PlayerScore,
     },
 }
+
+#[derive(Debug, Serialize)]
+#[serde(tag = "type")]
+struct PlayerScores {
+    scores: HashMap<DeliveryPeriodId, PlayerScore>,
+}
+
 #[derive(Debug, Clone)]
 pub struct PlayerConnectionContext<MS: Market, PS: Stack> {
     pub game_id: GameId,
@@ -133,6 +140,7 @@ pub async fn start_player_connection<MS: Market, PS: Stack>(
     };
 
     send_stack_forecasts(&mut ws, &context).await;
+    send_previous_scores(&mut ws, &context).await;
 
     let (sink, stream) = ws.split();
     let sink_handle = tokio::spawn(process_internal_messages(
@@ -234,7 +242,41 @@ async fn send_stack_forecasts<MS: Market, PS: Stack>(
         }
         Err(err) => {
             println!("Unable to send initial stack snapshot because of {err:?}. Aborting player connection");
-            return None;
+            None
+        }
+    }
+}
+
+async fn send_previous_scores<MS: Market, PS: Stack>(
+    ws: &mut WebSocket,
+    context: &PlayerConnectionContext<MS, PS>,
+) -> Option<()> {
+    let (tx_back, rx) = oneshot::channel();
+    let _ = context
+        .game
+        .tx
+        .send(GameMessage::GetPreviousScores {
+            player_id: context.player_id.clone(),
+            tx_back,
+        })
+        .await;
+    let Ok(scores) = rx.await else {
+        println!("Unable to get previous scores, aborting player connection");
+        return None;
+    };
+    match serde_json::to_string(&PlayerScores { scores }) {
+        Ok(msg) => {
+            if let Err(err) = ws.send(msg.into()).await {
+                println!("Error when sending through WS: {err:?}");
+                return None;
+            }
+            Some(())
+        }
+        Err(err) => {
+            println!(
+                "Unable to send initial scores because of {err:?}. Aborting player connection"
+            );
+            None
         }
     }
 }

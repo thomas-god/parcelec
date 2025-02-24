@@ -2,6 +2,7 @@ use std::collections::HashMap;
 
 use delivery_period::{start_delivery_period, DeliveryPeriodId, DeliveryPeriodResults};
 use futures_util::future::join_all;
+use scores::PlayerScore;
 use serde::{ser::SerializeStruct, Serialize};
 use tokio::sync::{
     mpsc::{self, channel, Receiver, Sender},
@@ -35,6 +36,10 @@ pub enum GameMessage {
     },
     PlayerIsReady(PlayerId),
     DeliveryPeriodResults(DeliveryPeriodResults),
+    GetPreviousScores {
+        player_id: PlayerId,
+        tx_back: oneshot::Sender<HashMap<DeliveryPeriodId, PlayerScore>>,
+    },
 }
 
 #[derive(Debug)]
@@ -131,6 +136,7 @@ pub struct Game<MS: Market> {
     state: GameState,
     state_watch: watch::Sender<GameState>,
     players: Vec<Player>,
+    players_scores: HashMap<PlayerId, HashMap<DeliveryPeriodId, PlayerScore>>,
     players_connections: mpsc::Sender<ConnectionRepositoryMessage>,
     market_context: MarketContext<MS>,
     stacks_contexts: HashMap<PlayerId, StackContext<StackService>>,
@@ -156,6 +162,7 @@ impl<MS: Market> Game<MS> {
             market_context,
             players: Vec::new(),
             players_connections,
+            players_scores: HashMap::new(),
             stacks_contexts: HashMap::new(),
             rx,
             tx,
@@ -179,11 +186,20 @@ impl<MS: Market> Game<MS> {
                 | (GameState::Running(_), GameMessage::RegisterPlayer { tx_back, .. }) => {
                     let _ = tx_back.send(RegisterPlayerResponse::GameIsRunning);
                 }
+                (_, GameMessage::GetPreviousScores { player_id, tx_back }) => {
+                    let scores = self
+                        .players_scores
+                        .get(&player_id)
+                        .cloned()
+                        .unwrap_or_else(HashMap::new);
+                    let _ = tx_back.send(scores);
+                }
                 (GameState::PostDelivery(_), GameMessage::PlayerIsReady(player_id))
                 | (GameState::Open, GameMessage::PlayerIsReady(player_id)) => {
                     self.register_player_ready(player_id);
                 }
                 (GameState::Running(_), GameMessage::DeliveryPeriodResults(results)) => {
+                    self.store_scores(&results);
                     self.state = GameState::PostDelivery(self.delivery_period);
                     let _ = self
                         .state_watch
@@ -321,11 +337,28 @@ impl<MS: Market> Game<MS> {
             state_rx: self.state_watch.subscribe(),
         }
     }
+
+    fn store_scores(&mut self, results: &DeliveryPeriodResults) {
+        for (player, score) in results.players_scores.iter() {
+            if let Some(scores) = self.players_scores.get_mut(player) {
+                scores.insert(results.period_id, score.clone());
+            } else {
+                self.players_scores.insert(
+                    player.clone(),
+                    HashMap::from([(results.period_id, score.clone())]),
+                );
+            }
+        }
+    }
 }
 
 #[cfg(test)]
 mod tests {
-    use tokio::sync::{mpsc, oneshot::channel, watch};
+    use tokio::sync::{
+        mpsc,
+        oneshot::{self, channel},
+        watch,
+    };
 
     use crate::{
         game::{
@@ -672,6 +705,52 @@ mod tests {
         };
         assert_eq!(delivery_period, DeliveryPeriodId::from(1));
         assert_eq!(target_player, player);
+    }
+
+    #[tokio::test]
+    async fn test_get_previous_scores() {
+        let (conn_tx, mut conn_rx) = mpsc::channel(16);
+        let game_id = GameId::default();
+        let (state_tx, rx) = watch::channel(MarketState::Closed);
+        let market = MarketContext {
+            service: MockMarket { state_tx },
+            state_rx: rx,
+        };
+        let game = Game::start(&game_id, conn_tx, market);
+
+        // Start the game
+        let (player, _) = start_game(game.tx.clone()).await;
+
+        // Scores should be empty at this stage
+        let (tx_back, rx) = oneshot::channel();
+        let _ = game
+            .tx
+            .send(GameMessage::GetPreviousScores {
+                player_id: player.clone(),
+                tx_back,
+            })
+            .await;
+        let Ok(scores) = rx.await else { unreachable!() };
+        assert!(scores.is_empty());
+
+        // End delivery period
+        let _ = game
+            .tx
+            .send(GameMessage::PlayerIsReady(player.clone()))
+            .await;
+        let _ = conn_rx.recv().await;
+
+        // Request player's scores
+        let (tx_back, rx) = oneshot::channel();
+        let _ = game
+            .tx
+            .send(GameMessage::GetPreviousScores {
+                player_id: player.clone(),
+                tx_back,
+            })
+            .await;
+        let Ok(scores) = rx.await else { unreachable!() };
+        assert_eq!(scores.len(), 1);
     }
 }
 
