@@ -87,13 +87,16 @@ const WSMessageSchema = z.discriminatedUnion("type", [
   z.object({
     type: z.literal("GameState"),
     state: z.enum(["Open", "Running", "PostDelivery"]),
-    delivery_period: z.number()
+    delivery_period: z.number(),
   }),
   z.object({
     type: z.literal("DeliveryPeriodResults"),
-    balance: z.number(),
-    pnl: z.number(),
-    imbalance_cost: z.number(),
+    delivery_period: z.number(),
+    score: z.object({
+      balance: z.number(),
+      pnl: z.number(),
+      imbalance_cost: z.number(),
+    }),
   }),
 ]);
 
@@ -124,10 +127,10 @@ export type ConsumersState = Extract<
   StackSnapshot extends Map<any, infer I> ? I : never,
   { type: "Consumers" }
 >;
-export type DeliveryPeriodScore = Omit<
+export type DeliveryPeriodScore = Pick<
   Extract<WSMessage, { type: "DeliveryPeriodResults" }>,
-  "type"
->;
+  "score"
+>["score"];
 
 export const parseMessage = (
   msg: string,

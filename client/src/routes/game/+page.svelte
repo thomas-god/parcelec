@@ -16,6 +16,7 @@
   import { isSome, none, some, unwrap, type Option } from "$lib/Options";
   import { plantsPosition, marketPosition } from "$lib/position";
   import { marketPnl, plantsPnl } from "$lib/pnl";
+  import { SvelteMap } from "svelte/reactivity";
 
   let orderBook: OrderBook = $state({
     bids: [],
@@ -26,7 +27,8 @@
   let market_state: "Open" | "Closed" = $state("Open");
   let stack_state: "Open" | "Closed" = $state("Open");
   let game_state: "Open" | "Running" | "PostDelivery" = $state("Open");
-  let post_delivery_score: Option<DeliveryPeriodScore> = $state(none());
+  let delivery_period_id = $state(0);
+  let scores: SvelteMap<number, DeliveryPeriodScore> = $state(new SvelteMap());
 
   const connect = () => {
     const socket = new WebSocket(`${PUBLIC_WS_URL}/ws`);
@@ -57,8 +59,12 @@
         .with({ type: "TradeList" }, (trade_list) => {
           trades = trade_list.trades;
         })
-        .with({ type: "GameState" }, ({ state }) => {
+        .with({ type: "GameState" }, ({ state, delivery_period }) => {
           game_state = state;
+          delivery_period_id = delivery_period;
+          if (state === "Running") {
+            console.log(`Starting delivery period no: ${delivery_period_id}`);
+          }
         })
         .with({ type: "MarketState" }, ({ state }) => {
           market_state = state;
@@ -66,9 +72,12 @@
         .with({ type: "StackState" }, ({ state }) => {
           stack_state = state;
         })
-        .with({ type: "DeliveryPeriodResults" }, (score) => {
-          post_delivery_score = some(score);
-        })
+        .with(
+          { type: "DeliveryPeriodResults" },
+          ({ delivery_period, score }) => {
+            scores.set(delivery_period, score);
+          },
+        )
         .exhaustive();
     };
     socket.onopen = () => {
@@ -155,26 +164,28 @@
           <!-- <h2 class="text-center font-semibold text-xl mt-6">
             Période de livraison terminée !
           </h2> -->
-          {#if isSome(post_delivery_score)}
+          {#if scores.has(delivery_period_id)}
             <div class="mt-8 self-center text-lg">
               <ul>
                 <li>
-                  Equilibre: {unwrap(
-                    post_delivery_score,
-                  ).balance.toLocaleString("fr-FR")} MW
+                  Equilibre: {scores
+                    .get(delivery_period_id)!
+                    .balance.toLocaleString("fr-FR")} MW
                 </li>
                 <li>
-                  PnL: {unwrap(post_delivery_score).pnl.toLocaleString("fr-FR")}
+                  PnL: {scores
+                    .get(delivery_period_id)!
+                    .pnl.toLocaleString("fr-FR")}
                   €
                 </li>
                 <li>
-                  Ecarts: {unwrap(
-                    post_delivery_score,
-                  ).imbalance_cost.toLocaleString("fr-FR")} €
+                  Ecarts: {scores
+                    .get(delivery_period_id)!
+                    .imbalance_cost.toLocaleString("fr-FR")} €
                 </li>
                 <li class="font-semibold">
-                  Total: {unwrap(post_delivery_score).pnl +
-                    unwrap(post_delivery_score).imbalance_cost} €
+                  Total: {scores.get(delivery_period_id)!.pnl +
+                    scores.get(delivery_period_id)!.imbalance_cost} €
                 </li>
               </ul>
             </div>

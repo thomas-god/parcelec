@@ -193,9 +193,10 @@ impl<MS: Market> Game<MS> {
                             .send(ConnectionRepositoryMessage::SendToPlayer(
                                 self.game_id.clone(),
                                 player.clone(),
-                                crate::player::connection::PlayerMessage::DeliveryPeriodResults(
-                                    score.clone(),
-                                ),
+                                crate::player::connection::PlayerMessage::DeliveryPeriodResults {
+                                    score: score.clone(),
+                                    delivery_period: self.delivery_period,
+                                },
                             ))
                     }))
                     .await;
@@ -660,11 +661,15 @@ mod tests {
         let Some(ConnectionRepositoryMessage::SendToPlayer(
             _,
             target_player,
-            PlayerMessage::DeliveryPeriodResults(_),
+            PlayerMessage::DeliveryPeriodResults {
+                score: _,
+                delivery_period,
+            },
         )) = conn_rx.recv().await
         else {
             unreachable!("Should have received player's results");
         };
+        assert_eq!(delivery_period, DeliveryPeriodId::from(1));
         assert_eq!(target_player, player);
     }
 }
