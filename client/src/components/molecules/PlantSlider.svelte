@@ -43,9 +43,12 @@
   let sliderClass = $derived.by(() => {
     let classNames =
       "range block my-auto w-full rounded-lg appearance-none cursor-pointer";
-    classNames += dispatchable
-      ? ""
-      : " [--range-thumb:transparent] opacity-100!";
+    if (!dispatchable) {
+      classNames += " [--range-thumb:transparent] opacity-100!";
+      if (setpoint === 0) {
+        classNames += " [--range-progress:transparent]";
+      }
+    }
     return classNames;
   });
 </script>
