@@ -18,4 +18,4 @@ uuid = { version = "1.12.1", features = ["v4", "fast-rng"] }
 [dev-dependencies]
 futures = "0.3.31"
 mockall = "0.13.1"
-tokio-tungstenite = "0.26.1"
+tokio-tungstenite = "0.26.2"
