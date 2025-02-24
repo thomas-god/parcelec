@@ -30,7 +30,7 @@
   let game_state: "Open" | "Running" | "PostDelivery" = $state("Open");
   let delivery_period_id = $state(0);
   let scores: SvelteMap<number, DeliveryPeriodScore> = $state(new SvelteMap());
-  $inspect(plant_forecasts);
+
   const connect = () => {
     const socket = new WebSocket(`${PUBLIC_WS_URL}/ws`);
     socket.onmessage = (msg) => {
@@ -165,9 +165,6 @@
         <button onclick={startGame}>Ready!</button>
       {:else if game_state === "PostDelivery"}
         <div class="flex flex-col">
-          <!-- <h2 class="text-center font-semibold text-xl mt-6">
-            Période de livraison terminée !
-          </h2> -->
           {#if scores.has(delivery_period_id)}
             <div class="mt-8 self-center text-lg">
               <ul>
@@ -194,9 +191,6 @@
               </ul>
             </div>
           {/if}
-          <!-- <div class="mt-8 self-center text-lg">
-            <button onclick={startGame}> ➡️ Partie suivante</button>
-          </div> -->
         </div>
       {/if}
       <div

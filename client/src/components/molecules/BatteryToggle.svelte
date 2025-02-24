@@ -64,7 +64,7 @@
     <div class="grid grid-cols-[1fr_135px] p-1.5">
       <div class="flex flex-col gap-1">
         <input
-          class="range block my-auto w-full bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700"
+          class="range block my-auto w-full rounded-lg appearance-none cursor-pointer"
           type="range"
           disabled={false}
           bind:value={current_setpoint}

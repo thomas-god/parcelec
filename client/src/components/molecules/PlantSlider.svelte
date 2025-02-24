@@ -39,6 +39,15 @@
       updateSetpoint(current_setpoint);
     }, 500);
   };
+
+  let sliderClass = $derived.by(() => {
+    let classNames =
+      "range block my-auto w-full rounded-lg appearance-none cursor-pointer";
+    classNames += dispatchable
+      ? ""
+      : " [--range-thumb:transparent] opacity-100!";
+    return classNames;
+  });
 </script>
 
 <div class="flex flex-row gap-1 w-full justify-stretch">
@@ -58,7 +67,7 @@
 
     <div class="grid grid-cols-[1fr_135px] p-1.5">
       <input
-        class="range block my-auto w-full bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700"
+        class={sliderClass}
         type="range"
         disabled={!dispatchable}
         bind:value={current_setpoint}
