@@ -60,6 +60,10 @@ impl PowerPlant for GasPlant {
             cost: self.cost(),
         }
     }
+
+    fn get_forecast(&self) -> Option<isize> {
+        None
+    }
 }
 
 #[cfg(test)]
@@ -116,5 +120,11 @@ mod tests {
                 cost: 1000 * 47
             }
         );
+    }
+
+    #[test]
+    fn test_gas_plant_has_no_forecast() {
+        let plant = GasPlant::new(70, 1000);
+        assert!(plant.get_forecast().is_none());
     }
 }

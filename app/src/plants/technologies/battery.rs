@@ -80,6 +80,10 @@ impl PowerPlant for Battery {
         self.setpoint = None;
         PlantOutput { cost, setpoint }
     }
+
+    fn get_forecast(&self) -> Option<isize> {
+        None
+    }
 }
 
 #[cfg(test)]
@@ -133,5 +137,11 @@ mod tests {
         );
         battery.dispatch();
         assert_eq!(battery.charge, 0);
+    }
+
+    #[test]
+    fn test_battery_has_no_forecast() {
+        let battery = Battery::new(1000, 0);
+        assert!(battery.get_forecast().is_none());
     }
 }

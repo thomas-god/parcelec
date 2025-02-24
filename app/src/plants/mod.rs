@@ -74,6 +74,9 @@ pub trait PowerPlant {
 
     /// Retrieve a string representation of the plant's state
     fn current_state(&self) -> PowerPlantPublicRepr;
+
+    // Get a forecast of the plant's output for the next delivery period
+    fn get_forecast(&self) -> Option<isize>;
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]

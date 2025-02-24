@@ -216,7 +216,7 @@ fn default_stack() -> HashMap<PlantId, Box<dyn PowerPlant + Send + Sync>> {
         PlantId::default(),
         Box::new(RenewablePlant::new_with_looping(
             700,
-            [0, 250, 700, 200].as_slice(),
+            vec![0, 250, 700, 200],
         )),
     );
     map.insert(
@@ -224,7 +224,7 @@ fn default_stack() -> HashMap<PlantId, Box<dyn PowerPlant + Send + Sync>> {
         Box::new(Consumers::new_with_looping(
             1500,
             56,
-            [-600, -900, -600, -1200].as_slice(),
+            vec![-600, -900, -600, -1200],
         )),
     );
     map
