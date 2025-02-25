@@ -21,7 +21,7 @@
 </script>
 
 <div class="flex flex-col gap-4 items-start">
-  <h2 class="text-lg font-bold self-stretch pl-2">Centrales et clients</h2>
+  <!-- <h2 class="text-lg font-bold self-stretch pl-2">Centrales et clients</h2> -->
   {#each sortedPlants.entries() as [id, plant] (id)}
     <div class="px-2 mx-auto w-full">
       {#if plant.type === "Battery"}

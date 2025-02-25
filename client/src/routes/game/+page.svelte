@@ -162,7 +162,7 @@
       </div>
 
       {#if game_state === "Running"}
-        <div class="tabs tabs-lift tabs-sm p-1">
+        <div class="tabs tabs-border tabs-sm p-1">
           <input
             type="radio"
             name="market_forecast_tabs"
@@ -178,7 +178,6 @@
             name="market_forecast_tabs"
             class="tab text-base font-semibold"
             aria-label="Marché 💱"
-            checked={true}
           />
           <div class="tab-content bg-base-100 border-base-300 p-6">
             <OrderBookElement {orderBook} send={sendMessage} {trades} />
@@ -193,6 +192,7 @@
             <Forecasts
               market_forecasts={market_forecasts.get(delivery_period_id + 1)!}
               {plant_forecasts}
+              plant_snapshots={plants}
             />
           </div>
         </div>
