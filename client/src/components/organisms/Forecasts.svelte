@@ -66,17 +66,20 @@
         <span class="text-2xl">
           {icons[plant_type]}
         </span>
-        {names[plant_type]}:
-        {plant_type === "Consumers" ? "consommation" : "production"}
+        {names[plant_type]}: la {plant_type === "Consumers"
+          ? "consommation"
+          : "production"} sera
         <span class="italic underline">{levelsNames[forecast]}</span>
       </div>
+    {:else}
+      <div>Pas de prévisions</div>
     {/each}
   </div>
   <div>
     <h2 class="text-xl">Marché</h2>
     {#each market_forecasts as forecast}
       <div>
-        Un potentiel <span class="italic underline"
+        Il y aura un potentiel <span class="italic underline"
           >{directionName[forecast.direction]}
         </span>
         pour un volume
@@ -90,6 +93,8 @@
             : "prix inconnu"}) -->
         </span>
       </div>
+    {:else}
+      <div>Pas de prévisions</div>
     {/each}
   </div>
 </div>

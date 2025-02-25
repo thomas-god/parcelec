@@ -170,7 +170,7 @@
             aria-label="Centrales 🔌"
             checked={true}
           />
-          <div class="tab-content bg-base-100 border-base-300 p-6">
+          <div class="tab-content bg-base-100 border-base-300 p-4">
             <Stack {plants} send={sendMessage} />
           </div>
           <input
@@ -179,7 +179,7 @@
             class="tab text-base font-semibold"
             aria-label="Marché 💱"
           />
-          <div class="tab-content bg-base-100 border-base-300 p-6">
+          <div class="tab-content bg-base-100 border-base-300 p-4">
             <OrderBookElement {orderBook} send={sendMessage} {trades} />
           </div>
           <input
@@ -188,7 +188,7 @@
             class="tab text-base font-semibold"
             aria-label="Prévisions 🔮"
           />
-          <div class="tab-content bg-base-100 border-base-300 p-6">
+          <div class="tab-content bg-base-100 border-base-300 p-4">
             <Forecasts
               market_forecasts={market_forecasts.get(delivery_period_id + 1)!}
               {plant_forecasts}
