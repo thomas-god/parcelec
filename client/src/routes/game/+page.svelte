@@ -162,7 +162,7 @@
       </div>
 
       {#if game_state === "Running"}
-        <div class="tabs tabs-lift">
+        <div class="tabs tabs-lift tabs-sm p-1">
           <input
             type="radio"
             name="market_forecast_tabs"
