@@ -22,7 +22,7 @@ use crate::{
     },
     market::{
         order_book::{OrderRequest as MarketOrderRequest, TradeLeg},
-        Direction, Market, MarketContext, MarketState, OrderRepr,
+        Direction, Market, MarketContext, MarketForecast, MarketState, OrderRepr,
     },
     plants::{
         actor::{ProgramPlant, StackContext, StackState},
@@ -74,6 +74,7 @@ pub enum PlayerMessage {
     TradeList {
         trades: Vec<TradeLeg>,
     },
+    MarketForecast(MarketForecast),
     StackSnapshot {
         plants: HashMap<PlantId, PowerPlantPublicRepr>,
     },

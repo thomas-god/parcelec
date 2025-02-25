@@ -122,6 +122,22 @@ pub struct MarketContext<MS: Market> {
     pub state_rx: watch::Receiver<MarketState>,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, PartialOrd, Serialize)]
+pub enum ForecastLevel {
+    Low,
+    Medium,
+    High,
+}
+
+#[derive(Debug, Serialize, Clone)]
+pub struct MarketForecast {
+    pub issuer: PlayerId,
+    pub period: DeliveryPeriodId,
+    pub direction: Direction,
+    pub volume: ForecastLevel,
+    pub price: Option<ForecastLevel>,
+}
+
 #[cfg(test)]
 mod test_order_repr {
     use chrono::Utc;

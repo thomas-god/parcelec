@@ -36,9 +36,16 @@ pub async fn create_tutorial_game(
         .insert(game_id.clone(), game_context.clone());
 
     // Start the bots
+    let cloned_game_id = game_id.clone();
     let cloned_market_context = market_context.clone();
+    let cloned_players_repository = state.player_connections_repository.clone();
     tokio::spawn(async move {
-        start_bots(cloned_market_context).await;
+        start_bots(
+            cloned_game_id,
+            cloned_market_context,
+            cloned_players_repository,
+        )
+        .await;
     });
 
     // Register a player for this game

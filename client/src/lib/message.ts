@@ -117,6 +117,14 @@ const WSMessageSchema = z.discriminatedUnion("type", [
       )
       .transform((rec) => new Map(Object.entries(rec))),
   }),
+  z.object({
+    type: z.literal("MarketForecast"),
+    issuer: z.string(),
+    period: z.number(),
+    direction: Direction,
+    volume: z.enum(["Low", "Medium", "High"]),
+    price: z.number().nullable(),
+  }),
 ]);
 
 type WSMessage = z.infer<typeof WSMessageSchema>;
@@ -158,6 +166,7 @@ export type PlayerScores = Pick<
   Extract<WSMessage, { type: "PlayerScores" }>,
   "scores"
 >["scores"];
+export type MarketForecast = Extract<WSMessage, { type: "MarketForecast" }>;
 
 export const parseMessage = (
   msg: string,

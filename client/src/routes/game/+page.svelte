@@ -88,6 +88,9 @@
             scores.set(Number(k), v);
           }
         })
+        .with({ type: "MarketForecast" }, (forecast) => {
+          console.log(JSON.stringify(forecast));
+        })
         .exhaustive();
     };
     socket.onopen = () => {
