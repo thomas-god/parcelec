@@ -180,6 +180,10 @@ impl MarketActor {
                         .insert(forecast.period, vec![forecast.clone()]);
                 }
             };
+            println!(
+                "Registered market forecast for delivery period {:?}",
+                forecast.period
+            );
             let _ = self
                 .players_connections
                 .send(ConnectionRepositoryMessage::SendToAllPlayers(

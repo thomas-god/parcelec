@@ -1,46 +1,34 @@
-use tokio::sync::mpsc::{self, channel, Receiver};
+use tokio::sync::mpsc::{channel, Receiver};
 
 use crate::{
-    game::{delivery_period::DeliveryPeriodId, GameId},
+    game::delivery_period::DeliveryPeriodId,
     market::{
         order_book::OrderRequest, Direction, ForecastLevel, Market, MarketContext, MarketForecast,
         MarketState,
     },
-    player::{connection::PlayerMessage, repository::ConnectionRepositoryMessage, PlayerId},
+    player::{connection::PlayerMessage, PlayerId},
 };
 
 pub struct InitialOrdersBot<MS: Market> {
     id: PlayerId,
-    game: GameId,
     market: MarketContext<MS>,
-    players_repository: mpsc::Sender<ConnectionRepositoryMessage>,
     _rx: Receiver<PlayerMessage>,
 }
 
 impl<MS: Market> InitialOrdersBot<MS> {
-    fn new(
-        game: GameId,
-        market: MarketContext<MS>,
-        players_repository: mpsc::Sender<ConnectionRepositoryMessage>,
-    ) -> InitialOrdersBot<MS> {
+    fn new(market: MarketContext<MS>) -> InitialOrdersBot<MS> {
         let bot_id = PlayerId::default();
         let (_, rx) = channel(16);
 
         InitialOrdersBot {
             id: bot_id,
-            game,
             market,
-            players_repository,
             _rx: rx,
         }
     }
 
-    pub fn start(
-        game: GameId,
-        market: MarketContext<MS>,
-        players_repository: mpsc::Sender<ConnectionRepositoryMessage>,
-    ) {
-        let mut bot = InitialOrdersBot::new(game, market, players_repository);
+    pub fn start(market: MarketContext<MS>) {
+        let mut bot = InitialOrdersBot::new(market);
 
         tokio::spawn(async move {
             bot.run().await;
@@ -76,21 +64,19 @@ impl<MS: Market> InitialOrdersBot<MS> {
             // 2nd period: do nothing
             period = period.next();
             self.wait_for_market_to_open().await;
-            self.wait_for_market_to_close().await;
             // Send forecast for next period (will buy)
             let _ = self
-                .players_repository
-                .send(ConnectionRepositoryMessage::SendToAllPlayers(
-                    self.game.clone(),
-                    PlayerMessage::NewMarketForecast(MarketForecast {
-                        direction: Direction::Buy,
-                        volume: ForecastLevel::Medium,
-                        issuer: self.id.clone(),
-                        period,
-                        price: None,
-                    }),
-                ))
+                .market
+                .service
+                .register_forecast(MarketForecast {
+                    direction: Direction::Buy,
+                    volume: ForecastLevel::Medium,
+                    issuer: self.id.clone(),
+                    period: period.next(),
+                    price: None,
+                })
                 .await;
+            self.wait_for_market_to_close().await;
 
             // 3rd period: buy 200MW
             period = period.next();
@@ -104,21 +90,19 @@ impl<MS: Market> InitialOrdersBot<MS> {
                     owner: self.id.clone(),
                 })
                 .await;
-            self.wait_for_market_to_close().await;
             // Send forecast for next period (will sell)
             let _ = self
-                .players_repository
-                .send(ConnectionRepositoryMessage::SendToAllPlayers(
-                    self.game.clone(),
-                    PlayerMessage::NewMarketForecast(MarketForecast {
-                        direction: Direction::Sell,
-                        volume: ForecastLevel::Medium,
-                        issuer: self.id.clone(),
-                        period,
-                        price: None,
-                    }),
-                ))
+                .market
+                .service
+                .register_forecast(MarketForecast {
+                    direction: Direction::Sell,
+                    volume: ForecastLevel::Medium,
+                    issuer: self.id.clone(),
+                    period: period.next(),
+                    price: None,
+                })
                 .await;
+            self.wait_for_market_to_close().await;
 
             // 4rd period: sell 200MW
             period = period.next();
