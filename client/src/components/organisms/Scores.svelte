@@ -16,7 +16,7 @@
     >;
   } = $props();
 
-  let scores_descending = $derived(scores.entries().toArray().reverse());
+  let scores_descending = $derived([...scores.entries()].reverse());
 
   let total = $derived.by(() => {
     let res = 0;
