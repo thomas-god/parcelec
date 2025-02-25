@@ -178,7 +178,10 @@ export type PlayerScores = Pick<
   Extract<WSMessage, { type: "PlayerScores" }>,
   "scores"
 >["scores"];
-export type MarketForecast = Extract<WSMessage, { type: "NewMarketForecast" }>;
+export type MarketForecast = Omit<
+  Extract<WSMessage, { type: "NewMarketForecast" }>,
+  "type"
+>;
 
 export const parseMessage = (
   msg: string,

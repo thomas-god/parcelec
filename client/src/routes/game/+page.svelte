@@ -3,6 +3,7 @@
   import {
     parseMessage,
     type DeliveryPeriodScore,
+    type MarketForecast,
     type OrderBook,
     type StackForecasts,
     type StackSnapshot,
@@ -31,6 +32,9 @@
   let game_state: "Open" | "Running" | "PostDelivery" = $state("Open");
   let delivery_period_id = $state(0);
   let scores: SvelteMap<number, DeliveryPeriodScore> = $state(new SvelteMap());
+  let market_forecasts: SvelteMap<number, MarketForecast[]> = $state(
+    new SvelteMap(),
+  );
 
   const connect = () => {
     const socket = new WebSocket(`${PUBLIC_WS_URL}/ws`);
@@ -89,10 +93,20 @@
           }
         })
         .with({ type: "NewMarketForecast" }, (forecast) => {
-          console.log("New market forecast", JSON.stringify(forecast));
+          if (market_forecasts.has(forecast.period)) {
+            market_forecasts.get(forecast.period)!.push(forecast);
+          } else {
+            market_forecasts.set(forecast.period, [forecast]);
+          }
         })
         .with({ type: "MarketForecasts" }, (forecasts) => {
-          console.log("List of market forecasts", JSON.stringify(forecasts));
+          for (const forecast of forecasts.forecasts) {
+            if (market_forecasts.has(forecast.period)) {
+              market_forecasts.get(forecast.period)!.push(forecast);
+            } else {
+              market_forecasts.set(forecast.period, [forecast]);
+            }
+          }
         })
         .exhaustive();
     };
@@ -148,7 +162,27 @@
 
       {#if game_state === "Running"}
         <Stack {plants} send={sendMessage} />
-        <OrderBookElement {orderBook} send={sendMessage} {trades} />
+        <div class="tabs tabs-lift">
+          <input
+            type="radio"
+            name="market_forecast_tabs"
+            class="tab text-lg font-bold"
+            aria-label="Marché 💱"
+            checked={true}
+          />
+          <div class="tab-content bg-base-100 border-base-300 p-6">
+            <OrderBookElement {orderBook} send={sendMessage} {trades} />
+          </div>
+          <input
+            type="radio"
+            name="market_forecast_tabs"
+            class="tab text-lg font-bold"
+            aria-label="Prévisions 🔮"
+          />
+          <div class="tab-content bg-base-100 border-base-300 p-6">
+            Prévisions
+          </div>
+        </div>
         {#if show_last_trade && trades.length > 0}
           <div
             transition:fade

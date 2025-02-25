@@ -44,7 +44,7 @@
 
 <div class="flex flex-col">
   <div class="flex flex-row justify-between">
-    <h2 class="text-lg font-bold pl-2">Marché</h2>
+    <!-- <h2 class="text-lg font-bold pl-2">Marché</h2> -->
 
     <div>
       {#if market_position > 0}
