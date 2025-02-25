@@ -88,8 +88,11 @@
             scores.set(Number(k), v);
           }
         })
-        .with({ type: "MarketForecast" }, (forecast) => {
-          console.log(JSON.stringify(forecast));
+        .with({ type: "NewMarketForecast" }, (forecast) => {
+          console.log("New market forecast", JSON.stringify(forecast));
+        })
+        .with({ type: "MarketForecasts" }, (forecasts) => {
+          console.log("List of market forecasts", JSON.stringify(forecasts));
         })
         .exhaustive();
     };

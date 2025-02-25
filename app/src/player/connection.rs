@@ -74,7 +74,10 @@ pub enum PlayerMessage {
     TradeList {
         trades: Vec<TradeLeg>,
     },
-    MarketForecast(MarketForecast),
+    NewMarketForecast(MarketForecast),
+    MarketForecasts {
+        forecasts: Vec<MarketForecast>,
+    },
     StackSnapshot {
         plants: HashMap<PlantId, PowerPlantPublicRepr>,
     },
@@ -165,7 +168,7 @@ async fn send_initial_trades_and_obs<MS: Market, PS: Stack>(
     ws: &mut WebSocket,
     context: &PlayerConnectionContext<MS, PS>,
 ) -> Option<()> {
-    let (trades, obs) = context
+    let (trades, obs, forecasts) = context
         .market
         .service
         .get_market_snapshot(context.player_id.clone())
@@ -195,7 +198,21 @@ async fn send_initial_trades_and_obs<MS: Market, PS: Stack>(
             }
         }
         Err(err) => {
-            println!("Unable to send initial OBS because of {err:?}. Aborting player connection");
+            println!(
+                "Unable to send initial trade list because of {err:?}. Aborting player connection"
+            );
+            return None;
+        }
+    }
+    match serde_json::to_string(&PlayerMessage::MarketForecasts { forecasts }) {
+        Ok(msg) => {
+            if let Err(err) = ws.send(msg.into()).await {
+                println!("Error when sending through WS: {err:?}");
+                return None;
+            }
+        }
+        Err(err) => {
+            println!("Unable to send initial market forecasts because of {err:?}. Aborting player connection");
             return None;
         }
     }

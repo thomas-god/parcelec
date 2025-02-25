@@ -364,7 +364,7 @@ mod tests {
         game::{
             delivery_period::DeliveryPeriodId, Game, GameMessage, GameState, RegisterPlayerResponse,
         },
-        market::{Market, MarketContext, MarketState, OBS},
+        market::{order_book::TradeLeg, Market, MarketContext, MarketForecast, MarketState, OBS},
         plants::{
             actor::{StackContext, StackState},
             StackService,
@@ -390,19 +390,21 @@ mod tests {
         async fn get_market_snapshot(
             &self,
             _player: PlayerId,
-        ) -> (Vec<crate::market::order_book::TradeLeg>, crate::market::OBS) {
+        ) -> (Vec<TradeLeg>, OBS, Vec<MarketForecast>) {
             (
                 Vec::new(),
                 OBS {
                     offers: Vec::new(),
                     bids: Vec::new(),
                 },
+                Vec::new(),
             )
         }
         async fn new_order(&self, _request: crate::market::order_book::OrderRequest) {}
         async fn open_market(&self, _delivery_period: super::delivery_period::DeliveryPeriodId) {
             let _ = self.state_tx.send(MarketState::Open);
         }
+        async fn register_forecast(&self, _forecast: crate::market::MarketForecast) {}
     }
 
     fn open_game() -> (GameContext, MarketContext<MockMarket>) {

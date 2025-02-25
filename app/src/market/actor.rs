@@ -5,7 +5,7 @@ use tokio::sync::{mpsc, oneshot, watch};
 
 use super::{
     order_book::{OrderBook, OrderRequest, Trade, TradeLeg},
-    MarketContext, MarketService, MarketState, OrderRepr, OBS,
+    MarketContext, MarketForecast, MarketService, MarketState, OrderRepr, OBS,
 };
 
 use crate::{
@@ -17,7 +17,7 @@ use crate::{
 pub enum MarketMessage {
     GetMarketSnapshot {
         player_id: PlayerId,
-        tx_back: oneshot::Sender<(Vec<TradeLeg>, OBS)>,
+        tx_back: oneshot::Sender<(Vec<TradeLeg>, OBS, Vec<MarketForecast>)>,
     },
     OpenMarket(DeliveryPeriodId),
     CloseMarket {
@@ -28,6 +28,7 @@ pub enum MarketMessage {
     OrderDeletionRequest {
         order_id: String,
     },
+    RegisterForecast(MarketForecast),
 }
 
 pub struct MarketActor {
@@ -41,6 +42,7 @@ pub struct MarketActor {
     players: Vec<PlayerId>,
     players_connections: mpsc::Sender<ConnectionRepositoryMessage>,
     past_trades: HashMap<DeliveryPeriodId, Vec<Trade>>,
+    forecasts: HashMap<DeliveryPeriodId, Vec<MarketForecast>>,
 }
 
 impl MarketActor {
@@ -64,6 +66,7 @@ impl MarketActor {
             players_connections,
             order_book: OrderBook::new(),
             past_trades: HashMap::new(),
+            forecasts: HashMap::new(),
         }
     }
 
@@ -98,8 +101,14 @@ impl MarketActor {
                 (_, MarketMessage::GetMarketSnapshot { player_id, tx_back }) => {
                     println!("New player: {player_id:?}");
                     self.players.push(player_id.clone());
-                    let _ =
-                        tx_back.send((self.player_trades(&player_id), self.player_obs(&player_id)));
+                    let _ = tx_back.send((
+                        self.player_trades(&player_id),
+                        self.player_obs(&player_id),
+                        self.forecasts
+                            .get(&self.delivery_period.next())
+                            .cloned()
+                            .unwrap_or_else(Vec::new),
+                    ));
                 }
                 (MarketState::Open, MarketMessage::OrderRequest(request)) => {
                     self.process_new_offer(request).await
@@ -134,10 +143,50 @@ impl MarketActor {
                         let _ = tx_back.send(trades.clone());
                     }
                 }
-                (state, msg) => {
-                    println!("Msg {msg:?} unsupported in state: {state:?}")
+                (_, MarketMessage::RegisterForecast(forecast)) => {
+                    self.register_forecast(forecast).await;
+                }
+                (MarketState::Closed, MarketMessage::OrderRequest(_))
+                | (MarketState::Closed, MarketMessage::OrderDeletionRequest { order_id: _ }) => {
+                    println!(
+                        "Market closed, cannot process new order request, or deletion request"
+                    );
+                }
+                (MarketState::Open, MarketMessage::OpenMarket(_)) => {
+                    println!("Market is already open");
                 }
             }
+        }
+    }
+
+    async fn register_forecast(&mut self, forecast: MarketForecast) {
+        if forecast.period == self.delivery_period {
+            println!(
+                "Period {:?} is running, cannot received market forecast",
+                forecast.period
+            );
+        } else if forecast.period < self.delivery_period {
+            println!(
+                "Period {:?} is closed, cannot received market forecast",
+                forecast.period
+            );
+        } else {
+            match self.forecasts.get_mut(&forecast.period) {
+                Some(forecasts) => {
+                    forecasts.push(forecast.clone());
+                }
+                None => {
+                    self.forecasts
+                        .insert(forecast.period, vec![forecast.clone()]);
+                }
+            };
+            let _ = self
+                .players_connections
+                .send(ConnectionRepositoryMessage::SendToAllPlayers(
+                    self.game_id.clone(),
+                    PlayerMessage::NewMarketForecast(forecast),
+                ))
+                .await;
         }
     }
 
@@ -227,14 +276,17 @@ impl MarketActor {
 mod tests {
     use std::time::Duration;
 
-    use tokio::sync::{
-        mpsc::{self},
-        oneshot, watch,
+    use tokio::{
+        sync::{
+            mpsc::{self},
+            oneshot, watch,
+        },
+        time::timeout,
     };
 
     use crate::{
         game::{delivery_period::DeliveryPeriodId, GameId},
-        market::{order_book::OrderRequest, Direction, MarketState},
+        market::{order_book::OrderRequest, Direction, ForecastLevel, MarketForecast, MarketState},
         player::{repository::ConnectionRepositoryMessage, PlayerId},
     };
 
@@ -770,5 +822,196 @@ mod tests {
             .await
             .expect("Should have received a list of trades");
         assert_eq!(trades, same_trades);
+    }
+
+    #[tokio::test]
+    async fn test_register_forecast_sends_it_to_all_players() {
+        let game_id = GameId::default();
+        let (conn_tx, mut conn_rx) = mpsc::channel(16);
+        let (tx, _) = start_market_actor(&game_id, conn_tx.clone());
+
+        let _ = tx
+            .send(MarketMessage::RegisterForecast(MarketForecast {
+                issuer: PlayerId::default(),
+                period: DeliveryPeriodId::from(1),
+                direction: Direction::Buy,
+                volume: ForecastLevel::Low,
+                price: None,
+            }))
+            .await;
+
+        let Some(ConnectionRepositoryMessage::SendToAllPlayers(
+            _,
+            PlayerMessage::NewMarketForecast(_),
+        )) = conn_rx.recv().await
+        else {
+            unreachable!("Should have sent a market forecast to all players")
+        };
+    }
+
+    #[tokio::test]
+    async fn test_register_forecast_does_nothing_if_period_is_running() {
+        let game_id = GameId::default();
+        let (conn_tx, mut conn_rx) = mpsc::channel(16);
+        let (tx, _) = start_market_actor(&game_id, conn_tx.clone());
+
+        let _ = tx
+            .send(MarketMessage::RegisterForecast(MarketForecast {
+                issuer: PlayerId::default(),
+                period: DeliveryPeriodId::from(0),
+                direction: Direction::Buy,
+                volume: ForecastLevel::Low,
+                price: None,
+            }))
+            .await;
+
+        let _ = timeout(Duration::from_micros(10), conn_rx.recv())
+            .await
+            .expect_err("Should not have sent a market forecast to all players");
+    }
+
+    #[tokio::test]
+    async fn test_register_forecast_does_nothing_if_period_is_finished() {
+        let game_id = GameId::default();
+        let (conn_tx, mut conn_rx) = mpsc::channel(16);
+        let (tx, _) = start_market_actor(&game_id, conn_tx.clone());
+
+        let _ = tx
+            .send(MarketMessage::RegisterForecast(MarketForecast {
+                issuer: PlayerId::default(),
+                period: DeliveryPeriodId::from(-1),
+                direction: Direction::Buy,
+                volume: ForecastLevel::Low,
+                price: None,
+            }))
+            .await;
+
+        let _ = timeout(Duration::from_micros(10), conn_rx.recv())
+            .await
+            .expect_err("Should not have sent a market forecast to all players");
+    }
+
+    #[tokio::test]
+    async fn test_market_snapshot() {
+        let game_id = GameId::default();
+        let (conn_tx, mut conn_rx) = mpsc::channel(16);
+        let (tx, _) = start_market_actor(&game_id, conn_tx.clone());
+        let player_id = register_player(tx.clone()).await;
+
+        // Request market snapshot
+        let (tx_back, rx_back) = oneshot::channel();
+        let _ = tx
+            .send(MarketMessage::GetMarketSnapshot {
+                player_id: player_id.clone(),
+                tx_back,
+            })
+            .await;
+
+        // Verify the snapshot
+        let (trades, obs, forecasts) = rx_back.await.expect("Should have received a snapshot");
+        assert!(trades.is_empty());
+        assert!(obs.bids.is_empty());
+        assert!(obs.offers.is_empty());
+        assert!(forecasts.is_empty());
+
+        // Send an order
+        let _ = tx
+            .send(MarketMessage::OrderRequest(OrderRequest {
+                direction: Direction::Buy,
+                volume: 10,
+                price: 50_00,
+                owner: player_id.clone(),
+            }))
+            .await;
+        let _ = conn_rx.recv().await;
+
+        // Request market snapshot again
+        let (tx_back, rx_back) = oneshot::channel();
+        let _ = tx
+            .send(MarketMessage::GetMarketSnapshot {
+                player_id: player_id.clone(),
+                tx_back,
+            })
+            .await;
+
+        // Verify the snapshot
+        let (trades, obs, forecasts) = rx_back.await.expect("Should have received a snapshot");
+        assert!(trades.is_empty());
+        assert_eq!(obs.bids.len(), 1);
+        assert!(obs.offers.is_empty());
+        assert!(forecasts.is_empty());
+
+        // Send a matching order to have a trade
+        let _ = tx
+            .send(MarketMessage::OrderRequest(OrderRequest {
+                direction: Direction::Sell,
+                volume: 10,
+                price: 50_00,
+                owner: player_id.clone(),
+            }))
+            .await;
+        let _ = conn_rx.recv().await;
+
+        // Verify the snapshot
+        let (tx_back, rx_back) = oneshot::channel();
+        let _ = tx
+            .send(MarketMessage::GetMarketSnapshot {
+                player_id: player_id.clone(),
+                tx_back,
+            })
+            .await;
+        let (trades, obs, forecasts) = rx_back.await.expect("Should have received a snapshot");
+        assert_eq!(trades.len(), 2); // 1 trade = 2 trade legs
+        assert!(obs.bids.is_empty());
+        assert!(obs.offers.is_empty());
+        assert!(forecasts.is_empty());
+
+        // Send a forecast for next period and check the snapshot contains it
+        let _ = tx
+            .send(MarketMessage::RegisterForecast(MarketForecast {
+                direction: Direction::Buy,
+                issuer: PlayerId::default(),
+                period: DeliveryPeriodId::from(1),
+                price: None,
+                volume: ForecastLevel::Low,
+            }))
+            .await;
+
+        let (tx_back, rx_back) = oneshot::channel();
+        let _ = tx
+            .send(MarketMessage::GetMarketSnapshot {
+                player_id: player_id.clone(),
+                tx_back,
+            })
+            .await;
+        let (trades, obs, forecasts) = rx_back.await.expect("Should have received a snapshot");
+        assert_eq!(trades.len(), 2);
+        assert!(obs.bids.is_empty());
+        assert!(obs.offers.is_empty());
+        assert_eq!(forecasts.len(), 1);
+
+        // Send a forecast for the period after and check the snapshot does not contain it
+        let _ = tx
+            .send(MarketMessage::RegisterForecast(MarketForecast {
+                direction: Direction::Buy,
+                issuer: PlayerId::default(),
+                period: DeliveryPeriodId::from(2),
+                price: None,
+                volume: ForecastLevel::Low,
+            }))
+            .await;
+
+        let (tx_back, rx_back) = oneshot::channel();
+        let _ = tx
+            .send(MarketMessage::GetMarketSnapshot {
+                player_id: player_id.clone(),
+                tx_back,
+            })
+            .await;
+        let (trades, obs, forecasts) = rx_back.await.expect("Should have received a snapshot");
+        assert_eq!(trades.len(), 2);
+        assert!(obs.bids.is_empty());
+        assert!(obs.offers.is_empty());
+        assert_eq!(forecasts.len(), 1);
     }
 }

@@ -82,7 +82,7 @@ impl<MS: Market> InitialOrdersBot<MS> {
                 .players_repository
                 .send(ConnectionRepositoryMessage::SendToAllPlayers(
                     self.game.clone(),
-                    PlayerMessage::MarketForecast(MarketForecast {
+                    PlayerMessage::NewMarketForecast(MarketForecast {
                         direction: Direction::Buy,
                         volume: ForecastLevel::Medium,
                         issuer: self.id.clone(),
@@ -110,7 +110,7 @@ impl<MS: Market> InitialOrdersBot<MS> {
                 .players_repository
                 .send(ConnectionRepositoryMessage::SendToAllPlayers(
                     self.game.clone(),
-                    PlayerMessage::MarketForecast(MarketForecast {
+                    PlayerMessage::NewMarketForecast(MarketForecast {
                         direction: Direction::Sell,
                         volume: ForecastLevel::Medium,
                         issuer: self.id.clone(),

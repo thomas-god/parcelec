@@ -18,7 +18,7 @@ use crate::{
 
 use super::{scores::PlayerScore, GameMessage};
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Copy, Default, Serialize)]
+#[derive(Debug, Clone, PartialEq, PartialOrd, Eq, Hash, Copy, Default, Serialize)]
 pub struct DeliveryPeriodId(isize);
 impl fmt::Display for DeliveryPeriodId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
