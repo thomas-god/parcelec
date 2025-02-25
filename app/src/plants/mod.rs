@@ -15,6 +15,7 @@ pub mod technologies;
 
 pub use service::StackService;
 
+use crate::forecast::ForecastLevel;
 use crate::game::delivery_period::DeliveryPeriodId;
 
 #[derive(Debug)]
@@ -50,7 +51,8 @@ pub trait Stack: Clone + Send + Sync + 'static {
     ) -> impl Future<Output = Result<HashMap<PlantId, PowerPlantPublicRepr>, GetSnapshotError>> + Send;
 
     /// Get a forecast, if available, for each plant of the stack, for the next delivery period.
-    fn get_forecasts(&self) -> impl Future<Output = HashMap<PlantId, Option<isize>>> + Send;
+    fn get_forecasts(&self)
+        -> impl Future<Output = HashMap<PlantId, Option<ForecastLevel>>> + Send;
 }
 
 #[derive(Debug, Serialize, Clone, Copy)]
@@ -79,7 +81,7 @@ pub trait PowerPlant {
     fn current_state(&self) -> PowerPlantPublicRepr;
 
     // Get a forecast of the plant's output for the next delivery period
-    fn get_forecast(&self) -> Option<isize>;
+    fn get_forecast(&self) -> Option<ForecastLevel>;
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]

@@ -16,6 +16,7 @@ use tokio::{
 use uuid::Uuid;
 
 use crate::{
+    forecast::ForecastLevel,
     game::{
         delivery_period::DeliveryPeriodId, scores::PlayerScore, GameContext, GameId, GameMessage,
         GameState,
@@ -82,7 +83,7 @@ pub enum PlayerMessage {
         plants: HashMap<PlantId, PowerPlantPublicRepr>,
     },
     StackForecasts {
-        forecasts: HashMap<PlantId, Option<isize>>,
+        forecasts: HashMap<PlantId, Option<ForecastLevel>>,
     },
     DeliveryPeriodResults {
         delivery_period: DeliveryPeriodId,

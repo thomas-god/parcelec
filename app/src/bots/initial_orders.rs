@@ -1,10 +1,10 @@
 use tokio::sync::mpsc::{channel, Receiver};
 
 use crate::{
+    forecast::ForecastLevel,
     game::delivery_period::DeliveryPeriodId,
     market::{
-        order_book::OrderRequest, Direction, ForecastLevel, Market, MarketContext, MarketForecast,
-        MarketState,
+        order_book::OrderRequest, Direction, Market, MarketContext, MarketForecast, MarketState,
     },
     player::{connection::PlayerMessage, PlayerId},
 };

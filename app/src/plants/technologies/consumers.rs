@@ -1,6 +1,9 @@
 use serde::Serialize;
 
-use crate::plants::{PlantOutput, PowerPlant, PowerPlantPublicRepr};
+use crate::{
+    forecast::{map_value_to_forecast_level, ForecastLevel},
+    plants::{PlantOutput, PowerPlant, PowerPlantPublicRepr},
+};
 
 use super::timeseries::{LoopingTimeseries, RngTimeseries, Timeseries};
 
@@ -86,15 +89,20 @@ impl<T: Timeseries> PowerPlant for Consumers<T> {
         })
     }
 
-    fn get_forecast(&self) -> Option<isize> {
-        self.current_forecast.map(|f| f as isize)
+    fn get_forecast(&self) -> Option<ForecastLevel> {
+        self.current_forecast
+            .map(|f| map_value_to_forecast_level(f as isize, -self.max_power as isize))
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::plants::{
-        technologies::consumers::ConsumersPublicRepr, PlantOutput, PowerPlant, PowerPlantPublicRepr,
+    use crate::{
+        forecast::ForecastLevel,
+        plants::{
+            technologies::consumers::ConsumersPublicRepr, PlantOutput, PowerPlant,
+            PowerPlantPublicRepr,
+        },
     };
 
     use super::Consumers;
@@ -138,16 +146,16 @@ mod tests {
 
     #[test]
     fn test_looping_consumers_forecasts() {
-        let mut consumers = Consumers::new_with_looping(1000, 85, vec![1, 2, 3]);
+        let mut consumers = Consumers::new_with_looping(1000, 85, vec![-100, -500, -900]);
 
-        assert_eq!(consumers.get_forecast(), Some(2));
-
-        consumers.dispatch();
-
-        assert_eq!(consumers.get_forecast(), Some(3));
+        assert_eq!(consumers.get_forecast(), Some(ForecastLevel::Medium));
 
         consumers.dispatch();
 
-        assert_eq!(consumers.get_forecast(), Some(1));
+        assert_eq!(consumers.get_forecast(), Some(ForecastLevel::High));
+
+        consumers.dispatch();
+
+        assert_eq!(consumers.get_forecast(), Some(ForecastLevel::Low));
     }
 }

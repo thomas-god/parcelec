@@ -1,6 +1,9 @@
 use serde::Serialize;
 
-use crate::plants::{PlantOutput, PowerPlant, PowerPlantPublicRepr};
+use crate::{
+    forecast::ForecastLevel,
+    plants::{PlantOutput, PowerPlant, PowerPlantPublicRepr},
+};
 
 /// Plant with no dynamic constraints.
 pub struct GasPlant {
@@ -61,7 +64,7 @@ impl PowerPlant for GasPlant {
         }
     }
 
-    fn get_forecast(&self) -> Option<isize> {
+    fn get_forecast(&self) -> Option<ForecastLevel> {
         None
     }
 }

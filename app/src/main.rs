@@ -6,6 +6,7 @@ use tokio::sync::RwLock;
 
 pub mod api;
 pub mod bots;
+pub mod forecast;
 pub mod game;
 pub mod market;
 pub mod plants;

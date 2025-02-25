@@ -1,6 +1,9 @@
 use serde::Serialize;
 
-use crate::plants::{PlantOutput, PowerPlant, PowerPlantPublicRepr};
+use crate::{
+    forecast::ForecastLevel,
+    plants::{PlantOutput, PowerPlant, PowerPlantPublicRepr},
+};
 
 /// Store energy accros delivery periods
 pub struct Battery {
@@ -81,7 +84,7 @@ impl PowerPlant for Battery {
         PlantOutput { cost, setpoint }
     }
 
-    fn get_forecast(&self) -> Option<isize> {
+    fn get_forecast(&self) -> Option<ForecastLevel> {
         None
     }
 }

@@ -4,7 +4,7 @@ use std::future::Future;
 
 use tokio::sync::{mpsc, oneshot};
 
-use crate::game::delivery_period::DeliveryPeriodId;
+use crate::{forecast::ForecastLevel, game::delivery_period::DeliveryPeriodId};
 
 use super::{
     actor::{ProgramPlant, StackMessage},
@@ -62,7 +62,7 @@ impl Stack for StackService {
             .await;
     }
 
-    async fn get_forecasts(&self) -> HashMap<PlantId, Option<isize>> {
+    async fn get_forecasts(&self) -> HashMap<PlantId, Option<ForecastLevel>> {
         let (tx_back, rx) = oneshot::channel();
 
         let _ = self.tx.send(StackMessage::GetForecasts(tx_back)).await;
@@ -89,7 +89,7 @@ mockall::mock! {
             &self,
         ) -> impl Future<Output = Result<HashMap<PlantId, PowerPlantPublicRepr>, GetSnapshotError>> + Send;
 
-        fn get_forecasts(&self) -> impl Future<Output = HashMap<PlantId, Option<isize>>> + Send;
+        fn get_forecasts(&self) -> impl Future<Output = HashMap<PlantId, Option<ForecastLevel>>> + Send;
     }
 
     impl Clone for StackService {
@@ -104,6 +104,7 @@ mod tests {
     use tokio::sync::mpsc;
 
     use crate::{
+        forecast::ForecastLevel,
         game::delivery_period::DeliveryPeriodId,
         plants::{
             actor::StackMessage,
@@ -196,7 +197,10 @@ mod tests {
             let Some(StackMessage::GetForecasts(tx_back)) = rx.recv().await else {
                 unreachable!()
             };
-            let _ = tx_back.send(HashMap::from([(PlantId::default(), Some(0))]));
+            let _ = tx_back.send(HashMap::from([(
+                PlantId::default(),
+                Some(ForecastLevel::Low),
+            )]));
         });
 
         let res = service.get_forecasts().await;

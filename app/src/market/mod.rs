@@ -6,7 +6,7 @@ use tokio::sync::watch;
 
 use order_book::{Bid, Offer, OrderRequest, Trade, TradeLeg};
 
-use crate::{game::delivery_period::DeliveryPeriodId, player::PlayerId};
+use crate::{forecast::ForecastLevel, game::delivery_period::DeliveryPeriodId, player::PlayerId};
 
 pub mod actor;
 pub mod order_book;
@@ -126,13 +126,6 @@ impl Serialize for MarketState {
 pub struct MarketContext<MS: Market> {
     pub service: MS,
     pub state_rx: watch::Receiver<MarketState>,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, PartialOrd, Serialize)]
-pub enum ForecastLevel {
-    Low,
-    Medium,
-    High,
 }
 
 #[derive(Debug, Serialize, Clone)]

@@ -7,6 +7,7 @@ use tokio::sync::{
 };
 
 use crate::{
+    forecast::ForecastLevel,
     game::{delivery_period::DeliveryPeriodId, GameId},
     plants::PlantOutput,
     player::{connection::PlayerMessage, repository::ConnectionRepositoryMessage, PlayerId},
@@ -34,7 +35,7 @@ pub enum StackMessage {
     },
     ProgramSetpoint(ProgramPlant),
     GetSnapshot(oneshot::Sender<HashMap<PlantId, PowerPlantPublicRepr>>),
-    GetForecasts(oneshot::Sender<HashMap<PlantId, Option<isize>>>),
+    GetForecasts(oneshot::Sender<HashMap<PlantId, Option<ForecastLevel>>>),
 }
 
 #[derive(Debug, PartialEq, Clone, Copy)]
@@ -226,7 +227,7 @@ impl StackActor {
             .collect()
     }
 
-    fn stack_forecasts(&self) -> HashMap<PlantId, Option<isize>> {
+    fn stack_forecasts(&self) -> HashMap<PlantId, Option<ForecastLevel>> {
         self.stack
             .iter()
             .map(|(plant_id, plant)| (plant_id.to_owned(), plant.get_forecast()))

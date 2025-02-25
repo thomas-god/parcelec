@@ -79,7 +79,7 @@ const WSMessageSchema = z.discriminatedUnion("type", [
   z.object({
     type: z.literal("StackForecasts"),
     forecasts: z
-      .record(z.string(), z.nullable(z.number()))
+      .record(z.string(), z.nullable(z.enum(["Low", "Medium", "High"])))
       .transform((rec) => new Map(Object.entries(rec))),
   }),
   z.object({
