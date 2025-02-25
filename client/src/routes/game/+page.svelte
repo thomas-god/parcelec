@@ -19,6 +19,7 @@
   import { marketPnl, plantsPnl } from "$lib/pnl";
   import { SvelteMap } from "svelte/reactivity";
   import Scores from "../../components/organisms/Scores.svelte";
+  import Forecasts from "../../components/organisms/Forecasts.svelte";
 
   let orderBook: OrderBook = $state({
     bids: [],
@@ -161,12 +162,21 @@
       </div>
 
       {#if game_state === "Running"}
-        <Stack {plants} send={sendMessage} />
         <div class="tabs tabs-lift">
           <input
             type="radio"
             name="market_forecast_tabs"
-            class="tab text-lg font-bold"
+            class="tab text-base font-semibold"
+            aria-label="Centrales 🔌"
+            checked={true}
+          />
+          <div class="tab-content bg-base-100 border-base-300 p-6">
+            <Stack {plants} send={sendMessage} />
+          </div>
+          <input
+            type="radio"
+            name="market_forecast_tabs"
+            class="tab text-base font-semibold"
             aria-label="Marché 💱"
             checked={true}
           />
@@ -176,11 +186,14 @@
           <input
             type="radio"
             name="market_forecast_tabs"
-            class="tab text-lg font-bold"
+            class="tab text-base font-semibold"
             aria-label="Prévisions 🔮"
           />
           <div class="tab-content bg-base-100 border-base-300 p-6">
-            Prévisions
+            <Forecasts
+              market_forecasts={market_forecasts.get(delivery_period_id + 1)!}
+              {plant_forecasts}
+            />
           </div>
         </div>
         {#if show_last_trade && trades.length > 0}
