@@ -188,7 +188,6 @@ impl OrderBook {
 
     pub fn register_order_request(&mut self, order_request: OrderRequest) -> Vec<Trade> {
         let order = Order::from(order_request);
-        println!("Trying to register order: {order:?}");
         let trades = match order.direction {
             Direction::Buy => self.insert_bid(order),
             Direction::Sell => self.insert_offer(order),
@@ -280,8 +279,6 @@ impl OrderBook {
         let mut offer = Offer(order);
         let mut trades = Vec::<Trade>::new();
         while let Some(mut bid) = self.bids.pop() {
-            println!("{offer:?}");
-            println!("{bid:?}");
             match (
                 offer.0.price.cmp(&bid.0.price),
                 offer.0.volume.cmp(&bid.0.volume),
@@ -459,7 +456,6 @@ mod tests {
         let res = order_book.register_order_request(matching_offer);
         assert_eq!(res.len(), 2);
 
-        println!("{res:?}");
         assert_eq!(res[0].buyer, PlayerId::from("buyer_1"));
         assert_eq!(res[0].seller, PlayerId::from("seller"));
         assert_eq!(res[0].volume, 10);
@@ -487,7 +483,6 @@ mod tests {
         let res = order_book.register_order_request(matching_bid);
         assert_eq!(res.len(), 2);
 
-        println!("{res:?}");
         assert_eq!(res[0].buyer, PlayerId::from("buyer"));
         assert_eq!(res[0].seller, PlayerId::from("seller_1"));
         assert_eq!(res[0].volume, 10);

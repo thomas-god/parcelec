@@ -178,51 +178,58 @@ impl<MS: Market> Game<MS> {
 
     async fn run(&mut self) {
         while let Some(msg) = self.rx.recv().await {
-            match (&mut self.state, msg) {
-                (GameState::Open, GameMessage::RegisterPlayer { name, tx_back }) => {
-                    self.register_player(name, tx_back);
-                }
-                (GameState::PostDelivery(_), GameMessage::RegisterPlayer { tx_back, .. })
-                | (GameState::Running(_), GameMessage::RegisterPlayer { tx_back, .. }) => {
-                    let _ = tx_back.send(RegisterPlayerResponse::GameIsRunning);
-                }
-                (_, GameMessage::GetPreviousScores { player_id, tx_back }) => {
-                    let scores = self
-                        .players_scores
-                        .get(&player_id)
-                        .cloned()
-                        .unwrap_or_else(HashMap::new);
-                    let _ = tx_back.send(scores);
-                }
-                (GameState::PostDelivery(_), GameMessage::PlayerIsReady(player_id))
-                | (GameState::Open, GameMessage::PlayerIsReady(player_id)) => {
-                    self.register_player_ready(player_id);
-                }
-                (GameState::Running(_), GameMessage::DeliveryPeriodResults(results)) => {
-                    self.store_scores(&results);
-                    self.state = GameState::PostDelivery(self.delivery_period);
-                    let _ = self
-                        .state_watch
-                        .send(GameState::PostDelivery(self.delivery_period));
-                    join_all(results.players_scores.iter().map(|(player, score)| {
-                        self.players_connections
-                            .send(ConnectionRepositoryMessage::SendToPlayer(
-                                self.game_id.clone(),
-                                player.clone(),
-                                crate::player::connection::PlayerMessage::DeliveryPeriodResults {
-                                    score: score.clone(),
-                                    delivery_period: self.delivery_period,
-                                },
-                            ))
-                    }))
-                    .await;
-                }
-                (_, GameMessage::DeliveryPeriodResults(results)) => {
-                    println!("Warning, received results for delivery period {:?} while game is not running", results.period_id);
-                }
-                (GameState::Running(_), GameMessage::PlayerIsReady(player_id)) => {
-                    self.register_player_ready_game_is_running(player_id);
-                }
+            self.process_message(msg).await;
+        }
+    }
+    #[tracing::instrument(name = "GameActor::process_message", skip(self))]
+    async fn process_message(&mut self, message: GameMessage) {
+        match (&mut self.state, message) {
+            (GameState::Open, GameMessage::RegisterPlayer { name, tx_back }) => {
+                self.register_player(name, tx_back);
+            }
+            (GameState::PostDelivery(_), GameMessage::RegisterPlayer { tx_back, .. })
+            | (GameState::Running(_), GameMessage::RegisterPlayer { tx_back, .. }) => {
+                let _ = tx_back.send(RegisterPlayerResponse::GameIsRunning);
+            }
+            (_, GameMessage::GetPreviousScores { player_id, tx_back }) => {
+                let scores = self
+                    .players_scores
+                    .get(&player_id)
+                    .cloned()
+                    .unwrap_or_else(HashMap::new);
+                let _ = tx_back.send(scores);
+            }
+            (GameState::PostDelivery(_), GameMessage::PlayerIsReady(player_id))
+            | (GameState::Open, GameMessage::PlayerIsReady(player_id)) => {
+                self.register_player_ready(player_id);
+            }
+            (GameState::Running(_), GameMessage::DeliveryPeriodResults(results)) => {
+                self.store_scores(&results);
+                self.state = GameState::PostDelivery(self.delivery_period);
+                let _ = self
+                    .state_watch
+                    .send(GameState::PostDelivery(self.delivery_period));
+                join_all(results.players_scores.iter().map(|(player, score)| {
+                    self.players_connections
+                        .send(ConnectionRepositoryMessage::SendToPlayer(
+                            self.game_id.clone(),
+                            player.clone(),
+                            crate::player::connection::PlayerMessage::DeliveryPeriodResults {
+                                score: score.clone(),
+                                delivery_period: self.delivery_period,
+                            },
+                        ))
+                }))
+                .await;
+            }
+            (_, GameMessage::DeliveryPeriodResults(results)) => {
+                tracing::warn!(
+                    "Received results for delivery period {:?} while game is not running",
+                    results.period_id
+                );
+            }
+            (GameState::Running(_), GameMessage::PlayerIsReady(player_id)) => {
+                self.register_player_ready_game_is_running(player_id);
             }
         }
     }
@@ -238,7 +245,7 @@ impl<MS: Market> Game<MS> {
 
         // If all players are ready, start the next delivery period
         if self.players.iter().all(|player| player.ready) {
-            println!(
+            tracing::info!(
                 "All players ready, starting delivery period {}",
                 self.delivery_period.next()
             );
@@ -285,7 +292,7 @@ impl<MS: Market> Game<MS> {
         }
 
         if self.players.iter().all(|player| player.ready) {
-            println!("All players ready, ending delivery period");
+            tracing::info!("All players ready, ending delivery period");
             if let Some(tx) = self.all_players_ready_tx.take() {
                 let _ = tx.send(());
                 for player in self.players.iter_mut() {
@@ -323,7 +330,7 @@ impl<MS: Market> Game<MS> {
         tokio::spawn(async move {
             player_stack.run().await;
         });
-        println!("Stack created for player {player_id}");
+        tracing::info!("Stack created for player {player_id}");
 
         let _ = tx_back.send(RegisterPlayerResponse::Success {
             id: player_id,

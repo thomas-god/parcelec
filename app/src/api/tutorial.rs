@@ -56,13 +56,15 @@ pub async fn create_tutorial_game(
         stack,
     }) = rx.await
     else {
-        println!("Unable to register tutorial player");
+        tracing::error!("Unable to register tutorial player");
         return StatusCode::INTERNAL_SERVER_ERROR;
     };
     match state.stack_services.get_mut(&game_id) {
         Some(game_stacks) => {
             if game_stacks.get(&player_id).is_some() {
-                println!("A stack already exist for player {player_id:?} in game {game_id:?}");
+                tracing::error!(
+                    "A stack already exist for player {player_id:?} in game {game_id:?}"
+                );
                 return StatusCode::INTERNAL_SERVER_ERROR;
             }
             game_stacks.insert(player_id.clone(), stack.clone());
@@ -81,7 +83,7 @@ pub async fn create_tutorial_game(
 
     // Write cookies back
     let Ok(domain) = env::var("DOMAIN") else {
-        println!("No DOMAIN environnement variable");
+        tracing::error!("No DOMAIN environnement variable");
         return StatusCode::INTERNAL_SERVER_ERROR;
     };
     let player_id_cookie = Cookie::build(("player_id", player_id.to_string()))
@@ -105,6 +107,6 @@ pub async fn create_tutorial_game(
         .path("/")
         .build();
     cookies.add(name_cookie);
-    println!("Tutorial game created");
+    tracing::info!("Tutorial game created");
     StatusCode::CREATED
 }

@@ -97,76 +97,81 @@ impl MarketActor {
 
     pub async fn process(&mut self) {
         while let Some(message) = self.rx.recv().await {
-            match (&self.state, message) {
-                (_, MarketMessage::GetMarketSnapshot { player_id, tx_back }) => {
-                    println!("New player: {player_id:?}");
-                    self.players.push(player_id.clone());
-                    let _ = tx_back.send((
-                        self.player_trades(&player_id),
-                        self.player_obs(&player_id),
-                        self.forecasts
-                            .get(&self.delivery_period.next())
-                            .cloned()
-                            .unwrap_or_else(Vec::new),
-                    ));
-                }
-                (MarketState::Open, MarketMessage::OrderRequest(request)) => {
-                    self.process_new_offer(request).await
-                }
-                (MarketState::Open, MarketMessage::OrderDeletionRequest { order_id }) => {
-                    println!("Order deletion request for order: {order_id:?}");
-                    self.order_book.remove_offer(order_id);
-                    self.send_order_book_snapshot_to_all().await;
-                }
+            self.process_message(message).await;
+        }
+    }
 
-                (MarketState::Closed, MarketMessage::OpenMarket(period_id)) => {
-                    if period_id == self.delivery_period {
-                        self.state = MarketState::Open;
-                        self.delivery_period = self.delivery_period.next();
-                        let _ = self.state_sender.send(MarketState::Open);
-                    }
+    #[tracing::instrument(name = "MarketActor::process_message", skip(self))]
+    async fn process_message(&mut self, message: MarketMessage) {
+        match (&self.state, message) {
+            (_, MarketMessage::GetMarketSnapshot { player_id, tx_back }) => {
+                tracing::info!("New player: {player_id:?}");
+                self.players.push(player_id.clone());
+                let _ = tx_back.send((
+                    self.player_trades(&player_id),
+                    self.player_obs(&player_id),
+                    self.forecasts
+                        .get(&self.delivery_period.next())
+                        .cloned()
+                        .unwrap_or_else(Vec::new),
+                ));
+            }
+            (MarketState::Open, MarketMessage::OrderRequest(request)) => {
+                self.process_order_request(request).await
+            }
+            (MarketState::Open, MarketMessage::OrderDeletionRequest { order_id }) => {
+                tracing::info!("Order deletion request for order: {order_id:?}");
+                self.order_book.remove_offer(order_id);
+                self.send_order_book_snapshot_to_all().await;
+            }
+
+            (MarketState::Closed, MarketMessage::OpenMarket(period_id)) => {
+                if period_id == self.delivery_period {
+                    self.state = MarketState::Open;
+                    self.delivery_period = self.delivery_period.next();
+                    let _ = self.state_sender.send(MarketState::Open);
                 }
-                (MarketState::Open, MarketMessage::CloseMarket { tx_back, period_id }) => {
-                    if period_id == self.delivery_period {
-                        println!("Closing market for period: {period_id:?}");
-                        let trades = self.order_book.drain();
-                        self.past_trades.insert(period_id, trades.clone());
-                        self.state = MarketState::Closed;
-                        let _ = tx_back.send(trades);
-                        let _ = self.state_sender.send(MarketState::Closed);
-                        self.send_order_book_snapshot_to_all().await;
-                        self.send_empty_trade_list_to_all().await;
-                    }
+            }
+            (MarketState::Open, MarketMessage::CloseMarket { tx_back, period_id }) => {
+                if period_id == self.delivery_period {
+                    tracing::info!("Closing market for period: {period_id:?}");
+                    let trades = self.order_book.drain();
+                    self.past_trades.insert(period_id, trades.clone());
+                    self.state = MarketState::Closed;
+                    let _ = tx_back.send(trades);
+                    let _ = self.state_sender.send(MarketState::Closed);
+                    self.send_order_book_snapshot_to_all().await;
+                    self.send_empty_trade_list_to_all().await;
                 }
-                (MarketState::Closed, MarketMessage::CloseMarket { period_id, tx_back }) => {
-                    if let Some(trades) = self.past_trades.get(&period_id) {
-                        let _ = tx_back.send(trades.clone());
-                    }
+            }
+            (MarketState::Closed, MarketMessage::CloseMarket { period_id, tx_back }) => {
+                if let Some(trades) = self.past_trades.get(&period_id) {
+                    let _ = tx_back.send(trades.clone());
                 }
-                (_, MarketMessage::RegisterForecast(forecast)) => {
-                    self.register_forecast(forecast).await;
-                }
-                (MarketState::Closed, MarketMessage::OrderRequest(_))
-                | (MarketState::Closed, MarketMessage::OrderDeletionRequest { order_id: _ }) => {
-                    println!(
-                        "Market closed, cannot process new order request, or deletion request"
-                    );
-                }
-                (MarketState::Open, MarketMessage::OpenMarket(_)) => {
-                    println!("Market is already open");
-                }
+            }
+            (_, MarketMessage::RegisterForecast(forecast)) => {
+                self.register_forecast(forecast).await;
+            }
+            (MarketState::Closed, MarketMessage::OrderRequest(_))
+            | (MarketState::Closed, MarketMessage::OrderDeletionRequest { order_id: _ }) => {
+                tracing::warn!(
+                    "Market closed, cannot process new order request, or deletion request"
+                );
+            }
+            (MarketState::Open, MarketMessage::OpenMarket(_)) => {
+                tracing::warn!("Market is already open");
             }
         }
     }
 
     async fn register_forecast(&mut self, forecast: MarketForecast) {
         if forecast.period == self.delivery_period {
-            println!(
+            tracing::warn!(
                 "Period {:?} is running, cannot received market forecast",
                 forecast.period
             );
         } else if forecast.period < self.delivery_period {
-            println!(
+            tracing::warn!(
                 "Period {:?} is closed, cannot received market forecast",
                 forecast.period
             );
@@ -180,7 +185,7 @@ impl MarketActor {
                         .insert(forecast.period, vec![forecast.clone()]);
                 }
             };
-            println!(
+            tracing::info!(
                 "Registered market forecast for delivery period {:?}",
                 forecast.period
             );
@@ -254,9 +259,10 @@ impl MarketActor {
             .collect()
     }
 
-    async fn process_new_offer(&mut self, request: OrderRequest) {
+    #[tracing::instrument(name = "ActorMarket::process_order_request", skip(self))]
+    async fn process_order_request(&mut self, request: OrderRequest) {
         let trades = self.order_book.register_order_request(request);
-        println!("New trades: {trades:?}");
+        tracing::info!("New trades: {trades:?}");
 
         self.send_order_book_snapshot_to_all().await;
 

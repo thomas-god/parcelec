@@ -136,57 +136,61 @@ impl StackActor {
 
     pub async fn run(&mut self) {
         while let Some(message) = self.rx.recv().await {
-            match (&self.state, message) {
-                (_, StackMessage::GetSnapshot(tx_back)) => {
-                    let _ = tx_back.send(self.stack_snapshot());
+            self.process_message(message).await;
+        }
+    }
+
+    #[tracing::instrument(name = "StackActor::process_message", skip(self))]
+    async fn process_message(&mut self, message: StackMessage) {
+        use StackMessage::*;
+        use StackState::*;
+        match (&self.state, message) {
+            (_, GetSnapshot(tx_back)) => {
+                let _ = tx_back.send(self.stack_snapshot());
+            }
+            (_, GetForecasts(tx_back)) => {
+                let _ = tx_back.send(self.stack_forecasts());
+            }
+            (Open, ProgramSetpoint(ProgramPlant { plant_id, setpoint })) => {
+                self.program_plant_setpoint(plant_id, setpoint).await;
+            }
+            (
+                Closed,
+                ProgramSetpoint(ProgramPlant {
+                    plant_id,
+                    setpoint: _,
+                }),
+            ) => {
+                tracing::warn!("Trying to program plant {plant_id:?} but stack is closed.");
+            }
+            (Closed, OpenStack(period_id)) => {
+                if period_id == self.delivery_period {
+                    self.state = StackState::Open;
+                    self.delivery_period = self.delivery_period.next();
+                    let _ = self.state_sender.send(StackState::Open);
                 }
-                (_, StackMessage::GetForecasts(tx_back)) => {
-                    let _ = tx_back.send(self.stack_forecasts());
+            }
+            (Open, OpenStack(period)) => {
+                tracing::warn!("Trying to open stack for delivery period {period:?}, but stack is already open.")
+            }
+            (Open, CloseStack { tx_back, period_id }) => {
+                if period_id == self.delivery_period {
+                    self.state = Closed;
+                    let plant_outputs: HashMap<PlantId, PlantOutput> = self
+                        .stack
+                        .iter_mut()
+                        .map(|(plant_id, plant)| (plant_id.clone(), plant.dispatch()))
+                        .collect();
+                    self.past_outputs.insert(period_id, plant_outputs.clone());
+                    let _ = tx_back.send(plant_outputs);
+                    let _ = self.state_sender.send(Closed);
+                    self.send_stack_snapshot().await;
+                    self.send_stack_forecasts().await;
                 }
-                (
-                    StackState::Open,
-                    StackMessage::ProgramSetpoint(ProgramPlant { plant_id, setpoint }),
-                ) => {
-                    self.program_plant_setpoint(plant_id, setpoint).await;
-                }
-                (
-                    StackState::Closed,
-                    StackMessage::ProgramSetpoint(ProgramPlant {
-                        plant_id,
-                        setpoint: _,
-                    }),
-                ) => {
-                    println!("Trying to program plant {plant_id:?} but stack is closed.");
-                }
-                (StackState::Closed, StackMessage::OpenStack(period_id)) => {
-                    if period_id == self.delivery_period {
-                        self.state = StackState::Open;
-                        self.delivery_period = self.delivery_period.next();
-                        let _ = self.state_sender.send(StackState::Open);
-                    }
-                }
-                (StackState::Open, StackMessage::OpenStack(period)) => {
-                    println!("Trying to open stack for delivery period {period:?}, but stack is already open.")
-                }
-                (StackState::Open, StackMessage::CloseStack { tx_back, period_id }) => {
-                    if period_id == self.delivery_period {
-                        self.state = StackState::Closed;
-                        let plant_outputs: HashMap<PlantId, PlantOutput> = self
-                            .stack
-                            .iter_mut()
-                            .map(|(plant_id, plant)| (plant_id.clone(), plant.dispatch()))
-                            .collect();
-                        self.past_outputs.insert(period_id, plant_outputs.clone());
-                        let _ = tx_back.send(plant_outputs);
-                        let _ = self.state_sender.send(StackState::Closed);
-                        self.send_stack_snapshot().await;
-                        self.send_stack_forecasts().await;
-                    }
-                }
-                (StackState::Closed, StackMessage::CloseStack { period_id, tx_back }) => {
-                    if let Some(outputs) = self.past_outputs.get(&period_id) {
-                        let _ = tx_back.send(outputs.clone());
-                    }
+            }
+            (Closed, CloseStack { period_id, tx_back }) => {
+                if let Some(outputs) = self.past_outputs.get(&period_id) {
+                    let _ = tx_back.send(outputs.clone());
                 }
             }
         }
@@ -237,7 +241,7 @@ impl StackActor {
     async fn program_plant_setpoint(&mut self, plant_id: PlantId, setpoint: isize) {
         if let Some(plant) = self.stack.get_mut(&plant_id) {
             let PlantOutput { cost, .. } = plant.program_setpoint(setpoint);
-            println!("Programmed setpoint {setpoint} for plant {plant_id} (cost: {cost}");
+            tracing::info!("Programmed setpoint {setpoint} for plant {plant_id} (cost: {cost}");
             self.send_stack_snapshot().await;
         };
     }

@@ -97,7 +97,9 @@ async fn handle_socket<MS: Market, PS: Stack>(
     context: PlayerConnectionContext<MS, PS>,
 ) {
     tokio::spawn(async move {
-        start_player_connection(socket, context).await;
+        if let Err(err) = start_player_connection(socket, context).await {
+            tracing::error!("Player connection ended: {err:?}");
+        };
     });
 }
 

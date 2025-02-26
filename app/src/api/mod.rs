@@ -14,7 +14,7 @@ use tokio::{
     sync::{mpsc, RwLock},
 };
 use tower_cookies::CookieManagerLayer;
-use tower_http::cors::CorsLayer;
+use tower_http::{cors::CorsLayer, trace::TraceLayer};
 use tutorial::create_tutorial_game;
 use ws::handle_ws_connection;
 
@@ -42,7 +42,7 @@ pub async fn start_server(app_state: ApiState) {
     let listener = TcpListener::bind(&addr)
         .await
         .expect("Unable to start TCP listener");
-    println!("Listenning on {addr}");
+    tracing::info!("Listenning on {addr}");
 
     let origin = env::var("ALLOW_ORIGIN").expect("No ALLOW_ORIGIN environnement variable");
 
@@ -59,6 +59,7 @@ fn build_app(app_state: ApiState, origin: String) -> Router {
         .route("/tutorial", post(create_tutorial_game))
         .route("/ws", get(handle_ws_connection))
         .with_state(app_state)
+        .layer(TraceLayer::new_for_http())
         .layer(CookieManagerLayer::new())
         .layer(
             CorsLayer::new()

@@ -37,7 +37,7 @@ impl PlayerConnectionRepository {
         while let Some(msg) = self.rx.recv().await {
             match msg {
                 ConnectionRepositoryMessage::RegisterConnection(game_id, new_conn) => {
-                    println!("registering player {:?}", new_conn.player_id);
+                    tracing::info!("Registering player {:?}", new_conn.player_id);
                     match self.players_connections.get_mut(&game_id) {
                         Some(connections) => {
                             connections.push(new_conn);
@@ -54,7 +54,7 @@ impl PlayerConnectionRepository {
                     .await;
                 }
                 ConnectionRepositoryMessage::SendToPlayer(game_id, player_id, message) => {
-                    println!("{player_id:?}: proxying msg {message:?}");
+                    tracing::debug!("{player_id:?}: proxying msg {message:?}");
                     join_all(self.players_connections.get(&game_id).into_iter().flat_map(
                         |connections| {
                             connections

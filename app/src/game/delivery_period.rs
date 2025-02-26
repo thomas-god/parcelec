@@ -93,7 +93,7 @@ pub async fn start_delivery_period<StkS, MS>(
     // Close market and stacks if all players are ready
     set.spawn(async move {
         let _ = players_ready_rx.await;
-        println!("All players ready, closing delivery period early");
+        tracing::info!("All players ready, closing delivery period early");
         join!(
             market_service.close_market(period_id),
             close_stacks(stack_services, period_id)
@@ -108,19 +108,19 @@ pub async fn start_delivery_period<StkS, MS>(
                 break result;
             }
             Some(Err(e)) => {
-                println!("Task failed: {e}, trying next task");
+                tracing::warn!("Task failed: {e}, trying next task");
                 // Continue to next task if there is one
                 continue;
             }
             None => {
                 // No more tasks to try
-                panic!("All tasks failed or JoinSet was empty");
+                tracing::error!("All tasks failed or JoinSet was empty");
             }
         }
     };
 
     let scores = compute_players_scores(trades, plants_outputs);
-    println!("Delivery period ended: {scores:?}");
+    tracing::info!("Delivery period ended: {scores:?}");
     let _ = game_tx
         .send(GameMessage::DeliveryPeriodResults(DeliveryPeriodResults {
             period_id,

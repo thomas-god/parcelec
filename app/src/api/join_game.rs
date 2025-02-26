@@ -24,14 +24,13 @@ pub async fn join_game(
     Json(input): Json<JoinGame>,
 ) -> impl IntoResponse {
     let mut state = state.write().await;
-    println!("{input:?}");
     if input.name.is_empty() || input.game_id.is_empty() {
         return StatusCode::BAD_REQUEST;
     }
     let game_id = GameId::from(input.game_id);
 
     let Ok(domain) = env::var("DOMAIN") else {
-        println!("No DOMAIN environnement variable");
+        tracing::error!("No DOMAIN environnement variable");
         return StatusCode::INTERNAL_SERVER_ERROR;
     };
 
@@ -52,23 +51,24 @@ pub async fn join_game(
     let (player_id, player_stack) = match rx.await {
         Ok(RegisterPlayerResponse::Success { id, stack }) => (id, stack),
         Ok(RegisterPlayerResponse::PlayerAlreadyExist) => {
-            println!("Player with name {} already exist", input.name);
+            tracing::warn!("Player with name {} already exist", input.name);
             return StatusCode::CONFLICT;
         }
         Ok(RegisterPlayerResponse::GameIsRunning) => {
-            println!("Cannot register a player to a running game");
+            tracing::warn!("Cannot register a player to a running game");
             return StatusCode::CONFLICT;
         }
         Err(err) => {
-            println!("{err:?}");
-            println!("Error while sending message to game instance");
+            tracing::error!("Error while sending message to game instance: {err:?}");
             return StatusCode::INTERNAL_SERVER_ERROR;
         }
     };
     match state.stack_services.get_mut(&game_id) {
         Some(game_stacks) => {
             if game_stacks.get(&player_id).is_some() {
-                println!("A stack already exist for player {player_id:?} in game {game_id:?}");
+                tracing::error!(
+                    "A stack already exist for player {player_id:?} in game {game_id:?}"
+                );
                 return StatusCode::INTERNAL_SERVER_ERROR;
             }
             game_stacks.insert(player_id.clone(), player_stack.clone());
@@ -100,6 +100,6 @@ pub async fn join_game(
         .path("/")
         .build();
     cookies.add(player_name_cookie);
-    println!("Registered player {} with id {player_id}", input.name);
+    tracing::info!("Registered player {} with id {player_id}", input.name);
     StatusCode::CREATED
 }

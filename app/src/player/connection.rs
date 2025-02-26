@@ -119,6 +119,8 @@ pub enum PlayerConnectionError {
     SerializaionError(#[from] serde_json::Error),
     #[error("No snapshot")]
     NoSnapshotError(#[from] GetSnapshotError),
+    #[error("Internal connection error")]
+    InternalConnectionError,
 }
 
 pub async fn start_player_connection<MS: Market, PS: Stack>(
@@ -129,14 +131,14 @@ pub async fn start_player_connection<MS: Market, PS: Stack>(
     let (tx, rx) = channel::<PlayerMessage>(16);
 
     let Some(Ok(Message::Text(msg))) = ws.recv().await else {
-        println!("Haven't received Message::Text for connection readines, closing WS");
+        tracing::error!("Haven't received Message::Text for connection readines, closing WS");
         let _ = ws.close().await;
         return Err(PlayerConnectionError::ClientNotReady);
     };
     match serde_json::from_str::<WebSocketIncomingMessage>(&msg) {
         Ok(WebSocketIncomingMessage::ConnectionReady) => {}
         _ => {
-            println!("First message is not a ConnectionReady, closing WS");
+            tracing::error!("First message is not a ConnectionReady, closing WS");
             let _ = ws.close().await;
             return Err(PlayerConnectionError::FirstMessageReceivedNotConnectionReady);
         }
@@ -148,8 +150,8 @@ pub async fn start_player_connection<MS: Market, PS: Stack>(
 
     send_initial_trades_and_obs(&mut ws, &context).await?;
 
-    send_stack_forecasts(&mut ws, &context).await;
-    send_previous_scores(&mut ws, &context).await;
+    send_stack_forecasts(&mut ws, &context).await?;
+    send_previous_scores(&mut ws, &context).await?;
 
     let (sink, stream) = ws.split();
     let sink_handle = tokio::spawn(process_internal_messages(
@@ -206,80 +208,43 @@ async fn send_initial_stack_snapshot<MS: Market, PS: Stack>(
         .into(),
     )
     .await?;
-    // match context
-    //     .stack
-    //     .service
-    //     .get_snapshot()
-    //     .await
-    //     .map_err(|err| serde_json::Error::custom(format!("{err:?}")))
-    //     .and_then(|plants| serde_json::to_string(&PlayerMessage::StackSnapshot { plants }))
-    // {
-    //     Ok(msg) => {
-    //         if let Err(err) = ws.send(msg.into()).await {
-    //             println!("Error when sending through WS: {err:?}");
-    //             return None;
-    //         }
-    //     }
-    //     Err(err) => {
-    //         println!("Unable to send initial stack snapshot because of {err:?}. Aborting player connection");
-    //         return None;
-    //     }
-    // }
     Ok(())
 }
 
 async fn send_stack_forecasts<MS: Market, PS: Stack>(
     ws: &mut WebSocket,
     context: &PlayerConnectionContext<MS, PS>,
-) -> Option<()> {
-    let forecasts = context.stack.service.get_forecasts().await;
-    match serde_json::to_string(&PlayerMessage::StackForecasts { forecasts }) {
-        Ok(msg) => {
-            if let Err(err) = ws.send(msg.into()).await {
-                println!("Error when sending through WS: {err:?}");
-                return None;
-            }
-            Some(())
-        }
-        Err(err) => {
-            println!("Unable to send initial stack snapshot because of {err:?}. Aborting player connection");
-            None
-        }
-    }
+) -> Result<(), PlayerConnectionError> {
+    ws.send(
+        serde_json::to_string(&PlayerMessage::StackForecasts {
+            forecasts: context.stack.service.get_forecasts().await,
+        })?
+        .into(),
+    )
+    .await?;
+    Ok(())
 }
 
 async fn send_previous_scores<MS: Market, PS: Stack>(
     ws: &mut WebSocket,
     context: &PlayerConnectionContext<MS, PS>,
-) -> Option<()> {
+) -> Result<(), PlayerConnectionError> {
     let (tx_back, rx) = oneshot::channel();
-    let _ = context
+    context
         .game
         .tx
         .send(GameMessage::GetPreviousScores {
             player_id: context.player_id.clone(),
             tx_back,
         })
-        .await;
-    let Ok(scores) = rx.await else {
-        println!("Unable to get previous scores, aborting player connection");
-        return None;
-    };
-    match serde_json::to_string(&PlayerScores { scores }) {
-        Ok(msg) => {
-            if let Err(err) = ws.send(msg.into()).await {
-                println!("Error when sending through WS: {err:?}");
-                return None;
-            }
-            Some(())
-        }
-        Err(err) => {
-            println!(
-                "Unable to send initial scores because of {err:?}. Aborting player connection"
-            );
-            None
-        }
-    }
+        .await
+        .map_err(|_| PlayerConnectionError::InternalConnectionError)?;
+    let scores = rx
+        .await
+        .map_err(|_| PlayerConnectionError::InternalConnectionError)?;
+    ws.send(serde_json::to_string(&PlayerScores { scores })?.into())
+        .await?;
+    Ok(())
 }
 
 async fn register_connection<MS: Market, PS: Stack>(
@@ -330,7 +295,7 @@ async fn process_ws_messages<MS: Market, PS: Stack>(
             Ok(WebSocketIncomingMessage::ProgramPlant(req)) => {
                 let _ = stack.program_setpoint(req.plant_id, req.setpoint).await;
             }
-            Err(err) => println!("{err:?}"),
+            Err(err) => tracing::error!("{err:?}"),
         }
     }
 }
@@ -387,7 +352,7 @@ async fn send_msg(
             Ok(())
         }
         Err(err) => {
-            println!("Unable to serialize message: {msg:?}, error: {err:?}");
+            tracing::error!("Unable to serialize message: {msg:?}, error: {err:?}");
             Ok(())
         }
     }
