@@ -26,6 +26,7 @@ pub async fn create_tutorial_game(
         &game_id,
         state.player_connections_repository.clone(),
         market_context.clone(),
+        None, // No limit on delivery periods for tutorial games
     );
 
     state
