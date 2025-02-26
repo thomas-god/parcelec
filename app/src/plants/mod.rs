@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use std::fmt;
+use std::fmt::{self, Display};
 use std::future::Future;
 
 use serde::{Deserialize, Serialize};
@@ -21,8 +21,14 @@ use crate::game::delivery_period::DeliveryPeriodId;
 #[derive(Debug)]
 #[allow(dead_code)]
 pub struct CloseStackError(DeliveryPeriodId);
-#[derive(Debug)]
+#[derive(thiserror::Error, Debug)]
 pub struct GetSnapshotError;
+
+impl Display for GetSnapshotError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "GetSnapshotError")
+    }
+}
 
 /// [Stack] is the public API of Parcelec power plants/consumption domain. A stack refers to the
 /// set of power plants and consumers belonging to a player. A player can program power setpoints

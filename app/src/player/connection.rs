@@ -5,7 +5,7 @@ use futures_util::{
     stream::{SplitSink, SplitStream},
     SinkExt, StreamExt,
 };
-use serde::{de::Error, Deserialize, Serialize};
+use serde::{Deserialize, Serialize};
 use tokio::{
     select,
     sync::{
@@ -27,7 +27,7 @@ use crate::{
     },
     plants::{
         actor::{ProgramPlant, StackContext, StackState},
-        PlantId, PowerPlantPublicRepr, Stack,
+        GetSnapshotError, PlantId, PowerPlantPublicRepr, Stack,
     },
 };
 
@@ -107,42 +107,46 @@ pub struct PlayerConnectionContext<MS: Market, PS: Stack> {
     pub stack: StackContext<PS>,
 }
 
+#[derive(thiserror::Error, Debug)]
+pub enum PlayerConnectionError {
+    #[error("Haven't received Message::Text for connection readines")]
+    ClientNotReady,
+    #[error("First message is not a ConnectionReady")]
+    FirstMessageReceivedNotConnectionReady,
+    #[error(transparent)]
+    ConnectionError(#[from] axum::Error),
+    #[error(transparent)]
+    SerializaionError(#[from] serde_json::Error),
+    #[error("No snapshot")]
+    NoSnapshotError(#[from] GetSnapshotError),
+}
+
 pub async fn start_player_connection<MS: Market, PS: Stack>(
     mut ws: WebSocket,
     context: PlayerConnectionContext<MS, PS>,
-) {
+) -> Result<(), PlayerConnectionError> {
     let connection_id = Uuid::new_v4().to_string();
     let (tx, rx) = channel::<PlayerMessage>(16);
 
     let Some(Ok(Message::Text(msg))) = ws.recv().await else {
         println!("Haven't received Message::Text for connection readines, closing WS");
         let _ = ws.close().await;
-        return;
+        return Err(PlayerConnectionError::ClientNotReady);
     };
     match serde_json::from_str::<WebSocketIncomingMessage>(&msg) {
         Ok(WebSocketIncomingMessage::ConnectionReady) => {}
         _ => {
             println!("First message is not a ConnectionReady, closing WS");
             let _ = ws.close().await;
-            return;
+            return Err(PlayerConnectionError::FirstMessageReceivedNotConnectionReady);
         }
     }
 
     register_connection(tx, connection_id, &context).await;
 
-    if send_initial_stack_snapshot(&mut ws, &context)
-        .await
-        .is_none()
-    {
-        return;
-    };
+    send_initial_stack_snapshot(&mut ws, &context).await?;
 
-    if send_initial_trades_and_obs(&mut ws, &context)
-        .await
-        .is_none()
-    {
-        return;
-    };
+    send_initial_trades_and_obs(&mut ws, &context).await?;
 
     send_stack_forecasts(&mut ws, &context).await;
     send_previous_scores(&mut ws, &context).await;
@@ -163,87 +167,65 @@ pub async fn start_player_connection<MS: Market, PS: Stack>(
         context.player_id.clone(),
     ));
     let _ = tokio::try_join!(sink_handle, stream_handle);
+    Ok(())
 }
 
 async fn send_initial_trades_and_obs<MS: Market, PS: Stack>(
     ws: &mut WebSocket,
     context: &PlayerConnectionContext<MS, PS>,
-) -> Option<()> {
+) -> Result<(), PlayerConnectionError> {
     let (trades, obs, forecasts) = context
         .market
         .service
         .get_market_snapshot(context.player_id.clone())
         .await;
-    match serde_json::to_string(&PlayerMessage::TradeList { trades }) {
-        Ok(msg) => {
-            if let Err(err) = ws.send(msg.into()).await {
-                println!("Error when sending through WS: {err:?}");
-                return None;
-            }
-        }
-        Err(err) => {
-            println!(
-                "Unable to send initial trades list because of {err:?}. Aborting player connection"
-            );
-            return None;
-        }
-    }
-    match serde_json::to_string(&PlayerMessage::OrderBookSnapshot {
-        bids: obs.bids,
-        offers: obs.offers,
-    }) {
-        Ok(msg) => {
-            if let Err(err) = ws.send(msg.into()).await {
-                println!("Error when sending through WS: {err:?}");
-                return None;
-            }
-        }
-        Err(err) => {
-            println!(
-                "Unable to send initial trade list because of {err:?}. Aborting player connection"
-            );
-            return None;
-        }
-    }
-    match serde_json::to_string(&PlayerMessage::MarketForecasts { forecasts }) {
-        Ok(msg) => {
-            if let Err(err) = ws.send(msg.into()).await {
-                println!("Error when sending through WS: {err:?}");
-                return None;
-            }
-        }
-        Err(err) => {
-            println!("Unable to send initial market forecasts because of {err:?}. Aborting player connection");
-            return None;
-        }
-    }
-    Some(())
+    ws.send(serde_json::to_string(&PlayerMessage::TradeList { trades })?.into())
+        .await?;
+    ws.send(
+        serde_json::to_string(&PlayerMessage::OrderBookSnapshot {
+            bids: obs.bids,
+            offers: obs.offers,
+        })?
+        .into(),
+    )
+    .await?;
+    ws.send(serde_json::to_string(&PlayerMessage::MarketForecasts { forecasts })?.into())
+        .await?;
+
+    Ok(())
 }
 
 async fn send_initial_stack_snapshot<MS: Market, PS: Stack>(
     ws: &mut WebSocket,
     context: &PlayerConnectionContext<MS, PS>,
-) -> Option<()> {
-    match context
-        .stack
-        .service
-        .get_snapshot()
-        .await
-        .map_err(|err| serde_json::Error::custom(format!("{err:?}")))
-        .and_then(|plants| serde_json::to_string(&PlayerMessage::StackSnapshot { plants }))
-    {
-        Ok(msg) => {
-            if let Err(err) = ws.send(msg.into()).await {
-                println!("Error when sending through WS: {err:?}");
-                return None;
-            }
-        }
-        Err(err) => {
-            println!("Unable to send initial stack snapshot because of {err:?}. Aborting player connection");
-            return None;
-        }
-    }
-    Some(())
+) -> Result<(), PlayerConnectionError> {
+    ws.send(
+        serde_json::to_string(&PlayerMessage::StackSnapshot {
+            plants: context.stack.service.get_snapshot().await?,
+        })?
+        .into(),
+    )
+    .await?;
+    // match context
+    //     .stack
+    //     .service
+    //     .get_snapshot()
+    //     .await
+    //     .map_err(|err| serde_json::Error::custom(format!("{err:?}")))
+    //     .and_then(|plants| serde_json::to_string(&PlayerMessage::StackSnapshot { plants }))
+    // {
+    //     Ok(msg) => {
+    //         if let Err(err) = ws.send(msg.into()).await {
+    //             println!("Error when sending through WS: {err:?}");
+    //             return None;
+    //         }
+    //     }
+    //     Err(err) => {
+    //         println!("Unable to send initial stack snapshot because of {err:?}. Aborting player connection");
+    //         return None;
+    //     }
+    // }
+    Ok(())
 }
 
 async fn send_stack_forecasts<MS: Market, PS: Stack>(
