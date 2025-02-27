@@ -11,8 +11,7 @@
     "prepack": "svelte-kit sync && svelte-package && publint",
     "test": "vitest",
     "format": "prettier --write .",
-    "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.app.json && tsc -p tsconfig.node.json",
-    "storybook": "storybook dev -p 6006"
+    "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.app.json && tsc -p tsconfig.node.json"
   },
   "files": [
     "dist",
@@ -34,14 +33,6 @@
     "svelte": "^5.0.0"
   },
   "devDependencies": {
-    "@chromatic-com/storybook": "^3.2.4",
-    "@storybook/addon-essentials": "^8.5.3",
-    "@storybook/addon-interactions": "^8.5.3",
-    "@storybook/addon-svelte-csf": "^5.0.0-next.23",
-    "@storybook/blocks": "^8.5.3",
-    "@storybook/svelte": "^8.5.3",
-    "@storybook/sveltekit": "^8.5.3",
-    "@storybook/test": "^8.5.3",
     "@sveltejs/adapter-static": "^3.0.8",
     "@sveltejs/kit": "^2.17.1",
     "@sveltejs/package": "^2.3.10",
@@ -52,7 +43,6 @@
     "prettier": "^3.4.2",
     "prettier-plugin-svelte": "^3.3.3",
     "publint": "^0.3.4",
-    "storybook": "^8.5.3",
     "svelte": "^5.15.0",
     "svelte-check": "^4.1.1",
     "tailwindcss": "^4.0.3",

@@ -23,7 +23,5 @@ dist-ssr
 *.sln
 *.sw?
 
-*storybook.log
-
 .svelte-kit
 build
