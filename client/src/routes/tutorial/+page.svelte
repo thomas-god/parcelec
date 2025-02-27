@@ -1,8 +1,7 @@
 <script lang="ts">
   import { goto } from "$app/navigation";
   import { PUBLIC_APP_URL } from "$env/static/public";
-  import Scores from "../../components/molecules/LastScore.svelte";
-  import PlantSlider from "../../components/molecules/PlantSlider.svelte";
+  import Score from "../../components/molecules/CurrentScore.svelte";
 
   let error = $state(false);
   const startTutorial = async () => {
@@ -39,7 +38,7 @@
   <div
     class="px-4 sm:px-10 py-4 text-success-content bg-success rounded-md m-2"
   >
-    <Scores {position} {pnl} />
+    <Score {position} {pnl} />
   </div>
   <h2 class="px-4 pt-2 font-semibold">Pilotage des centrales 🔌</h2>
   <p class="p-4">

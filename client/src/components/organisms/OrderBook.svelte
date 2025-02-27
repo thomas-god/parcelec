@@ -1,8 +1,5 @@
 <script lang="ts">
   import type { OrderBook, Trade } from "$lib/message";
-  import { some } from "$lib/Options";
-  import NumberInput from "../atoms/NumberInput.svelte";
-  import OrderBookEntry from "../atoms/OrderBookEntry.svelte";
 
   let {
     orderBook,
@@ -56,10 +53,6 @@
   </div>
   <!-- Add an offer -->
   <div class="flex flex-row justify-center">
-    <!-- <div class="flex flex-row flex-wrap justify-center gap-2 mb-3">
-      <NumberInput bind:value={price} label={"Prix"} bigIncr={some(1)} />
-      <NumberInput bind:value={volume} label={"Volume"} bigIncr={some(10)} />
-    </div> -->
     <button
       class="btn"
       onclick={() => document.getElementById("add_order").showModal()}
@@ -109,16 +102,6 @@
         </fieldset>
       </div>
     </dialog>
-    <!-- <div class="flex justify-center space-x-4">
-      <button
-        class="px-4 py-2 bg-green-500 text-white rounded"
-        onclick={() => sendOrderRequest("Buy")}>BUY</button
-      >
-      <button
-        class="px-4 py-2 bg-red-500 text-white rounded"
-        onclick={() => sendOrderRequest("Sell")}>SELL</button
-      >
-    </div> -->
   </div>
 
   <div class="grid grid-cols-2 gap-4 mt-3">

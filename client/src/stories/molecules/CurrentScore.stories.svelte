@@ -1,10 +1,10 @@
 <script module>
   import { defineMeta } from "@storybook/addon-svelte-csf";
-  import LastScore from "../../components/molecules/LastScore.svelte";
+  import CurrentScore from "../../components/molecules/CurrentScore.svelte";
 
   const { Story } = defineMeta({
-    title: "Molecules/LastScore",
-    component: LastScore,
+    title: "Molecules/CurrentScore",
+    component: CurrentScore,
     tags: ["autodocs"],
 
     args: {},

@@ -12,13 +12,13 @@
   import { PUBLIC_WS_URL } from "$env/static/public";
   import OrderBookElement from "../../components/organisms/OrderBook.svelte";
   import { goto } from "$app/navigation";
-  import Stack from "../../components/organisms/StackSliders.svelte";
-  import LastScore from "../../components/molecules/LastScore.svelte";
+  import Stack from "../../components/organisms/Stack.svelte";
+  import CurrentScore from "../../components/molecules/CurrentScore.svelte";
   import { fade } from "svelte/transition";
   import { plantsPosition, marketPosition } from "$lib/position";
   import { marketPnl, plantsPnl } from "$lib/pnl";
   import { SvelteMap } from "svelte/reactivity";
-  import Scores from "../../components/organisms/Scores.svelte";
+  import Scores from "../../components/organisms/ScoresSummary.svelte";
   import Forecasts from "../../components/organisms/Forecasts.svelte";
 
   let orderBook: OrderBook = $state({
@@ -155,7 +155,7 @@
         class="sticky top-0 px-2 py-5 @sm:p-6 text-success-content bg-success rounded-b-md"
       >
         {#if game_state === "Running"}
-          <LastScore {position} {pnl} />
+          <CurrentScore {position} {pnl} />
         {:else}
           <div class="text-2xl text-center mx-auto">Phase terminée !</div>
         {/if}
