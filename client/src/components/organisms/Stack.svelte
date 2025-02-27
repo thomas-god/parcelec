@@ -1,8 +1,9 @@
 <script lang="ts">
   import type { StackSnapshot } from "$lib/message";
   import Battery from "../molecules/Battery.svelte";
-  import Plant from "../molecules/Plant.svelte";
+  import GenericPlant from "../molecules/GenericPlant.svelte";
   import { sortStack } from "$lib/sortStack";
+  import NuclearPlant from "../molecules/NuclearPlant.svelte";
 
   let { plants, send }: { plants: StackSnapshot; send: (msg: string) => void } =
     $props();
@@ -32,7 +33,7 @@
           updateSetpoint={(setpoint) => programSetpoint(id, setpoint)}
         />
       {:else if plant.type === "GasPlant"}
-        <Plant
+        <GenericPlant
           cost={plant.output.cost}
           dispatchable={true}
           energy_cost={plant.settings.energy_cost}
@@ -42,7 +43,7 @@
           updateSetpoint={(setpoint) => programSetpoint(id, setpoint)}
         />
       {:else if plant.type === "RenewablePlant"}
-        <Plant
+        <GenericPlant
           cost={plant.output.cost}
           dispatchable={false}
           energy_cost={0}
@@ -52,13 +53,23 @@
           updateSetpoint={(setpoint) => programSetpoint(id, setpoint)}
         />
       {:else if plant.type === "Consumers"}
-        <Plant
+        <GenericPlant
           cost={plant.output.cost}
           dispatchable={false}
           energy_cost={0}
           max_setpoint={plant.max_power}
           type="consumers"
           setpoint={plant.output.setpoint}
+          updateSetpoint={(setpoint) => programSetpoint(id, setpoint)}
+        />
+      {:else if plant.type === "Nuclear"}
+        <NuclearPlant
+          cost={plant.output.cost}
+          dispatchable={!plant.locked}
+          setpoint={plant.output.setpoint}
+          previous_setpoint={plant.previous_setpoint}
+          max_setpoint={plant.max_setpoint}
+          energy_cost={plant.energy_cost}
           updateSetpoint={(setpoint) => programSetpoint(id, setpoint)}
         />
       {/if}

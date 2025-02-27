@@ -9,6 +9,7 @@ use crate::{
 pub struct NuclearPublicRepr {
     pub output: PlantOutput,
     pub max_setpoint: isize,
+    pub previous_setpoint: isize,
     pub energy_cost: isize,
     pub locked: bool,
     pub touched: bool,
@@ -48,6 +49,7 @@ impl PowerPlant for NuclearPlant {
                 cost: self.cost(),
             },
             max_setpoint: self.max_setpoint,
+            previous_setpoint: self.previous_setpoint,
             energy_cost: self.energy_cost,
             locked: self.locked,
             touched: self.touched,
@@ -176,6 +178,7 @@ mod test {
                     setpoint: 0
                 },
                 max_setpoint: 1200,
+                previous_setpoint: 0,
                 energy_cost: 35,
                 locked: false,
                 touched: false
@@ -193,6 +196,7 @@ mod test {
                     setpoint: 600
                 },
                 max_setpoint: 1200,
+                previous_setpoint: 600,
                 energy_cost: 35,
                 locked: true,
                 touched: false

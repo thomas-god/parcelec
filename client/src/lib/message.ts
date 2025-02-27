@@ -46,6 +46,7 @@ const PowerPlantRepr = z.discriminatedUnion("type", [
     type: z.literal("Nuclear"),
     output: PlantOutput,
     max_setpoint: z.number(),
+    previous_setpoint: z.number(),
     energy_cost: z.number(),
     locked: z.boolean(),
     touched: z.boolean(),
