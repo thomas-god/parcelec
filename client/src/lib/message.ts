@@ -42,6 +42,14 @@ const PowerPlantRepr = z.discriminatedUnion("type", [
     max_power: z.number(),
     output: PlantOutput,
   }),
+  z.object({
+    type: z.literal("Nuclear"),
+    output: PlantOutput,
+    max_setpoint: z.number(),
+    energy_cost: z.number(),
+    locked: z.boolean(),
+    touched: z.boolean(),
+  }),
 ]);
 
 const WSMessageSchema = z.discriminatedUnion("type", [
@@ -169,6 +177,10 @@ export type RenewablePlantState = Extract<
 export type ConsumersState = Extract<
   StackSnapshot extends Map<any, infer I> ? I : never,
   { type: "Consumers" }
+>;
+export type NuclearPlantState = Extract<
+  StackSnapshot extends Map<any, infer I> ? I : never,
+  { type: "Nuclear" }
 >;
 export type DeliveryPeriodScore = Pick<
   Extract<WSMessage, { type: "DeliveryPeriodResults" }>,

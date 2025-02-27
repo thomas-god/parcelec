@@ -15,7 +15,8 @@ use crate::{
 
 use super::{
     technologies::{
-        battery::Battery, consumers::Consumers, gas_plant::GasPlant, renewable::RenewablePlant,
+        battery::Battery, consumers::Consumers, gas_plant::GasPlant, nuclear::NuclearPlant,
+        renewable::RenewablePlant,
     },
     PlantId, PowerPlant, PowerPlantPublicRepr, Stack, StackService,
 };
@@ -266,6 +267,7 @@ fn default_stack() -> HashMap<PlantId, Box<dyn PowerPlant + Send + Sync>> {
             vec![-600, -900, -600, -1200],
         )),
     );
+    map.insert(PlantId::default(), Box::new(NuclearPlant::new(1200, 35)));
     map
 }
 
