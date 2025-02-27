@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use super::delivery_period::{start_delivery_period, DeliveryPeriodId, DeliveryPeriodResults};
-use super::scores::PlayerScore;
+use super::scores::{ComputeRankings, PlayerScore};
 use super::{GameContext, GameId, GameMessage, GetPreviousScoresResult};
 use futures_util::future::join_all;
 use tokio::sync::{
@@ -24,7 +24,7 @@ use crate::{
 /// - new player registration,
 /// - passing game context to new player connection (market and player's stack tx),
 /// - delivery period lifecycle
-pub struct Game<MS: Market> {
+pub struct Game<MS: Market, R: ComputeRankings> {
     game_id: GameId,
     state: GameState,
     state_watch: watch::Sender<GameState>,
@@ -38,14 +38,16 @@ pub struct Game<MS: Market> {
     current_delivery_period: DeliveryPeriodId,
     last_delivery_period: Option<DeliveryPeriodId>,
     all_players_ready_tx: Option<oneshot::Sender<()>>,
+    ranking_calculator: R,
 }
 
-impl<MS: Market> Game<MS> {
+impl<MS: Market, R: ComputeRankings> Game<MS, R> {
     pub fn start(
         game_id: &GameId,
         players_connections: mpsc::Sender<ConnectionRepositoryMessage>,
         market_context: MarketContext<MS>,
         last_delivery_period: Option<DeliveryPeriodId>,
+        ranking_calculator: R,
     ) -> GameContext {
         let initial_state = GameState::Open;
         let (tx, rx) = channel::<GameMessage>(32);
@@ -64,6 +66,7 @@ impl<MS: Market> Game<MS> {
             current_delivery_period: DeliveryPeriodId::default(),
             last_delivery_period,
             all_players_ready_tx: None,
+            ranking_calculator,
         };
         let context = game.get_context();
 
@@ -88,11 +91,13 @@ impl<MS: Market> Game<MS> {
             | (GameState::Ended(_), GameMessage::RegisterPlayer { tx_back, .. }) => {
                 let _ = tx_back.send(RegisterPlayerResponse::GameStarted);
             }
-            (_, GameMessage::GetPreviousScores { player_id, tx_back }) => {
+            (_, GameMessage::GetScores { player_id, tx_back }) => {
                 use GetPreviousScoresResult::*;
                 let scores = match self.state {
-                    GameState::Ended(_) => AllPlayersScores {
-                        scores: self.players_scores.clone(),
+                    GameState::Ended(_) => PlayersRanking {
+                        scores: self
+                            .ranking_calculator
+                            .compute_scores(&self.players_scores.clone()),
                     },
                     _ => PlayerScores {
                         scores: self
@@ -176,8 +181,8 @@ impl<MS: Market> Game<MS> {
                     .players_connections
                     .send(ConnectionRepositoryMessage::SendToAllPlayers(
                         self.game_id.clone(),
-                        PlayerMessage::FinalScores {
-                            scores: self.players_scores.clone(),
+                        PlayerMessage::GameResults {
+                            rankings: self.ranking_calculator.compute_scores(&self.players_scores),
                         },
                     ))
                     .await;
@@ -300,7 +305,7 @@ impl<MS: Market> Game<MS> {
 
 #[cfg(test)]
 mod tests {
-    use std::time::Duration;
+    use std::{collections::HashMap, time::Duration};
 
     use tokio::{
         sync::{
@@ -313,8 +318,10 @@ mod tests {
 
     use crate::{
         game::{
-            delivery_period::DeliveryPeriodId, GameContext, GameId, GameMessage, GameState,
-            GetPreviousScoresResult, RegisterPlayerResponse,
+            delivery_period::DeliveryPeriodId,
+            scores::{ComputeRankings, PlayerRanking, PlayerScore},
+            GameContext, GameId, GameMessage, GameState, GetPreviousScoresResult,
+            RegisterPlayerResponse,
         },
         market::{order_book::TradeLeg, Market, MarketContext, MarketForecast, MarketState, OBS},
         plants::{
@@ -359,18 +366,36 @@ mod tests {
         async fn register_forecast(&self, _forecast: crate::market::MarketForecast) {}
     }
 
+    #[derive(Debug, Clone)]
+    struct MockRankingCalculator {}
+    impl ComputeRankings for MockRankingCalculator {
+        fn compute_scores(
+            &self,
+            _players_scores: &HashMap<PlayerId, HashMap<DeliveryPeriodId, PlayerScore>>,
+        ) -> Vec<PlayerRanking> {
+            Vec::new()
+        }
+    }
+
     fn open_game() -> (GameContext, MarketContext<MockMarket>) {
         let (tx, _) = mpsc::channel(16);
         let game_id = GameId::default();
         let (state_tx, rx) = watch::channel(MarketState::Closed);
         let market = MockMarket { state_tx };
+        let ranking_calculator = MockRankingCalculator {};
 
         let market_context = MarketContext {
             service: market,
             state_rx: rx,
         };
         (
-            Game::start(&game_id, tx, market_context.clone(), None),
+            Game::start(
+                &game_id,
+                tx,
+                market_context.clone(),
+                None,
+                ranking_calculator,
+            ),
             market_context,
         )
     }
@@ -632,7 +657,8 @@ mod tests {
             service: MockMarket { state_tx },
             state_rx: rx,
         };
-        let game = Game::start(&game_id, conn_tx, market, None);
+        let ranking_calculator = MockRankingCalculator {};
+        let game = Game::start(&game_id, conn_tx, market, None, ranking_calculator);
 
         // Start game
         let (player, _) = start_game(game.tx.clone()).await;
@@ -670,7 +696,8 @@ mod tests {
             service: MockMarket { state_tx },
             state_rx: rx,
         };
-        let game = Game::start(&game_id, conn_tx, market, None);
+        let ranking_calculator = MockRankingCalculator {};
+        let game = Game::start(&game_id, conn_tx, market, None, ranking_calculator);
 
         // Start the game
         let (player, _) = start_game(game.tx.clone()).await;
@@ -679,7 +706,7 @@ mod tests {
         let (tx_back, rx) = oneshot::channel();
         let _ = game
             .tx
-            .send(GameMessage::GetPreviousScores {
+            .send(GameMessage::GetScores {
                 player_id: player.clone(),
                 tx_back,
             })
@@ -700,7 +727,7 @@ mod tests {
         let (tx_back, rx) = oneshot::channel();
         let _ = game
             .tx
-            .send(GameMessage::GetPreviousScores {
+            .send(GameMessage::GetScores {
                 player_id: player.clone(),
                 tx_back,
             })
@@ -721,8 +748,15 @@ mod tests {
             state_rx: rx,
         };
 
+        let ranking_calculator = MockRankingCalculator {};
         // Create a game with 2 max delivery periods
-        let mut game = Game::start(&game_id, conn_tx, market, Some(DeliveryPeriodId::from(2)));
+        let mut game = Game::start(
+            &game_id,
+            conn_tx,
+            market,
+            Some(DeliveryPeriodId::from(2)),
+            ranking_calculator,
+        );
 
         // Register and start the game with one player
         let (player, _) = register_player(game.tx.clone()).await;
@@ -806,7 +840,14 @@ mod tests {
             service: MockMarket { state_tx },
             state_rx: rx,
         };
-        let mut game = Game::start(&game_id, conn_tx, market, Some(DeliveryPeriodId::from(1)));
+        let ranking_calculator = MockRankingCalculator {};
+        let mut game = Game::start(
+            &game_id,
+            conn_tx,
+            market,
+            Some(DeliveryPeriodId::from(1)),
+            ranking_calculator,
+        );
 
         // Register two players
         let (player1, _) = register_player(game.tx.clone()).await;
@@ -841,11 +882,9 @@ mod tests {
         while let Ok(Some(msg)) = timeout(Duration::from_micros(10), conn_rx.recv()).await {
             if let ConnectionRepositoryMessage::SendToAllPlayers(
                 _,
-                PlayerMessage::FinalScores { scores },
+                PlayerMessage::GameResults { rankings: _ },
             ) = msg
             {
-                assert!(scores.contains_key(&player1));
-                assert!(scores.contains_key(&player2));
                 message_found = true;
                 break;
             }
@@ -863,7 +902,14 @@ mod tests {
             service: MockMarket { state_tx },
             state_rx: rx,
         };
-        let mut game = Game::start(&game_id, conn_tx, market, Some(DeliveryPeriodId::from(1)));
+        let ranking_calculator = MockRankingCalculator {};
+        let mut game = Game::start(
+            &game_id,
+            conn_tx,
+            market,
+            Some(DeliveryPeriodId::from(1)),
+            ranking_calculator,
+        );
         let (player, _) = register_player(game.tx.clone()).await;
 
         // Start the game
@@ -876,7 +922,7 @@ mod tests {
         let (tx_back, rx_back) = oneshot::channel();
         let _ = game
             .tx
-            .send(GameMessage::GetPreviousScores {
+            .send(GameMessage::GetScores {
                 player_id: player.clone(),
                 tx_back,
             })
@@ -901,12 +947,12 @@ mod tests {
         let (tx_back, rx_back) = oneshot::channel();
         let _ = game
             .tx
-            .send(GameMessage::GetPreviousScores {
+            .send(GameMessage::GetScores {
                 player_id: player.clone(),
                 tx_back,
             })
             .await;
-        let Ok(GetPreviousScoresResult::AllPlayersScores { scores: _ }) = rx_back.await else {
+        let Ok(GetPreviousScoresResult::PlayersRanking { scores: _ }) = rx_back.await else {
             unreachable!("Should have received scores for all players");
         };
     }

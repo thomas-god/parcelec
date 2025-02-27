@@ -9,7 +9,10 @@ use tower_cookies::{
 
 use crate::{
     bots::start_bots,
-    game::{delivery_period::DeliveryPeriodId, Game, GameId, GameMessage, RegisterPlayerResponse},
+    game::{
+        delivery_period::DeliveryPeriodId, scores::PnLRanking, Game, GameId, GameMessage,
+        RegisterPlayerResponse,
+    },
     market::MarketActor,
 };
 
@@ -28,6 +31,7 @@ pub async fn create_tutorial_game(
         state.player_connections_repository.clone(),
         market_context.clone(),
         Some(last_delivery_period),
+        PnLRanking {},
     );
 
     state

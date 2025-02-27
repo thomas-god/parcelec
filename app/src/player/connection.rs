@@ -18,8 +18,9 @@ use uuid::Uuid;
 use crate::{
     forecast::ForecastLevel,
     game::{
-        delivery_period::DeliveryPeriodId, scores::PlayerScore, GameContext, GameId, GameMessage,
-        GameState, GetPreviousScoresResult,
+        delivery_period::DeliveryPeriodId,
+        scores::{PlayerRanking, PlayerScore},
+        GameContext, GameId, GameMessage, GameState, GetPreviousScoresResult,
     },
     market::{
         order_book::{OrderRequest as MarketOrderRequest, TradeLeg},
@@ -89,8 +90,8 @@ pub enum PlayerMessage {
         delivery_period: DeliveryPeriodId,
         score: PlayerScore,
     },
-    FinalScores {
-        scores: HashMap<PlayerId, HashMap<DeliveryPeriodId, PlayerScore>>,
+    GameResults {
+        rankings: Vec<PlayerRanking>,
     },
 }
 
@@ -236,7 +237,7 @@ async fn send_previous_scores<MS: Market, PS: Stack>(
     context
         .game
         .tx
-        .send(GameMessage::GetPreviousScores {
+        .send(GameMessage::GetScores {
             player_id: context.player_id.clone(),
             tx_back,
         })
@@ -250,9 +251,11 @@ async fn send_previous_scores<MS: Market, PS: Stack>(
             ws.send(serde_json::to_string(&PlayerScores { scores })?.into())
                 .await?;
         }
-        GetPreviousScoresResult::AllPlayersScores { scores } => {
-            ws.send(serde_json::to_string(&PlayerMessage::FinalScores { scores })?.into())
-                .await?;
+        GetPreviousScoresResult::PlayersRanking { scores } => {
+            ws.send(
+                serde_json::to_string(&PlayerMessage::GameResults { rankings: scores })?.into(),
+            )
+            .await?;
         }
     }
     Ok(())

@@ -1,4 +1,4 @@
-use std::{collections::HashMap, ops::Add};
+use std::{collections::HashMap, fmt::Debug, ops::Add};
 
 use serde::Serialize;
 
@@ -10,6 +10,8 @@ use crate::{
     plants::{PlantId, PlantOutput},
     player::PlayerId,
 };
+
+use super::delivery_period::DeliveryPeriodId;
 
 const POSITIVE_IMBALANCE_COST: isize = 50;
 const NEGATIVE_IMBALANCE_COST: isize = 100;
@@ -265,6 +267,145 @@ mod tests {
                     }
                 )
             ])
+        )
+    }
+}
+
+#[derive(Debug, PartialEq, Clone, Serialize)]
+pub struct PlayerRanking {
+    pub player: PlayerId,
+    pub rank: usize,
+    pub score: RankScore,
+}
+
+#[derive(Debug, PartialEq, Clone, Serialize)]
+pub enum RankTier {
+    Bronze,
+    Silver,
+    Gold,
+}
+
+#[derive(Debug, PartialEq, Clone, Serialize)]
+pub enum RankScore {
+    PnL(isize),
+    Tier(RankTier),
+}
+
+pub trait ComputeRankings: Clone + Send + Sync + 'static + Debug {
+    fn compute_scores(
+        &self,
+        players_scores: &HashMap<PlayerId, HashMap<DeliveryPeriodId, PlayerScore>>,
+    ) -> Vec<PlayerRanking>;
+}
+
+#[derive(Debug, Clone)]
+pub struct PnLRanking {}
+
+impl ComputeRankings for PnLRanking {
+    fn compute_scores(
+        &self,
+        players_scores: &HashMap<PlayerId, HashMap<DeliveryPeriodId, PlayerScore>>,
+    ) -> Vec<PlayerRanking> {
+        let mut scores: Vec<(PlayerId, isize)> = players_scores
+            .iter()
+            .map(|(player, score)| {
+                (
+                    player.clone(),
+                    score
+                        .iter()
+                        .fold(0, |acc, (_, s)| acc + s.pnl + s.imbalance_cost),
+                )
+            })
+            .collect();
+        scores.sort_by(|(_, a), (_, b)| b.cmp(a));
+        scores
+            .iter()
+            .enumerate()
+            .map(|(idx, (player_id, score))| PlayerRanking {
+                player: player_id.clone(),
+                rank: idx + 1,
+                score: RankScore::PnL(*score),
+            })
+            .collect()
+    }
+}
+
+#[cfg(test)]
+mod test_pnl_ranking {
+    use std::collections::HashMap;
+
+    use crate::{
+        game::{
+            delivery_period::DeliveryPeriodId,
+            scores::{ComputeRankings, PlayerRanking, PnLRanking},
+        },
+        player::PlayerId,
+    };
+
+    use super::{PlayerScore, RankScore};
+
+    #[test]
+    fn test_pnl_ranking() {
+        let scores = HashMap::from([
+            (
+                PlayerId::from("toto"),
+                HashMap::from([
+                    (
+                        DeliveryPeriodId::from(1),
+                        PlayerScore {
+                            balance: 0,
+                            imbalance_cost: 0,
+                            pnl: 1000,
+                        },
+                    ),
+                    (
+                        DeliveryPeriodId::from(2),
+                        PlayerScore {
+                            balance: 10,
+                            imbalance_cost: -60,
+                            pnl: 1050,
+                        },
+                    ),
+                ]),
+            ),
+            (
+                PlayerId::from("other_player"),
+                HashMap::from([
+                    (
+                        DeliveryPeriodId::from(1),
+                        PlayerScore {
+                            balance: 0,
+                            imbalance_cost: 0,
+                            pnl: 0,
+                        },
+                    ),
+                    (
+                        DeliveryPeriodId::from(2),
+                        PlayerScore {
+                            balance: 10,
+                            imbalance_cost: -60,
+                            pnl: 0,
+                        },
+                    ),
+                ]),
+            ),
+        ]);
+
+        let ranking = PnLRanking {};
+        assert_eq!(
+            ranking.compute_scores(&scores),
+            vec![
+                PlayerRanking {
+                    player: PlayerId::from("toto"),
+                    rank: 1,
+                    score: RankScore::PnL(1990)
+                },
+                PlayerRanking {
+                    player: PlayerId::from("other_player"),
+                    rank: 2,
+                    score: RankScore::PnL(-60)
+                }
+            ]
         )
     }
 }
