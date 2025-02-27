@@ -6,6 +6,7 @@ use serde::{Deserialize, Serialize};
 use technologies::battery::BatteryPublicRepr;
 use technologies::consumers::ConsumersPublicRepr;
 use technologies::gas_plant::GasPlantPublicRepr;
+use technologies::nuclear::NuclearPublicRepr;
 use technologies::renewable::RenewablePlantPublicRepr;
 use uuid::Uuid;
 
@@ -68,6 +69,7 @@ pub enum PowerPlantPublicRepr {
     GasPlant(GasPlantPublicRepr),
     RenewablePlant(RenewablePlantPublicRepr),
     Consumers(ConsumersPublicRepr),
+    Nuclear(NuclearPublicRepr),
 }
 
 #[derive(Debug, PartialEq, Serialize, Clone, Copy)]

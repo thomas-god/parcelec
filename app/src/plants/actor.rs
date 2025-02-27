@@ -421,6 +421,7 @@ mod tests_stack {
                 PowerPlantPublicRepr::Consumers(cons) => cons.output.setpoint,
                 PowerPlantPublicRepr::GasPlant(plant) => plant.output.setpoint,
                 PowerPlantPublicRepr::RenewablePlant(plant) => plant.output.setpoint,
+                PowerPlantPublicRepr::Nuclear(plant) => plant.output.setpoint,
             }
         });
 
@@ -445,6 +446,7 @@ mod tests_stack {
                     PowerPlantPublicRepr::Consumers(cons) => cons.output.setpoint,
                     PowerPlantPublicRepr::GasPlant(plant) => plant.output.setpoint,
                     PowerPlantPublicRepr::RenewablePlant(plant) => plant.output.setpoint,
+                    PowerPlantPublicRepr::Nuclear(plant) => plant.output.setpoint,
                 }
             })
         );
