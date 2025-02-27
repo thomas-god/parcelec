@@ -54,7 +54,7 @@ pub async fn join_game(
             tracing::warn!("Player with name {} already exist", input.name);
             return StatusCode::CONFLICT;
         }
-        Ok(RegisterPlayerResponse::GameIsRunning) => {
+        Ok(RegisterPlayerResponse::GameStarted) => {
             tracing::warn!("Cannot register a player to a running game");
             return StatusCode::CONFLICT;
         }

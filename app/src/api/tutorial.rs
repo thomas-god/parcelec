@@ -9,7 +9,7 @@ use tower_cookies::{
 
 use crate::{
     bots::start_bots,
-    game::{Game, GameId, GameMessage, RegisterPlayerResponse},
+    game::{delivery_period::DeliveryPeriodId, Game, GameId, GameMessage, RegisterPlayerResponse},
     market::MarketActor,
 };
 
@@ -22,11 +22,12 @@ pub async fn create_tutorial_game(
     let mut state = state.write().await;
     let game_id = GameId::default();
     let market_context = MarketActor::start(&game_id, state.player_connections_repository.clone());
+    let last_delivery_period = DeliveryPeriodId::from(2);
     let game_context = Game::start(
         &game_id,
         state.player_connections_repository.clone(),
         market_context.clone(),
-        None, // No limit on delivery periods for tutorial games
+        Some(last_delivery_period),
     );
 
     state

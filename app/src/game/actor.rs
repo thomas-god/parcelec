@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use super::delivery_period::{start_delivery_period, DeliveryPeriodId, DeliveryPeriodResults};
 use super::scores::PlayerScore;
-use super::{GameContext, GameId, GameMessage};
+use super::{GameContext, GameId, GameMessage, GetPreviousScoresResult};
 use futures_util::future::join_all;
 use tokio::sync::{
     mpsc::{self, channel, Receiver, Sender},
@@ -10,6 +10,7 @@ use tokio::sync::{
 };
 
 use crate::game::{GameState, Player, RegisterPlayerResponse};
+use crate::player::connection::PlayerMessage;
 use crate::{
     market::{Market, MarketContext},
     plants::{
@@ -85,19 +86,27 @@ impl<MS: Market> Game<MS> {
             (GameState::PostDelivery(_), GameMessage::RegisterPlayer { tx_back, .. })
             | (GameState::Running(_), GameMessage::RegisterPlayer { tx_back, .. })
             | (GameState::Ended(_), GameMessage::RegisterPlayer { tx_back, .. }) => {
-                let _ = tx_back.send(RegisterPlayerResponse::GameIsRunning);
+                let _ = tx_back.send(RegisterPlayerResponse::GameStarted);
             }
             (_, GameMessage::GetPreviousScores { player_id, tx_back }) => {
-                let scores = self
-                    .players_scores
-                    .get(&player_id)
-                    .cloned()
-                    .unwrap_or_else(HashMap::new);
+                use GetPreviousScoresResult::*;
+                let scores = match self.state {
+                    GameState::Ended(_) => AllPlayersScores {
+                        scores: self.players_scores.clone(),
+                    },
+                    _ => PlayerScores {
+                        scores: self
+                            .players_scores
+                            .get(&player_id)
+                            .cloned()
+                            .unwrap_or_else(HashMap::new),
+                    },
+                };
                 let _ = tx_back.send(scores);
             }
             (GameState::PostDelivery(_), GameMessage::PlayerIsReady(player_id))
             | (GameState::Open, GameMessage::PlayerIsReady(player_id)) => {
-                self.register_player_ready(player_id);
+                let _ = self.register_player_ready(player_id).await;
             }
             (GameState::Running(_), GameMessage::DeliveryPeriodResults(results)) => {
                 self.store_scores(&results);
@@ -150,7 +159,7 @@ impl<MS: Market> Game<MS> {
         false
     }
 
-    fn register_player_ready(&mut self, player_id: PlayerId) {
+    async fn register_player_ready(&mut self, player_id: PlayerId) {
         if let Some(player) = self
             .players
             .iter_mut()
@@ -163,7 +172,16 @@ impl<MS: Market> Game<MS> {
         if self.players.iter().all(|player| player.ready) {
             // Check if we've reached the last delivery period
             if self.check_last_delivery_period_reached() {
-                return;
+                let _ = self
+                    .players_connections
+                    .send(ConnectionRepositoryMessage::SendToAllPlayers(
+                        self.game_id.clone(),
+                        PlayerMessage::FinalScores {
+                            scores: self.players_scores.clone(),
+                        },
+                    ))
+                    .await;
+                return; // Game has ended
             }
 
             tracing::info!(
@@ -282,16 +300,21 @@ impl<MS: Market> Game<MS> {
 
 #[cfg(test)]
 mod tests {
-    use tokio::sync::{
-        mpsc,
-        oneshot::{self, channel},
-        watch,
+    use std::time::Duration;
+
+    use tokio::{
+        sync::{
+            mpsc,
+            oneshot::{self, channel},
+            watch,
+        },
+        time::timeout,
     };
 
     use crate::{
         game::{
             delivery_period::DeliveryPeriodId, GameContext, GameId, GameMessage, GameState,
-            RegisterPlayerResponse,
+            GetPreviousScoresResult, RegisterPlayerResponse,
         },
         market::{order_book::TradeLeg, Market, MarketContext, MarketForecast, MarketState, OBS},
         plants::{
@@ -475,7 +498,7 @@ mod tests {
             .await;
 
         match rx.await {
-            Ok(RegisterPlayerResponse::GameIsRunning) => {}
+            Ok(RegisterPlayerResponse::GameStarted) => {}
             _ => unreachable!("Should have rejected the request"),
         };
     }
@@ -503,7 +526,7 @@ mod tests {
             .await;
 
         match rx.await {
-            Ok(RegisterPlayerResponse::GameIsRunning) => {}
+            Ok(RegisterPlayerResponse::GameStarted) => {}
             _ => unreachable!("Should have rejected the request"),
         };
     }
@@ -661,7 +684,9 @@ mod tests {
                 tx_back,
             })
             .await;
-        let Ok(scores) = rx.await else { unreachable!() };
+        let Ok(GetPreviousScoresResult::PlayerScores { scores }) = rx.await else {
+            unreachable!()
+        };
         assert!(scores.is_empty());
 
         // End delivery period
@@ -680,7 +705,9 @@ mod tests {
                 tx_back,
             })
             .await;
-        let Ok(scores) = rx.await else { unreachable!() };
+        let Ok(GetPreviousScoresResult::PlayerScores { scores }) = rx.await else {
+            unreachable!()
+        };
         assert_eq!(scores.len(), 1);
     }
 
@@ -754,5 +781,133 @@ mod tests {
             *game.state_rx.borrow_and_update(),
             GameState::Ended(DeliveryPeriodId::from(2))
         );
+    }
+
+    #[tokio::test]
+    async fn test_send_all_scores_when_game_ends() {
+        async fn mark_players_ready(
+            game_tx: &mpsc::Sender<GameMessage>,
+            player1: &PlayerId,
+            player2: &PlayerId,
+        ) {
+            let _ = game_tx
+                .send(GameMessage::PlayerIsReady(player1.clone()))
+                .await;
+            let _ = game_tx
+                .send(GameMessage::PlayerIsReady(player2.clone()))
+                .await;
+        }
+
+        // Create a game with 1 delivery period
+        let (conn_tx, mut conn_rx) = mpsc::channel(16);
+        let game_id = GameId::default();
+        let (state_tx, rx) = watch::channel(MarketState::Closed);
+        let market = MarketContext {
+            service: MockMarket { state_tx },
+            state_rx: rx,
+        };
+        let mut game = Game::start(&game_id, conn_tx, market, Some(DeliveryPeriodId::from(1)));
+
+        // Register two players
+        let (player1, _) = register_player(game.tx.clone()).await;
+        let (player2, _) = register_player(game.tx.clone()).await;
+
+        // All players ready, starts period 1
+        mark_players_ready(&game.tx, &player1, &player2).await;
+        assert!(game.state_rx.changed().await.is_ok());
+        assert_eq!(
+            *game.state_rx.borrow_and_update(),
+            GameState::Running(DeliveryPeriodId::from(1))
+        );
+
+        // End delivery period 1
+        mark_players_ready(&game.tx, &player1, &player2).await;
+        assert!(game.state_rx.changed().await.is_ok());
+        assert_eq!(
+            *game.state_rx.borrow_and_update(),
+            GameState::PostDelivery(DeliveryPeriodId::from(1))
+        );
+
+        // End game - both players ready
+        mark_players_ready(&game.tx, &player1, &player2).await;
+        assert!(game.state_rx.changed().await.is_ok());
+        assert_eq!(
+            *game.state_rx.borrow_and_update(),
+            GameState::Ended(DeliveryPeriodId::from(1))
+        );
+
+        // Game should send all players scores to every player
+        let mut message_found = false;
+        while let Ok(Some(msg)) = timeout(Duration::from_micros(10), conn_rx.recv()).await {
+            if let ConnectionRepositoryMessage::SendToAllPlayers(
+                _,
+                PlayerMessage::FinalScores { scores },
+            ) = msg
+            {
+                assert!(scores.contains_key(&player1));
+                assert!(scores.contains_key(&player2));
+                message_found = true;
+                break;
+            }
+        }
+        assert!(message_found)
+    }
+
+    #[tokio::test]
+    async fn test_get_final_scores_as_previous_scores_when_game_ended() {
+        // Create a game with 1 delivery period and register 1 player
+        let (conn_tx, _) = mpsc::channel(16);
+        let game_id = GameId::default();
+        let (state_tx, rx) = watch::channel(MarketState::Closed);
+        let market = MarketContext {
+            service: MockMarket { state_tx },
+            state_rx: rx,
+        };
+        let mut game = Game::start(&game_id, conn_tx, market, Some(DeliveryPeriodId::from(1)));
+        let (player, _) = register_player(game.tx.clone()).await;
+
+        // Start the game
+        let _ = game
+            .tx
+            .send(GameMessage::PlayerIsReady(player.clone()))
+            .await;
+        assert!(game.state_rx.changed().await.is_ok());
+
+        let (tx_back, rx_back) = oneshot::channel();
+        let _ = game
+            .tx
+            .send(GameMessage::GetPreviousScores {
+                player_id: player.clone(),
+                tx_back,
+            })
+            .await;
+        let Ok(GetPreviousScoresResult::PlayerScores { scores: _ }) = rx_back.await else {
+            unreachable!("Should have received scores for the player");
+        };
+
+        // End the game, previous scores should include scores for all players
+        for _ in 0..2 {
+            let _ = game
+                .tx
+                .send(GameMessage::PlayerIsReady(player.clone()))
+                .await;
+            assert!(game.state_rx.changed().await.is_ok());
+        }
+        assert_eq!(
+            *game.state_rx.borrow_and_update(),
+            GameState::Ended(DeliveryPeriodId::from(1))
+        );
+
+        let (tx_back, rx_back) = oneshot::channel();
+        let _ = game
+            .tx
+            .send(GameMessage::GetPreviousScores {
+                player_id: player.clone(),
+                tx_back,
+            })
+            .await;
+        let Ok(GetPreviousScoresResult::AllPlayersScores { scores: _ }) = rx_back.await else {
+            unreachable!("Should have received scores for all players");
+        };
     }
 }

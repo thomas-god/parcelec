@@ -3,6 +3,7 @@
   import {
     parseMessage,
     type DeliveryPeriodScore,
+    type FinalScores,
     type MarketForecast,
     type OrderBook,
     type StackForecasts,
@@ -30,12 +31,15 @@
   let plant_forecasts: StackForecasts = $state(new Map());
   let market_state: "Open" | "Closed" = $state("Open");
   let stack_state: "Open" | "Closed" = $state("Open");
-  let game_state: "Open" | "Running" | "PostDelivery" = $state("Open");
+  let game_state: "Open" | "Running" | "PostDelivery" | "Ended" =
+    $state("Open");
   let delivery_period_id = $state(0);
   let scores: SvelteMap<number, DeliveryPeriodScore> = $state(new SvelteMap());
+  let final_scores: FinalScores = $state(new Map());
   let market_forecasts: SvelteMap<number, MarketForecast[]> = $state(
     new SvelteMap(),
   );
+  $inspect(final_scores);
 
   const connect = () => {
     const socket = new WebSocket(`${PUBLIC_WS_URL}/ws`);
@@ -93,6 +97,9 @@
             scores.set(Number(k), v);
           }
         })
+        .with({ type: "FinalScores" }, ({ scores }) => {
+          final_scores = scores;
+        })
         .with({ type: "NewMarketForecast" }, (forecast) => {
           if (market_forecasts.has(forecast.period)) {
             market_forecasts.get(forecast.period)!.push(forecast);
@@ -129,6 +136,10 @@
     socket.send(msg);
   };
   const startGame = () => {
+    if (game_state === "Ended") {
+      goto("/");
+      return;
+    }
     sendMessage(JSON.stringify("PlayerIsReady"));
   };
   let show_last_trade = $state(false);
@@ -156,6 +167,8 @@
       >
         {#if game_state === "Running"}
           <CurrentScore {position} {pnl} />
+        {:else if game_state === "Ended"}
+          <div class="text-2xl text-center mx-auto">Partie terminée !</div>
         {:else}
           <div class="text-2xl text-center mx-auto">Phase terminée !</div>
         {/if}
@@ -225,33 +238,9 @@
       {:else if game_state === "PostDelivery"}
         <div class="flex flex-col">
           <Scores {scores} current_period={delivery_period_id} />
-          <!-- {#if scores.has(delivery_period_id)}
-            <div class="mt-8 self-center text-lg">
-              <ul>
-                <li>
-                  Equilibre: {scores
-                    .get(delivery_period_id)!
-                    .balance.toLocaleString("fr-FR")} MW
-                </li>
-                <li>
-                  PnL: {scores
-                    .get(delivery_period_id)!
-                    .pnl.toLocaleString("fr-FR")}
-                  €
-                </li>
-                <li>
-                  Ecarts: {scores
-                    .get(delivery_period_id)!
-                    .imbalance_cost.toLocaleString("fr-FR")} €
-                </li>
-                <li class="font-semibold">
-                  Total: {scores.get(delivery_period_id)!.pnl +
-                    scores.get(delivery_period_id)!.imbalance_cost} €
-                </li>
-              </ul>
-            </div>
-          {/if} -->
         </div>
+      {:else if game_state === "Ended"}
+        {final_scores.entries().toArray()}
       {/if}
       <div
         class="fixed bottom-0 bg-success text-success-content rounded-t-md p-2 pb-4 w-screen max-w-[600px] flex flex-col items-center text-xl"
@@ -259,6 +248,8 @@
         <button onclick={startGame}>
           {#if game_state === "Running"}
             Terminer la phase ➡️
+          {:else if game_state === "Ended"}
+            Retour au menu ➡️
           {:else}
             Phase suivante ➡️
           {/if}</button

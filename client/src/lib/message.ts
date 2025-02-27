@@ -101,7 +101,7 @@ const WSMessageSchema = z.discriminatedUnion("type", [
   }),
   z.object({
     type: z.literal("GameState"),
-    state: z.enum(["Open", "Running", "PostDelivery"]),
+    state: z.enum(["Open", "Running", "PostDelivery", "Ended"]),
     delivery_period: z.number(),
   }),
   z.object({
@@ -123,6 +123,24 @@ const WSMessageSchema = z.discriminatedUnion("type", [
           pnl: z.number(),
           imbalance_cost: z.number(),
         }),
+      )
+      .transform((rec) => new Map(Object.entries(rec))),
+  }),
+  z.object({
+    type: z.literal("FinalScores"),
+    scores: z
+      .record(
+        z.string(),
+        z
+          .record(
+            z.coerce.number(),
+            z.object({
+              balance: z.number(),
+              pnl: z.number(),
+              imbalance_cost: z.number(),
+            }),
+          )
+          .transform((rec) => new Map(Object.entries(rec))),
       )
       .transform((rec) => new Map(Object.entries(rec))),
   }),
@@ -189,6 +207,10 @@ export type DeliveryPeriodScore = Pick<
 >["score"];
 export type PlayerScores = Pick<
   Extract<WSMessage, { type: "PlayerScores" }>,
+  "scores"
+>["scores"];
+export type FinalScores = Pick<
+  Extract<WSMessage, { type: "FinalScores" }>,
   "scores"
 >["scores"];
 export type MarketForecast = Omit<

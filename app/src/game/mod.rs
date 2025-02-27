@@ -27,6 +27,16 @@ struct Player {
 }
 
 #[derive(Debug)]
+pub enum GetPreviousScoresResult {
+    PlayerScores {
+        scores: HashMap<DeliveryPeriodId, PlayerScore>,
+    },
+    AllPlayersScores {
+        scores: HashMap<PlayerId, HashMap<DeliveryPeriodId, PlayerScore>>,
+    },
+}
+
+#[derive(Debug)]
 pub enum GameMessage {
     RegisterPlayer {
         name: String,
@@ -36,7 +46,7 @@ pub enum GameMessage {
     DeliveryPeriodResults(DeliveryPeriodResults),
     GetPreviousScores {
         player_id: PlayerId,
-        tx_back: oneshot::Sender<HashMap<DeliveryPeriodId, PlayerScore>>,
+        tx_back: oneshot::Sender<GetPreviousScoresResult>,
     },
 }
 
@@ -47,7 +57,7 @@ pub enum RegisterPlayerResponse {
         stack: StackContext<StackService>,
     },
     PlayerAlreadyExist,
-    GameIsRunning,
+    GameStarted,
 }
 
 #[derive(Debug, PartialEq, Clone)]

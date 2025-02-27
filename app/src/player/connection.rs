@@ -19,7 +19,7 @@ use crate::{
     forecast::ForecastLevel,
     game::{
         delivery_period::DeliveryPeriodId, scores::PlayerScore, GameContext, GameId, GameMessage,
-        GameState,
+        GameState, GetPreviousScoresResult,
     },
     market::{
         order_book::{OrderRequest as MarketOrderRequest, TradeLeg},
@@ -88,6 +88,9 @@ pub enum PlayerMessage {
     DeliveryPeriodResults {
         delivery_period: DeliveryPeriodId,
         score: PlayerScore,
+    },
+    FinalScores {
+        scores: HashMap<PlayerId, HashMap<DeliveryPeriodId, PlayerScore>>,
     },
 }
 
@@ -242,8 +245,16 @@ async fn send_previous_scores<MS: Market, PS: Stack>(
     let scores = rx
         .await
         .map_err(|_| PlayerConnectionError::InternalConnectionError)?;
-    ws.send(serde_json::to_string(&PlayerScores { scores })?.into())
-        .await?;
+    match scores {
+        GetPreviousScoresResult::PlayerScores { scores } => {
+            ws.send(serde_json::to_string(&PlayerScores { scores })?.into())
+                .await?;
+        }
+        GetPreviousScoresResult::AllPlayersScores { scores } => {
+            ws.send(serde_json::to_string(&PlayerMessage::FinalScores { scores })?.into())
+                .await?;
+        }
+    }
     Ok(())
 }
 
