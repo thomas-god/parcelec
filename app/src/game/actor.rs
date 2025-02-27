@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use super::delivery_period::{start_delivery_period, DeliveryPeriodId, DeliveryPeriodResults};
-use super::scores::{ComputeRankings, PlayerScore};
+use super::scores::{GameRankings, PlayerScore};
 use super::{GameContext, GameId, GameMessage, GetPreviousScoresResult};
 use futures_util::future::join_all;
 use tokio::sync::{
@@ -24,7 +24,7 @@ use crate::{
 /// - new player registration,
 /// - passing game context to new player connection (market and player's stack tx),
 /// - delivery period lifecycle
-pub struct Game<MS: Market, R: ComputeRankings> {
+pub struct Game<MS: Market> {
     game_id: GameId,
     state: GameState,
     state_watch: watch::Sender<GameState>,
@@ -38,16 +38,16 @@ pub struct Game<MS: Market, R: ComputeRankings> {
     current_delivery_period: DeliveryPeriodId,
     last_delivery_period: Option<DeliveryPeriodId>,
     all_players_ready_tx: Option<oneshot::Sender<()>>,
-    ranking_calculator: R,
+    ranking_calculator: GameRankings,
 }
 
-impl<MS: Market, R: ComputeRankings> Game<MS, R> {
+impl<MS: Market> Game<MS> {
     pub fn start(
         game_id: &GameId,
         players_connections: mpsc::Sender<ConnectionRepositoryMessage>,
         market_context: MarketContext<MS>,
         last_delivery_period: Option<DeliveryPeriodId>,
-        ranking_calculator: R,
+        ranking_calculator: GameRankings,
     ) -> GameContext {
         let initial_state = GameState::Open;
         let (tx, rx) = channel::<GameMessage>(32);
@@ -305,7 +305,7 @@ impl<MS: Market, R: ComputeRankings> Game<MS, R> {
 
 #[cfg(test)]
 mod tests {
-    use std::{collections::HashMap, time::Duration};
+    use std::time::Duration;
 
     use tokio::{
         sync::{
@@ -318,10 +318,8 @@ mod tests {
 
     use crate::{
         game::{
-            delivery_period::DeliveryPeriodId,
-            scores::{ComputeRankings, PlayerRanking, PlayerScore},
-            GameContext, GameId, GameMessage, GameState, GetPreviousScoresResult,
-            RegisterPlayerResponse,
+            delivery_period::DeliveryPeriodId, scores::GameRankings, GameContext, GameId,
+            GameMessage, GameState, GetPreviousScoresResult, RegisterPlayerResponse,
         },
         market::{order_book::TradeLeg, Market, MarketContext, MarketForecast, MarketState, OBS},
         plants::{
@@ -366,23 +364,12 @@ mod tests {
         async fn register_forecast(&self, _forecast: crate::market::MarketForecast) {}
     }
 
-    #[derive(Debug, Clone)]
-    struct MockRankingCalculator {}
-    impl ComputeRankings for MockRankingCalculator {
-        fn compute_scores(
-            &self,
-            _players_scores: &HashMap<PlayerId, HashMap<DeliveryPeriodId, PlayerScore>>,
-        ) -> Vec<PlayerRanking> {
-            Vec::new()
-        }
-    }
-
     fn open_game() -> (GameContext, MarketContext<MockMarket>) {
         let (tx, _) = mpsc::channel(16);
         let game_id = GameId::default();
         let (state_tx, rx) = watch::channel(MarketState::Closed);
         let market = MockMarket { state_tx };
-        let ranking_calculator = MockRankingCalculator {};
+        let ranking_calculator = GameRankings { tier_limits: None };
 
         let market_context = MarketContext {
             service: market,
@@ -657,7 +644,7 @@ mod tests {
             service: MockMarket { state_tx },
             state_rx: rx,
         };
-        let ranking_calculator = MockRankingCalculator {};
+        let ranking_calculator = GameRankings { tier_limits: None };
         let game = Game::start(&game_id, conn_tx, market, None, ranking_calculator);
 
         // Start game
@@ -696,7 +683,7 @@ mod tests {
             service: MockMarket { state_tx },
             state_rx: rx,
         };
-        let ranking_calculator = MockRankingCalculator {};
+        let ranking_calculator = GameRankings { tier_limits: None };
         let game = Game::start(&game_id, conn_tx, market, None, ranking_calculator);
 
         // Start the game
@@ -748,7 +735,7 @@ mod tests {
             state_rx: rx,
         };
 
-        let ranking_calculator = MockRankingCalculator {};
+        let ranking_calculator = GameRankings { tier_limits: None };
         // Create a game with 2 max delivery periods
         let mut game = Game::start(
             &game_id,
@@ -840,7 +827,7 @@ mod tests {
             service: MockMarket { state_tx },
             state_rx: rx,
         };
-        let ranking_calculator = MockRankingCalculator {};
+        let ranking_calculator = GameRankings { tier_limits: None };
         let mut game = Game::start(
             &game_id,
             conn_tx,
@@ -902,7 +889,7 @@ mod tests {
             service: MockMarket { state_tx },
             state_rx: rx,
         };
-        let ranking_calculator = MockRankingCalculator {};
+        let ranking_calculator = GameRankings { tier_limits: None };
         let mut game = Game::start(
             &game_id,
             conn_tx,

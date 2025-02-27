@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use delivery_period::{DeliveryPeriodId, DeliveryPeriodResults};
-use scores::{PlayerRanking, PlayerScore};
+use scores::{PlayerResult, PlayerScore};
 use serde::{ser::SerializeStruct, Serialize};
 use tokio::sync::{
     mpsc::{self},
@@ -32,7 +32,7 @@ pub enum GetPreviousScoresResult {
         scores: HashMap<DeliveryPeriodId, PlayerScore>,
     },
     PlayersRanking {
-        scores: Vec<PlayerRanking>,
+        scores: Vec<PlayerResult>,
     },
 }
 

@@ -3,7 +3,7 @@
   import {
     parseMessage,
     type DeliveryPeriodScore,
-    type FinalScores,
+    type GameResults,
     type MarketForecast,
     type OrderBook,
     type StackForecasts,
@@ -35,7 +35,7 @@
     $state("Open");
   let delivery_period_id = $state(0);
   let scores: SvelteMap<number, DeliveryPeriodScore> = $state(new SvelteMap());
-  let final_scores: FinalScores = $state(new Map());
+  let final_scores: GameResults = $state(new Array());
   let market_forecasts: SvelteMap<number, MarketForecast[]> = $state(
     new SvelteMap(),
   );
@@ -97,8 +97,8 @@
             scores.set(Number(k), v);
           }
         })
-        .with({ type: "FinalScores" }, ({ scores }) => {
-          final_scores = scores;
+        .with({ type: "GameResults" }, ({ rankings }) => {
+          final_scores = rankings;
         })
         .with({ type: "NewMarketForecast" }, (forecast) => {
           if (market_forecasts.has(forecast.period)) {
@@ -240,7 +240,32 @@
           <Scores {scores} current_period={delivery_period_id} />
         </div>
       {:else if game_state === "Ended"}
-        {final_scores.entries().toArray()}
+        <ol class="list bg-base-100 rounded-box shadow-md">
+          {#each final_scores as score (score.player)}
+            <li class="list-row items-center">
+              <div class="text-4xl font-thin opacity-30 tabular-nums">
+                {score.rank}
+              </div>
+              <div>
+                {score.player}:
+              </div>
+              <div>
+                {score.score.toLocaleString("fr-FR", {
+                  signDisplay: "exceptZero",
+                })} €
+                {#if score.tier === "Gold"}
+                  🥇
+                {:else if score.tier === "Silver"}
+                  🥈
+                {:else if score.tier === "Bronze"}
+                  🥉
+                {:else}
+                  👍
+                {/if}
+              </div>
+            </li>
+          {/each}
+        </ol>
       {/if}
       <div
         class="fixed bottom-0 bg-success text-success-content rounded-t-md p-2 pb-4 w-screen max-w-[600px] flex flex-col items-center text-xl"

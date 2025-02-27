@@ -10,8 +10,9 @@ use tower_cookies::{
 use crate::{
     bots::start_bots,
     game::{
-        delivery_period::DeliveryPeriodId, scores::PnLRanking, Game, GameId, GameMessage,
-        RegisterPlayerResponse,
+        delivery_period::DeliveryPeriodId,
+        scores::{GameRankings, TierLimits},
+        Game, GameId, GameMessage, RegisterPlayerResponse,
     },
     market::MarketActor,
 };
@@ -25,13 +26,19 @@ pub async fn create_tutorial_game(
     let mut state = state.write().await;
     let game_id = GameId::default();
     let market_context = MarketActor::start(&game_id, state.player_connections_repository.clone());
-    let last_delivery_period = DeliveryPeriodId::from(2);
+    let last_delivery_period = DeliveryPeriodId::from(4);
     let game_context = Game::start(
         &game_id,
         state.player_connections_repository.clone(),
         market_context.clone(),
         Some(last_delivery_period),
-        PnLRanking {},
+        GameRankings {
+            tier_limits: Some(TierLimits {
+                gold: 5000,
+                silver: 1000,
+                bronze: 0,
+            }),
+        },
     );
 
     state

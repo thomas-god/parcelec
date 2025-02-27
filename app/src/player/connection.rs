@@ -19,7 +19,7 @@ use crate::{
     forecast::ForecastLevel,
     game::{
         delivery_period::DeliveryPeriodId,
-        scores::{PlayerRanking, PlayerScore},
+        scores::{PlayerResult, PlayerScore},
         GameContext, GameId, GameMessage, GameState, GetPreviousScoresResult,
     },
     market::{
@@ -91,7 +91,7 @@ pub enum PlayerMessage {
         score: PlayerScore,
     },
     GameResults {
-        rankings: Vec<PlayerRanking>,
+        rankings: Vec<PlayerResult>,
     },
 }
 

@@ -127,22 +127,20 @@ const WSMessageSchema = z.discriminatedUnion("type", [
       .transform((rec) => new Map(Object.entries(rec))),
   }),
   z.object({
-    type: z.literal("FinalScores"),
-    scores: z
-      .record(
-        z.string(),
-        z
-          .record(
-            z.coerce.number(),
-            z.object({
-              balance: z.number(),
-              pnl: z.number(),
-              imbalance_cost: z.number(),
-            }),
-          )
-          .transform((rec) => new Map(Object.entries(rec))),
-      )
-      .transform((rec) => new Map(Object.entries(rec))),
+    type: z.literal("GameResults"),
+    rankings: z.array(
+      z.object({
+        player: z.string(),
+        rank: z.number(),
+        score: z.number(),
+        tier: z.union([
+          z.literal("Bronze"),
+          z.literal("Silver"),
+          z.literal("Gold"),
+          z.null(),
+        ]),
+      }),
+    ),
   }),
   z.object({
     type: z.literal("NewMarketForecast"),
@@ -209,10 +207,10 @@ export type PlayerScores = Pick<
   Extract<WSMessage, { type: "PlayerScores" }>,
   "scores"
 >["scores"];
-export type FinalScores = Pick<
-  Extract<WSMessage, { type: "FinalScores" }>,
-  "scores"
->["scores"];
+export type GameResults = Pick<
+  Extract<WSMessage, { type: "GameResults" }>,
+  "rankings"
+>["rankings"];
 export type MarketForecast = Omit<
   Extract<WSMessage, { type: "NewMarketForecast" }>,
   "type"
