@@ -26,6 +26,13 @@ impl PlayerName {
     pub fn random() -> PlayerName {
         PlayerName::from(petname(3, "-").unwrap_or("default".to_string()))
     }
+
+    pub fn parse(value: &str) -> Option<PlayerName> {
+        if value.is_empty() {
+            return None;
+        }
+        Some(PlayerName(value.to_string()))
+    }
 }
 
 #[cfg(test)]

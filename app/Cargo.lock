@@ -833,6 +833,7 @@ dependencies = [
  "thiserror",
  "tokio",
  "tokio-tungstenite",
+ "tower",
  "tower-cookies",
  "tower-http",
  "tracing",

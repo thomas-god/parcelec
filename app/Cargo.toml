@@ -25,3 +25,4 @@ futures = "0.3.31"
 http-body-util = "0.1.2"
 mockall = "0.13.1"
 tokio-tungstenite = "0.26.2"
+tower = { version = "0.5.2", features = ["util"] }

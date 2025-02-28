@@ -106,6 +106,13 @@ impl GameId {
     pub fn into_string(self) -> String {
         self.0
     }
+
+    pub fn parse(value: &str) -> Option<GameId> {
+        if value.is_empty() {
+            return None;
+        }
+        Some(GameId(value.to_string()))
+    }
 }
 
 impl Default for GameId {
