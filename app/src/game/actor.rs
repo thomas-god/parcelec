@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use super::delivery_period::{start_delivery_period, DeliveryPeriodId, DeliveryPeriodResults};
-use super::scores::{GameRankings, PlayerScore};
+use super::scores::{GameRankings, PlayerResult, PlayerScore};
 use super::{GameContext, GameId, GameMessage, GetPreviousScoresResult};
 use futures_util::future::join_all;
 use tokio::sync::{
@@ -10,7 +10,7 @@ use tokio::sync::{
 };
 
 use crate::game::{GameState, Player, RegisterPlayerResponse};
-use crate::player::connection::PlayerMessage;
+use crate::player::connection::{PlayerMessage, PlayerResultView};
 use crate::player::PlayerName;
 use crate::{
     market::{Market, MarketContext},
@@ -96,9 +96,11 @@ impl<MS: Market> Game<MS> {
                 use GetPreviousScoresResult::*;
                 let scores = match self.state {
                     GameState::Ended(_) => PlayersRanking {
-                        scores: self
-                            .ranking_calculator
-                            .compute_scores(&self.players_scores.clone()),
+                        scores: map_rankings_to_player_name(
+                            self.ranking_calculator
+                                .compute_scores(&self.players_scores.clone()),
+                            &self.players,
+                        ),
                     },
                     _ => PlayerScores {
                         scores: self
@@ -183,7 +185,10 @@ impl<MS: Market> Game<MS> {
                     .send(ConnectionRepositoryMessage::SendToAllPlayers(
                         self.game_id.clone(),
                         PlayerMessage::GameResults {
-                            rankings: self.ranking_calculator.compute_scores(&self.players_scores),
+                            rankings: map_rankings_to_player_name(
+                                self.ranking_calculator.compute_scores(&self.players_scores),
+                                &self.players,
+                            ),
                         },
                     ))
                     .await;
@@ -306,6 +311,25 @@ impl<MS: Market> Game<MS> {
             }
         }
     }
+}
+
+fn map_rankings_to_player_name(
+    rankings: Vec<PlayerResult>,
+    players: &[Player],
+) -> Vec<PlayerResultView> {
+    rankings
+        .iter()
+        .map(|rank| PlayerResultView {
+            player: players
+                .iter()
+                .find(|player| player.id == rank.player)
+                .map(|player| player.name.clone())
+                .unwrap_or_else(|| PlayerName::from(rank.player.to_string())),
+            rank: rank.rank,
+            score: rank.score,
+            tier: rank.tier.clone(),
+        })
+        .collect()
 }
 
 #[cfg(test)]
@@ -950,5 +974,62 @@ mod tests {
         let Ok(GetPreviousScoresResult::PlayersRanking { scores: _ }) = rx_back.await else {
             unreachable!("Should have received scores for all players");
         };
+    }
+}
+
+#[cfg(test)]
+mod test_rankings_mapping {
+    use crate::{
+        game::{actor::map_rankings_to_player_name, scores::PlayerResult, Player},
+        player::{connection::PlayerResultView, PlayerId, PlayerName},
+    };
+
+    #[test]
+    fn test_map_to_players_name() {
+        let player_id = PlayerId::default();
+        let player_name = PlayerName::random();
+        let players = vec![Player {
+            id: player_id.clone(),
+            name: player_name.clone(),
+            ready: false,
+        }];
+        let rankings = vec![PlayerResult {
+            player: player_id.clone(),
+            rank: 1,
+            score: 0,
+            tier: None,
+        }];
+
+        assert_eq!(
+            map_rankings_to_player_name(rankings, &players),
+            vec![PlayerResultView {
+                player: player_name.clone(),
+                rank: 1,
+                score: 0,
+                tier: None,
+            }]
+        );
+    }
+
+    #[test]
+    fn test_mapping_no_player_name_found_keeps_its_id() {
+        let player_id = PlayerId::default();
+        let players = vec![];
+        let rankings = vec![PlayerResult {
+            player: player_id.clone(),
+            rank: 1,
+            score: 0,
+            tier: None,
+        }];
+
+        assert_eq!(
+            map_rankings_to_player_name(rankings, &players),
+            vec![PlayerResultView {
+                player: PlayerName::from(player_id.to_string()),
+                rank: 1,
+                score: 0,
+                tier: None,
+            }]
+        );
     }
 }

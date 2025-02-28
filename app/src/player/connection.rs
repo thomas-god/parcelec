@@ -19,7 +19,7 @@ use crate::{
     forecast::ForecastLevel,
     game::{
         delivery_period::DeliveryPeriodId,
-        scores::{PlayerResult, PlayerScore},
+        scores::{PlayerScore, RankTier},
         GameContext, GameId, GameMessage, GameState, GetPreviousScoresResult,
     },
     market::{
@@ -32,7 +32,7 @@ use crate::{
     },
 };
 
-use super::{repository::ConnectionRepositoryMessage, PlayerId};
+use super::{repository::ConnectionRepositoryMessage, PlayerId, PlayerName};
 
 #[derive(Clone)]
 pub struct PlayerConnection {
@@ -65,6 +65,14 @@ enum WebSocketIncomingMessage {
     ProgramPlant(ProgramPlant),
 }
 
+#[derive(Debug, PartialEq, Clone, Serialize)]
+pub struct PlayerResultView {
+    pub player: PlayerName,
+    pub rank: usize,
+    pub score: isize,
+    pub tier: Option<RankTier>,
+}
+
 #[derive(Clone, Serialize, Debug)]
 #[serde(tag = "type")]
 pub enum PlayerMessage {
@@ -91,7 +99,7 @@ pub enum PlayerMessage {
         score: PlayerScore,
     },
     GameResults {
-        rankings: Vec<PlayerResult>,
+        rankings: Vec<PlayerResultView>,
     },
 }
 

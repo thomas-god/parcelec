@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use delivery_period::{DeliveryPeriodId, DeliveryPeriodResults};
 use derive_more::{AsRef, Display, From};
-use scores::{PlayerResult, PlayerScore};
+use scores::PlayerScore;
 use serde::{ser::SerializeStruct, Serialize};
 use tokio::sync::{
     mpsc::{self},
@@ -11,7 +11,7 @@ use tokio::sync::{
 
 use crate::{
     plants::{actor::StackContext, service::StackService},
-    player::{PlayerId, PlayerName},
+    player::{connection::PlayerResultView, PlayerId, PlayerName},
 };
 
 pub mod actor;
@@ -33,7 +33,7 @@ pub enum GetPreviousScoresResult {
         scores: HashMap<DeliveryPeriodId, PlayerScore>,
     },
     PlayersRanking {
-        scores: Vec<PlayerResult>,
+        scores: Vec<PlayerResultView>,
     },
 }
 

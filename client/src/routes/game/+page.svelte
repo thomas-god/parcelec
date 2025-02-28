@@ -247,7 +247,7 @@
                 {score.rank}
               </div>
               <div>
-                {score.player}:
+                {score.player}
               </div>
               <div>
                 {score.score.toLocaleString("fr-FR", {
