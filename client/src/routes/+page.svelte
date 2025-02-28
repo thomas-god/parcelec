@@ -8,5 +8,6 @@
   <div class="flex flex-col gap-2 text-lg text-center">
     <a href="/tutorial">📖 Tutoriel</a>
     <a href="/game/new">➕ Créer une partie</a>
+    <a href="/games">▶️ Rejoindre une partie</a>
   </div>
 </div>

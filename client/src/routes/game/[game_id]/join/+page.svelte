@@ -18,7 +18,6 @@
     if (rest.status === 201) {
       goto("/game");
     } else {
-      // player_name = "";
       error = true;
     }
   };

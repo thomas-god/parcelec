@@ -1,4 +1,4 @@
-import { type SafeParseReturnType, string, z } from "zod";
+import { type SafeParseReturnType, z } from "zod";
 
 const Direction = z.enum(["Buy", "Sell"]);
 const Volume = z.number().int().positive();
