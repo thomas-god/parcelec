@@ -62,7 +62,7 @@ pub enum RegisterPlayerResponse {
     GameStarted,
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Display)]
 pub enum GameState {
     Open,
     Running(DeliveryPeriodId),
