@@ -1,11 +1,11 @@
 use std::{collections::HashMap, env};
 
-use axum::{extract::State, http::StatusCode, response::IntoResponse, Json};
+use axum::{Json, extract::State, http::StatusCode, response::IntoResponse};
 use serde::{Deserialize, Serialize};
 use tokio::sync::oneshot;
 use tower_cookies::{
-    cookie::{time::Duration, SameSite},
     Cookie, Cookies,
+    cookie::{SameSite, time::Duration},
 };
 
 use crate::{
@@ -115,22 +115,22 @@ pub async fn join_game(
 
 #[cfg(test)]
 mod test_api_join_game {
-    use crate::api::join_game::{join_game, JoinGame};
+    use crate::api::join_game::{JoinGame, join_game};
     use crate::api::{ApiState, AppState};
     use crate::game::{
         GameContext, GameId, GameMessage, GameName, GameState, RegisterPlayerResponse,
     };
-    use crate::plants::actor::{StackContext, StackState};
     use crate::plants::StackService;
+    use crate::plants::actor::{StackContext, StackState};
     use crate::player::PlayerId;
+    use axum::Router;
     use axum::body::Body;
     use axum::http::{self, Request, StatusCode};
     use axum::routing::post;
-    use axum::Router;
     use std::collections::HashMap;
     use std::env;
     use std::sync::Arc;
-    use tokio::sync::{mpsc, watch, RwLock};
+    use tokio::sync::{RwLock, mpsc, watch};
     use tower::ServiceExt;
     use tower_cookies::CookieManagerLayer;
 
@@ -160,8 +160,6 @@ mod test_api_join_game {
 
     #[tokio::test]
     async fn test_join_game_success() {
-        env::set_var("DOMAIN", "test.example.com");
-
         let state = init_state();
         let game_id = GameId::default();
         let (game, mut rx) = start_game(game_id.clone(), GameState::Open);
@@ -220,8 +218,6 @@ mod test_api_join_game {
 
     #[tokio::test]
     async fn test_join_game_player_already_exists() {
-        env::set_var("DOMAIN", "test.example.com");
-
         let state = init_state();
         let game_id = GameId::default();
         let (game, mut rx) = start_game(game_id.clone(), GameState::Open);
@@ -265,8 +261,6 @@ mod test_api_join_game {
 
     #[tokio::test]
     async fn test_join_game_already_started() {
-        env::set_var("DOMAIN", "test.example.com");
-
         let state = init_state();
         let game_id = GameId::default();
         let (game, mut rx) = start_game(game_id.clone(), GameState::Open);
@@ -308,8 +302,6 @@ mod test_api_join_game {
 
     #[tokio::test]
     async fn test_join_game_invalid_game_id() {
-        env::set_var("DOMAIN", "test.example.com");
-
         let state = init_state();
 
         let app = Router::new()
