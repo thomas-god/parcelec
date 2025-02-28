@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
 use delivery_period::{DeliveryPeriodId, DeliveryPeriodResults};
+use derive_more::{AsRef, Display, From};
 use scores::{PlayerResult, PlayerScore};
 use serde::{ser::SerializeStruct, Serialize};
 use tokio::sync::{
@@ -93,11 +94,11 @@ impl Serialize for GameState {
     }
 }
 
-use std::fmt;
-
 use uuid::Uuid;
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Display, From, AsRef)]
+#[from(String, &str)]
+#[as_ref(str)]
 pub struct GameId(String);
 impl GameId {
     pub fn into_string(self) -> String {
@@ -105,29 +106,9 @@ impl GameId {
     }
 }
 
-impl fmt::Display for GameId {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.0)
-    }
-}
 impl Default for GameId {
     fn default() -> Self {
         GameId(Uuid::new_v4().to_string())
-    }
-}
-impl From<String> for GameId {
-    fn from(value: String) -> Self {
-        GameId(value)
-    }
-}
-impl From<&str> for GameId {
-    fn from(value: &str) -> Self {
-        GameId(value.to_string())
-    }
-}
-impl AsRef<str> for GameId {
-    fn as_ref(&self) -> &str {
-        &self.0
     }
 }
 

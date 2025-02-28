@@ -1,6 +1,6 @@
-use core::fmt;
 use std::{collections::HashMap, time::Duration};
 
+use derive_more::{Display, From};
 use futures_util::future::join_all;
 use serde::Serialize;
 use tokio::{
@@ -18,18 +18,11 @@ use crate::{
 
 use super::{scores::PlayerScore, GameMessage};
 
-#[derive(Debug, Clone, PartialEq, PartialOrd, Eq, Hash, Copy, Default, Serialize)]
+#[derive(
+    Debug, Clone, PartialEq, PartialOrd, Eq, Hash, Copy, Default, Serialize, Display, From,
+)]
 pub struct DeliveryPeriodId(isize);
-impl fmt::Display for DeliveryPeriodId {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.0)
-    }
-}
-impl From<isize> for DeliveryPeriodId {
-    fn from(value: isize) -> Self {
-        DeliveryPeriodId(value)
-    }
-}
+
 impl DeliveryPeriodId {
     pub fn previous(&self) -> DeliveryPeriodId {
         DeliveryPeriodId(self.0 - 1)

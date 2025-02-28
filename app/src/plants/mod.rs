@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use std::fmt::{self, Display};
 use std::future::Future;
 
+use derive_more::{AsRef, Display, From};
 use serde::{Deserialize, Serialize};
 use technologies::battery::BatteryPublicRepr;
 use technologies::consumers::ConsumersPublicRepr;
@@ -92,39 +93,14 @@ pub trait PowerPlant {
     fn get_forecast(&self) -> Option<ForecastLevel>;
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, From, Display, AsRef)]
+#[as_ref(str)]
+#[from(&str, String)]
 pub struct PlantId(String);
-
-impl From<&str> for PlantId {
-    fn from(value: &str) -> Self {
-        PlantId(value.to_string())
-    }
-}
-
-impl From<String> for PlantId {
-    fn from(value: String) -> Self {
-        PlantId(value)
-    }
-}
 
 impl Default for PlantId {
     fn default() -> Self {
         PlantId(Uuid::new_v4().to_string())
-    }
-}
-impl fmt::Display for PlantId {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.0)
-    }
-}
-impl PlantId {
-    pub fn into_string(self) -> String {
-        self.0
-    }
-}
-impl AsRef<str> for PlantId {
-    fn as_ref(&self) -> &str {
-        &self.0
     }
 }
 
@@ -135,7 +111,7 @@ mod test {
     #[test]
     fn test_plant_id_from_into_string() {
         assert_eq!(
-            PlantId::from(String::from("toto")).into_string(),
+            PlantId::from(String::from("toto")).to_string(),
             String::from("toto")
         );
     }
