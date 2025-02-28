@@ -97,7 +97,8 @@ impl Serialize for GameState {
 
 use uuid::Uuid;
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Display, From, AsRef)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Display, From, AsRef, Serialize)]
+#[serde(transparent)]
 #[from(String, &str)]
 #[as_ref(str)]
 pub struct GameId(String);
@@ -118,7 +119,8 @@ pub enum NewGameNameError {
     EmptyName,
 }
 
-#[derive(Debug, Clone, PartialEq, Hash, Display, From)]
+#[derive(Debug, Clone, PartialEq, Hash, Display, From, Serialize)]
+#[serde(transparent)]
 pub struct GameName(String);
 impl GameName {
     pub fn new(name: String) -> Result<GameName, NewGameNameError> {

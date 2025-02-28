@@ -8,6 +8,7 @@ use axum::{
     routing::{get, post},
     Router,
 };
+use create_game::create_game;
 use join_game::join_game;
 use tokio::{
     net::TcpListener,
@@ -25,6 +26,7 @@ use crate::{
     player::{repository::ConnectionRepositoryMessage, PlayerId},
 };
 
+mod create_game;
 mod join_game;
 mod tutorial;
 mod ws;
@@ -55,6 +57,7 @@ pub async fn start_server(app_state: ApiState) {
 
 fn build_app(app_state: ApiState, origin: String) -> Router {
     Router::new()
+        .route("/game", post(create_game))
         .route("/game/join", post(join_game))
         .route("/tutorial", post(create_tutorial_game))
         .route("/ws", get(handle_ws_connection))
