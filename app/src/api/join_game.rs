@@ -128,7 +128,6 @@ mod test_api_join_game {
     use axum::http::{self, Request, StatusCode};
     use axum::routing::post;
     use std::collections::HashMap;
-    use std::env;
     use std::sync::Arc;
     use tokio::sync::{RwLock, mpsc, watch};
     use tower::ServiceExt;
