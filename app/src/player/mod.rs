@@ -1,4 +1,5 @@
 use derive_more::{AsRef, Display, From, Into};
+use petname::petname;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
@@ -14,6 +15,16 @@ pub struct PlayerId(String);
 impl Default for PlayerId {
     fn default() -> Self {
         PlayerId(Uuid::new_v4().to_string())
+    }
+}
+
+#[derive(Debug, Serialize, From, Display, Into, PartialEq, Eq, Clone)]
+#[from(String, &str)]
+pub struct PlayerName(String);
+
+impl PlayerName {
+    pub fn random() -> PlayerName {
+        PlayerName::from(petname(3, "-").unwrap_or("default".to_string()))
     }
 }
 

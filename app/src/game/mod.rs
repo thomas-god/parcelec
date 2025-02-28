@@ -11,7 +11,7 @@ use tokio::sync::{
 
 use crate::{
     plants::{actor::StackContext, service::StackService},
-    player::PlayerId,
+    player::{PlayerId, PlayerName},
 };
 
 pub mod actor;
@@ -23,7 +23,7 @@ pub use actor::Game;
 #[derive(Debug)]
 struct Player {
     id: PlayerId,
-    name: String,
+    name: PlayerName,
     ready: bool,
 }
 
@@ -40,7 +40,7 @@ pub enum GetPreviousScoresResult {
 #[derive(Debug)]
 pub enum GameMessage {
     RegisterPlayer {
-        name: String,
+        name: PlayerName,
         tx_back: oneshot::Sender<RegisterPlayerResponse>,
     },
     PlayerIsReady(PlayerId),

@@ -15,6 +15,7 @@ use crate::{
         Game, GameId, GameMessage, RegisterPlayerResponse,
     },
     market::MarketActor,
+    player::PlayerName,
 };
 
 use super::ApiState;
@@ -55,7 +56,7 @@ pub async fn create_tutorial_game(
     });
 
     // Register a player for this game
-    let player_name = "tutorial_player".to_string();
+    let player_name = PlayerName::random();
     let (tx_back, rx) = oneshot::channel();
     let _ = game_context
         .tx
@@ -113,7 +114,7 @@ pub async fn create_tutorial_game(
         .path("/")
         .build();
     cookies.add(game_id_cookie);
-    let name_cookie = Cookie::build(("player_name", player_name.clone()))
+    let name_cookie = Cookie::build(("player_name", player_name.to_string()))
         .max_age(Duration::days(1))
         .same_site(SameSite::Strict)
         .domain(domain)

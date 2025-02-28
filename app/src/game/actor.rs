@@ -11,6 +11,7 @@ use tokio::sync::{
 
 use crate::game::{GameState, Player, RegisterPlayerResponse};
 use crate::player::connection::PlayerMessage;
+use crate::player::PlayerName;
 use crate::{
     market::{Market, MarketContext},
     plants::{
@@ -246,7 +247,11 @@ impl<MS: Market> Game<MS> {
         }
     }
 
-    fn register_player(&mut self, name: String, tx_back: oneshot::Sender<RegisterPlayerResponse>) {
+    fn register_player(
+        &mut self,
+        name: PlayerName,
+        tx_back: oneshot::Sender<RegisterPlayerResponse>,
+    ) {
         if self.players.iter().any(|player| player.name == name) {
             let _ = tx_back.send(RegisterPlayerResponse::PlayerAlreadyExist);
             return;
@@ -326,7 +331,10 @@ mod tests {
             actor::{StackContext, StackState},
             StackService,
         },
-        player::{connection::PlayerMessage, repository::ConnectionRepositoryMessage, PlayerId},
+        player::{
+            connection::PlayerMessage, repository::ConnectionRepositoryMessage, PlayerId,
+            PlayerName,
+        },
     };
 
     use super::Game;
@@ -390,11 +398,11 @@ mod tests {
     async fn register_player(
         game: mpsc::Sender<GameMessage>,
     ) -> (PlayerId, StackContext<StackService>) {
-        let player = PlayerId::default();
+        let player = PlayerName::random();
         let (tx, rx) = channel::<RegisterPlayerResponse>();
         let _ = game
             .send(GameMessage::RegisterPlayer {
-                name: player.to_string(),
+                name: player,
                 tx_back: tx,
             })
             .await;
@@ -418,7 +426,7 @@ mod tests {
         let (tx, rx) = channel::<RegisterPlayerResponse>();
         game.tx
             .send(GameMessage::RegisterPlayer {
-                name: "toto".to_owned(),
+                name: PlayerName::from("toto"),
                 tx_back: tx,
             })
             .await
@@ -432,7 +440,7 @@ mod tests {
         let (tx, rx) = channel::<RegisterPlayerResponse>();
         game.tx
             .send(GameMessage::RegisterPlayer {
-                name: "tutu".to_owned(),
+                name: PlayerName::from("tutu"),
                 tx_back: tx,
             })
             .await
@@ -454,7 +462,7 @@ mod tests {
         let (tx, rx) = channel::<RegisterPlayerResponse>();
         game.tx
             .send(GameMessage::RegisterPlayer {
-                name: "toto".to_owned(),
+                name: PlayerName::from("toto"),
                 tx_back: tx,
             })
             .await
@@ -468,7 +476,7 @@ mod tests {
         let (tx, rx) = channel::<RegisterPlayerResponse>();
         game.tx
             .send(GameMessage::RegisterPlayer {
-                name: "toto".to_owned(),
+                name: PlayerName::from("toto"),
                 tx_back: tx,
             })
             .await
@@ -481,7 +489,7 @@ mod tests {
         let (tx, rx) = channel::<RegisterPlayerResponse>();
         game.tx
             .send(GameMessage::RegisterPlayer {
-                name: "tata".to_owned(),
+                name: PlayerName::from("tata"),
                 tx_back: tx,
             })
             .await
@@ -504,7 +512,7 @@ mod tests {
         let _ = game
             .tx
             .send(GameMessage::RegisterPlayer {
-                name: "toto".to_owned(),
+                name: PlayerName::from("toto"),
                 tx_back: tx,
             })
             .await;
@@ -532,7 +540,7 @@ mod tests {
         let _ = game
             .tx
             .send(GameMessage::RegisterPlayer {
-                name: "toto".to_owned(),
+                name: PlayerName::from("toto"),
                 tx_back: tx,
             })
             .await;

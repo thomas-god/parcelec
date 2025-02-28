@@ -8,7 +8,10 @@ use tower_cookies::{
     Cookie, Cookies,
 };
 
-use crate::game::{GameId, GameMessage, RegisterPlayerResponse};
+use crate::{
+    game::{GameId, GameMessage, RegisterPlayerResponse},
+    player::PlayerName,
+};
 
 use super::ApiState;
 
@@ -43,7 +46,7 @@ pub async fn join_game(
     let _ = game
         .tx
         .send(GameMessage::RegisterPlayer {
-            name: input.name.clone(),
+            name: PlayerName::from(input.name.clone()),
             tx_back: tx,
         })
         .await;
