@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use super::delivery_period::{start_delivery_period, DeliveryPeriodId, DeliveryPeriodResults};
 use super::scores::{GameRankings, PlayerResult, PlayerScore};
-use super::{GameContext, GameId, GameMessage, GetPreviousScoresResult};
+use super::{GameContext, GameId, GameMessage, GameName, GetPreviousScoresResult};
 use futures_util::future::join_all;
 use tokio::sync::{
     mpsc::{self, channel, Receiver, Sender},
@@ -27,6 +27,7 @@ use crate::{
 /// - delivery period lifecycle
 pub struct Game<MS: Market> {
     game_id: GameId,
+    name: GameName,
     state: GameState,
     state_watch: watch::Sender<GameState>,
     players: Vec<Player>,
@@ -45,6 +46,7 @@ pub struct Game<MS: Market> {
 impl<MS: Market> Game<MS> {
     pub fn start(
         game_id: &GameId,
+        name: Option<GameName>,
         players_connections: mpsc::Sender<ConnectionRepositoryMessage>,
         market_context: MarketContext<MS>,
         last_delivery_period: Option<DeliveryPeriodId>,
@@ -55,6 +57,7 @@ impl<MS: Market> Game<MS> {
         let (state_tx, _) = watch::channel(initial_state.clone());
         let mut game = Game {
             game_id: game_id.clone(),
+            name: name.unwrap_or_default(),
             state: initial_state,
             state_watch: state_tx,
             market_context,
@@ -294,6 +297,8 @@ impl<MS: Market> Game<MS> {
 
     fn get_context(&self) -> GameContext {
         GameContext {
+            id: self.game_id.clone(),
+            name: self.name.clone(),
             tx: self.tx.clone(),
             state_rx: self.state_watch.subscribe(),
         }
@@ -410,6 +415,7 @@ mod tests {
         (
             Game::start(
                 &game_id,
+                None,
                 tx,
                 market_context.clone(),
                 None,
@@ -677,7 +683,7 @@ mod tests {
             state_rx: rx,
         };
         let ranking_calculator = GameRankings { tier_limits: None };
-        let game = Game::start(&game_id, conn_tx, market, None, ranking_calculator);
+        let game = Game::start(&game_id, None, conn_tx, market, None, ranking_calculator);
 
         // Start game
         let (player, _) = start_game(game.tx.clone()).await;
@@ -716,7 +722,7 @@ mod tests {
             state_rx: rx,
         };
         let ranking_calculator = GameRankings { tier_limits: None };
-        let game = Game::start(&game_id, conn_tx, market, None, ranking_calculator);
+        let game = Game::start(&game_id, None, conn_tx, market, None, ranking_calculator);
 
         // Start the game
         let (player, _) = start_game(game.tx.clone()).await;
@@ -771,6 +777,7 @@ mod tests {
         // Create a game with 2 max delivery periods
         let mut game = Game::start(
             &game_id,
+            None,
             conn_tx,
             market,
             Some(DeliveryPeriodId::from(2)),
@@ -862,6 +869,7 @@ mod tests {
         let ranking_calculator = GameRankings { tier_limits: None };
         let mut game = Game::start(
             &game_id,
+            None,
             conn_tx,
             market,
             Some(DeliveryPeriodId::from(1)),
@@ -924,6 +932,7 @@ mod tests {
         let ranking_calculator = GameRankings { tier_limits: None };
         let mut game = Game::start(
             &game_id,
+            None,
             conn_tx,
             market,
             Some(DeliveryPeriodId::from(1)),

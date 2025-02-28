@@ -12,7 +12,7 @@ use crate::{
     game::{
         delivery_period::DeliveryPeriodId,
         scores::{GameRankings, TierLimits},
-        Game, GameId, GameMessage, RegisterPlayerResponse,
+        Game, GameId, GameMessage, GameName, RegisterPlayerResponse,
     },
     market::MarketActor,
     player::PlayerName,
@@ -26,10 +26,13 @@ pub async fn create_tutorial_game(
 ) -> impl IntoResponse {
     let mut state = state.write().await;
     let game_id = GameId::default();
+    let player_name = PlayerName::random();
+    let game_name = GameName::from(format!("tutorial-{}", player_name));
     let market_context = MarketActor::start(&game_id, state.player_connections_repository.clone());
     let last_delivery_period = DeliveryPeriodId::from(4);
     let game_context = Game::start(
         &game_id,
+        Some(game_name),
         state.player_connections_repository.clone(),
         market_context.clone(),
         Some(last_delivery_period),
@@ -56,7 +59,6 @@ pub async fn create_tutorial_game(
     });
 
     // Register a player for this game
-    let player_name = PlayerName::random();
     let (tx_back, rx) = oneshot::channel();
     let _ = game_context
         .tx
