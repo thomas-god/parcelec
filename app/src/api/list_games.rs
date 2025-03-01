@@ -1,4 +1,4 @@
-use axum::{extract::State, response::IntoResponse, Json};
+use axum::{Json, extract::State, response::IntoResponse};
 use serde::{Deserialize, Serialize};
 
 use crate::game::GameState;
@@ -40,15 +40,15 @@ pub async fn list_games(State(state): State<ApiState>) -> impl IntoResponse {
 mod test_api_list_games {
     use crate::{
         api::AppState,
-        game::{delivery_period::DeliveryPeriodId, GameContext, GameId, GameName},
+        game::{GameContext, GameId, GameName, delivery_period::DeliveryPeriodId},
     };
 
     use super::*;
     use http_body_util::BodyExt;
-    use serde_json::{json, Value};
+    use serde_json::{Value, json};
     use std::collections::HashMap;
     use std::sync::Arc;
-    use tokio::sync::{mpsc, watch, RwLock};
+    use tokio::sync::{RwLock, mpsc, watch};
 
     fn init_state() -> ApiState {
         let (tx, _) = mpsc::channel(16);

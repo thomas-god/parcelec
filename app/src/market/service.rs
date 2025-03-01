@@ -6,8 +6,8 @@ use tokio::sync::{mpsc, oneshot};
 use crate::{game::delivery_period::DeliveryPeriodId, market::MarketForecast, player::PlayerId};
 
 use super::{
-    order_book::{OrderRequest, Trade, TradeLeg},
     Market, MarketMessage, OBS,
+    order_book::{OrderRequest, Trade, TradeLeg},
 };
 
 #[derive(Debug, Clone)]
@@ -121,9 +121,9 @@ mod tests {
     use crate::{
         game::delivery_period::DeliveryPeriodId,
         market::{
+            Direction, ForecastLevel, MarketForecast, MarketMessage,
             order_book::OrderRequest,
             service::{Market, OBS},
-            Direction, ForecastLevel, MarketForecast, MarketMessage,
         },
         player::PlayerId,
     };

@@ -7,8 +7,8 @@ use tokio::sync::{mpsc, oneshot};
 use crate::{forecast::ForecastLevel, game::delivery_period::DeliveryPeriodId};
 
 use super::{
-    actor::{ProgramPlant, StackMessage},
     CloseStackError, GetSnapshotError, PlantId, PlantOutput, PowerPlantPublicRepr, Stack,
+    actor::{ProgramPlant, StackMessage},
 };
 
 #[derive(Debug, Clone)]
@@ -107,9 +107,9 @@ mod tests {
         forecast::ForecastLevel,
         game::delivery_period::DeliveryPeriodId,
         plants::{
+            PlantId,
             actor::StackMessage,
             service::{Stack, StackService},
-            PlantId,
         },
     };
 

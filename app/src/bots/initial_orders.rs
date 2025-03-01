@@ -1,12 +1,12 @@
-use tokio::sync::mpsc::{channel, Receiver};
+use tokio::sync::mpsc::{Receiver, channel};
 
 use crate::{
     forecast::ForecastLevel,
     game::delivery_period::DeliveryPeriodId,
     market::{
-        order_book::OrderRequest, Direction, Market, MarketContext, MarketForecast, MarketState,
+        Direction, Market, MarketContext, MarketForecast, MarketState, order_book::OrderRequest,
     },
-    player::{connection::PlayerMessage, PlayerId},
+    player::{PlayerId, connection::PlayerMessage},
 };
 
 pub struct InitialOrdersBot<MS: Market> {

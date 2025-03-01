@@ -85,7 +85,7 @@ impl PowerPlant for NuclearPlant {
 #[cfg(test)]
 mod test {
     use crate::plants::{
-        technologies::nuclear::NuclearPlant, PlantOutput, PowerPlant, PowerPlantPublicRepr,
+        PlantOutput, PowerPlant, PowerPlantPublicRepr, technologies::nuclear::NuclearPlant,
     };
 
     use super::NuclearPublicRepr;

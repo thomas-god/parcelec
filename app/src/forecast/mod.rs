@@ -25,7 +25,7 @@ pub fn map_value_to_forecast_level(value: isize, max: isize) -> ForecastLevel {
 
 #[cfg(test)]
 mod tests {
-    use crate::forecast::{map_value_to_forecast_level, ForecastLevel};
+    use crate::forecast::{ForecastLevel, map_value_to_forecast_level};
 
     #[test]
     fn test_map_forecast_level_default_min() {

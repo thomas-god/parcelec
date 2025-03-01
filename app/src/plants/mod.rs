@@ -60,7 +60,7 @@ pub trait Stack: Clone + Send + Sync + 'static {
 
     /// Get a forecast, if available, for each plant of the stack, for the next delivery period.
     fn get_forecasts(&self)
-        -> impl Future<Output = HashMap<PlantId, Option<ForecastLevel>>> + Send;
+    -> impl Future<Output = HashMap<PlantId, Option<ForecastLevel>>> + Send;
 }
 
 #[derive(Debug, Serialize, Clone, Copy)]

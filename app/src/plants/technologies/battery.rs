@@ -91,7 +91,7 @@ impl PowerPlant for Battery {
 
 #[cfg(test)]
 mod tests {
-    use crate::plants::{technologies::battery::Battery, PlantOutput, PowerPlant};
+    use crate::plants::{PlantOutput, PowerPlant, technologies::battery::Battery};
 
     #[test]
     fn test_battery() {

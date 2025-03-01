@@ -6,8 +6,8 @@ use tokio::sync::mpsc;
 use crate::game::GameId;
 
 use super::{
-    connection::{PlayerConnection, PlayerMessage},
     PlayerId,
+    connection::{PlayerConnection, PlayerMessage},
 };
 
 #[derive(Debug)]
@@ -88,8 +88,8 @@ mod test {
     use crate::{
         game::GameId,
         player::{
-            connection::{PlayerConnection, PlayerMessage},
             PlayerId,
+            connection::{PlayerConnection, PlayerMessage},
         },
     };
 

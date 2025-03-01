@@ -4,13 +4,13 @@ use futures_util::future::join_all;
 use tokio::sync::{mpsc, oneshot, watch};
 
 use super::{
+    MarketContext, MarketForecast, MarketService, MarketState, OBS, OrderRepr,
     order_book::{OrderBook, OrderRequest, Trade, TradeLeg},
-    MarketContext, MarketForecast, MarketService, MarketState, OrderRepr, OBS,
 };
 
 use crate::{
-    game::{delivery_period::DeliveryPeriodId, GameId},
-    player::{connection::PlayerMessage, repository::ConnectionRepositoryMessage, PlayerId},
+    game::{GameId, delivery_period::DeliveryPeriodId},
+    player::{PlayerId, connection::PlayerMessage, repository::ConnectionRepositoryMessage},
 };
 
 #[derive(Debug)]
@@ -295,9 +295,9 @@ mod tests {
     };
 
     use crate::{
-        game::{delivery_period::DeliveryPeriodId, GameId},
-        market::{order_book::OrderRequest, Direction, ForecastLevel, MarketForecast, MarketState},
-        player::{repository::ConnectionRepositoryMessage, PlayerId},
+        game::{GameId, delivery_period::DeliveryPeriodId},
+        market::{Direction, ForecastLevel, MarketForecast, MarketState, order_book::OrderRequest},
+        player::{PlayerId, repository::ConnectionRepositoryMessage},
     };
 
     use super::{MarketActor, MarketMessage, PlayerMessage};

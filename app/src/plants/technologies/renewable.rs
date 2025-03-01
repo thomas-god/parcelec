@@ -1,7 +1,7 @@
 use serde::Serialize;
 
 use crate::{
-    forecast::{map_value_to_forecast_level, ForecastLevel},
+    forecast::{ForecastLevel, map_value_to_forecast_level},
     plants::{PlantOutput, PowerPlant, PowerPlantPublicRepr},
 };
 

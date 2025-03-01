@@ -1,19 +1,19 @@
 use std::{collections::HashMap, env, sync::Arc};
 
 use axum::{
+    Router,
     http::{
-        header::{CONTENT_TYPE, COOKIE},
         HeaderValue, Method,
+        header::{CONTENT_TYPE, COOKIE},
     },
     routing::{get, post},
-    Router,
 };
 use create_game::create_game;
 use join_game::join_game;
 use list_games::list_games;
 use tokio::{
     net::TcpListener,
-    sync::{mpsc, RwLock},
+    sync::{RwLock, mpsc},
 };
 use tower_cookies::CookieManagerLayer;
 use tower_http::{cors::CorsLayer, trace::TraceLayer};
@@ -23,8 +23,8 @@ use ws::handle_ws_connection;
 use crate::{
     game::{GameContext, GameId},
     market::{MarketContext, MarketService},
-    plants::{actor::StackContext, StackService},
-    player::{repository::ConnectionRepositoryMessage, PlayerId},
+    plants::{StackService, actor::StackContext},
+    player::{PlayerId, repository::ConnectionRepositoryMessage},
 };
 
 mod create_game;

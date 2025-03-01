@@ -71,7 +71,7 @@ impl PowerPlant for GasPlant {
 
 #[cfg(test)]
 mod tests {
-    use crate::plants::{technologies::gas_plant::GasPlant, PlantOutput, PowerPlant};
+    use crate::plants::{PlantOutput, PowerPlant, technologies::gas_plant::GasPlant};
 
     #[test]
     fn test_gas_plant() {

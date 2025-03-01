@@ -1,6 +1,6 @@
 use std::{collections::HashMap, sync::Arc};
 
-use api::{start_server, AppState};
+use api::{AppState, start_server};
 use player::repository::PlayerConnectionRepository;
 use tokio::sync::RwLock;
 

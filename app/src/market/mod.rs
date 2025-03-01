@@ -1,7 +1,7 @@
 use std::{fmt::Debug, future::Future};
 
 use chrono::{DateTime, Utc};
-use serde::{ser::SerializeStruct, Deserialize, Serialize};
+use serde::{Deserialize, Serialize, ser::SerializeStruct};
 use tokio::sync::watch;
 
 use order_book::{Bid, Offer, OrderRequest, Trade, TradeLeg};
@@ -143,13 +143,13 @@ mod test_order_repr {
     use uuid::Uuid;
 
     use crate::{
-        market::{order_book::Bid, OrderRepr},
+        market::{OrderRepr, order_book::Bid},
         player::PlayerId,
     };
 
     use super::{
-        order_book::{Offer, Order},
         Direction,
+        order_book::{Offer, Order},
     };
 
     #[test]

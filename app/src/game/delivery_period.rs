@@ -11,12 +11,12 @@ use tokio::{
 
 use crate::{
     game::scores::compute_players_scores,
-    market::{order_book::Trade, Market},
+    market::{Market, order_book::Trade},
     plants::{PlantId, PlantOutput, Stack},
     player::PlayerId,
 };
 
-use super::{scores::PlayerScore, GameMessage};
+use super::{GameMessage, scores::PlayerScore};
 
 #[derive(
     Debug, Clone, PartialEq, PartialOrd, Eq, Hash, Copy, Default, Serialize, Display, From,
@@ -195,13 +195,13 @@ mod tests {
     use std::{collections::HashMap, time::Duration};
 
     use futures::future;
-    use mockall::{predicate::eq, Sequence};
+    use mockall::{Sequence, predicate::eq};
     use tokio::sync::{mpsc, oneshot};
 
     use crate::{
         game::{
-            delivery_period::{start_delivery_period, DeliveryPeriodId, DeliveryPeriodTimers},
             GameMessage,
+            delivery_period::{DeliveryPeriodId, DeliveryPeriodTimers, start_delivery_period},
         },
         market::service::MockMarketService,
         plants::service::MockStackService,
