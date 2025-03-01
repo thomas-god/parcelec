@@ -105,7 +105,6 @@ impl MarketActor {
     async fn process_message(&mut self, message: MarketMessage) {
         match (&self.state, message) {
             (_, MarketMessage::GetMarketSnapshot { player_id, tx_back }) => {
-                tracing::info!("New player: {player_id:?}");
                 self.players.push(player_id.clone());
                 let _ = tx_back.send((
                     self.player_trades(&player_id),
@@ -134,14 +133,7 @@ impl MarketActor {
             }
             (MarketState::Open, MarketMessage::CloseMarket { tx_back, period_id }) => {
                 if period_id == self.delivery_period {
-                    tracing::info!("Closing market for period: {period_id:?}");
-                    let trades = self.order_book.drain();
-                    self.past_trades.insert(period_id, trades.clone());
-                    self.state = MarketState::Closed;
-                    let _ = tx_back.send(trades);
-                    let _ = self.state_sender.send(MarketState::Closed);
-                    self.send_order_book_snapshot_to_all().await;
-                    self.send_empty_trade_list_to_all().await;
+                    self.close_market(period_id, tx_back).await;
                 }
             }
             (MarketState::Closed, MarketMessage::CloseMarket { period_id, tx_back }) => {
@@ -164,39 +156,70 @@ impl MarketActor {
         }
     }
 
+    async fn close_market(
+        &mut self,
+        period_id: DeliveryPeriodId,
+        tx_back: oneshot::Sender<Vec<Trade>>,
+    ) {
+        tracing::info!("Closing market for period: {period_id:?}");
+
+        // Drain trades from order book and store them
+        let trades = self.order_book.drain();
+        self.past_trades.insert(period_id, trades.clone());
+
+        // Update market state
+        self.state = MarketState::Closed;
+        let _ = self.state_sender.send(MarketState::Closed);
+
+        // Send trades back to requester
+        let _ = tx_back.send(trades);
+
+        // Notify all players about the updated state
+        self.send_order_book_snapshot_to_all().await;
+        self.send_empty_trade_list_to_all().await;
+    }
+
     async fn register_forecast(&mut self, forecast: MarketForecast) {
         if forecast.period == self.delivery_period {
             tracing::warn!(
-                "Period {:?} is running, cannot received market forecast",
+                "Period {:?} is running, cannot receive market forecast",
                 forecast.period
             );
-        } else if forecast.period < self.delivery_period {
-            tracing::warn!(
-                "Period {:?} is closed, cannot received market forecast",
-                forecast.period
-            );
-        } else {
-            match self.forecasts.get_mut(&forecast.period) {
-                Some(forecasts) => {
-                    forecasts.push(forecast.clone());
-                }
-                None => {
-                    self.forecasts
-                        .insert(forecast.period, vec![forecast.clone()]);
-                }
-            };
-            tracing::info!(
-                "Registered market forecast for delivery period {:?}",
-                forecast.period
-            );
-            let _ = self
-                .players_connections
-                .send(ConnectionRepositoryMessage::SendToAllPlayers(
-                    self.game_id.clone(),
-                    PlayerMessage::NewMarketForecast(forecast),
-                ))
-                .await;
+            return;
         }
+
+        if forecast.period < self.delivery_period {
+            tracing::warn!(
+                "Period {:?} is closed, cannot receive market forecast",
+                forecast.period
+            );
+            return;
+        }
+
+        // Store forecast
+        match self.forecasts.get_mut(&forecast.period) {
+            Some(forecasts) => {
+                forecasts.push(forecast.clone());
+            }
+            None => {
+                self.forecasts
+                    .insert(forecast.period, vec![forecast.clone()]);
+            }
+        };
+
+        tracing::info!(
+            "Registered market forecast for delivery period {:?}",
+            forecast.period
+        );
+
+        // Broadcast forecast to all players
+        let _ = self
+            .players_connections
+            .send(ConnectionRepositoryMessage::SendToAllPlayers(
+                self.game_id.clone(),
+                PlayerMessage::NewMarketForecast(forecast),
+            ))
+            .await;
     }
 
     async fn send_order_book_snapshot_to_all(&self) {
@@ -259,13 +282,7 @@ impl MarketActor {
             .collect()
     }
 
-    #[tracing::instrument(name = "ActorMarket::process_order_request", skip(self))]
-    async fn process_order_request(&mut self, request: OrderRequest) {
-        let trades = self.order_book.register_order_request(request);
-        tracing::info!("New trades: {trades:?}");
-
-        self.send_order_book_snapshot_to_all().await;
-
+    async fn notify_trades(&self, trades: &[Trade]) {
         if !trades.is_empty() {
             join_all(trades.iter().flat_map(|trade| {
                 trade.split().map(|leg| {
@@ -279,6 +296,18 @@ impl MarketActor {
             }))
             .await;
         }
+    }
+
+    #[tracing::instrument(name = "ActorMarket::process_order_request", skip(self))]
+    async fn process_order_request(&mut self, request: OrderRequest) {
+        let trades = self.order_book.register_order_request(request);
+        tracing::info!("New trades: {trades:?}");
+
+        // Update all players with new order book state
+        self.send_order_book_snapshot_to_all().await;
+
+        // Notify players about their trades
+        self.notify_trades(&trades).await;
     }
 }
 

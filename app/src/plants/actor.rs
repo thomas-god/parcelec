@@ -178,17 +178,7 @@ impl StackActor {
             }
             (Open, CloseStack { tx_back, period_id }) => {
                 if period_id == self.delivery_period {
-                    self.state = Closed;
-                    let plant_outputs: HashMap<PlantId, PlantOutput> = self
-                        .stack
-                        .iter_mut()
-                        .map(|(plant_id, plant)| (plant_id.clone(), plant.dispatch()))
-                        .collect();
-                    self.past_outputs.insert(period_id, plant_outputs.clone());
-                    let _ = tx_back.send(plant_outputs);
-                    let _ = self.state_sender.send(Closed);
-                    self.send_stack_snapshot().await;
-                    self.send_stack_forecasts().await;
+                    self.close_stack(period_id, tx_back).await;
                 }
             }
             (Closed, CloseStack { period_id, tx_back }) => {
@@ -239,6 +229,35 @@ impl StackActor {
             .iter()
             .map(|(plant_id, plant)| (plant_id.to_owned(), plant.get_forecast()))
             .collect()
+    }
+
+    async fn close_stack(
+        &mut self,
+        period_id: DeliveryPeriodId,
+        tx_back: oneshot::Sender<HashMap<PlantId, PlantOutput>>,
+    ) {
+        // Update state
+        self.state = StackState::Closed;
+
+        // Collect outputs from plants
+        let plant_outputs: HashMap<PlantId, PlantOutput> = self
+            .stack
+            .iter_mut()
+            .map(|(plant_id, plant)| (plant_id.clone(), plant.dispatch()))
+            .collect();
+
+        // Store outputs for future reference
+        self.past_outputs.insert(period_id, plant_outputs.clone());
+
+        // Send outputs back to caller
+        let _ = tx_back.send(plant_outputs);
+
+        // Update state and notify
+        let _ = self.state_sender.send(StackState::Closed);
+
+        // Notify player about updated stack state
+        self.send_stack_snapshot().await;
+        self.send_stack_forecasts().await;
     }
 
     async fn program_plant_setpoint(&mut self, plant_id: PlantId, setpoint: isize) {

@@ -49,7 +49,7 @@ pub async fn handle_ws_connection(
     let player_context = PlayerConnectionContext {
         game_id: game_id.clone(),
         player_id: player_id.clone(),
-        player_name: player_name,
+        player_name,
         game: game_context.clone(),
         market: market_context.clone(),
         stack: stack_context.clone(),
