@@ -162,11 +162,10 @@ pub async fn start_player_connection<MS: Market, PS: Stack>(
     register_connection(tx, connection_id, &context).await;
 
     send_initial_stack_snapshot(&mut ws, &context).await?;
-
     send_initial_trades_and_obs(&mut ws, &context).await?;
-
     send_stack_forecasts(&mut ws, &context).await?;
     send_previous_scores(&mut ws, &context).await?;
+    send_readiness_satus(&mut ws, &context).await?;
 
     let (sink, stream) = ws.split();
     let sink_handle = tokio::spawn(process_internal_messages(
@@ -269,6 +268,24 @@ async fn send_previous_scores<MS: Market, PS: Stack>(
             .await?;
         }
     }
+    Ok(())
+}
+async fn send_readiness_satus<MS: Market, PS: Stack>(
+    ws: &mut WebSocket,
+    context: &PlayerConnectionContext<MS, PS>,
+) -> Result<(), PlayerConnectionError> {
+    let (tx_back, rx) = oneshot::channel();
+    context
+        .game
+        .tx
+        .send(GameMessage::GetReadiness { tx_back })
+        .await
+        .map_err(|_| PlayerConnectionError::InternalConnectionError)?;
+    let readiness = rx
+        .await
+        .map_err(|_| PlayerConnectionError::InternalConnectionError)?;
+    ws.send(serde_json::to_string(&PlayerMessage::ReadinessStatus { readiness })?.into())
+        .await?;
     Ok(())
 }
 

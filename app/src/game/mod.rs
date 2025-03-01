@@ -4,7 +4,7 @@ use delivery_period::{DeliveryPeriodId, DeliveryPeriodResults};
 use derive_more::{AsRef, Display, From};
 use petname::petname;
 use scores::PlayerScore;
-use serde::{ser::SerializeStruct, Serialize};
+use serde::{Serialize, ser::SerializeStruct};
 use tokio::sync::{
     mpsc::{self},
     oneshot, watch,
@@ -12,7 +12,7 @@ use tokio::sync::{
 
 use crate::{
     plants::{actor::StackContext, service::StackService},
-    player::{connection::PlayerResultView, PlayerId, PlayerName},
+    player::{PlayerId, PlayerName, connection::PlayerResultView},
 };
 
 pub mod actor;
@@ -49,6 +49,9 @@ pub enum GameMessage {
     GetScores {
         player_id: PlayerId,
         tx_back: oneshot::Sender<GetPreviousScoresResult>,
+    },
+    GetReadiness {
+        tx_back: oneshot::Sender<HashMap<PlayerName, bool>>,
     },
 }
 

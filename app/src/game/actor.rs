@@ -93,6 +93,14 @@ impl<MS: Market> Game<MS> {
             GameMessage::GetScores { player_id, tx_back } => {
                 self.send_scores(player_id, tx_back);
             }
+            GameMessage::GetReadiness { tx_back } => {
+                let _ = tx_back.send(
+                    self.players
+                        .iter()
+                        .map(|player| (player.name.clone(), player.ready))
+                        .collect(),
+                );
+            }
             GameMessage::PlayerIsReady(player_id) => {
                 let _ = self.register_player_ready(player_id).await;
             }

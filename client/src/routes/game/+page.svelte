@@ -9,6 +9,7 @@
     type StackForecasts,
     type StackSnapshot,
     type Trade,
+    type ReadinessStatus,
   } from "$lib/message";
   import { PUBLIC_WS_URL } from "$env/static/public";
   import OrderBookElement from "../../components/organisms/OrderBook.svelte";
@@ -39,8 +40,8 @@
   let market_forecasts: SvelteMap<number, MarketForecast[]> = $state(
     new SvelteMap(),
   );
-  $inspect(final_scores);
-
+  let readiness_status: ReadinessStatus = $state(new SvelteMap());
+  $inspect(readiness_status);
   const connect = () => {
     const socket = new WebSocket(`${PUBLIC_WS_URL}/ws`);
     socket.onmessage = (msg) => {
@@ -116,6 +117,9 @@
             }
           }
         })
+        .with({ type: "ReadinessStatus" }, (readiness) => {
+          readiness_status = readiness.readiness;
+        })
         .exhaustive();
     };
     socket.onopen = () => {
@@ -167,6 +171,10 @@
       >
         {#if game_state === "Running"}
           <CurrentScore {position} {pnl} />
+        {:else if game_state === "Open"}
+          <div class="text-2xl text-center mx-auto">
+            En attente d'autres joueurs
+          </div>
         {:else if game_state === "Ended"}
           <div class="text-2xl text-center mx-auto">Partie terminée !</div>
         {:else}
@@ -231,10 +239,18 @@
             </div>
           </div>
         {/if}
-        <!-- </div> -->
       {:else if game_state === "Open"}
-        <p>En attente d'autres joueurs</p>
-        <button onclick={startGame}>Ready!</button>
+        <ul class="list bg-base-100 rounded-box shadow-md">
+          <li class="p-4 pb-2 text-xs opacity-60 tracking-wide">Joueurs</li>
+          {#each readiness_status as [player, ready] (player)}
+            <li class="list-row">
+              <div class="list-col-grow">{player}</div>
+              <div>
+                {ready ? "✅" : "⌛"}
+              </div>
+            </li>
+          {/each}
+        </ul>
       {:else if game_state === "PostDelivery"}
         <div class="flex flex-col">
           <Scores {scores} current_period={delivery_period_id} />
@@ -273,6 +289,8 @@
         <button onclick={startGame}>
           {#if game_state === "Running"}
             Terminer la phase ➡️
+          {:else if game_state === "Open"}
+            Commencer la partie ➡️
           {:else if game_state === "Ended"}
             Retour au menu ➡️
           {:else}

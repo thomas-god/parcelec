@@ -162,6 +162,12 @@ const WSMessageSchema = z.discriminatedUnion("type", [
       }),
     ),
   }),
+  z.object({
+    type: z.literal("ReadinessStatus"),
+    readiness: z
+      .record(z.string(), z.boolean())
+      .transform((rec) => new Map(Object.entries(rec))),
+  }),
 ]);
 
 type WSMessage = z.infer<typeof WSMessageSchema>;
@@ -215,6 +221,10 @@ export type MarketForecast = Omit<
   Extract<WSMessage, { type: "NewMarketForecast" }>,
   "type"
 >;
+export type ReadinessStatus = Extract<
+  WSMessage,
+  { type: "ReadinessStatus" }
+>["readiness"];
 
 export const parseMessage = (
   msg: string,
