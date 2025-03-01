@@ -16,7 +16,6 @@
   import { goto } from "$app/navigation";
   import Stack from "../../components/organisms/Stack.svelte";
   import CurrentScore from "../../components/molecules/CurrentScore.svelte";
-  import { fade } from "svelte/transition";
   import { plantsPosition, marketPosition } from "$lib/position";
   import { marketPnl, plantsPnl } from "$lib/pnl";
   import { SvelteMap } from "svelte/reactivity";
@@ -38,6 +37,14 @@
     offers: [],
   });
   let trades: Trade[] = $state([]);
+  let trades_to_display: Trade[] = $state([]);
+  const removeTradeToDisplay = (trade_to_remove: Trade) => {
+    trades_to_display = trades_to_display.filter(
+      (trade) =>
+        trade.direction !== trade_to_remove.direction ||
+        trade.execution_time !== trade_to_remove.execution_time,
+    );
+  };
   let plants: StackSnapshot = $state(new Map());
   let plant_forecasts: StackForecasts = $state(new Map());
   let market_state: "Open" | "Closed" = $state("Open");
@@ -79,8 +86,7 @@
         })
         .with({ type: "NewTrade" }, (new_trade) => {
           trades.push(new_trade);
-          show_last_trade = true;
-          debouncedHideLastTrade();
+          trades_to_display.push(new_trade);
         })
         .with({ type: "StackSnapshot" }, (stack_snapshot) => {
           plants = stack_snapshot.plants;
@@ -166,14 +172,7 @@
     }
     sendMessage(JSON.stringify("PlayerIsReady"));
   };
-  let show_last_trade = $state(false);
-  let debounceTimer: ReturnType<typeof setTimeout>;
-  const debouncedHideLastTrade = () => {
-    clearTimeout(debounceTimer);
-    debounceTimer = setTimeout(() => {
-      show_last_trade = false;
-    }, 3000);
-  };
+
   let plants_position = $derived(plantsPosition(plants));
   let trades_position = $derived(marketPosition(trades));
   let position = $derived(plants_position + trades_position);
@@ -237,28 +236,23 @@
             />
           </div>
         </div>
-        {#if show_last_trade && trades.length > 0}
-          <div
-            transition:fade
-            id="bottom-banner"
-            tabindex="-1"
-            class="fixed bottom-0 start-0 z-50 flex justify-between w-full p-4 border-t border-gray-200 bg-gray-50 dark:bg-gray-700 dark:border-gray-600"
-          >
-            <div class="flex items-center mx-auto">
-              <p
-                class="flex items-center text-md font-normal text-gray-500 dark:text-gray-400"
-              >
-                <span
-                  >Nouveau trade: {trades.at(-1)?.volume}MW {trades.at(-1)
-                    ?.direction === "Buy"
-                    ? "achetés"
-                    : "vendus"}
-                  @ {0.01 * (trades.at(-1)?.price as number)}€ 🤑</span
+
+        <div class="toast mb-14 items-center content-center">
+          {#each trades_to_display as trade (`${trade.direction}-${trade.execution_time}`)}
+            <div class="alert alert-info self-center">
+              <span
+                >Nouveau trade: {trade.volume}MW {trade.direction === "Buy"
+                  ? "achetés"
+                  : "vendus"}
+                @ {0.01 * (trade.price as number)}€
+                <button
+                  class="text-lg pl-2"
+                  onclick={() => removeTradeToDisplay(trade)}>✖️</button
                 >
-              </p>
+              </span>
             </div>
-          </div>
-        {/if}
+          {/each}
+        </div>
       {:else if game_state === "Open"}
         <ul class="list bg-base-100 rounded-box shadow-md">
           <li class="p-4 pb-2 text-xs opacity-60 tracking-wide">Joueurs</li>
@@ -318,8 +312,8 @@
           {/each}
         </ol>
       {/if}
-      <div
-        class="fixed bottom-0 bg-success text-success-content rounded-t-md p-2 pb-4 w-screen max-w-[600px] flex flex-col items-center text-xl"
+      <footer
+        class="footer fixed bottom-0 bg-success text-success-content rounded-t-md p-2 pb-4 w-screen max-w-[600px] flex flex-col items-center text-xl"
       >
         <button onclick={startGame}>
           {#if game_state === "Running"}
@@ -342,7 +336,7 @@
             Phase suivante ➡️
           {/if}</button
         >
-      </div>
+      </footer>
     </div>
   {:else}
     <p>Not connected</p>

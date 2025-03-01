@@ -41,13 +41,11 @@
 
 <div class="flex flex-col">
   <div class="flex flex-row justify-between">
-    <!-- <h2 class="text-lg font-bold pl-2">Marché</h2> -->
-
-    <div>
+    <div class="pb-2">
       {#if market_position > 0}
-        acheté : {market_position} MWh
+        Acheté : {market_position} MWh
       {:else if market_position < 0}
-        vendu : {Math.abs(market_position)} MWh
+        Vendu : {Math.abs(market_position)} MWh
       {/if}
     </div>
   </div>
