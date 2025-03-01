@@ -302,11 +302,14 @@
                   signDisplay: "exceptZero",
                 })} €
                 {#if score.tier === "Gold"}
-                  🥇
+                  <!-- 🥇 -->
+                  ⭐⭐⭐
                 {:else if score.tier === "Silver"}
-                  🥈
+                  <!-- 🥈 -->
+                  ⭐⭐
                 {:else if score.tier === "Bronze"}
-                  🥉
+                  <!-- 🥉 -->
+                  ⭐
                 {:else}
                   👍
                 {/if}

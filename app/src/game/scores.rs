@@ -4,8 +4,8 @@ use serde::Serialize;
 
 use crate::{
     market::{
-        order_book::{Trade, TradeLeg},
         Direction,
+        order_book::{Trade, TradeLeg},
     },
     plants::{PlantId, PlantOutput},
     player::PlayerId,
@@ -13,7 +13,7 @@ use crate::{
 
 use super::delivery_period::DeliveryPeriodId;
 
-const POSITIVE_IMBALANCE_COST: isize = 50;
+const POSITIVE_IMBALANCE_COST: isize = 15;
 const NEGATIVE_IMBALANCE_COST: isize = 100;
 
 #[derive(Debug, PartialEq, Default, Clone, Serialize)]
@@ -112,7 +112,7 @@ mod tests {
 
     use crate::{
         game::scores::{
-            compute_players_scores, PlayerScore, NEGATIVE_IMBALANCE_COST, POSITIVE_IMBALANCE_COST,
+            NEGATIVE_IMBALANCE_COST, POSITIVE_IMBALANCE_COST, PlayerScore, compute_players_scores,
         },
         market::order_book::Trade,
         plants::{PlantId, PlantOutput},

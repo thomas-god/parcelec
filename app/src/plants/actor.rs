@@ -1,24 +1,24 @@
 use std::collections::HashMap;
 
-use serde::{ser::SerializeStruct, Deserialize, Serialize};
+use serde::{Deserialize, Serialize, ser::SerializeStruct};
 use tokio::sync::{
-    mpsc::{self, channel, Receiver, Sender},
+    mpsc::{self, Receiver, Sender, channel},
     oneshot, watch,
 };
 
 use crate::{
     forecast::ForecastLevel,
-    game::{delivery_period::DeliveryPeriodId, GameId},
+    game::{GameId, delivery_period::DeliveryPeriodId},
     plants::PlantOutput,
-    player::{connection::PlayerMessage, repository::ConnectionRepositoryMessage, PlayerId},
+    player::{PlayerId, connection::PlayerMessage, repository::ConnectionRepositoryMessage},
 };
 
 use super::{
+    PlantId, PowerPlant, PowerPlantPublicRepr, Stack, StackService,
     technologies::{
         battery::Battery, consumers::Consumers, gas_plant::GasPlant, nuclear::NuclearPlant,
         renewable::RenewablePlant,
     },
-    PlantId, PowerPlant, PowerPlantPublicRepr, Stack, StackService,
 };
 
 #[derive(Debug, Deserialize)]
@@ -172,7 +172,9 @@ impl StackActor {
                 }
             }
             (Open, OpenStack(period)) => {
-                tracing::warn!("Trying to open stack for delivery period {period:?}, but stack is already open.")
+                tracing::warn!(
+                    "Trying to open stack for delivery period {period:?}, but stack is already open."
+                )
             }
             (Open, CloseStack { tx_back, period_id }) => {
                 if period_id == self.delivery_period {
@@ -250,13 +252,13 @@ impl StackActor {
 
 fn default_stack() -> HashMap<PlantId, Box<dyn PowerPlant + Send + Sync>> {
     let mut map: HashMap<PlantId, Box<dyn PowerPlant + Send + Sync>> = HashMap::new();
-    map.insert(PlantId::default(), Box::new(Battery::new(1_000, 0)));
-    map.insert(PlantId::default(), Box::new(GasPlant::new(85, 900)));
+    map.insert(PlantId::default(), Box::new(Battery::new(300, 0)));
+    map.insert(PlantId::default(), Box::new(GasPlant::new(80, 500)));
     map.insert(
         PlantId::default(),
         Box::new(RenewablePlant::new_with_looping(
-            700,
-            vec![0, 250, 700, 200],
+            300,
+            vec![0, 150, 300, 100],
         )),
     );
     map.insert(
@@ -264,10 +266,10 @@ fn default_stack() -> HashMap<PlantId, Box<dyn PowerPlant + Send + Sync>> {
         Box::new(Consumers::new_with_looping(
             1500,
             56,
-            vec![-600, -900, -600, -1200],
+            vec![-900, -1200, -600, -1800],
         )),
     );
-    map.insert(PlantId::default(), Box::new(NuclearPlant::new(1200, 35)));
+    map.insert(PlantId::default(), Box::new(NuclearPlant::new(1000, 35)));
     map
 }
 
@@ -281,12 +283,12 @@ mod tests_stack {
     };
 
     use crate::{
-        game::{delivery_period::DeliveryPeriodId, GameId},
+        game::{GameId, delivery_period::DeliveryPeriodId},
         plants::{
-            actor::{ProgramPlant, StackActor, StackMessage, StackState},
             PlantId, PowerPlantPublicRepr,
+            actor::{ProgramPlant, StackActor, StackMessage, StackState},
         },
-        player::{connection::PlayerMessage, repository::ConnectionRepositoryMessage, PlayerId},
+        player::{PlayerId, connection::PlayerMessage, repository::ConnectionRepositoryMessage},
     };
 
     fn start_stack() -> (

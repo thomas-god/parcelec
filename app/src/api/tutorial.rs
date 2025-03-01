@@ -3,16 +3,16 @@ use std::{collections::HashMap, env};
 use axum::{extract::State, http::StatusCode, response::IntoResponse};
 use tokio::sync::oneshot;
 use tower_cookies::{
-    cookie::{time::Duration, SameSite},
     Cookie, Cookies,
+    cookie::{SameSite, time::Duration},
 };
 
 use crate::{
     bots::start_bots,
     game::{
+        Game, GameId, GameMessage, GameName, RegisterPlayerResponse,
         delivery_period::DeliveryPeriodId,
         scores::{GameRankings, TierLimits},
-        Game, GameId, GameMessage, GameName, RegisterPlayerResponse,
     },
     market::MarketActor,
     player::PlayerName,
@@ -38,9 +38,9 @@ pub async fn create_tutorial_game(
         Some(last_delivery_period),
         GameRankings {
             tier_limits: Some(TierLimits {
-                gold: 5000,
-                silver: 1000,
-                bronze: 0,
+                gold: 80_000,
+                silver: 50_000,
+                bronze: 25_000,
             }),
         },
     );
