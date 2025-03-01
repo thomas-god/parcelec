@@ -2,14 +2,14 @@ use std::{collections::HashMap, fmt::Debug};
 
 use axum::extract::ws::{Message, WebSocket};
 use futures_util::{
-    stream::{SplitSink, SplitStream},
     SinkExt, StreamExt,
+    stream::{SplitSink, SplitStream},
 };
 use serde::{Deserialize, Serialize};
 use tokio::{
     select,
     sync::{
-        mpsc::{self, channel, Receiver, Sender},
+        mpsc::{self, Receiver, Sender, channel},
         oneshot, watch,
     },
 };
@@ -18,21 +18,21 @@ use uuid::Uuid;
 use crate::{
     forecast::ForecastLevel,
     game::{
+        GameContext, GameId, GameMessage, GameState, GetPreviousScoresResult,
         delivery_period::DeliveryPeriodId,
         scores::{PlayerScore, RankTier},
-        GameContext, GameId, GameMessage, GameState, GetPreviousScoresResult,
     },
     market::{
-        order_book::{OrderRequest as MarketOrderRequest, TradeLeg},
         Direction, Market, MarketContext, MarketForecast, MarketState, OrderRepr,
+        order_book::{OrderRequest as MarketOrderRequest, TradeLeg},
     },
     plants::{
-        actor::{ProgramPlant, StackContext, StackState},
         GetSnapshotError, PlantId, PowerPlantPublicRepr, Stack,
+        actor::{ProgramPlant, StackContext, StackState},
     },
 };
 
-use super::{repository::ConnectionRepositoryMessage, PlayerId, PlayerName};
+use super::{PlayerId, PlayerName, repository::ConnectionRepositoryMessage};
 
 #[derive(Clone)]
 pub struct PlayerConnection {
@@ -100,6 +100,9 @@ pub enum PlayerMessage {
     },
     GameResults {
         rankings: Vec<PlayerResultView>,
+    },
+    ReadinessStatus {
+        readiness: HashMap<PlayerName, bool>,
     },
 }
 

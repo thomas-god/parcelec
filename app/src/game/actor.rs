@@ -10,8 +10,8 @@ use tokio::sync::{
 };
 
 use crate::game::{GameState, Player, RegisterPlayerResponse};
+use crate::player::PlayerName;
 use crate::player::connection::{PlayerMessage, PlayerResultView};
-use crate::player::{self, PlayerName};
 use crate::{
     market::{Market, MarketContext},
     plants::{
@@ -135,6 +135,7 @@ impl<MS: Market> Game<MS> {
                 }
             }
         };
+        let _ = self.send_readiness_status().await;
     }
 
     fn start_next_delivery_period(&mut self) {
@@ -254,13 +255,28 @@ impl<MS: Market> Game<MS> {
             id: player_id,
             stack: stack_context,
         });
+
+        let _ = self.send_readiness_status().await;
+    }
+
+    async fn send_readiness_status(&self) {
+        let _ = self
+            .players_connections
+            .send(ConnectionRepositoryMessage::SendToAllPlayers(
+                self.game_id.clone(),
+                PlayerMessage::ReadinessStatus {
+                    readiness: self
+                        .players
+                        .iter()
+                        .map(|player| (player.name.clone(), player.ready))
+                        .collect(),
+                },
+            ))
+            .await;
     }
 
     fn send_scores(&self, player: PlayerId, tx_back: oneshot::Sender<GetPreviousScoresResult>) {
         use GetPreviousScoresResult::*;
-        dbg!(&self.state);
-        dbg!(&player);
-        dbg!(&self.players_scores);
         let scores = match self.state {
             GameState::Ended(_) => PlayersRanking {
                 scores: map_rankings_to_player_name(
@@ -708,13 +724,17 @@ mod tests {
 
         // Start game
         let (player, _) = start_game(game.tx.clone()).await;
+        // Consume readiness status messages (1 register, 1 game start)
+        let _ = conn_rx.recv().await;
+        let _ = conn_rx.recv().await;
 
         // End delivery period
         let _ = game
             .tx
             .send(GameMessage::PlayerIsReady(player.clone()))
             .await;
-        // Flush snapshot and forecasts sent at the end of the delivery
+        // Flush readiness, snapshot and forecasts sent at the end of the delivery
+        let _ = conn_rx.recv().await;
         let _ = conn_rx.recv().await;
         let _ = conn_rx.recv().await;
 
@@ -747,6 +767,9 @@ mod tests {
 
         // Start the game
         let (player, _) = start_game(game.tx.clone()).await;
+        // Consume readiness status messages (1 register, 1 game start)
+        let _ = conn_rx.recv().await;
+        let _ = conn_rx.recv().await;
 
         // Scores should be empty at this stage
         let (tx_back, rx) = oneshot::channel();
@@ -767,6 +790,8 @@ mod tests {
             .tx
             .send(GameMessage::PlayerIsReady(player.clone()))
             .await;
+        // Consume score and readiness status messages
+        let _ = conn_rx.recv().await;
         let _ = conn_rx.recv().await;
 
         // Request player's scores
@@ -1061,5 +1086,106 @@ mod test_rankings_mapping {
                 tier: None,
             }]
         );
+    }
+}
+
+#[cfg(test)]
+mod test_readiness_status {
+
+    use crate::{game::actor::test_utils::register_player, market::MarketState};
+
+    use super::{test_utils::MockMarket, *};
+    use tokio::sync::mpsc;
+
+    fn start_game() -> (mpsc::Receiver<ConnectionRepositoryMessage>, GameContext) {
+        let (conn_tx, conn_rx) = mpsc::channel(16);
+        let game_id = GameId::default();
+        let (state_tx, rx) = watch::channel(MarketState::Closed);
+        let market = MarketContext {
+            service: MockMarket { state_tx },
+            state_rx: rx,
+        };
+        let ranking_calculator = GameRankings { tier_limits: None };
+        let game = Game::start(
+            &game_id,
+            None,
+            conn_tx,
+            market,
+            Some(DeliveryPeriodId::from(1)),
+            ranking_calculator,
+        );
+        (conn_rx, game)
+    }
+
+    #[tokio::test]
+    async fn test_send_readiness_status_when_player_registers() {
+        let (mut conn_rx, game) = start_game();
+        let (_, name, _) = register_player(game.tx.clone()).await;
+
+        let Some(ConnectionRepositoryMessage::SendToAllPlayers(
+            _,
+            PlayerMessage::ReadinessStatus { readiness },
+        )) = conn_rx.recv().await
+        else {
+            unreachable!("Should have received a readiness status message")
+        };
+        assert!(readiness.contains_key(&name));
+        assert_eq!(*readiness.get(&name).unwrap(), false);
+    }
+
+    #[tokio::test]
+    async fn test_send_readiness_status_when_player_is_ready() {
+        let (mut conn_rx, game) = start_game();
+        let (player_id, name, _) = register_player(game.tx.clone()).await;
+        // Consume first readiness status
+        let _ = conn_rx.recv().await;
+
+        let (_, _, _) = register_player(game.tx.clone()).await;
+        // Consume second readiness status
+        let _ = conn_rx.recv().await;
+
+        // Player is ready
+        let _ = game.tx.send(GameMessage::PlayerIsReady(player_id)).await;
+
+        // Receive updated readiness status
+        let Some(ConnectionRepositoryMessage::SendToAllPlayers(
+            _,
+            PlayerMessage::ReadinessStatus { readiness },
+        )) = conn_rx.recv().await
+        else {
+            unreachable!("Should have received a readiness status message")
+        };
+        assert!(readiness.contains_key(&name));
+        assert_eq!(*readiness.get(&name).unwrap(), true);
+    }
+
+    #[tokio::test]
+    async fn test_readiness_status_is_reset_to_false_when_all_players_ready() {
+        let (mut conn_rx, game) = start_game();
+        let (player_id, name, _) = register_player(game.tx.clone()).await;
+        // Consume first readiness status
+        let _ = conn_rx.recv().await;
+
+        let (player2, _, _) = register_player(game.tx.clone()).await;
+        // Consume second readiness status
+        let _ = conn_rx.recv().await;
+
+        // Player is ready, consume readiness message
+        let _ = game.tx.send(GameMessage::PlayerIsReady(player_id)).await;
+        let _ = conn_rx.recv().await;
+
+        // All players are ready
+        let _ = game.tx.send(GameMessage::PlayerIsReady(player2)).await;
+
+        // Receive updated readiness status
+        let Some(ConnectionRepositoryMessage::SendToAllPlayers(
+            _,
+            PlayerMessage::ReadinessStatus { readiness },
+        )) = conn_rx.recv().await
+        else {
+            unreachable!("Should have received a readiness status message")
+        };
+        assert!(readiness.contains_key(&name));
+        assert_eq!(*readiness.get(&name).unwrap(), false);
     }
 }

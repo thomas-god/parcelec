@@ -18,7 +18,7 @@ impl Default for PlayerId {
     }
 }
 
-#[derive(Debug, Serialize, From, Display, Into, PartialEq, Eq, Clone)]
+#[derive(Debug, Serialize, From, Display, Into, PartialEq, Eq, Clone, Hash)]
 #[from(String, &str)]
 pub struct PlayerName(String);
 
