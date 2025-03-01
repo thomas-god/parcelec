@@ -1,11 +1,11 @@
 use axum::{
-    extract::{ws::WebSocket, State, WebSocketUpgrade},
+    extract::{State, WebSocketUpgrade, ws::WebSocket},
     http::StatusCode,
     response::IntoResponse,
 };
 use tower_cookies::{
-    cookie::{time::Duration, SameSite},
     Cookie, Cookies,
+    cookie::{SameSite, time::Duration},
 };
 
 use crate::{
@@ -13,8 +13,8 @@ use crate::{
     market::Market,
     plants::Stack,
     player::{
-        connection::{start_player_connection, PlayerConnectionContext},
-        PlayerId,
+        PlayerId, PlayerName,
+        connection::{PlayerConnectionContext, start_player_connection},
     },
 };
 
@@ -25,7 +25,7 @@ pub async fn handle_ws_connection(
     State(state): State<ApiState>,
     cookies: Cookies,
 ) -> impl IntoResponse {
-    let Some((player_id, game_id)) = extract_cookies(&cookies) else {
+    let Some((player_id, player_name, game_id)) = extract_cookies(&cookies) else {
         invalidate_cookies(cookies);
         return StatusCode::UNAUTHORIZED.into_response();
     };
@@ -49,6 +49,7 @@ pub async fn handle_ws_connection(
     let player_context = PlayerConnectionContext {
         game_id: game_id.clone(),
         player_id: player_id.clone(),
+        player_name: player_name,
         game: game_context.clone(),
         market: market_context.clone(),
         stack: stack_context.clone(),
@@ -79,17 +80,17 @@ fn invalidate_cookies(cookies: Cookies) {
     cookies.add(name_cookie);
 }
 
-fn extract_cookies(cookies: &Cookies) -> Option<(PlayerId, GameId)> {
+fn extract_cookies(cookies: &Cookies) -> Option<(PlayerId, PlayerName, GameId)> {
     let id = cookies
         .get("player_id")
         .map(|c| PlayerId::from(c.value_trimmed()))?;
-    let _ = cookies
+    let name = cookies
         .get("player_name")
-        .map(|c| c.value_trimmed().to_string())?;
+        .map(|c| PlayerName::from(c.value_trimmed()))?;
     let game_id = cookies
         .get("game_id")
         .map(|c| GameId::from(c.value_trimmed()))?;
-    Some((id, game_id))
+    Some((id, name, game_id))
 }
 
 async fn handle_socket<MS: Market, PS: Stack>(
@@ -105,7 +106,7 @@ async fn handle_socket<MS: Market, PS: Stack>(
 
 #[cfg(test)]
 mod tests {
-    use crate::api::{build_app, AppState};
+    use crate::api::{AppState, build_app};
     use axum::http::{Request, StatusCode};
     use std::{
         collections::HashMap,
@@ -113,8 +114,8 @@ mod tests {
         net::{Ipv4Addr, SocketAddr},
         sync::Arc,
     };
-    use tokio::sync::{mpsc, RwLock};
-    use tokio_tungstenite::tungstenite::{client::IntoClientRequest, Error};
+    use tokio::sync::{RwLock, mpsc};
+    use tokio_tungstenite::tungstenite::{Error, client::IntoClientRequest};
 
     async fn build_server() -> SocketAddr {
         let (tx_conn, _) = mpsc::channel(1024);

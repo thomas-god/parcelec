@@ -168,6 +168,10 @@ const WSMessageSchema = z.discriminatedUnion("type", [
       .record(z.string(), z.boolean())
       .transform((rec) => new Map(Object.entries(rec))),
   }),
+  z.object({
+    type: z.literal("YourName"),
+    name: z.string(),
+  }),
 ]);
 
 type WSMessage = z.infer<typeof WSMessageSchema>;

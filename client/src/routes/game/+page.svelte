@@ -23,6 +23,16 @@
   import Scores from "../../components/organisms/ScoresSummary.svelte";
   import Forecasts from "../../components/organisms/Forecasts.svelte";
 
+  let player_name: String = $state("");
+  let player_is_ready = $derived.by(() => {
+    let found = sorted_readines_status.find(
+      (status) => status.player === player_name,
+    );
+    if (found === undefined) {
+      return false;
+    }
+    return found.ready;
+  });
   let orderBook: OrderBook = $state({
     bids: [],
     offers: [],
@@ -41,7 +51,14 @@
     new SvelteMap(),
   );
   let readiness_status: ReadinessStatus = $state(new SvelteMap());
-  $inspect(readiness_status);
+  let sorted_readines_status = $derived.by(() => {
+    let sorted_status: { player: string; ready: boolean }[] = [];
+    for (const [player, ready] of readiness_status) {
+      sorted_status.push({ player, ready });
+    }
+    sorted_status.sort((a, b) => (a.player > b.player ? 1 : -1));
+    return sorted_status;
+  });
   const connect = () => {
     const socket = new WebSocket(`${PUBLIC_WS_URL}/ws`);
     socket.onmessage = (msg) => {
@@ -119,6 +136,9 @@
         })
         .with({ type: "ReadinessStatus" }, (readiness) => {
           readiness_status = readiness.readiness;
+        })
+        .with({ type: "YourName" }, (p_name) => {
+          player_name = p_name.name;
         })
         .exhaustive();
     };
@@ -242,9 +262,15 @@
       {:else if game_state === "Open"}
         <ul class="list bg-base-100 rounded-box shadow-md">
           <li class="p-4 pb-2 text-xs opacity-60 tracking-wide">Joueurs</li>
-          {#each readiness_status as [player, ready] (player)}
+          {#each sorted_readines_status as { player, ready } (player)}
             <li class="list-row">
-              <div class="list-col-grow">{player}</div>
+              {#if player === player_name}
+                <div class="list-col-grow font-semibold">
+                  {player}
+                </div>
+              {:else}
+                <div class="list-col-grow">{player}</div>
+              {/if}
               <div>
                 {ready ? "✅" : "⌛"}
               </div>
@@ -262,9 +288,15 @@
               <div class="text-4xl font-thin opacity-30 tabular-nums">
                 {score.rank}
               </div>
-              <div>
-                {score.player}
-              </div>
+              {#if score.player === player_name}
+                <div class="font-semibold">
+                  {score.player}
+                </div>
+              {:else}
+                <div>
+                  {score.player}
+                </div>
+              {/if}
               <div>
                 {score.score.toLocaleString("fr-FR", {
                   signDisplay: "exceptZero",
@@ -288,11 +320,21 @@
       >
         <button onclick={startGame}>
           {#if game_state === "Running"}
-            Terminer la phase ➡️
+            {#if player_is_ready}
+              En attente des autres joueurs
+            {:else}
+              Terminer la phase ➡️
+            {/if}
           {:else if game_state === "Open"}
-            Commencer la partie ➡️
+            {#if player_is_ready}
+              En attente des autres joueurs
+            {:else}
+              Commencer la partie ➡️
+            {/if}
           {:else if game_state === "Ended"}
             Retour au menu ➡️
+          {:else if player_is_ready}
+            En attente des autres joueurs
           {:else}
             Phase suivante ➡️
           {/if}</button
