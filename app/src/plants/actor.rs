@@ -192,7 +192,7 @@ impl StackActor {
     async fn send_stack_snapshot(&self) {
         let stack_snapshot = self.stack_snapshot();
 
-        let _ = self
+        if let Err(err) = self
             .players_connections
             .send(ConnectionRepositoryMessage::SendToPlayer(
                 self.game.clone(),
@@ -201,20 +201,34 @@ impl StackActor {
                     plants: stack_snapshot,
                 },
             ))
-            .await;
+            .await
+        {
+            tracing::error!(
+                game_id = ?self.game,
+                player_id = ?self.player,
+                "Failed to send stack snapshot to player: {:?}", err
+            );
+        }
     }
 
     async fn send_stack_forecasts(&self) {
         let forecasts = self.stack_forecasts();
 
-        let _ = self
+        if let Err(err) = self
             .players_connections
             .send(ConnectionRepositoryMessage::SendToPlayer(
                 self.game.clone(),
                 self.player.clone(),
                 PlayerMessage::StackForecasts { forecasts },
             ))
-            .await;
+            .await
+        {
+            tracing::error!(
+                game_id = ?self.game,
+                player_id = ?self.player,
+                "Failed to send stack forecasts to player: {:?}", err
+            );
+        }
     }
 
     fn stack_snapshot(&self) -> HashMap<PlantId, PowerPlantPublicRepr> {
@@ -250,10 +264,23 @@ impl StackActor {
         self.past_outputs.insert(period_id, plant_outputs.clone());
 
         // Send outputs back to caller
-        let _ = tx_back.send(plant_outputs);
+        if let Err(err) = tx_back.send(plant_outputs) {
+            tracing::error!(
+                game_id = ?self.game,
+                player_id = ?self.player,
+                period_id = ?period_id,
+                "Failed to send plant outputs back to requester: {:?}", err
+            );
+        }
 
         // Update state and notify
-        let _ = self.state_sender.send(StackState::Closed);
+        if let Err(err) = self.state_sender.send(StackState::Closed) {
+            tracing::error!(
+                game_id = ?self.game,
+                player_id = ?self.player,
+                "Failed to broadcast stack state change: {:?}", err
+            );
+        }
 
         // Notify player about updated stack state
         self.send_stack_snapshot().await;

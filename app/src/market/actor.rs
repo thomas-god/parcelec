@@ -161,7 +161,11 @@ impl MarketActor {
         period_id: DeliveryPeriodId,
         tx_back: oneshot::Sender<Vec<Trade>>,
     ) {
-        tracing::info!("Closing market for period: {period_id:?}");
+        tracing::info!(
+            game_id = ?self.game_id,
+            period_id = ?period_id,
+            "Closing market for period"
+        );
 
         // Drain trades from order book and store them
         let trades = self.order_book.drain();
@@ -169,10 +173,23 @@ impl MarketActor {
 
         // Update market state
         self.state = MarketState::Closed;
-        let _ = self.state_sender.send(MarketState::Closed);
+        if let Err(err) = self.state_sender.send(MarketState::Closed) {
+            tracing::error!(
+                game_id = ?self.game_id,
+                period_id = ?period_id,
+                "Failed to broadcast market state change: {:?}", err
+            );
+        }
 
         // Send trades back to requester
-        let _ = tx_back.send(trades);
+        if let Err(err) = tx_back.send(trades) {
+            tracing::error!(
+                game_id = ?self.game_id,
+                period_id = ?period_id,
+                trade_count = self.order_book.trades.len(),
+                "Failed to send trades back to requester: {:?}", err
+            );
+        }
 
         // Notify all players about the updated state
         self.send_order_book_snapshot_to_all().await;
@@ -213,13 +230,21 @@ impl MarketActor {
         );
 
         // Broadcast forecast to all players
-        let _ = self
+        if let Err(err) = self
             .players_connections
             .send(ConnectionRepositoryMessage::SendToAllPlayers(
                 self.game_id.clone(),
-                PlayerMessage::NewMarketForecast(forecast),
+                PlayerMessage::NewMarketForecast(forecast.clone()),
             ))
-            .await;
+            .await
+        {
+            tracing::error!(
+                game_id = ?self.game_id,
+                period_id = ?forecast.period,
+                forecast_direction = ?forecast.direction,
+                "Failed to broadcast market forecast to players: {:?}", err
+            );
+        }
     }
 
     async fn send_order_book_snapshot_to_all(&self) {
