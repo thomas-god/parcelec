@@ -1,24 +1,24 @@
 use std::collections::HashMap;
 
-use super::delivery_period::{start_delivery_period, DeliveryPeriodId, DeliveryPeriodResults};
+use super::delivery_period::{DeliveryPeriodId, DeliveryPeriodResults, start_delivery_period};
 use super::scores::{GameRankings, PlayerResult, PlayerScore};
 use super::{GameContext, GameId, GameMessage, GameName, GetPreviousScoresResult};
 use futures_util::future::join_all;
 use tokio::sync::{
-    mpsc::{self, channel, Receiver, Sender},
+    mpsc::{self, Receiver, Sender, channel},
     oneshot, watch,
 };
 
 use crate::game::{GameState, Player, RegisterPlayerResponse};
 use crate::player::connection::{PlayerMessage, PlayerResultView};
-use crate::player::PlayerName;
+use crate::player::{self, PlayerName};
 use crate::{
     market::{Market, MarketContext},
     plants::{
         actor::{StackActor, StackContext, StackState},
         service::StackService,
     },
-    player::{repository::ConnectionRepositoryMessage, PlayerId},
+    player::{PlayerId, repository::ConnectionRepositoryMessage},
 };
 
 /// Main entrypoint for a given game of parcelec. Responsible for:
@@ -86,88 +86,20 @@ impl<MS: Market> Game<MS> {
     }
     #[tracing::instrument(name = "GameActor::process_message", skip(self))]
     async fn process_message(&mut self, message: GameMessage) {
-        match (&mut self.state, message) {
-            (GameState::Open, GameMessage::RegisterPlayer { name, tx_back }) => {
-                self.register_player(name, tx_back);
+        match message {
+            GameMessage::RegisterPlayer { name, tx_back } => {
+                let _ = self.register_player(name, tx_back).await;
             }
-            (GameState::PostDelivery(_), GameMessage::RegisterPlayer { tx_back, .. })
-            | (GameState::Running(_), GameMessage::RegisterPlayer { tx_back, .. })
-            | (GameState::Ended(_), GameMessage::RegisterPlayer { tx_back, .. }) => {
-                let _ = tx_back.send(RegisterPlayerResponse::GameStarted);
+            GameMessage::GetScores { player_id, tx_back } => {
+                self.send_scores(player_id, tx_back);
             }
-            (_, GameMessage::GetScores { player_id, tx_back }) => {
-                use GetPreviousScoresResult::*;
-                let scores = match self.state {
-                    GameState::Ended(_) => PlayersRanking {
-                        scores: map_rankings_to_player_name(
-                            self.ranking_calculator
-                                .compute_scores(&self.players_scores.clone()),
-                            &self.players,
-                        ),
-                    },
-                    _ => PlayerScores {
-                        scores: self
-                            .players_scores
-                            .get(&player_id)
-                            .cloned()
-                            .unwrap_or_else(HashMap::new),
-                    },
-                };
-                let _ = tx_back.send(scores);
-            }
-            (GameState::PostDelivery(_), GameMessage::PlayerIsReady(player_id))
-            | (GameState::Open, GameMessage::PlayerIsReady(player_id)) => {
+            GameMessage::PlayerIsReady(player_id) => {
                 let _ = self.register_player_ready(player_id).await;
             }
-            (GameState::Running(_), GameMessage::DeliveryPeriodResults(results)) => {
-                self.store_scores(&results);
-                self.state = GameState::PostDelivery(self.current_delivery_period);
-                let _ = self
-                    .state_watch
-                    .send(GameState::PostDelivery(self.current_delivery_period));
-                join_all(results.players_scores.iter().map(|(player, score)| {
-                    self.players_connections
-                        .send(ConnectionRepositoryMessage::SendToPlayer(
-                            self.game_id.clone(),
-                            player.clone(),
-                            crate::player::connection::PlayerMessage::DeliveryPeriodResults {
-                                score: score.clone(),
-                                delivery_period: self.current_delivery_period,
-                            },
-                        ))
-                }))
-                .await;
-            }
-            (_, GameMessage::DeliveryPeriodResults(results)) => {
-                tracing::warn!(
-                    "Received results for delivery period {:?} while game is not running",
-                    results.period_id
-                );
-            }
-            (GameState::Running(_), GameMessage::PlayerIsReady(player_id)) => {
-                self.register_player_ready_game_is_running(player_id);
-            }
-            (GameState::Ended(_), GameMessage::PlayerIsReady(_)) => {
-                tracing::info!("Player ready in ended game - ignoring");
+            GameMessage::DeliveryPeriodResults(results) => {
+                let _ = self.process_delivery_period_results(results).await;
             }
         }
-    }
-
-    fn check_last_delivery_period_reached(&mut self) -> bool {
-        if let Some(last_period) = self.last_delivery_period {
-            if self.current_delivery_period >= last_period {
-                tracing::info!(
-                    "Maximum delivery periods reached ({}), ending game",
-                    last_period
-                );
-                self.state = GameState::Ended(self.current_delivery_period);
-                let _ = self
-                    .state_watch
-                    .send(GameState::Ended(self.current_delivery_period));
-                return true;
-            }
-        }
-        false
     }
 
     async fn register_player_ready(&mut self, player_id: PlayerId) {
@@ -179,87 +111,116 @@ impl<MS: Market> Game<MS> {
             player.ready = true;
         }
 
-        // If all players are ready, check if max periods reached or start the next delivery period
-        if self.players.iter().all(|player| player.ready) {
-            // Check if we've reached the last delivery period
-            if self.check_last_delivery_period_reached() {
-                let _ = self
-                    .players_connections
-                    .send(ConnectionRepositoryMessage::SendToAllPlayers(
-                        self.game_id.clone(),
-                        PlayerMessage::GameResults {
-                            rankings: map_rankings_to_player_name(
-                                self.ranking_calculator.compute_scores(&self.players_scores),
-                                &self.players,
-                            ),
-                        },
-                    ))
-                    .await;
-                return; // Game has ended
+        let all_players_ready = self.players.iter().all(|player| player.ready);
+
+        use GameState::*;
+        match (all_players_ready, &self.state) {
+            (false, _) => { /* Do nothing */ }
+            (true, Ended(_)) => { /* Game already ended */ }
+            (true, Open) => {
+                self.start_next_delivery_period();
             }
-
-            tracing::info!(
-                "All players ready, starting delivery period {}",
-                self.current_delivery_period.next()
-            );
-            self.state = GameState::Running(self.current_delivery_period);
-            self.current_delivery_period = self.current_delivery_period.next();
-            for player in self.players.iter_mut() {
-                player.ready = false;
-            }
-            let delivery_period = self.current_delivery_period;
-            let game_tx = self.tx.clone();
-            let market_service = self.market_context.service.clone();
-            let stacks_tx = self
-                .stacks_contexts
-                .iter()
-                .map(|(id, context)| (id.clone(), context.service.clone()))
-                .collect();
-            let (results_tx, results_rx) = oneshot::channel();
-            let timers = None;
-            tokio::spawn(async move {
-                start_delivery_period(
-                    delivery_period,
-                    game_tx,
-                    market_service,
-                    stacks_tx,
-                    results_rx,
-                    timers,
-                )
-                .await;
-            });
-            self.all_players_ready_tx = Some(results_tx);
-            let _ = self
-                .state_watch
-                .send(GameState::Running(self.current_delivery_period));
-        }
-    }
-
-    fn register_player_ready_game_is_running(&mut self, player_id: PlayerId) {
-        if let Some(player) = self
-            .players
-            .iter_mut()
-            .find(|player| player.id == player_id)
-        {
-            player.ready = true;
-        }
-
-        if self.players.iter().all(|player| player.ready) {
-            tracing::info!("All players ready, ending delivery period");
-            if let Some(tx) = self.all_players_ready_tx.take() {
-                let _ = tx.send(());
-                for player in self.players.iter_mut() {
-                    player.ready = false;
+            (true, Running(_)) => {
+                tracing::info!("All players ready, ending delivery period");
+                if let Some(tx) = self.all_players_ready_tx.take() {
+                    let _ = tx.send(());
+                    self.reset_players_ready();
                 }
             }
+            (true, PostDelivery(_)) => {
+                if self.game_should_end() {
+                    let _ = self.end_game().await;
+                } else {
+                    self.start_next_delivery_period();
+                }
+            }
+        };
+    }
+
+    fn start_next_delivery_period(&mut self) {
+        tracing::info!(
+            "All players ready, starting delivery period {}",
+            self.current_delivery_period.next()
+        );
+        self.current_delivery_period = self.current_delivery_period.next();
+        self.state = GameState::Running(self.current_delivery_period);
+        self.reset_players_ready();
+
+        let delivery_period = self.current_delivery_period;
+        let game_tx = self.tx.clone();
+        let market_service = self.market_context.service.clone();
+        let stacks_tx = self
+            .stacks_contexts
+            .iter()
+            .map(|(id, context)| (id.clone(), context.service.clone()))
+            .collect();
+        let (results_tx, results_rx) = oneshot::channel();
+        let timers = None;
+        tokio::spawn(async move {
+            start_delivery_period(
+                delivery_period,
+                game_tx,
+                market_service,
+                stacks_tx,
+                results_rx,
+                timers,
+            )
+            .await;
+        });
+        self.all_players_ready_tx = Some(results_tx);
+        let _ = self
+            .state_watch
+            .send(GameState::Running(self.current_delivery_period));
+    }
+
+    fn reset_players_ready(&mut self) {
+        for player in self.players.iter_mut() {
+            player.ready = false;
         }
     }
 
-    fn register_player(
+    fn game_should_end(&self) -> bool {
+        if let Some(last_delivery_period) = self.last_delivery_period {
+            return self.current_delivery_period >= last_delivery_period;
+        };
+        false
+    }
+
+    async fn end_game(&mut self) {
+        tracing::info!(
+            "Maximum delivery periods reached ({}), ending game",
+            self.current_delivery_period
+        );
+        // Update state to Ended
+        self.state = GameState::Ended(self.current_delivery_period);
+        let _ = self
+            .state_watch
+            .send(GameState::Ended(self.current_delivery_period));
+
+        // Send final scores and rankings
+        let _ = self
+            .players_connections
+            .send(ConnectionRepositoryMessage::SendToAllPlayers(
+                self.game_id.clone(),
+                PlayerMessage::GameResults {
+                    rankings: map_rankings_to_player_name(
+                        self.ranking_calculator.compute_scores(&self.players_scores),
+                        &self.players,
+                    ),
+                },
+            ))
+            .await;
+    }
+
+    async fn register_player(
         &mut self,
         name: PlayerName,
         tx_back: oneshot::Sender<RegisterPlayerResponse>,
     ) {
+        if self.state != GameState::Open {
+            let _ = tx_back.send(RegisterPlayerResponse::GameStarted);
+            return;
+        }
         if self.players.iter().any(|player| player.name == name) {
             let _ = tx_back.send(RegisterPlayerResponse::PlayerAlreadyExist);
             return;
@@ -295,6 +256,30 @@ impl<MS: Market> Game<MS> {
         });
     }
 
+    fn send_scores(&self, player: PlayerId, tx_back: oneshot::Sender<GetPreviousScoresResult>) {
+        use GetPreviousScoresResult::*;
+        dbg!(&self.state);
+        dbg!(&player);
+        dbg!(&self.players_scores);
+        let scores = match self.state {
+            GameState::Ended(_) => PlayersRanking {
+                scores: map_rankings_to_player_name(
+                    self.ranking_calculator
+                        .compute_scores(&self.players_scores.clone()),
+                    &self.players,
+                ),
+            },
+            _ => PlayerScores {
+                scores: self
+                    .players_scores
+                    .get(&player)
+                    .cloned()
+                    .unwrap_or_else(HashMap::new),
+            },
+        };
+        let _ = tx_back.send(scores);
+    }
+
     fn get_context(&self) -> GameContext {
         GameContext {
             id: self.game_id.clone(),
@@ -302,6 +287,34 @@ impl<MS: Market> Game<MS> {
             tx: self.tx.clone(),
             state_rx: self.state_watch.subscribe(),
         }
+    }
+
+    async fn process_delivery_period_results(&mut self, results: DeliveryPeriodResults) {
+        if self.state != GameState::Running(results.period_id) {
+            tracing::warn!(
+                "Received results for delivery period {:?} while game is not running",
+                results.period_id
+            );
+            return;
+        }
+
+        self.store_scores(&results);
+        self.state = GameState::PostDelivery(self.current_delivery_period);
+        let _ = self
+            .state_watch
+            .send(GameState::PostDelivery(self.current_delivery_period));
+        join_all(results.players_scores.iter().map(|(player, score)| {
+            self.players_connections
+                .send(ConnectionRepositoryMessage::SendToPlayer(
+                    self.game_id.clone(),
+                    player.clone(),
+                    crate::player::connection::PlayerMessage::DeliveryPeriodResults {
+                        score: score.clone(),
+                        delivery_period: self.current_delivery_period,
+                    },
+                ))
+        }))
+        .await;
     }
 
     fn store_scores(&mut self, results: &DeliveryPeriodResults) {
@@ -338,39 +351,14 @@ fn map_rankings_to_player_name(
 }
 
 #[cfg(test)]
-mod tests {
-    use std::time::Duration;
+mod test_utils {
+    use crate::market::{MarketForecast, MarketState, OBS, order_book::TradeLeg};
 
-    use tokio::{
-        sync::{
-            mpsc,
-            oneshot::{self, channel},
-            watch,
-        },
-        time::timeout,
-    };
-
-    use crate::{
-        game::{
-            delivery_period::DeliveryPeriodId, scores::GameRankings, GameContext, GameId,
-            GameMessage, GameState, GetPreviousScoresResult, RegisterPlayerResponse,
-        },
-        market::{order_book::TradeLeg, Market, MarketContext, MarketForecast, MarketState, OBS},
-        plants::{
-            actor::{StackContext, StackState},
-            StackService,
-        },
-        player::{
-            connection::PlayerMessage, repository::ConnectionRepositoryMessage, PlayerId,
-            PlayerName,
-        },
-    };
-
-    use super::Game;
+    use super::*;
 
     #[derive(Clone)]
-    struct MockMarket {
-        state_tx: watch::Sender<MarketState>,
+    pub struct MockMarket {
+        pub state_tx: watch::Sender<MarketState>,
     }
     impl Market for MockMarket {
         async fn close_market(
@@ -401,7 +389,7 @@ mod tests {
         async fn register_forecast(&self, _forecast: crate::market::MarketForecast) {}
     }
 
-    fn open_game() -> (GameContext, MarketContext<MockMarket>) {
+    pub fn open_game() -> (GameContext, MarketContext<MockMarket>) {
         let (tx, _) = mpsc::channel(16);
         let game_id = GameId::default();
         let (state_tx, rx) = watch::channel(MarketState::Closed);
@@ -425,28 +413,61 @@ mod tests {
         )
     }
 
-    async fn register_player(
+    pub async fn register_player(
         game: mpsc::Sender<GameMessage>,
-    ) -> (PlayerId, StackContext<StackService>) {
+    ) -> (PlayerId, PlayerName, StackContext<StackService>) {
         let player = PlayerName::random();
-        let (tx, rx) = channel::<RegisterPlayerResponse>();
+        let (tx, rx) = oneshot::channel::<RegisterPlayerResponse>();
         let _ = game
             .send(GameMessage::RegisterPlayer {
-                name: player,
+                name: player.clone(),
                 tx_back: tx,
             })
             .await;
         match rx.await {
-            Ok(RegisterPlayerResponse::Success { id, stack }) => (id, stack),
+            Ok(RegisterPlayerResponse::Success { id, stack }) => (id, player, stack),
             _ => unreachable!("Should have register the player"),
         }
     }
 
-    async fn start_game(game: mpsc::Sender<GameMessage>) -> (PlayerId, StackContext<StackService>) {
-        let (player, stack) = register_player(game.clone()).await;
+    pub async fn start_game(
+        game: mpsc::Sender<GameMessage>,
+    ) -> (PlayerId, StackContext<StackService>) {
+        let (player, _, stack) = register_player(game.clone()).await;
         let _ = game.send(GameMessage::PlayerIsReady(player.clone())).await;
         (player, stack)
     }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::time::Duration;
+
+    use tokio::{
+        sync::{
+            mpsc,
+            oneshot::{self, channel},
+            watch,
+        },
+        time::timeout,
+    };
+
+    use crate::{
+        game::{
+            GameId, GameMessage, GameState, GetPreviousScoresResult, RegisterPlayerResponse,
+            actor::test_utils::{MockMarket, open_game, register_player, start_game},
+            delivery_period::DeliveryPeriodId,
+            scores::GameRankings,
+        },
+        market::{MarketContext, MarketState},
+        plants::actor::StackState,
+        player::{
+            PlayerId, PlayerName, connection::PlayerMessage,
+            repository::ConnectionRepositoryMessage,
+        },
+    };
+
+    use super::Game;
 
     #[tokio::test]
     async fn test_register_players() {
@@ -587,7 +608,7 @@ mod tests {
 
         assert_eq!(*market.state_rx.borrow_and_update(), MarketState::Closed);
 
-        let (player, mut stack) = register_player(game.tx.clone()).await;
+        let (player, _, mut stack) = register_player(game.tx.clone()).await;
 
         // Start the game
         let _ = game
@@ -626,8 +647,8 @@ mod tests {
         assert_eq!(*game.state_rx.borrow_and_update(), GameState::Open);
 
         // Register 2 players
-        let (first_player, _) = register_player(game.tx.clone()).await;
-        let (second_player, _) = register_player(game.tx.clone()).await;
+        let (first_player, _, _) = register_player(game.tx.clone()).await;
+        let (second_player, _, _) = register_player(game.tx.clone()).await;
         assert_eq!(*game.state_rx.borrow_and_update(), GameState::Open);
 
         // First player is ready
@@ -785,7 +806,7 @@ mod tests {
         );
 
         // Register and start the game with one player
-        let (player, _) = register_player(game.tx.clone()).await;
+        let (player, _, _) = register_player(game.tx.clone()).await;
 
         // Player is ready for the first time - starts period 1
         let _ = game
@@ -877,8 +898,8 @@ mod tests {
         );
 
         // Register two players
-        let (player1, _) = register_player(game.tx.clone()).await;
-        let (player2, _) = register_player(game.tx.clone()).await;
+        let (player1, _, _) = register_player(game.tx.clone()).await;
+        let (player2, _, _) = register_player(game.tx.clone()).await;
 
         // All players ready, starts period 1
         mark_players_ready(&game.tx, &player1, &player2).await;
@@ -938,7 +959,7 @@ mod tests {
             Some(DeliveryPeriodId::from(1)),
             ranking_calculator,
         );
-        let (player, _) = register_player(game.tx.clone()).await;
+        let (player, _, _) = register_player(game.tx.clone()).await;
 
         // Start the game
         let _ = game
@@ -989,8 +1010,8 @@ mod tests {
 #[cfg(test)]
 mod test_rankings_mapping {
     use crate::{
-        game::{actor::map_rankings_to_player_name, scores::PlayerResult, Player},
-        player::{connection::PlayerResultView, PlayerId, PlayerName},
+        game::{Player, actor::map_rankings_to_player_name, scores::PlayerResult},
+        player::{PlayerId, PlayerName, connection::PlayerResultView},
     };
 
     #[test]
