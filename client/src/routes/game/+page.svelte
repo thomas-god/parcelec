@@ -10,27 +10,27 @@
     type StackSnapshot,
     type Trade,
     type ReadinessStatus,
+    type GameState,
   } from "$lib/message";
   import { PUBLIC_WS_URL } from "$env/static/public";
   import OrderBookElement from "../../components/organisms/OrderBook.svelte";
   import { goto } from "$app/navigation";
   import Stack from "../../components/organisms/Stack.svelte";
-  import CurrentScore from "../../components/molecules/CurrentScore.svelte";
   import { plantsPosition, marketPosition } from "$lib/position";
   import { marketPnl, plantsPnl } from "$lib/pnl";
   import { SvelteMap } from "svelte/reactivity";
   import Scores from "../../components/organisms/ScoresSummary.svelte";
   import Forecasts from "../../components/organisms/Forecasts.svelte";
+  import Header from "../../components/molecules/Header.svelte";
+  import TradeNotification from "../../components/molecules/TradeNotification.svelte";
+  import PlayersReadyList from "../../components/molecules/PlayersReadyList.svelte";
+  import FinalScores from "../../components/molecules/FinalScores.svelte";
+  import Footer from "../../components/molecules/Footer.svelte";
 
-  let player_name: String = $state("");
+  let player_name: string = $state("");
   let player_is_ready = $derived.by(() => {
-    let found = sorted_readines_status.find(
-      (status) => status.player === player_name,
-    );
-    if (found === undefined) {
-      return false;
-    }
-    return found.ready;
+    const player = readiness_status.get(player_name);
+    return player === undefined ? false : player;
   });
   let orderBook: OrderBook = $state({
     bids: [],
@@ -49,8 +49,7 @@
   let plant_forecasts: StackForecasts = $state(new Map());
   let market_state: "Open" | "Closed" = $state("Open");
   let stack_state: "Open" | "Closed" = $state("Open");
-  let game_state: "Open" | "Running" | "PostDelivery" | "Ended" =
-    $state("Open");
+  let game_state: GameState = $state("Open");
   let delivery_period_id = $state(0);
   let scores: SvelteMap<number, DeliveryPeriodScore> = $state(new SvelteMap());
   let final_scores: GameResults = $state(new Array());
@@ -58,14 +57,7 @@
     new SvelteMap(),
   );
   let readiness_status: ReadinessStatus = $state(new SvelteMap());
-  let sorted_readines_status = $derived.by(() => {
-    let sorted_status: { player: string; ready: boolean }[] = [];
-    for (const [player, ready] of readiness_status) {
-      sorted_status.push({ player, ready });
-    }
-    sorted_status.sort((a, b) => (a.player > b.player ? 1 : -1));
-    return sorted_status;
-  });
+
   const connect = () => {
     const socket = new WebSocket(`${PUBLIC_WS_URL}/ws`);
     socket.onmessage = (msg) => {
@@ -188,17 +180,7 @@
       <div
         class="sticky top-0 px-2 py-5 @sm:p-6 text-success-content bg-success rounded-b-md"
       >
-        {#if game_state === "Running"}
-          <CurrentScore {position} {pnl} />
-        {:else if game_state === "Open"}
-          <div class="text-2xl text-center mx-auto">
-            En attente d'autres joueurs
-          </div>
-        {:else if game_state === "Ended"}
-          <div class="text-2xl text-center mx-auto">Partie terminée !</div>
-        {:else}
-          <div class="text-2xl text-center mx-auto">Phase terminée !</div>
-        {/if}
+        <Header {game_state} {pnl} {position} />
       </div>
 
       {#if game_state === "Running"}
@@ -239,104 +221,19 @@
 
         <div class="toast mb-14 items-center content-center">
           {#each trades_to_display as trade (`${trade.direction}-${trade.execution_time}`)}
-            <div class="alert alert-info self-center">
-              <span
-                >Nouveau trade: {trade.volume}MW {trade.direction === "Buy"
-                  ? "achetés"
-                  : "vendus"}
-                @ {0.01 * (trade.price as number)}€
-                <button
-                  class="text-lg pl-2"
-                  onclick={() => removeTradeToDisplay(trade)}>✖️</button
-                >
-              </span>
-            </div>
+            <TradeNotification {trade} {removeTradeToDisplay} />
           {/each}
         </div>
       {:else if game_state === "Open"}
-        <ul class="list bg-base-100 rounded-box shadow-md">
-          <li class="p-4 pb-2 text-xs opacity-60 tracking-wide">Joueurs</li>
-          {#each sorted_readines_status as { player, ready } (player)}
-            <li class="list-row">
-              {#if player === player_name}
-                <div class="list-col-grow font-semibold">
-                  {player}
-                </div>
-              {:else}
-                <div class="list-col-grow">{player}</div>
-              {/if}
-              <div>
-                {ready ? "✅" : "⌛"}
-              </div>
-            </li>
-          {/each}
-        </ul>
+        <PlayersReadyList {player_name} {readiness_status} />
       {:else if game_state === "PostDelivery"}
         <div class="flex flex-col">
           <Scores {scores} current_period={delivery_period_id} />
         </div>
       {:else if game_state === "Ended"}
-        <ol class="list bg-base-100 rounded-box shadow-md">
-          {#each final_scores as score (score.player)}
-            <li class="list-row items-center">
-              <div class="text-4xl font-thin opacity-30 tabular-nums">
-                {score.rank}
-              </div>
-              {#if score.player === player_name}
-                <div class="font-semibold">
-                  {score.player}
-                </div>
-              {:else}
-                <div>
-                  {score.player}
-                </div>
-              {/if}
-              <div>
-                {score.score.toLocaleString("fr-FR", {
-                  signDisplay: "exceptZero",
-                })} €
-                {#if score.tier === "Gold"}
-                  <!-- 🥇 -->
-                  ⭐⭐⭐
-                {:else if score.tier === "Silver"}
-                  <!-- 🥈 -->
-                  ⭐⭐
-                {:else if score.tier === "Bronze"}
-                  <!-- 🥉 -->
-                  ⭐
-                {:else}
-                  👍
-                {/if}
-              </div>
-            </li>
-          {/each}
-        </ol>
+        <FinalScores {player_name} {final_scores} />
       {/if}
-      <footer
-        class="footer fixed bottom-0 bg-success text-success-content rounded-t-md p-2 pb-4 w-screen max-w-[600px] flex flex-col items-center text-xl"
-      >
-        <button onclick={startGame}>
-          {#if game_state === "Running"}
-            {#if player_is_ready}
-              En attente des autres joueurs
-            {:else}
-              Terminer la phase ➡️
-            {/if}
-          {:else if game_state === "Open"}
-            {#if player_is_ready}
-              En attente des autres joueurs
-            {:else}
-              Commencer la partie ➡️
-            {/if}
-          {:else if game_state === "Ended"}
-            Retour au menu ➡️
-          {:else if player_is_ready}
-            En attente des autres joueurs
-          {:else}
-            Phase suivante ➡️
-          {/if}</button
-        >
-      </footer>
+      <Footer {player_is_ready} {game_state} {startGame} />
     </div>
   {:else}
     <p>Not connected</p>

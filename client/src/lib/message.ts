@@ -229,6 +229,7 @@ export type ReadinessStatus = Extract<
   WSMessage,
   { type: "ReadinessStatus" }
 >["readiness"];
+export type GameState = Extract<WSMessage, { type: "GameState" }>["state"];
 
 export const parseMessage = (
   msg: string,
