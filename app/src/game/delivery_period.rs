@@ -32,6 +32,7 @@ impl DeliveryPeriodId {
     }
 }
 
+#[derive(Debug, Clone)]
 pub struct DeliveryPeriodTimers {
     pub market: Duration,
     pub stacks: Duration,

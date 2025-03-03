@@ -43,6 +43,7 @@ pub async fn create_tutorial_game(
                 bronze: 25_000,
             }),
         },
+        None,
     );
 
     state

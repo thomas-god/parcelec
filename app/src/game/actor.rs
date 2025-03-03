@@ -1,6 +1,8 @@
 use std::collections::HashMap;
 
-use super::delivery_period::{DeliveryPeriodId, DeliveryPeriodResults, start_delivery_period};
+use super::delivery_period::{
+    DeliveryPeriodId, DeliveryPeriodResults, DeliveryPeriodTimers, start_delivery_period,
+};
 use super::scores::{GameRankings, PlayerResult, PlayerScore};
 use super::{GameContext, GameId, GameMessage, GameName, GetPreviousScoresResult};
 use futures_util::future::join_all;
@@ -39,6 +41,7 @@ pub struct Game<MS: Market> {
     tx: Sender<GameMessage>,
     current_delivery_period: DeliveryPeriodId,
     last_delivery_period: Option<DeliveryPeriodId>,
+    delivery_period_timers: Option<DeliveryPeriodTimers>,
     all_players_ready_tx: Option<oneshot::Sender<()>>,
     ranking_calculator: GameRankings,
 }
@@ -51,6 +54,7 @@ impl<MS: Market> Game<MS> {
         market_context: MarketContext<MS>,
         last_delivery_period: Option<DeliveryPeriodId>,
         ranking_calculator: GameRankings,
+        delivery_period_timers: Option<DeliveryPeriodTimers>,
     ) -> GameContext {
         let initial_state = GameState::Open;
         let (tx, rx) = channel::<GameMessage>(32);
@@ -68,6 +72,7 @@ impl<MS: Market> Game<MS> {
             rx,
             tx,
             current_delivery_period: DeliveryPeriodId::default(),
+            delivery_period_timers,
             last_delivery_period,
             all_players_ready_tx: None,
             ranking_calculator,
@@ -164,7 +169,7 @@ impl<MS: Market> Game<MS> {
             .map(|(id, context)| (id.clone(), context.service.clone()))
             .collect();
         let (results_tx, results_rx) = oneshot::channel();
-        let timers = None;
+        let timers = self.delivery_period_timers.clone();
         tokio::spawn(async move {
             start_delivery_period(
                 delivery_period,
@@ -432,6 +437,7 @@ mod test_utils {
                 market_context.clone(),
                 None,
                 ranking_calculator,
+                None,
             ),
             market_context,
         )
@@ -728,7 +734,15 @@ mod tests {
             state_rx: rx,
         };
         let ranking_calculator = GameRankings { tier_limits: None };
-        let game = Game::start(&game_id, None, conn_tx, market, None, ranking_calculator);
+        let game = Game::start(
+            &game_id,
+            None,
+            conn_tx,
+            market,
+            None,
+            ranking_calculator,
+            None,
+        );
 
         // Start game
         let (player, _) = start_game(game.tx.clone()).await;
@@ -771,7 +785,15 @@ mod tests {
             state_rx: rx,
         };
         let ranking_calculator = GameRankings { tier_limits: None };
-        let game = Game::start(&game_id, None, conn_tx, market, None, ranking_calculator);
+        let game = Game::start(
+            &game_id,
+            None,
+            conn_tx,
+            market,
+            None,
+            ranking_calculator,
+            None,
+        );
 
         // Start the game
         let (player, _) = start_game(game.tx.clone()).await;
@@ -836,6 +858,7 @@ mod tests {
             market,
             Some(DeliveryPeriodId::from(2)),
             ranking_calculator,
+            None,
         );
 
         // Register and start the game with one player
@@ -928,6 +951,7 @@ mod tests {
             market,
             Some(DeliveryPeriodId::from(1)),
             ranking_calculator,
+            None,
         );
 
         // Register two players
@@ -991,6 +1015,7 @@ mod tests {
             market,
             Some(DeliveryPeriodId::from(1)),
             ranking_calculator,
+            None,
         );
         let (player, _, _) = register_player(game.tx.clone()).await;
 
@@ -1121,6 +1146,7 @@ mod test_readiness_status {
             market,
             Some(DeliveryPeriodId::from(1)),
             ranking_calculator,
+            None,
         );
         (conn_rx, game)
     }

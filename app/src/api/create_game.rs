@@ -1,9 +1,15 @@
+use std::time::Duration;
+
 use axum::{Json, extract::State, http::StatusCode, response::IntoResponse};
 use serde::{Deserialize, Serialize};
 
 use crate::{
     bots::start_bots,
-    game::{Game, GameId, GameName, delivery_period::DeliveryPeriodId, scores::GameRankings},
+    game::{
+        Game, GameId, GameName,
+        delivery_period::{DeliveryPeriodId, DeliveryPeriodTimers},
+        scores::{GameRankings, TierLimits},
+    },
     market::MarketActor,
 };
 
@@ -37,7 +43,17 @@ pub async fn create_game(
         state.player_connections_repository.clone(),
         market_context.clone(),
         Some(last_delivery_period),
-        GameRankings { tier_limits: None },
+        GameRankings {
+            tier_limits: Some(TierLimits {
+                gold: 80_000,
+                silver: 50_000,
+                bronze: 25_000,
+            }),
+        },
+        Some(DeliveryPeriodTimers {
+            market: Duration::from_secs(120),
+            stacks: Duration::from_secs(120),
+        }),
     );
 
     state
