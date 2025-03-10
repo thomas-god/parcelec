@@ -37,6 +37,7 @@ pub enum StackMessage {
     ProgramSetpoint(ProgramPlant),
     GetSnapshot(oneshot::Sender<HashMap<PlantId, PowerPlantPublicRepr>>),
     GetForecasts(oneshot::Sender<HashMap<PlantId, Option<ForecastLevel>>>),
+    Terminate,
 }
 
 #[derive(Debug, PartialEq, Clone, Copy)]
@@ -137,12 +138,14 @@ impl StackActor {
 
     pub async fn run(&mut self) {
         while let Some(message) = self.rx.recv().await {
-            self.process_message(message).await;
+            if let Err(()) = self.process_message(message).await {
+                break;
+            }
         }
     }
 
     #[tracing::instrument(name = "StackActor::process_message", skip(self))]
-    async fn process_message(&mut self, message: StackMessage) {
+    async fn process_message(&mut self, message: StackMessage) -> Result<(), ()> {
         use StackMessage::*;
         use StackState::*;
         match (&self.state, message) {
@@ -186,7 +189,16 @@ impl StackActor {
                     let _ = tx_back.send(outputs.clone());
                 }
             }
+            (_, Terminate) => {
+                tracing::info!(
+                    "Stack actor received Terminate message for game {:?} and player {:?}.",
+                    self.game,
+                    self.player
+                );
+                return Err(());
+            }
         }
+        Ok(())
     }
 
     async fn send_stack_snapshot(&self) {
@@ -740,5 +752,28 @@ mod tests_stack {
         else {
             unreachable!("Should have received a forecast of the player's stack");
         };
+    }
+
+    #[tokio::test]
+    async fn test_terminate_actor() {
+        let (connections, _) = mpsc::channel(128);
+        let mut market = StackActor::new(
+            GameId::default(),
+            PlayerId::default(),
+            StackState::Open,
+            DeliveryPeriodId::from(0),
+            connections,
+        );
+        let tx = market.tx.clone();
+        let handle = tokio::spawn(async move {
+            market.run().await;
+        });
+
+        tx.send(StackMessage::Terminate).await.unwrap();
+
+        match tokio::time::timeout(Duration::from_millis(10), handle).await {
+            Err(_) => unreachable!("Should have ended stack actor"),
+            Ok(_) => {}
+        }
     }
 }

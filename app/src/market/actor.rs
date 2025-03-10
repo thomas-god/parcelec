@@ -29,6 +29,7 @@ pub enum MarketMessage {
         order_id: String,
     },
     RegisterForecast(MarketForecast),
+    Terminate,
 }
 
 pub struct MarketActor {
@@ -97,12 +98,14 @@ impl MarketActor {
 
     pub async fn process(&mut self) {
         while let Some(message) = self.rx.recv().await {
-            self.process_message(message).await;
+            if let Err(()) = self.process_message(message).await {
+                break;
+            };
         }
     }
 
     #[tracing::instrument(name = "MarketActor::process_message", skip(self))]
-    async fn process_message(&mut self, message: MarketMessage) {
+    async fn process_message(&mut self, message: MarketMessage) -> Result<(), ()> {
         match (&self.state, message) {
             (_, MarketMessage::GetMarketSnapshot { player_id, tx_back }) => {
                 self.players.push(player_id.clone());
@@ -153,7 +156,15 @@ impl MarketActor {
             (MarketState::Open, MarketMessage::OpenMarket(_)) => {
                 tracing::warn!("Market is already open");
             }
+            (_, MarketMessage::Terminate) => {
+                tracing::info!(
+                    "Market actor received Terminate message for game {:?}.",
+                    self.game_id
+                );
+                return Err(());
+            }
         }
+        Ok(())
     }
 
     async fn close_market(
@@ -1077,5 +1088,27 @@ mod tests {
         assert!(obs.bids.is_empty());
         assert!(obs.offers.is_empty());
         assert_eq!(forecasts.len(), 1);
+    }
+
+    #[tokio::test]
+    async fn test_terminate_actor() {
+        let (connections, _) = mpsc::channel(128);
+        let mut market = MarketActor::new(
+            GameId::default(),
+            MarketState::Open,
+            DeliveryPeriodId::from(0),
+            connections,
+        );
+        let tx = market.tx.clone();
+        let handle = tokio::spawn(async move {
+            market.process().await;
+        });
+
+        tx.send(MarketMessage::Terminate).await.unwrap();
+
+        match tokio::time::timeout(Duration::from_millis(10), handle).await {
+            Err(_) => unreachable!("Should have ended market actor"),
+            Ok(_) => {}
+        }
     }
 }
