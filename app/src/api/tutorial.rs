@@ -11,7 +11,8 @@ use tower_cookies::{
 use crate::{
     api::state::cleanup_state,
     game::{
-        Game, GameId, GameMessage, GameName, RegisterPlayerResponse,
+        GameActor, GameId, GameMessage, GameName, RegisterPlayerResponse,
+        actor::GameActorConfig,
         delivery_period::DeliveryPeriodId,
         scores::{GameRankings, TierLimits},
     },
@@ -41,21 +42,23 @@ pub async fn create_tutorial_game(
         state.player_connections_repository.clone(),
         cancellation_token.clone(),
     );
-    let last_delivery_period = DeliveryPeriodId::from(4);
-    let game_context = Game::start(
-        &game_id,
-        Some(game_name),
-        state.player_connections_repository.clone(),
-        market_context.clone(),
-        Some(last_delivery_period),
-        GameRankings {
+    let game_config = GameActorConfig {
+        id: game_id.clone(),
+        name: Some(game_name),
+        last_delivery_period: Some(DeliveryPeriodId::from(4)),
+        delivery_period_timers: None,
+        ranking_calculator: GameRankings {
             tier_limits: Some(TierLimits {
                 gold: 80_000,
                 silver: 50_000,
                 bronze: 25_000,
             }),
         },
-        None,
+    };
+    let game_context = GameActor::start(
+        game_config,
+        state.player_connections_repository.clone(),
+        market_context.clone(),
         cancellation_token,
     );
 

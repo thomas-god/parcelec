@@ -19,7 +19,7 @@ pub mod actor;
 pub mod delivery_period;
 pub mod scores;
 
-pub use actor::Game;
+pub use actor::GameActor;
 
 #[derive(Debug)]
 struct Player {

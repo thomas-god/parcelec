@@ -28,7 +28,7 @@ use crate::{
 /// - new player registration,
 /// - passing game context to new player connection (market and player's stack tx),
 /// - delivery period lifecycle
-pub struct Game<MS: Market> {
+pub struct GameActor<MS: Market> {
     game_id: GameId,
     name: GameName,
     state: GameState,
@@ -48,23 +48,39 @@ pub struct Game<MS: Market> {
     cancellation_token: CancellationToken,
 }
 
-impl<MS: Market> Game<MS> {
+pub struct GameActorConfig {
+    pub id: GameId,
+    pub name: Option<GameName>,
+    pub last_delivery_period: Option<DeliveryPeriodId>,
+    pub ranking_calculator: GameRankings,
+    pub delivery_period_timers: Option<DeliveryPeriodTimers>,
+}
+
+impl Default for GameActorConfig {
+    fn default() -> Self {
+        GameActorConfig {
+            id: GameId::default(),
+            name: None,
+            last_delivery_period: None,
+            ranking_calculator: GameRankings { tier_limits: None },
+            delivery_period_timers: None,
+        }
+    }
+}
+
+impl<MS: Market> GameActor<MS> {
     pub fn start(
-        game_id: &GameId,
-        name: Option<GameName>,
+        config: GameActorConfig,
         players_connections: mpsc::Sender<ConnectionRepositoryMessage>,
         market_context: MarketContext<MS>,
-        last_delivery_period: Option<DeliveryPeriodId>,
-        ranking_calculator: GameRankings,
-        delivery_period_timers: Option<DeliveryPeriodTimers>,
         cancelation_token: CancellationToken,
     ) -> GameContext {
         let initial_state = GameState::Open;
         let (tx, rx) = channel::<GameMessage>(32);
         let (state_tx, _) = watch::channel(initial_state.clone());
-        let mut game = Game {
-            game_id: game_id.clone(),
-            name: name.unwrap_or_default(),
+        let mut game = GameActor {
+            game_id: config.id.clone(),
+            name: config.name.unwrap_or_default(),
             state: initial_state,
             state_watch: state_tx,
             market_context,
@@ -75,10 +91,10 @@ impl<MS: Market> Game<MS> {
             rx,
             tx,
             current_delivery_period: DeliveryPeriodId::default(),
-            delivery_period_timers,
-            last_delivery_period,
+            delivery_period_timers: config.delivery_period_timers,
+            last_delivery_period: config.last_delivery_period,
             all_players_ready_tx: None,
-            ranking_calculator,
+            ranking_calculator: config.ranking_calculator,
             cancellation_token: cancelation_token,
         };
         let context = game.get_context();
@@ -435,10 +451,8 @@ mod test_utils {
 
     pub fn open_game() -> (GameContext, MarketContext<MockMarket>) {
         let (tx, _) = mpsc::channel(16);
-        let game_id = GameId::default();
         let (state_tx, rx) = watch::channel(MarketState::Closed);
         let market = MockMarket { state_tx };
-        let ranking_calculator = GameRankings { tier_limits: None };
         let token = CancellationToken::new();
 
         let market_context = MarketContext {
@@ -446,14 +460,10 @@ mod test_utils {
             state_rx: rx,
         };
         (
-            Game::start(
-                &game_id,
-                None,
+            GameActor::start(
+                GameActorConfig::default(),
                 tx,
                 market_context.clone(),
-                None,
-                ranking_calculator,
-                None,
                 token,
             ),
             market_context,
@@ -504,7 +514,10 @@ mod tests {
         game::{
             GameId, GameMessage, GameName, GameState, GetPreviousScoresResult,
             RegisterPlayerResponse,
-            actor::test_utils::{MockMarket, open_game, register_player, start_game},
+            actor::{
+                GameActorConfig,
+                test_utils::{MockMarket, open_game, register_player, start_game},
+            },
             delivery_period::DeliveryPeriodId,
             scores::GameRankings,
         },
@@ -516,7 +529,7 @@ mod tests {
         },
     };
 
-    use super::Game;
+    use super::GameActor;
 
     #[tokio::test]
     async fn test_register_players() {
@@ -746,24 +759,13 @@ mod tests {
     #[tokio::test]
     async fn test_send_results_to_player_at_the_end_of_delivery_period() {
         let (conn_tx, mut conn_rx) = mpsc::channel(16);
-        let game_id = GameId::default();
         let (state_tx, rx) = watch::channel(MarketState::Closed);
         let market = MarketContext {
             service: MockMarket { state_tx },
             state_rx: rx,
         };
-        let ranking_calculator = GameRankings { tier_limits: None };
         let token = CancellationToken::new();
-        let game = Game::start(
-            &game_id,
-            None,
-            conn_tx,
-            market,
-            None,
-            ranking_calculator,
-            None,
-            token,
-        );
+        let game = GameActor::start(GameActorConfig::default(), conn_tx, market, token);
 
         // Start game
         let (player, _) = start_game(game.tx.clone()).await;
@@ -799,24 +801,13 @@ mod tests {
     #[tokio::test]
     async fn test_get_previous_scores() {
         let (conn_tx, mut conn_rx) = mpsc::channel(16);
-        let game_id = GameId::default();
         let (state_tx, rx) = watch::channel(MarketState::Closed);
         let market = MarketContext {
             service: MockMarket { state_tx },
             state_rx: rx,
         };
-        let ranking_calculator = GameRankings { tier_limits: None };
         let token = CancellationToken::new();
-        let game = Game::start(
-            &game_id,
-            None,
-            conn_tx,
-            market,
-            None,
-            ranking_calculator,
-            None,
-            token,
-        );
+        let game = GameActor::start(GameActorConfig::default(), conn_tx, market, token);
 
         // Start the game
         let (player, _) = start_game(game.tx.clone()).await;
@@ -865,24 +856,21 @@ mod tests {
     #[tokio::test]
     async fn test_game_ends_after_max_delivery_periods() {
         let (conn_tx, _conn_rx) = mpsc::channel(16);
-        let game_id = GameId::default();
         let (state_tx, rx) = watch::channel(MarketState::Closed);
         let market = MarketContext {
             service: MockMarket { state_tx },
             state_rx: rx,
         };
 
-        let ranking_calculator = GameRankings { tier_limits: None };
         let token = CancellationToken::new();
         // Create a game with 2 max delivery periods
-        let mut game = Game::start(
-            &game_id,
-            None,
+        let mut game = GameActor::start(
+            GameActorConfig {
+                last_delivery_period: Some(DeliveryPeriodId::from(2)),
+                ..Default::default()
+            },
             conn_tx,
             market,
-            Some(DeliveryPeriodId::from(2)),
-            ranking_calculator,
-            None,
             token,
         );
 
@@ -962,22 +950,19 @@ mod tests {
 
         // Create a game with 1 delivery period
         let (conn_tx, mut conn_rx) = mpsc::channel(16);
-        let game_id = GameId::default();
         let (state_tx, rx) = watch::channel(MarketState::Closed);
         let market = MarketContext {
             service: MockMarket { state_tx },
             state_rx: rx,
         };
         let token = CancellationToken::new();
-        let ranking_calculator = GameRankings { tier_limits: None };
-        let mut game = Game::start(
-            &game_id,
-            None,
+        let mut game = GameActor::start(
+            GameActorConfig {
+                last_delivery_period: Some(DeliveryPeriodId::from(1)),
+                ..Default::default()
+            },
             conn_tx,
             market,
-            Some(DeliveryPeriodId::from(1)),
-            ranking_calculator,
-            None,
             token,
         );
 
@@ -1028,22 +1013,19 @@ mod tests {
     async fn test_get_final_scores_as_previous_scores_when_game_ended() {
         // Create a game with 1 delivery period and register 1 player
         let (conn_tx, _) = mpsc::channel(16);
-        let game_id = GameId::default();
         let (state_tx, rx) = watch::channel(MarketState::Closed);
         let market = MarketContext {
             service: MockMarket { state_tx },
             state_rx: rx,
         };
         let token = CancellationToken::new();
-        let ranking_calculator = GameRankings { tier_limits: None };
-        let mut game = Game::start(
-            &game_id,
-            None,
+        let mut game = GameActor::start(
+            GameActorConfig {
+                last_delivery_period: Some(DeliveryPeriodId::from(1)),
+                ..Default::default()
+            },
             conn_tx,
             market,
-            Some(DeliveryPeriodId::from(1)),
-            ranking_calculator,
-            None,
             token,
         );
         let (player, _, _) = register_player(game.tx.clone()).await;
@@ -1104,7 +1086,7 @@ mod tests {
         let (state_tx, _) = watch::channel(GameState::Open);
         let cancellation_token = CancellationToken::new();
         let (tx, rx) = mpsc::channel(128);
-        let mut game = Game {
+        let mut game = GameActor {
             game_id: GameId::default(),
             name: GameName::default(),
             state: GameState::Open,
@@ -1202,22 +1184,19 @@ mod test_readiness_status {
 
     fn start_game() -> (mpsc::Receiver<ConnectionRepositoryMessage>, GameContext) {
         let (conn_tx, conn_rx) = mpsc::channel(16);
-        let game_id = GameId::default();
         let (state_tx, rx) = watch::channel(MarketState::Closed);
         let market = MarketContext {
             service: MockMarket { state_tx },
             state_rx: rx,
         };
-        let ranking_calculator = GameRankings { tier_limits: None };
         let token = CancellationToken::new();
-        let game = Game::start(
-            &game_id,
-            None,
+        let game = GameActor::start(
+            GameActorConfig {
+                last_delivery_period: Some(DeliveryPeriodId::from(1)),
+                ..Default::default()
+            },
             conn_tx,
             market,
-            Some(DeliveryPeriodId::from(1)),
-            ranking_calculator,
-            None,
             token,
         );
         (conn_rx, game)

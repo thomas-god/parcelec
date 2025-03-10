@@ -6,7 +6,8 @@ use serde::{Deserialize, Serialize};
 use crate::{
     api::state::cleanup_state,
     game::{
-        Game, GameId, GameName,
+        GameActor, GameId, GameName,
+        actor::GameActorConfig,
         delivery_period::{DeliveryPeriodId, DeliveryPeriodTimers},
         scores::{GameRankings, TierLimits},
     },
@@ -47,24 +48,26 @@ pub async fn create_game(
         state.player_connections_repository.clone(),
         cancellation_token.clone(),
     );
-    let last_delivery_period = DeliveryPeriodId::from(4);
-    let game_context = Game::start(
-        &game_id,
-        Some(game_name.clone()),
-        state.player_connections_repository.clone(),
-        market_context.clone(),
-        Some(last_delivery_period),
-        GameRankings {
+    let game_config = GameActorConfig {
+        id: game_id.clone(),
+        name: Some(game_name.clone()),
+        delivery_period_timers: Some(DeliveryPeriodTimers {
+            market: Duration::from_secs(120),
+            stacks: Duration::from_secs(120),
+        }),
+        last_delivery_period: Some(DeliveryPeriodId::from(4)),
+        ranking_calculator: GameRankings {
             tier_limits: Some(TierLimits {
                 gold: 80_000,
                 silver: 50_000,
                 bronze: 25_000,
             }),
         },
-        Some(DeliveryPeriodTimers {
-            market: Duration::from_secs(120),
-            stacks: Duration::from_secs(120),
-        }),
+    };
+    let game_context = GameActor::start(
+        game_config,
+        state.player_connections_repository.clone(),
+        market_context.clone(),
         cancellation_token,
     );
 
