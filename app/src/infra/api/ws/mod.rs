@@ -3,6 +3,7 @@ use axum::{
     http::StatusCode,
     response::IntoResponse,
 };
+use connection::{PlayerConnectionContext, start_player_connection};
 use tower_cookies::{
     Cookie, Cookies,
     cookie::{SameSite, time::Duration},
@@ -12,13 +13,12 @@ use crate::{
     game::GameId,
     market::Market,
     plants::Stack,
-    player::{
-        PlayerId, PlayerName,
-        connection::{PlayerConnectionContext, start_player_connection},
-    },
+    player::{PlayerId, PlayerName},
 };
 
 use super::ApiState;
+
+pub mod connection;
 
 pub async fn handle_ws_connection(
     ws: WebSocketUpgrade,

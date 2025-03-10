@@ -14,7 +14,7 @@ use tokio_util::sync::CancellationToken;
 
 use crate::game::{GameState, Player, RegisterPlayerResponse};
 use crate::player::PlayerName;
-use crate::player::connection::{PlayerMessage, PlayerResultView};
+use crate::player::{PlayerMessage, PlayerResultView};
 use crate::{
     market::{Market, MarketContext},
     plants::{
@@ -368,7 +368,7 @@ impl<MS: Market> GameActor<MS> {
                 .send(ConnectionRepositoryMessage::SendToPlayer(
                     self.game_id.clone(),
                     player.clone(),
-                    crate::player::connection::PlayerMessage::DeliveryPeriodResults {
+                    PlayerMessage::DeliveryPeriodResults {
                         score: score.clone(),
                         delivery_period: self.current_delivery_period,
                     },
@@ -523,10 +523,7 @@ mod tests {
         },
         market::{MarketContext, MarketState},
         plants::actor::StackState,
-        player::{
-            PlayerId, PlayerName, connection::PlayerMessage,
-            repository::ConnectionRepositoryMessage,
-        },
+        player::{PlayerId, PlayerMessage, PlayerName, repository::ConnectionRepositoryMessage},
     };
 
     use super::GameActor;
@@ -1121,7 +1118,7 @@ mod tests {
 mod test_rankings_mapping {
     use crate::{
         game::{Player, actor::map_rankings_to_player_name, scores::PlayerResult},
-        player::{PlayerId, PlayerName, connection::PlayerResultView},
+        player::{PlayerId, PlayerName, PlayerResultView},
     };
 
     #[test]

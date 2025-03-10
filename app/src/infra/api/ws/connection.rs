@@ -16,38 +16,25 @@ use tokio::{
 use uuid::Uuid;
 
 use crate::{
-    forecast::ForecastLevel,
     game::{
         GameContext, GameId, GameMessage, GameState, GetPreviousScoresResult,
-        delivery_period::DeliveryPeriodId,
-        scores::{PlayerScore, RankTier},
+        delivery_period::DeliveryPeriodId, scores::PlayerScore,
     },
     market::{
-        Direction, Market, MarketContext, MarketForecast, MarketState, OrderRepr,
-        order_book::{OrderRequest as MarketOrderRequest, TradeLeg},
+        Direction, Market, MarketContext, MarketState,
+        order_book::OrderRequest as MarketOrderRequest,
     },
     plants::{
-        GetSnapshotError, PlantId, PowerPlantPublicRepr, Stack,
+        GetSnapshotError, Stack,
         actor::{ProgramPlant, StackContext, StackState},
+    },
+    player::{
+        PlayerMessage,
+        repository::{ConnectionRepositoryMessage, PlayerConnection},
     },
 };
 
-use super::{PlayerId, PlayerName, repository::ConnectionRepositoryMessage};
-
-#[derive(Clone)]
-pub struct PlayerConnection {
-    pub id: String,
-    pub player_id: PlayerId,
-    pub tx: Sender<PlayerMessage>,
-}
-
-impl Debug for PlayerConnection {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("PlayerConnection")
-            .field("id", &self.player_id)
-            .finish()
-    }
-}
+use super::{PlayerId, PlayerName};
 
 #[derive(Deserialize, Debug)]
 pub struct OrderRequest {
@@ -63,50 +50,6 @@ enum WebSocketIncomingMessage {
     OrderRequest(OrderRequest),
     DeleteOrder { order_id: String },
     ProgramPlant(ProgramPlant),
-}
-
-#[derive(Debug, PartialEq, Clone, Serialize)]
-pub struct PlayerResultView {
-    pub player: PlayerName,
-    pub rank: usize,
-    pub score: isize,
-    pub tier: Option<RankTier>,
-}
-
-#[derive(Clone, Serialize, Debug)]
-#[serde(tag = "type")]
-pub enum PlayerMessage {
-    NewTrade(TradeLeg),
-    OrderBookSnapshot {
-        bids: Vec<OrderRepr>,
-        offers: Vec<OrderRepr>,
-    },
-    TradeList {
-        trades: Vec<TradeLeg>,
-    },
-    NewMarketForecast(MarketForecast),
-    MarketForecasts {
-        forecasts: Vec<MarketForecast>,
-    },
-    StackSnapshot {
-        plants: HashMap<PlantId, PowerPlantPublicRepr>,
-    },
-    StackForecasts {
-        forecasts: HashMap<PlantId, Option<ForecastLevel>>,
-    },
-    DeliveryPeriodResults {
-        delivery_period: DeliveryPeriodId,
-        score: PlayerScore,
-    },
-    GameResults {
-        rankings: Vec<PlayerResultView>,
-    },
-    ReadinessStatus {
-        readiness: HashMap<PlayerName, bool>,
-    },
-    YourName {
-        name: PlayerName,
-    },
 }
 
 #[derive(Debug, Serialize)]

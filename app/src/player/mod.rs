@@ -1,9 +1,20 @@
+use std::collections::HashMap;
+
 use derive_more::{AsRef, Display, From, Into};
 use petname::petname;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-pub mod connection;
+use crate::{
+    forecast::ForecastLevel,
+    game::{
+        delivery_period::DeliveryPeriodId,
+        scores::{PlayerScore, RankTier},
+    },
+    market::{MarketForecast, OrderRepr, order_book::TradeLeg},
+    plants::{PlantId, PowerPlantPublicRepr},
+};
+
 pub mod repository;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, From, Display, AsRef, Into)]
@@ -33,6 +44,50 @@ impl PlayerName {
         }
         Some(PlayerName(value.to_string()))
     }
+}
+
+#[derive(Debug, PartialEq, Clone, Serialize)]
+pub struct PlayerResultView {
+    pub player: PlayerName,
+    pub rank: usize,
+    pub score: isize,
+    pub tier: Option<RankTier>,
+}
+
+#[derive(Clone, Serialize, Debug)]
+#[serde(tag = "type")]
+pub enum PlayerMessage {
+    NewTrade(TradeLeg),
+    OrderBookSnapshot {
+        bids: Vec<OrderRepr>,
+        offers: Vec<OrderRepr>,
+    },
+    TradeList {
+        trades: Vec<TradeLeg>,
+    },
+    NewMarketForecast(MarketForecast),
+    MarketForecasts {
+        forecasts: Vec<MarketForecast>,
+    },
+    StackSnapshot {
+        plants: HashMap<PlantId, PowerPlantPublicRepr>,
+    },
+    StackForecasts {
+        forecasts: HashMap<PlantId, Option<ForecastLevel>>,
+    },
+    DeliveryPeriodResults {
+        delivery_period: DeliveryPeriodId,
+        score: PlayerScore,
+    },
+    GameResults {
+        rankings: Vec<PlayerResultView>,
+    },
+    ReadinessStatus {
+        readiness: HashMap<PlayerName, bool>,
+    },
+    YourName {
+        name: PlayerName,
+    },
 }
 
 #[cfg(test)]

@@ -23,7 +23,7 @@ mod join_game;
 mod list_games;
 pub mod state;
 mod tutorial;
-mod ws;
+pub mod ws;
 
 pub async fn start_server(app_state: ApiState) {
     let addr = "0.0.0.0:9002";

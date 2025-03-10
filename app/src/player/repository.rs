@@ -1,14 +1,26 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, fmt::Debug};
 
 use futures_util::future::join_all;
 use tokio::sync::mpsc;
 
 use crate::game::GameId;
 
-use super::{
-    PlayerId,
-    connection::{PlayerConnection, PlayerMessage},
-};
+use super::{PlayerId, PlayerMessage};
+
+#[derive(Clone)]
+pub struct PlayerConnection {
+    pub id: String,
+    pub player_id: PlayerId,
+    pub tx: mpsc::Sender<PlayerMessage>,
+}
+
+impl Debug for PlayerConnection {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("PlayerConnection")
+            .field("id", &self.player_id)
+            .finish()
+    }
+}
 
 #[derive(Debug)]
 pub enum ConnectionRepositoryMessage {
@@ -87,13 +99,10 @@ mod test {
 
     use crate::{
         game::GameId,
-        player::{
-            PlayerId,
-            connection::{PlayerConnection, PlayerMessage},
-        },
+        player::{PlayerId, PlayerMessage},
     };
 
-    use super::{ConnectionRepositoryMessage, PlayerConnectionRepository};
+    use super::{ConnectionRepositoryMessage, PlayerConnection, PlayerConnectionRepository};
 
     async fn register_connection(
         game_id: &GameId,

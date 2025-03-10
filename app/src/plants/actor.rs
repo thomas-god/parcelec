@@ -11,7 +11,7 @@ use crate::{
     forecast::ForecastLevel,
     game::{GameId, delivery_period::DeliveryPeriodId},
     plants::PlantOutput,
-    player::{PlayerId, connection::PlayerMessage, repository::ConnectionRepositoryMessage},
+    player::{PlayerId, PlayerMessage, repository::ConnectionRepositoryMessage},
 };
 
 use super::{
@@ -349,7 +349,7 @@ mod tests_stack {
             PlantId, PowerPlantPublicRepr,
             actor::{ProgramPlant, StackActor, StackMessage, StackState},
         },
-        player::{PlayerId, connection::PlayerMessage, repository::ConnectionRepositoryMessage},
+        player::{PlayerId, PlayerMessage, repository::ConnectionRepositoryMessage},
     };
 
     fn start_stack() -> (

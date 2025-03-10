@@ -6,7 +6,7 @@ use crate::{
     market::{
         Direction, Market, MarketContext, MarketForecast, MarketState, order_book::OrderRequest,
     },
-    player::{PlayerId, connection::PlayerMessage},
+    player::{PlayerId, PlayerMessage},
 };
 
 pub struct InitialOrdersBot<MS: Market> {

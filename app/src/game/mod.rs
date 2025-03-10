@@ -12,7 +12,7 @@ use tokio::sync::{
 
 use crate::{
     plants::{actor::StackContext, service::StackService},
-    player::{PlayerId, PlayerName, connection::PlayerResultView},
+    player::{PlayerId, PlayerName, PlayerResultView},
 };
 
 pub mod actor;

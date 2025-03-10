@@ -11,7 +11,7 @@ use super::{
 
 use crate::{
     game::{GameId, delivery_period::DeliveryPeriodId},
-    player::{PlayerId, connection::PlayerMessage, repository::ConnectionRepositoryMessage},
+    player::{PlayerId, PlayerMessage, repository::ConnectionRepositoryMessage},
 };
 
 #[derive(Debug)]
