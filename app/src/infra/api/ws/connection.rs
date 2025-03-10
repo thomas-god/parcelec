@@ -30,7 +30,7 @@ use crate::{
     },
     player::{
         PlayerMessage,
-        repository::{ConnectionRepositoryMessage, PlayerConnection},
+        infra::{ConnectionRepositoryMessage, PlayerConnection},
     },
 };
 

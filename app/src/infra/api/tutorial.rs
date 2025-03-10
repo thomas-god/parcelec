@@ -17,7 +17,7 @@ use crate::{
     },
     infra::api::state::cleanup_state,
     market::{MarketActor, bots::start_bots},
-    player::PlayerName,
+    player::{PlayerName, infra::PlayerConnectionsService},
     utils::program_actors_termination,
 };
 
@@ -37,9 +37,11 @@ pub async fn create_tutorial_game(
         cancellation_token.clone(),
         state.cleanup_tx.clone(),
     );
+    let connections_service =
+        PlayerConnectionsService::new(state.player_connections_repository.clone());
     let market_context = MarketActor::start(
         &game_id,
-        state.player_connections_repository.clone(),
+        connections_service.clone(),
         cancellation_token.clone(),
     );
     let game_config = GameActorConfig {
@@ -57,7 +59,7 @@ pub async fn create_tutorial_game(
     };
     let game_context = GameActor::start(
         game_config,
-        state.player_connections_repository.clone(),
+        connections_service.clone(),
         market_context.clone(),
         cancellation_token,
     );

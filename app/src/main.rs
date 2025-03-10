@@ -1,5 +1,5 @@
 use infra::api::{start_server, state::new_api_state};
-use player::repository::PlayerConnectionRepository;
+use player::infra::PlayerConnectionRepository;
 
 pub mod forecast;
 pub mod game;

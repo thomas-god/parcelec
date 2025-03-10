@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use serde::{Deserialize, Serialize, ser::SerializeStruct};
 use tokio::sync::{
-    mpsc::{self, Receiver, Sender, channel},
+    mpsc::{Receiver, Sender, channel},
     oneshot, watch,
 };
 use tokio_util::sync::CancellationToken;
@@ -11,7 +11,7 @@ use crate::{
     forecast::ForecastLevel,
     game::{GameId, delivery_period::DeliveryPeriodId},
     plants::PlantOutput,
-    player::{PlayerId, PlayerMessage, repository::ConnectionRepositoryMessage},
+    player::{PlayerConnections, PlayerId, PlayerMessage},
 };
 
 use super::{
@@ -71,7 +71,7 @@ pub struct StackContext<PS: Stack> {
 }
 
 /// A stack is the collection of power plants owned by a given player
-pub struct StackActor {
+pub struct StackActor<PC: PlayerConnections> {
     game: GameId,
     state: StackState,
     state_sender: watch::Sender<StackState>,
@@ -80,20 +80,20 @@ pub struct StackActor {
     stack: HashMap<PlantId, Box<dyn PowerPlant + Send + Sync>>,
     tx: Sender<StackMessage>,
     rx: Receiver<StackMessage>,
-    players_connections: mpsc::Sender<ConnectionRepositoryMessage>,
+    players_connections: PC,
     past_outputs: HashMap<DeliveryPeriodId, HashMap<PlantId, PlantOutput>>,
     cancellation_token: CancellationToken,
 }
 
-impl StackActor {
+impl<PC: PlayerConnections> StackActor<PC> {
     pub fn new(
         game: GameId,
         player: PlayerId,
         initial_state: StackState,
         delivery_period: DeliveryPeriodId,
-        players_connections: mpsc::Sender<ConnectionRepositoryMessage>,
+        players_connections: PC,
         cancellation_token: CancellationToken,
-    ) -> StackActor {
+    ) -> StackActor<PC> {
         let (state_tx, _) = watch::channel(initial_state);
         let (tx, rx) = channel::<StackMessage>(16);
 
@@ -115,7 +115,7 @@ impl StackActor {
     pub fn start(
         game: &GameId,
         player: &PlayerId,
-        players_connections: mpsc::Sender<ConnectionRepositoryMessage>,
+        players_connections: PC,
         cancellation_token: CancellationToken,
     ) -> StackContext<StackService> {
         let mut stack = StackActor::new(
@@ -206,43 +206,27 @@ impl StackActor {
     async fn send_stack_snapshot(&self) {
         let stack_snapshot = self.stack_snapshot();
 
-        if let Err(err) = self
-            .players_connections
-            .send(ConnectionRepositoryMessage::SendToPlayer(
-                self.game.clone(),
-                self.player.clone(),
+        self.players_connections
+            .send_to_player(
+                &self.game,
+                &self.player,
                 PlayerMessage::StackSnapshot {
                     plants: stack_snapshot,
                 },
-            ))
-            .await
-        {
-            tracing::error!(
-                game_id = ?self.game,
-                player_id = ?self.player,
-                "Failed to send stack snapshot to player: {:?}", err
-            );
-        }
+            )
+            .await;
     }
 
     async fn send_stack_forecasts(&self) {
         let forecasts = self.stack_forecasts();
 
-        if let Err(err) = self
-            .players_connections
-            .send(ConnectionRepositoryMessage::SendToPlayer(
-                self.game.clone(),
-                self.player.clone(),
+        self.players_connections
+            .send_to_player(
+                &self.game,
+                &self.player,
                 PlayerMessage::StackForecasts { forecasts },
-            ))
-            .await
-        {
-            tracing::error!(
-                game_id = ?self.game,
-                player_id = ?self.player,
-                "Failed to send stack forecasts to player: {:?}", err
-            );
-        }
+            )
+            .await;
     }
 
     fn stack_snapshot(&self) -> HashMap<PlantId, PowerPlantPublicRepr> {
@@ -349,25 +333,45 @@ mod tests_stack {
             PlantId, PowerPlantPublicRepr,
             actor::{ProgramPlant, StackActor, StackMessage, StackState},
         },
-        player::{PlayerId, PlayerMessage, repository::ConnectionRepositoryMessage},
+        player::{PlayerConnections, PlayerId, PlayerMessage},
     };
+
+    #[derive(Debug, Clone)]
+    struct MockedPlayerConnections {
+        tx: mpsc::Sender<PlayerMessage>,
+    }
+    impl MockedPlayerConnections {
+        fn new() -> (MockedPlayerConnections, mpsc::Receiver<PlayerMessage>) {
+            let (tx, rx) = mpsc::channel(16);
+
+            (MockedPlayerConnections { tx }, rx)
+        }
+    }
+    impl PlayerConnections for MockedPlayerConnections {
+        async fn send_to_player(&self, _game: &GameId, _player: &PlayerId, message: PlayerMessage) {
+            let _ = self.tx.send(message).await;
+        }
+        async fn send_to_all_players(&self, _game: &GameId, message: PlayerMessage) -> () {
+            let _ = self.tx.send(message).await;
+        }
+    }
 
     fn start_stack() -> (
         PlayerId,
         mpsc::Sender<StackMessage>,
         watch::Receiver<StackState>,
-        mpsc::Receiver<ConnectionRepositoryMessage>,
+        mpsc::Receiver<PlayerMessage>,
     ) {
         let game_id = GameId::default();
-        let (conn_tx, conn_rx) = mpsc::channel(16);
         let player_id = PlayerId::default();
         let token = CancellationToken::new();
+        let (connections, conn_rx) = MockedPlayerConnections::new();
         let mut stack = StackActor::new(
             game_id,
             player_id.clone(),
             StackState::Open,
             DeliveryPeriodId::from(0),
-            conn_tx,
+            connections,
             token,
         );
         let tx = stack.tx.clone();
@@ -380,7 +384,7 @@ mod tests_stack {
 
     #[tokio::test]
     async fn test_get_snapshot() {
-        let (_, tx, _, _) = start_stack();
+        let (_, tx, ..) = start_stack();
 
         let (tx_back, rx) = oneshot::channel();
         let _ = tx.send(StackMessage::GetSnapshot(tx_back)).await;
@@ -404,7 +408,7 @@ mod tests_stack {
 
     #[tokio::test]
     async fn test_get_forecasts() {
-        let (_, tx, _, _) = start_stack();
+        let (_, tx, ..) = start_stack();
 
         let (tx_back, rx) = oneshot::channel();
         let _ = tx.send(StackMessage::GetForecasts(tx_back)).await;
@@ -431,12 +435,7 @@ mod tests_stack {
             .await;
 
         // Should receive a stack snapshot back
-        let Some(ConnectionRepositoryMessage::SendToPlayer(
-            _,
-            _,
-            PlayerMessage::StackSnapshot { plants: _ },
-        )) = conn_rx.recv().await
-        else {
+        let Some(PlayerMessage::StackSnapshot { plants: _ }) = conn_rx.recv().await else {
             unreachable!("Should have received a snapshot of the player's stack");
         };
     }
@@ -479,7 +478,7 @@ mod tests_stack {
     }
     #[tokio::test]
     async fn test_receive_plant_outputs_when_closing_stack() {
-        let (_, tx, _, _) = start_stack();
+        let (_, tx, ..) = start_stack();
 
         let plants = get_stack_snashot(tx.clone()).await;
         let plants_balance = plants.values().fold(0, |acc, plant| {
@@ -522,7 +521,7 @@ mod tests_stack {
     #[tokio::test]
     async fn test_stack_state_watch() {
         let game_id = GameId::default();
-        let (conn_tx, _) = mpsc::channel(16);
+        let (connections, _) = MockedPlayerConnections::new();
         let player_id = PlayerId::default();
         let token = CancellationToken::new();
         let mut stack = StackActor::new(
@@ -530,7 +529,7 @@ mod tests_stack {
             player_id.clone(),
             StackState::Open,
             DeliveryPeriodId::from(0),
-            conn_tx,
+            connections,
             token,
         );
         let stack_tx = stack.tx.clone();
@@ -563,14 +562,14 @@ mod tests_stack {
     #[tokio::test]
     async fn test_try_closing_stack_wrong_period_id_does_not_close_it() {
         let game_id = GameId::default();
-        let (conn_tx, _) = mpsc::channel(16);
         let token = CancellationToken::new();
+        let (connections, _) = MockedPlayerConnections::new();
         let mut stack = StackActor::new(
             game_id,
             PlayerId::default(),
             StackState::Open,
             DeliveryPeriodId::from(1),
-            conn_tx,
+            connections,
             token,
         );
         let stack_tx = stack.tx.clone();
@@ -607,14 +606,14 @@ mod tests_stack {
     #[tokio::test]
     async fn test_opening_stack_wrong_period_id_does_not_open_it() {
         let game_id = GameId::default();
-        let (conn_tx, _) = mpsc::channel(16);
         let token = CancellationToken::new();
+        let (connections, _) = MockedPlayerConnections::new();
         let mut stack = StackActor::new(
             game_id,
             PlayerId::default(),
             StackState::Closed,
             DeliveryPeriodId::from(1),
-            conn_tx,
+            connections,
             token,
         );
         let stack_tx = stack.tx.clone();
@@ -643,14 +642,14 @@ mod tests_stack {
     #[tokio::test]
     async fn test_open_stack_then_close_next_period() {
         let game_id = GameId::default();
-        let (conn_tx, _) = mpsc::channel(16);
         let token = CancellationToken::new();
+        let (connections, _) = MockedPlayerConnections::new();
         let mut stack = StackActor::new(
             game_id,
             PlayerId::default(),
             StackState::Closed,
             DeliveryPeriodId::from(1),
-            conn_tx,
+            connections,
             token,
         );
         let stack_tx = stack.tx.clone();
@@ -680,7 +679,7 @@ mod tests_stack {
 
     #[tokio::test]
     async fn test_closing_twice_should_return_the_same_plants_outputs() {
-        let (_, tx, _, _) = start_stack();
+        let (_, tx, ..) = start_stack();
 
         // Close the stack
         let (tx_back, rx_back) = oneshot::channel();
@@ -728,12 +727,7 @@ mod tests_stack {
             .await;
 
         // Should receive a stack snapshot back
-        let Some(ConnectionRepositoryMessage::SendToPlayer(
-            _,
-            _,
-            PlayerMessage::StackSnapshot { plants: _ },
-        )) = conn_rx.recv().await
-        else {
+        let Some(PlayerMessage::StackSnapshot { plants: _ }) = conn_rx.recv().await else {
             unreachable!("Should have received a snapshot of the player's stack");
         };
 
@@ -747,29 +741,19 @@ mod tests_stack {
             .await;
 
         // Should receive a stack snapshot back
-        let Some(ConnectionRepositoryMessage::SendToPlayer(
-            _,
-            _,
-            PlayerMessage::StackSnapshot { plants: _ },
-        )) = conn_rx.recv().await
-        else {
+        let Some(PlayerMessage::StackSnapshot { plants: _ }) = conn_rx.recv().await else {
             unreachable!("Should have received a snapshot of the player's stack");
         };
 
         // Should receive a stack forecasts back
-        let Some(ConnectionRepositoryMessage::SendToPlayer(
-            _,
-            _,
-            PlayerMessage::StackForecasts { forecasts: _ },
-        )) = conn_rx.recv().await
-        else {
+        let Some(PlayerMessage::StackForecasts { forecasts: _ }) = conn_rx.recv().await else {
             unreachable!("Should have received a forecast of the player's stack");
         };
     }
 
     #[tokio::test]
     async fn test_terminate_actor() {
-        let (connections, _) = mpsc::channel(128);
+        let (connections, _) = MockedPlayerConnections::new();
         let token = CancellationToken::new();
         let mut market = StackActor::new(
             GameId::default(),

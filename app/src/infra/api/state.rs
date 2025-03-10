@@ -7,7 +7,7 @@ use crate::{
     game::{GameContext, GameId},
     market::{MarketContext, MarketService},
     plants::{StackService, actor::StackContext},
-    player::{PlayerId, repository::ConnectionRepositoryMessage},
+    player::{PlayerId, infra::ConnectionRepositoryMessage},
 };
 
 pub type ApiState = Arc<RwLock<AppState>>;

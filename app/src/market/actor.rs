@@ -11,7 +11,7 @@ use super::{
 
 use crate::{
     game::{GameId, delivery_period::DeliveryPeriodId},
-    player::{PlayerId, PlayerMessage, repository::ConnectionRepositoryMessage},
+    player::{PlayerConnections, PlayerId, PlayerMessage},
 };
 
 #[derive(Debug)]
@@ -32,7 +32,7 @@ pub enum MarketMessage {
     RegisterForecast(MarketForecast),
 }
 
-pub struct MarketActor {
+pub struct MarketActor<PC: PlayerConnections> {
     game_id: GameId,
     delivery_period: DeliveryPeriodId,
     state: MarketState,
@@ -41,20 +41,20 @@ pub struct MarketActor {
     tx: mpsc::Sender<MarketMessage>,
     order_book: OrderBook,
     players: Vec<PlayerId>,
-    players_connections: mpsc::Sender<ConnectionRepositoryMessage>,
+    players_connections: PC,
     past_trades: HashMap<DeliveryPeriodId, Vec<Trade>>,
     forecasts: HashMap<DeliveryPeriodId, Vec<MarketForecast>>,
     cancellation_token: CancellationToken,
 }
 
-impl MarketActor {
+impl<PC: PlayerConnections> MarketActor<PC> {
     fn new(
         game_id: GameId,
         state: MarketState,
         delivery_period: DeliveryPeriodId,
-        players_connections: mpsc::Sender<ConnectionRepositoryMessage>,
+        players_connections: PC,
         cancellation_token: CancellationToken,
-    ) -> MarketActor {
+    ) -> MarketActor<PC> {
         let (state_tx, _) = watch::channel(state);
         let (tx, rx) = mpsc::channel::<MarketMessage>(128);
 
@@ -76,7 +76,7 @@ impl MarketActor {
 
     pub fn start(
         game_id: &GameId,
-        players_connections: mpsc::Sender<ConnectionRepositoryMessage>,
+        players_connections: PC,
         cancellation_token: CancellationToken,
     ) -> MarketContext<MarketService> {
         let mut market = MarketActor::new(
@@ -244,21 +244,12 @@ impl MarketActor {
         );
 
         // Broadcast forecast to all players
-        if let Err(err) = self
-            .players_connections
-            .send(ConnectionRepositoryMessage::SendToAllPlayers(
-                self.game_id.clone(),
+        self.players_connections
+            .send_to_all_players(
+                &self.game_id,
                 PlayerMessage::NewMarketForecast(forecast.clone()),
-            ))
-            .await
-        {
-            tracing::error!(
-                game_id = ?self.game_id,
-                period_id = ?forecast.period,
-                forecast_direction = ?forecast.direction,
-                "Failed to broadcast market forecast to players: {:?}", err
-            );
-        }
+            )
+            .await;
     }
 
     async fn send_order_book_snapshot_to_all(&self) {
@@ -272,12 +263,11 @@ impl MarketActor {
     }
 
     async fn send_empty_trade_list_to_all(&self) {
-        let _ = self
-            .players_connections
-            .send(ConnectionRepositoryMessage::SendToAllPlayers(
-                self.game_id.clone(),
+        self.players_connections
+            .send_to_all_players(
+                &self.game_id,
                 PlayerMessage::TradeList { trades: Vec::new() },
-            ))
+            )
             .await;
     }
 
@@ -305,11 +295,7 @@ impl MarketActor {
         };
         let _ = self
             .players_connections
-            .send(ConnectionRepositoryMessage::SendToPlayer(
-                self.game_id.clone(),
-                player_id.clone(),
-                message,
-            ))
+            .send_to_player(&self.game_id, player_id, message)
             .await;
     }
 
@@ -322,19 +308,32 @@ impl MarketActor {
     }
 
     async fn notify_trades(&self, trades: &[Trade]) {
-        if !trades.is_empty() {
-            join_all(trades.iter().flat_map(|trade| {
-                trade.split().map(|leg| {
-                    self.players_connections
-                        .send(ConnectionRepositoryMessage::SendToPlayer(
-                            self.game_id.clone(),
-                            leg.owner.clone(),
-                            PlayerMessage::NewTrade(leg.clone()),
-                        ))
-                })
-            }))
-            .await;
+        if trades.is_empty() {
+            return;
         }
+        for trade_leg in trades.iter().flat_map(|trade| trade.split()) {
+            let conns = self.players_connections.clone();
+            let game = self.game_id.clone();
+            let owner = trade_leg.owner.clone();
+            tokio::spawn(async move {
+                conns
+                    .send_to_player(&game, &owner, PlayerMessage::NewTrade(trade_leg))
+                    .await;
+            });
+        }
+        // if !trades.is_empty() {
+        //     join_all(trades.iter().flat_map(|trade| {
+        //         trade.split().map(|leg| {
+        //             let owner = leg.owner.clone();
+        //             self.players_connections.send_to_player(
+        //                 &self.game_id,
+        //                 &owner,
+        //                 PlayerMessage::NewTrade(leg.clone()),
+        //             )
+        //         })
+        //     }))
+        //     .await;
+        // }
     }
 
     #[tracing::instrument(name = "ActorMarket::process_order_request", skip(self))]
@@ -366,14 +365,46 @@ mod tests {
     use crate::{
         game::{GameId, delivery_period::DeliveryPeriodId},
         market::{Direction, ForecastLevel, MarketForecast, MarketState, order_book::OrderRequest},
-        player::{PlayerId, repository::ConnectionRepositoryMessage},
+        player::{PlayerConnections, PlayerId},
     };
 
     use super::{MarketActor, MarketMessage, PlayerMessage};
 
+    #[derive(Debug, Clone)]
+    pub struct MockPlayerConnections {
+        pub tx_send_to_player: mpsc::Sender<(PlayerId, PlayerMessage)>,
+        pub tx_send_to_all_players: mpsc::Sender<PlayerMessage>,
+    }
+    impl MockPlayerConnections {
+        pub fn new() -> (
+            MockPlayerConnections,
+            mpsc::Receiver<(PlayerId, PlayerMessage)>,
+            mpsc::Receiver<PlayerMessage>,
+        ) {
+            let (tx_send_to_player, rx_send_to_player) = mpsc::channel(16);
+            let (tx_send_to_all_players, rx_send_to_all_players) = mpsc::channel(16);
+            (
+                MockPlayerConnections {
+                    tx_send_to_player,
+                    tx_send_to_all_players,
+                },
+                rx_send_to_player,
+                rx_send_to_all_players,
+            )
+        }
+    }
+    impl PlayerConnections for MockPlayerConnections {
+        async fn send_to_all_players(&self, _game: &GameId, message: PlayerMessage) {
+            let _ = self.tx_send_to_all_players.send(message).await;
+        }
+        async fn send_to_player(&self, _game: &GameId, player: &PlayerId, message: PlayerMessage) {
+            let _ = self.tx_send_to_player.send((player.clone(), message)).await;
+        }
+    }
+
     fn start_market_actor(
         game_id: &GameId,
-        connections: mpsc::Sender<ConnectionRepositoryMessage>,
+        connections: MockPlayerConnections,
     ) -> (mpsc::Sender<MarketMessage>, watch::Receiver<MarketState>) {
         let token = CancellationToken::new();
         let mut market = MarketActor::new(
@@ -406,7 +437,7 @@ mod tests {
     #[tokio::test]
     async fn test_process_request_order() {
         let game_id = GameId::default();
-        let (conn_tx, mut conn_rx) = mpsc::channel(16);
+        let (conn_tx, mut conn_rx, ..) = MockPlayerConnections::new();
         let (tx, _) = start_market_actor(&game_id, conn_tx.clone());
         let player_id = register_player(tx.clone()).await;
 
@@ -421,15 +452,11 @@ mod tests {
         .unwrap();
 
         // The list of offers has been updated to contains our new offer (that we own)
-        let Some(ConnectionRepositoryMessage::SendToPlayer(
-            target_game_id,
-            target_player_id,
-            PlayerMessage::OrderBookSnapshot { bids, offers },
-        )) = conn_rx.recv().await
+        let Some((target_player_id, PlayerMessage::OrderBookSnapshot { bids, offers })) =
+            conn_rx.recv().await
         else {
             unreachable!("Expected PlayerMessage::PublicOffers")
         };
-        assert_eq!(target_game_id, game_id);
         assert_eq!(target_player_id, player_id);
         assert_eq!(bids.len(), 1);
         assert_eq!(offers.len(), 0);
@@ -439,7 +466,7 @@ mod tests {
     #[tokio::test]
     async fn test_process_delete_order() {
         let game_id = GameId::default();
-        let (conn_tx, mut conn_rx) = mpsc::channel(16);
+        let (conn_tx, mut conn_rx, ..) = MockPlayerConnections::new();
         let (tx, _) = start_market_actor(&game_id, conn_tx.clone());
         let player_id = register_player(tx.clone()).await;
 
@@ -454,11 +481,7 @@ mod tests {
         .unwrap();
 
         // The list of offers has been updated to contains our new offer
-        let Some(ConnectionRepositoryMessage::SendToPlayer(
-            _,
-            _,
-            PlayerMessage::OrderBookSnapshot { bids, offers },
-        )) = conn_rx.recv().await
+        let Some((_, PlayerMessage::OrderBookSnapshot { bids, offers })) = conn_rx.recv().await
         else {
             unreachable!("Expected PlayerMessage::PublicOffers")
         };
@@ -471,11 +494,7 @@ mod tests {
             .await
             .unwrap();
         // The list of offers should be empty
-        let Some(ConnectionRepositoryMessage::SendToPlayer(
-            _,
-            _,
-            PlayerMessage::OrderBookSnapshot { bids, offers },
-        )) = conn_rx.recv().await
+        let Some((_, PlayerMessage::OrderBookSnapshot { bids, offers })) = conn_rx.recv().await
         else {
             unreachable!("Expected PlayerMessage::PublicOffers")
         };
@@ -486,7 +505,7 @@ mod tests {
     #[tokio::test]
     async fn test_match_offers() {
         let game_id = GameId::default();
-        let (conn_tx, mut conn_rx) = mpsc::channel(16);
+        let (conn_tx, mut conn_rx, ..) = MockPlayerConnections::new();
         let (tx, _) = start_market_actor(&game_id, conn_tx.clone());
         let buyer_id = register_player(tx.clone()).await;
         let seller_id = register_player(tx.clone()).await;
@@ -516,27 +535,17 @@ mod tests {
 
         // The order book snapshots should be empty
         for _ in 0..2 {
-            let Some(ConnectionRepositoryMessage::SendToPlayer(
-                target_game_id,
-                _,
-                PlayerMessage::OrderBookSnapshot { bids, offers },
-            )) = conn_rx.recv().await
+            let Some((_, PlayerMessage::OrderBookSnapshot { bids, offers })) = conn_rx.recv().await
             else {
                 unreachable!("Expected PlayerMessage::PublicOffers")
             };
-            assert_eq!(target_game_id, game_id);
             assert_eq!(bids.len(), 0);
             assert_eq!(offers.len(), 0);
         }
 
         // Each player should receive its own trade leg
         for _ in 0..2 {
-            let Some(ConnectionRepositoryMessage::SendToPlayer(
-                _,
-                player_id,
-                PlayerMessage::NewTrade(trade),
-            )) = conn_rx.recv().await
-            else {
+            let Some((player_id, PlayerMessage::NewTrade(trade))) = conn_rx.recv().await else {
                 unreachable!("Expected PlayerMessage::NewTrade")
             };
             if player_id == buyer_id {
@@ -552,7 +561,7 @@ mod tests {
     #[tokio::test]
     async fn test_closed_market_does_not_process_order_request() {
         let game_id = GameId::default();
-        let (conn_tx, mut conn_rx) = mpsc::channel(16);
+        let (conn_tx, mut conn_rx, ..) = MockPlayerConnections::new();
         let token = CancellationToken::new();
         let mut market = MarketActor::new(
             game_id,
@@ -590,7 +599,7 @@ mod tests {
     #[tokio::test]
     async fn test_close_market_and_reopen() {
         let game_id = GameId::default();
-        let (conn_tx, mut conn_rx) = mpsc::channel(16);
+        let (conn_tx, mut conn_rx, ..) = MockPlayerConnections::new();
         let (tx, _) = start_market_actor(&game_id, conn_tx.clone());
         let player_id = register_player(tx.clone()).await;
 
@@ -619,7 +628,7 @@ mod tests {
             .await;
 
         // We should receive an obs
-        let Some(ConnectionRepositoryMessage::SendToPlayer(..)) = conn_rx.recv().await else {
+        let Some(_) = conn_rx.recv().await else {
             unreachable!("Expected PlayerMessage::PublicOffers")
         };
     }
@@ -627,7 +636,7 @@ mod tests {
     #[tokio::test]
     async fn test_close_market_receive_trades() {
         let game_id = GameId::default();
-        let (conn_tx, _) = mpsc::channel(16);
+        let (conn_tx, ..) = MockPlayerConnections::new();
         let (tx, _) = start_market_actor(&game_id, conn_tx.clone());
         let player_id = register_player(tx.clone()).await;
 
@@ -666,7 +675,7 @@ mod tests {
     #[tokio::test]
     async fn test_close_market_send_empty_obs_and_trade_list() {
         let game_id = GameId::default();
-        let (conn_tx, mut conn_rx) = mpsc::channel(16);
+        let (conn_tx, mut rx_player, mut rx_all) = MockPlayerConnections::new();
         let (tx, _) = start_market_actor(&game_id, conn_tx.clone());
         let player_id = register_player(tx.clone()).await;
 
@@ -679,7 +688,7 @@ mod tests {
                 owner: player_id.to_owned(),
             }))
             .await;
-        let _ = conn_rx.recv().await;
+        let _ = rx_player.recv().await;
 
         // Close the market
         let (tx_back, rx_back) = oneshot::channel();
@@ -694,11 +703,7 @@ mod tests {
         let _ = rx_back.await;
 
         // OBS should be empty
-        let Some(ConnectionRepositoryMessage::SendToPlayer(
-            _,
-            _,
-            PlayerMessage::OrderBookSnapshot { bids, offers },
-        )) = conn_rx.recv().await
+        let Some((_, PlayerMessage::OrderBookSnapshot { bids, offers })) = rx_player.recv().await
         else {
             unreachable!()
         };
@@ -706,11 +711,7 @@ mod tests {
         assert_eq!(offers.len(), 0);
 
         // Trade list should be empty
-        let Some(ConnectionRepositoryMessage::SendToAllPlayers(
-            _,
-            PlayerMessage::TradeList { trades },
-        )) = conn_rx.recv().await
-        else {
+        let Some(PlayerMessage::TradeList { trades }) = rx_all.recv().await else {
             unreachable!()
         };
         assert_eq!(trades.len(), 0);
@@ -719,7 +720,7 @@ mod tests {
     #[tokio::test]
     async fn test_market_state_watch() {
         let game_id = GameId::default();
-        let (conn_tx, _) = mpsc::channel(16);
+        let (conn_tx, ..) = MockPlayerConnections::new();
         let (tx, mut state_rx) = start_market_actor(&game_id, conn_tx.clone());
         register_player(tx.clone()).await;
 
@@ -747,7 +748,7 @@ mod tests {
     #[tokio::test]
     async fn test_try_closing_market_wrong_period_id_does_not_close_it() {
         let game_id = GameId::default();
-        let (conn_tx, _) = mpsc::channel(16);
+        let (conn_tx, ..) = MockPlayerConnections::new();
         let token = CancellationToken::new();
         let mut market = MarketActor::new(
             game_id,
@@ -790,7 +791,7 @@ mod tests {
     #[tokio::test]
     async fn test_opening_market_wrong_period_id_does_not_open_it() {
         let game_id = GameId::default();
-        let (conn_tx, _) = mpsc::channel(16);
+        let (conn_tx, ..) = MockPlayerConnections::new();
         let token = CancellationToken::new();
         let mut market = MarketActor::new(
             game_id,
@@ -825,7 +826,7 @@ mod tests {
     #[tokio::test]
     async fn test_open_market_then_close_next_period() {
         let game_id = GameId::default();
-        let (conn_tx, _) = mpsc::channel(16);
+        let (conn_tx, ..) = MockPlayerConnections::new();
         let token = CancellationToken::new();
         let mut market = MarketActor::new(
             game_id,
@@ -862,7 +863,7 @@ mod tests {
     #[tokio::test]
     async fn test_closing_twice_should_return_the_same_trades() {
         let game_id = GameId::default();
-        let (conn_tx, _) = mpsc::channel(16);
+        let (conn_tx, ..) = MockPlayerConnections::new();
         let (tx, mut state_rx) = start_market_actor(&game_id, conn_tx);
         let player_id = register_player(tx.clone()).await;
 
@@ -916,7 +917,7 @@ mod tests {
     #[tokio::test]
     async fn test_register_forecast_sends_it_to_all_players() {
         let game_id = GameId::default();
-        let (conn_tx, mut conn_rx) = mpsc::channel(16);
+        let (conn_tx, _, mut conn_rx) = MockPlayerConnections::new();
         let (tx, _) = start_market_actor(&game_id, conn_tx.clone());
 
         let _ = tx
@@ -929,11 +930,7 @@ mod tests {
             }))
             .await;
 
-        let Some(ConnectionRepositoryMessage::SendToAllPlayers(
-            _,
-            PlayerMessage::NewMarketForecast(_),
-        )) = conn_rx.recv().await
-        else {
+        let Some(PlayerMessage::NewMarketForecast(_)) = conn_rx.recv().await else {
             unreachable!("Should have sent a market forecast to all players")
         };
     }
@@ -941,7 +938,7 @@ mod tests {
     #[tokio::test]
     async fn test_register_forecast_does_nothing_if_period_is_running() {
         let game_id = GameId::default();
-        let (conn_tx, mut conn_rx) = mpsc::channel(16);
+        let (conn_tx, _, mut conn_rx) = MockPlayerConnections::new();
         let (tx, _) = start_market_actor(&game_id, conn_tx.clone());
 
         let _ = tx
@@ -962,7 +959,7 @@ mod tests {
     #[tokio::test]
     async fn test_register_forecast_does_nothing_if_period_is_finished() {
         let game_id = GameId::default();
-        let (conn_tx, mut conn_rx) = mpsc::channel(16);
+        let (conn_tx, _, mut conn_rx) = MockPlayerConnections::new();
         let (tx, _) = start_market_actor(&game_id, conn_tx.clone());
 
         let _ = tx
@@ -983,7 +980,7 @@ mod tests {
     #[tokio::test]
     async fn test_market_snapshot() {
         let game_id = GameId::default();
-        let (conn_tx, mut conn_rx) = mpsc::channel(16);
+        let (conn_tx, ..) = MockPlayerConnections::new();
         let (tx, _) = start_market_actor(&game_id, conn_tx.clone());
         let player_id = register_player(tx.clone()).await;
 
@@ -1012,7 +1009,6 @@ mod tests {
                 owner: player_id.clone(),
             }))
             .await;
-        let _ = conn_rx.recv().await;
 
         // Request market snapshot again
         let (tx_back, rx_back) = oneshot::channel();
@@ -1039,7 +1035,6 @@ mod tests {
                 owner: player_id.clone(),
             }))
             .await;
-        let _ = conn_rx.recv().await;
 
         // Verify the snapshot
         let (tx_back, rx_back) = oneshot::channel();
@@ -1106,7 +1101,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_terminate_actor() {
-        let (connections, _) = mpsc::channel(128);
+        let (connections, ..) = MockPlayerConnections::new();
         let token = CancellationToken::new();
         let mut market = MarketActor::new(
             GameId::default(),

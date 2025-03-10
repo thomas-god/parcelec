@@ -7,13 +7,13 @@ use super::scores::{GameRankings, PlayerResult, PlayerScore};
 use super::{GameContext, GameId, GameMessage, GameName, GetPreviousScoresResult};
 use futures_util::future::join_all;
 use tokio::sync::{
-    mpsc::{self, Receiver, Sender, channel},
+    mpsc::{Receiver, Sender, channel},
     oneshot, watch,
 };
 use tokio_util::sync::CancellationToken;
 
 use crate::game::{GameState, Player, RegisterPlayerResponse};
-use crate::player::PlayerName;
+use crate::player::{PlayerConnections, PlayerName};
 use crate::player::{PlayerMessage, PlayerResultView};
 use crate::{
     market::{Market, MarketContext},
@@ -21,21 +21,21 @@ use crate::{
         actor::{StackActor, StackContext, StackState},
         service::StackService,
     },
-    player::{PlayerId, repository::ConnectionRepositoryMessage},
+    player::PlayerId,
 };
 
 /// Main entrypoint for a given game of parcelec. Responsible for:
 /// - new player registration,
 /// - passing game context to new player connection (market and player's stack tx),
 /// - delivery period lifecycle
-pub struct GameActor<MS: Market> {
+pub struct GameActor<MS: Market, PC: PlayerConnections> {
     game_id: GameId,
     name: GameName,
     state: GameState,
     state_watch: watch::Sender<GameState>,
     players: Vec<Player>,
     players_scores: HashMap<PlayerId, HashMap<DeliveryPeriodId, PlayerScore>>,
-    players_connections: mpsc::Sender<ConnectionRepositoryMessage>,
+    players_connections: PC,
     market_context: MarketContext<MS>,
     stacks_contexts: HashMap<PlayerId, StackContext<StackService>>,
     rx: Receiver<GameMessage>,
@@ -68,10 +68,10 @@ impl Default for GameActorConfig {
     }
 }
 
-impl<MS: Market> GameActor<MS> {
+impl<MS: Market, PC: PlayerConnections> GameActor<MS, PC> {
     pub fn start(
         config: GameActorConfig,
-        players_connections: mpsc::Sender<ConnectionRepositoryMessage>,
+        players_connections: PC,
         market_context: MarketContext<MS>,
         cancelation_token: CancellationToken,
     ) -> GameContext {
@@ -244,15 +244,15 @@ impl<MS: Market> GameActor<MS> {
         // Send final scores and rankings
         let _ = self
             .players_connections
-            .send(ConnectionRepositoryMessage::SendToAllPlayers(
-                self.game_id.clone(),
+            .send_to_all_players(
+                &self.game_id,
                 PlayerMessage::GameResults {
                     rankings: map_rankings_to_player_name(
                         self.ranking_calculator.compute_scores(&self.players_scores),
                         &self.players,
                     ),
                 },
-            ))
+            )
             .await;
     }
 
@@ -306,8 +306,8 @@ impl<MS: Market> GameActor<MS> {
     async fn send_readiness_status(&self) {
         let _ = self
             .players_connections
-            .send(ConnectionRepositoryMessage::SendToAllPlayers(
-                self.game_id.clone(),
+            .send_to_all_players(
+                &self.game_id,
                 PlayerMessage::ReadinessStatus {
                     readiness: self
                         .players
@@ -315,7 +315,7 @@ impl<MS: Market> GameActor<MS> {
                         .map(|player| (player.name.clone(), player.ready))
                         .collect(),
                 },
-            ))
+            )
             .await;
     }
 
@@ -364,15 +364,14 @@ impl<MS: Market> GameActor<MS> {
             .state_watch
             .send(GameState::PostDelivery(self.current_delivery_period));
         join_all(results.players_scores.iter().map(|(player, score)| {
-            self.players_connections
-                .send(ConnectionRepositoryMessage::SendToPlayer(
-                    self.game_id.clone(),
-                    player.clone(),
-                    PlayerMessage::DeliveryPeriodResults {
-                        score: score.clone(),
-                        delivery_period: self.current_delivery_period,
-                    },
-                ))
+            self.players_connections.send_to_player(
+                &self.game_id,
+                player,
+                PlayerMessage::DeliveryPeriodResults {
+                    score: score.clone(),
+                    delivery_period: self.current_delivery_period,
+                },
+            )
         }))
         .await;
     }
@@ -412,6 +411,8 @@ fn map_rankings_to_player_name(
 
 #[cfg(test)]
 mod test_utils {
+    use tokio::sync::mpsc;
+
     use crate::market::{MarketForecast, MarketState, OBS, order_book::TradeLeg};
 
     use super::*;
@@ -449,8 +450,50 @@ mod test_utils {
         async fn register_forecast(&self, _forecast: crate::market::MarketForecast) {}
     }
 
+    #[derive(Debug, Clone)]
+    pub struct MockPlayerConnections {
+        pub tx_send_to_player: mpsc::Sender<(PlayerId, PlayerMessage)>,
+        pub tx_send_to_all_players: mpsc::Sender<PlayerMessage>,
+    }
+    impl MockPlayerConnections {
+        pub fn new() -> (
+            MockPlayerConnections,
+            mpsc::Receiver<(PlayerId, PlayerMessage)>,
+            mpsc::Receiver<PlayerMessage>,
+        ) {
+            let (tx_send_to_player, rx_send_to_player) = mpsc::channel(16);
+            let (tx_send_to_all_players, rx_send_to_all_players) = mpsc::channel(16);
+            (
+                MockPlayerConnections {
+                    tx_send_to_player,
+                    tx_send_to_all_players,
+                },
+                rx_send_to_player,
+                rx_send_to_all_players,
+            )
+        }
+    }
+    impl PlayerConnections for MockPlayerConnections {
+        async fn send_to_all_players(&self, _game: &GameId, message: PlayerMessage) -> () {
+            let _ = self.tx_send_to_all_players.send(message).await;
+        }
+        async fn send_to_player(
+            &self,
+            _game: &GameId,
+            player: &PlayerId,
+            message: PlayerMessage,
+        ) -> () {
+            let _ = self.tx_send_to_player.send((player.clone(), message)).await;
+        }
+    }
+
     pub fn open_game() -> (GameContext, MarketContext<MockMarket>) {
-        let (tx, _) = mpsc::channel(16);
+        let (tx_1, _) = mpsc::channel(16);
+        let (tx_2, _) = mpsc::channel(16);
+        let connections = MockPlayerConnections {
+            tx_send_to_all_players: tx_1,
+            tx_send_to_player: tx_2,
+        };
         let (state_tx, rx) = watch::channel(MarketState::Closed);
         let market = MockMarket { state_tx };
         let token = CancellationToken::new();
@@ -462,7 +505,7 @@ mod test_utils {
         (
             GameActor::start(
                 GameActorConfig::default(),
-                tx,
+                connections,
                 market_context.clone(),
                 token,
             ),
@@ -516,14 +559,16 @@ mod tests {
             RegisterPlayerResponse,
             actor::{
                 GameActorConfig,
-                test_utils::{MockMarket, open_game, register_player, start_game},
+                test_utils::{
+                    MockMarket, MockPlayerConnections, open_game, register_player, start_game,
+                },
             },
             delivery_period::DeliveryPeriodId,
             scores::GameRankings,
         },
         market::{MarketContext, MarketState},
         plants::actor::StackState,
-        player::{PlayerId, PlayerMessage, PlayerName, repository::ConnectionRepositoryMessage},
+        player::{PlayerId, PlayerMessage, PlayerName},
     };
 
     use super::GameActor;
@@ -755,39 +800,34 @@ mod tests {
 
     #[tokio::test]
     async fn test_send_results_to_player_at_the_end_of_delivery_period() {
-        let (conn_tx, mut conn_rx) = mpsc::channel(16);
+        let (connections, mut rx_send_to_player, ..) = MockPlayerConnections::new();
         let (state_tx, rx) = watch::channel(MarketState::Closed);
         let market = MarketContext {
             service: MockMarket { state_tx },
             state_rx: rx,
         };
         let token = CancellationToken::new();
-        let game = GameActor::start(GameActorConfig::default(), conn_tx, market, token);
+        let game = GameActor::start(GameActorConfig::default(), connections, market, token);
 
         // Start game
         let (player, _) = start_game(game.tx.clone()).await;
-        // Consume readiness status messages (1 register, 1 game start)
-        let _ = conn_rx.recv().await;
-        let _ = conn_rx.recv().await;
 
         // End delivery period
         let _ = game
             .tx
             .send(GameMessage::PlayerIsReady(player.clone()))
             .await;
-        // Flush readiness, snapshot and forecasts sent at the end of the delivery
-        let _ = conn_rx.recv().await;
-        let _ = conn_rx.recv().await;
-        let _ = conn_rx.recv().await;
+        // Flush stack snapshot and forecasts sent at the end of the delivery
+        let _ = rx_send_to_player.recv().await;
+        let _ = rx_send_to_player.recv().await;
 
-        let Some(ConnectionRepositoryMessage::SendToPlayer(
-            _,
+        let Some((
             target_player,
             PlayerMessage::DeliveryPeriodResults {
                 score: _,
                 delivery_period,
             },
-        )) = conn_rx.recv().await
+        )) = rx_send_to_player.recv().await
         else {
             unreachable!("Should have received player's results");
         };
@@ -797,20 +837,19 @@ mod tests {
 
     #[tokio::test]
     async fn test_get_previous_scores() {
-        let (conn_tx, mut conn_rx) = mpsc::channel(16);
+        // FIXME
+        let (connections, ..) = MockPlayerConnections::new();
         let (state_tx, rx) = watch::channel(MarketState::Closed);
         let market = MarketContext {
             service: MockMarket { state_tx },
             state_rx: rx,
         };
         let token = CancellationToken::new();
-        let game = GameActor::start(GameActorConfig::default(), conn_tx, market, token);
+        let mut game = GameActor::start(GameActorConfig::default(), connections, market, token);
+        game.state_rx.borrow_and_update();
 
         // Start the game
         let (player, _) = start_game(game.tx.clone()).await;
-        // Consume readiness status messages (1 register, 1 game start)
-        let _ = conn_rx.recv().await;
-        let _ = conn_rx.recv().await;
 
         // Scores should be empty at this stage
         let (tx_back, rx) = oneshot::channel();
@@ -831,9 +870,12 @@ mod tests {
             .tx
             .send(GameMessage::PlayerIsReady(player.clone()))
             .await;
-        // Consume score and readiness status messages
-        let _ = conn_rx.recv().await;
-        let _ = conn_rx.recv().await;
+        // Wait for game state to update
+        while *game.state_rx.borrow_and_update()
+            != GameState::PostDelivery(DeliveryPeriodId::from(1))
+        {
+            let _ = game.state_rx.changed().await;
+        }
 
         // Request player's scores
         let (tx_back, rx) = oneshot::channel();
@@ -852,7 +894,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_game_ends_after_max_delivery_periods() {
-        let (conn_tx, _conn_rx) = mpsc::channel(16);
+        let (connections, ..) = MockPlayerConnections::new();
         let (state_tx, rx) = watch::channel(MarketState::Closed);
         let market = MarketContext {
             service: MockMarket { state_tx },
@@ -866,7 +908,7 @@ mod tests {
                 last_delivery_period: Some(DeliveryPeriodId::from(2)),
                 ..Default::default()
             },
-            conn_tx,
+            connections,
             market,
             token,
         );
@@ -946,7 +988,7 @@ mod tests {
         }
 
         // Create a game with 1 delivery period
-        let (conn_tx, mut conn_rx) = mpsc::channel(16);
+        let (connections, _, mut rx_send_to_all_players) = MockPlayerConnections::new();
         let (state_tx, rx) = watch::channel(MarketState::Closed);
         let market = MarketContext {
             service: MockMarket { state_tx },
@@ -958,7 +1000,7 @@ mod tests {
                 last_delivery_period: Some(DeliveryPeriodId::from(1)),
                 ..Default::default()
             },
-            conn_tx,
+            connections,
             market,
             token,
         );
@@ -993,12 +1035,10 @@ mod tests {
 
         // Game should send all players scores to every player
         let mut message_found = false;
-        while let Ok(Some(msg)) = timeout(Duration::from_micros(10), conn_rx.recv()).await {
-            if let ConnectionRepositoryMessage::SendToAllPlayers(
-                _,
-                PlayerMessage::GameResults { rankings: _ },
-            ) = msg
-            {
+        while let Ok(Some(msg)) =
+            timeout(Duration::from_micros(10), rx_send_to_all_players.recv()).await
+        {
+            if let PlayerMessage::GameResults { rankings: _ } = msg {
                 message_found = true;
                 break;
             }
@@ -1009,7 +1049,7 @@ mod tests {
     #[tokio::test]
     async fn test_get_final_scores_as_previous_scores_when_game_ended() {
         // Create a game with 1 delivery period and register 1 player
-        let (conn_tx, _) = mpsc::channel(16);
+        let (connections, ..) = MockPlayerConnections::new();
         let (state_tx, rx) = watch::channel(MarketState::Closed);
         let market = MarketContext {
             service: MockMarket { state_tx },
@@ -1021,7 +1061,7 @@ mod tests {
                 last_delivery_period: Some(DeliveryPeriodId::from(1)),
                 ..Default::default()
             },
-            conn_tx,
+            connections,
             market,
             token,
         );
@@ -1074,7 +1114,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_terminate_actor() {
-        let (connections, _) = mpsc::channel(128);
+        let (connections, ..) = MockPlayerConnections::new();
         let (state_tx, rx) = watch::channel(MarketState::Closed);
         let market_context = MarketContext {
             service: MockMarket { state_tx },
@@ -1176,11 +1216,14 @@ mod test_readiness_status {
 
     use crate::{game::actor::test_utils::register_player, market::MarketState};
 
-    use super::{test_utils::MockMarket, *};
+    use super::{
+        test_utils::{MockMarket, MockPlayerConnections},
+        *,
+    };
     use tokio::sync::mpsc;
 
-    fn start_game() -> (mpsc::Receiver<ConnectionRepositoryMessage>, GameContext) {
-        let (conn_tx, conn_rx) = mpsc::channel(16);
+    fn start_game() -> (mpsc::Receiver<PlayerMessage>, GameContext) {
+        let (connections, _, rx_send_to_all_players) = MockPlayerConnections::new();
         let (state_tx, rx) = watch::channel(MarketState::Closed);
         let market = MarketContext {
             service: MockMarket { state_tx },
@@ -1192,11 +1235,11 @@ mod test_readiness_status {
                 last_delivery_period: Some(DeliveryPeriodId::from(1)),
                 ..Default::default()
             },
-            conn_tx,
+            connections,
             market,
             token,
         );
-        (conn_rx, game)
+        (rx_send_to_all_players, game)
     }
 
     #[tokio::test]
@@ -1204,11 +1247,7 @@ mod test_readiness_status {
         let (mut conn_rx, game) = start_game();
         let (_, name, _) = register_player(game.tx.clone()).await;
 
-        let Some(ConnectionRepositoryMessage::SendToAllPlayers(
-            _,
-            PlayerMessage::ReadinessStatus { readiness },
-        )) = conn_rx.recv().await
-        else {
+        let Some(PlayerMessage::ReadinessStatus { readiness }) = conn_rx.recv().await else {
             unreachable!("Should have received a readiness status message")
         };
         assert!(readiness.contains_key(&name));
@@ -1230,11 +1269,7 @@ mod test_readiness_status {
         let _ = game.tx.send(GameMessage::PlayerIsReady(player_id)).await;
 
         // Receive updated readiness status
-        let Some(ConnectionRepositoryMessage::SendToAllPlayers(
-            _,
-            PlayerMessage::ReadinessStatus { readiness },
-        )) = conn_rx.recv().await
-        else {
+        let Some(PlayerMessage::ReadinessStatus { readiness }) = conn_rx.recv().await else {
             unreachable!("Should have received a readiness status message")
         };
         assert!(readiness.contains_key(&name));
@@ -1260,11 +1295,7 @@ mod test_readiness_status {
         let _ = game.tx.send(GameMessage::PlayerIsReady(player2)).await;
 
         // Receive updated readiness status
-        let Some(ConnectionRepositoryMessage::SendToAllPlayers(
-            _,
-            PlayerMessage::ReadinessStatus { readiness },
-        )) = conn_rx.recv().await
-        else {
+        let Some(PlayerMessage::ReadinessStatus { readiness }) = conn_rx.recv().await else {
             unreachable!("Should have received a readiness status message")
         };
         assert!(readiness.contains_key(&name));

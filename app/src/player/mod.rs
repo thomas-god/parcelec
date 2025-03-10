@@ -8,6 +8,7 @@ use uuid::Uuid;
 use crate::{
     forecast::ForecastLevel,
     game::{
+        GameId,
         delivery_period::DeliveryPeriodId,
         scores::{PlayerScore, RankTier},
     },
@@ -15,7 +16,7 @@ use crate::{
     plants::{PlantId, PowerPlantPublicRepr},
 };
 
-pub mod repository;
+pub mod infra;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, From, Display, AsRef, Into)]
 #[into(String)]
@@ -88,6 +89,23 @@ pub enum PlayerMessage {
     YourName {
         name: PlayerName,
     },
+}
+
+pub trait PlayerConnections: Clone + Send + Sync + 'static {
+    /// Send a message to all connections beloging to a given player.
+    fn send_to_player(
+        &self,
+        game: &GameId,
+        player: &PlayerId,
+        message: PlayerMessage,
+    ) -> impl Future<Output = ()> + Send;
+
+    /// Send the same message to all players' connections from a given game.
+    fn send_to_all_players(
+        &self,
+        game: &GameId,
+        message: PlayerMessage,
+    ) -> impl Future<Output = ()> + Send;
 }
 
 #[cfg(test)]

@@ -3,9 +3,10 @@ use std::{collections::HashMap, fmt::Debug};
 use futures_util::future::join_all;
 use tokio::sync::mpsc;
 
-use crate::game::GameId;
-
-use super::{PlayerId, PlayerMessage};
+use crate::{
+    game::GameId,
+    player::{PlayerId, PlayerMessage},
+};
 
 #[derive(Clone)]
 pub struct PlayerConnection {
