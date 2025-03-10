@@ -5,7 +5,6 @@ use player::repository::PlayerConnectionRepository;
 use tokio::sync::RwLock;
 
 pub mod api;
-pub mod bots;
 pub mod forecast;
 pub mod game;
 pub mod market;

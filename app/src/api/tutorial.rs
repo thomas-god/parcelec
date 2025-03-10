@@ -8,13 +8,12 @@ use tower_cookies::{
 };
 
 use crate::{
-    bots::start_bots,
     game::{
         Game, GameId, GameMessage, GameName, RegisterPlayerResponse,
         delivery_period::DeliveryPeriodId,
         scores::{GameRankings, TierLimits},
     },
-    market::MarketActor,
+    market::{MarketActor, bots::start_bots},
     player::PlayerName,
 };
 

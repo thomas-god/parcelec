@@ -9,6 +9,7 @@ use order_book::{Bid, Offer, OrderRequest, Trade, TradeLeg};
 use crate::{forecast::ForecastLevel, game::delivery_period::DeliveryPeriodId, player::PlayerId};
 
 pub mod actor;
+pub mod bots;
 pub mod order_book;
 pub mod service;
 

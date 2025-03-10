@@ -4,13 +4,12 @@ use axum::{Json, extract::State, http::StatusCode, response::IntoResponse};
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    bots::start_bots,
     game::{
         Game, GameId, GameName,
         delivery_period::{DeliveryPeriodId, DeliveryPeriodTimers},
         scores::{GameRankings, TierLimits},
     },
-    market::MarketActor,
+    market::{MarketActor, bots::start_bots},
 };
 
 use super::ApiState;
