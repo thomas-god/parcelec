@@ -9,13 +9,13 @@ use tower_cookies::{
 };
 
 use crate::{
-    api::state::cleanup_state,
     game::{
         GameActor, GameId, GameMessage, GameName, RegisterPlayerResponse,
         actor::GameActorConfig,
         delivery_period::DeliveryPeriodId,
         scores::{GameRankings, TierLimits},
     },
+    infra::api::state::cleanup_state,
     market::{MarketActor, bots::start_bots},
     player::PlayerName,
     utils::program_actors_termination,

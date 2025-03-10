@@ -106,7 +106,7 @@ async fn handle_socket<MS: Market, PS: Stack>(
 
 #[cfg(test)]
 mod tests {
-    use crate::api::{build_app, state::AppState};
+    use crate::infra::api::{build_app, state::AppState};
     use axum::http::{Request, StatusCode};
     use std::{
         collections::HashMap,

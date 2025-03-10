@@ -39,8 +39,8 @@ pub async fn list_games(State(state): State<ApiState>) -> impl IntoResponse {
 #[cfg(test)]
 mod test_api_list_games {
     use crate::{
-        api::state::AppState,
         game::{GameContext, GameId, GameName, delivery_period::DeliveryPeriodId},
+        infra::api::state::AppState,
     };
 
     use super::*;

@@ -1,9 +1,9 @@
-use api::{start_server, state::new_api_state};
+use infra::api::{start_server, state::new_api_state};
 use player::repository::PlayerConnectionRepository;
 
-pub mod api;
 pub mod forecast;
 pub mod game;
+pub mod infra;
 pub mod market;
 pub mod plants;
 pub mod player;

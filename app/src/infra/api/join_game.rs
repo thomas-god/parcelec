@@ -115,11 +115,11 @@ pub async fn join_game(
 
 #[cfg(test)]
 mod test_api_join_game {
-    use crate::api::join_game::{JoinGame, join_game};
-    use crate::api::{ApiState, state::AppState};
     use crate::game::{
         GameContext, GameId, GameMessage, GameName, GameState, RegisterPlayerResponse,
     };
+    use crate::infra::api::join_game::{JoinGame, join_game};
+    use crate::infra::api::{ApiState, state::AppState};
     use crate::plants::StackService;
     use crate::plants::actor::{StackContext, StackState};
     use crate::player::PlayerId;

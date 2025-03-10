@@ -4,13 +4,13 @@ use axum::{Json, extract::State, http::StatusCode, response::IntoResponse};
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    api::state::cleanup_state,
     game::{
         GameActor, GameId, GameName,
         actor::GameActorConfig,
         delivery_period::{DeliveryPeriodId, DeliveryPeriodTimers},
         scores::{GameRankings, TierLimits},
     },
+    infra::api::state::cleanup_state,
     market::{MarketActor, bots::start_bots},
     utils::program_actors_termination,
 };
