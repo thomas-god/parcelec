@@ -2,6 +2,7 @@ use std::{collections::HashMap, fmt::Debug};
 
 use futures_util::future::join_all;
 use tokio::sync::{mpsc, oneshot, watch};
+use tokio_util::sync::CancellationToken;
 
 use super::{
     MarketContext, MarketForecast, MarketService, MarketState, OBS, OrderRepr,
@@ -29,7 +30,6 @@ pub enum MarketMessage {
         order_id: String,
     },
     RegisterForecast(MarketForecast),
-    Terminate,
 }
 
 pub struct MarketActor {
@@ -44,6 +44,7 @@ pub struct MarketActor {
     players_connections: mpsc::Sender<ConnectionRepositoryMessage>,
     past_trades: HashMap<DeliveryPeriodId, Vec<Trade>>,
     forecasts: HashMap<DeliveryPeriodId, Vec<MarketForecast>>,
+    cancellation_token: CancellationToken,
 }
 
 impl MarketActor {
@@ -52,6 +53,7 @@ impl MarketActor {
         state: MarketState,
         delivery_period: DeliveryPeriodId,
         players_connections: mpsc::Sender<ConnectionRepositoryMessage>,
+        cancellation_token: CancellationToken,
     ) -> MarketActor {
         let (state_tx, _) = watch::channel(state);
         let (tx, rx) = mpsc::channel::<MarketMessage>(128);
@@ -68,18 +70,21 @@ impl MarketActor {
             order_book: OrderBook::new(),
             past_trades: HashMap::new(),
             forecasts: HashMap::new(),
+            cancellation_token,
         }
     }
 
     pub fn start(
         game_id: &GameId,
         players_connections: mpsc::Sender<ConnectionRepositoryMessage>,
+        cancellation_token: CancellationToken,
     ) -> MarketContext<MarketService> {
         let mut market = MarketActor::new(
             game_id.clone(),
             MarketState::Closed,
             DeliveryPeriodId::default(),
             players_connections,
+            cancellation_token,
         );
         let context = market.get_context();
 
@@ -97,15 +102,21 @@ impl MarketActor {
     }
 
     pub async fn process(&mut self) {
-        while let Some(message) = self.rx.recv().await {
-            if let Err(()) = self.process_message(message).await {
-                break;
-            };
+        loop {
+            tokio::select! {
+                Some(message) = self.rx.recv() => {
+                    self.process_message(message).await;
+                }
+                _ = self.cancellation_token.cancelled() => {
+                    tracing::info!("Market actor for game {:?} terminated", self.game_id);
+                    break;
+                }
+            }
         }
     }
 
     #[tracing::instrument(name = "MarketActor::process_message", skip(self))]
-    async fn process_message(&mut self, message: MarketMessage) -> Result<(), ()> {
+    async fn process_message(&mut self, message: MarketMessage) {
         match (&self.state, message) {
             (_, MarketMessage::GetMarketSnapshot { player_id, tx_back }) => {
                 self.players.push(player_id.clone());
@@ -156,15 +167,7 @@ impl MarketActor {
             (MarketState::Open, MarketMessage::OpenMarket(_)) => {
                 tracing::warn!("Market is already open");
             }
-            (_, MarketMessage::Terminate) => {
-                tracing::info!(
-                    "Market actor received Terminate message for game {:?}.",
-                    self.game_id
-                );
-                return Err(());
-            }
         }
-        Ok(())
     }
 
     async fn close_market(
@@ -358,6 +361,7 @@ mod tests {
         },
         time::timeout,
     };
+    use tokio_util::sync::CancellationToken;
 
     use crate::{
         game::{GameId, delivery_period::DeliveryPeriodId},
@@ -371,11 +375,13 @@ mod tests {
         game_id: &GameId,
         connections: mpsc::Sender<ConnectionRepositoryMessage>,
     ) -> (mpsc::Sender<MarketMessage>, watch::Receiver<MarketState>) {
+        let token = CancellationToken::new();
         let mut market = MarketActor::new(
             game_id.clone(),
             MarketState::Open,
             DeliveryPeriodId::from(0),
             connections,
+            token,
         );
         let tx = market.tx.clone();
         let watch = market.state_sender.subscribe();
@@ -547,11 +553,13 @@ mod tests {
     async fn test_closed_market_does_not_process_order_request() {
         let game_id = GameId::default();
         let (conn_tx, mut conn_rx) = mpsc::channel(16);
+        let token = CancellationToken::new();
         let mut market = MarketActor::new(
             game_id,
             MarketState::Closed,
             DeliveryPeriodId::from(0),
             conn_tx,
+            token,
         );
         let tx = market.tx.clone();
         tokio::spawn(async move {
@@ -740,11 +748,13 @@ mod tests {
     async fn test_try_closing_market_wrong_period_id_does_not_close_it() {
         let game_id = GameId::default();
         let (conn_tx, _) = mpsc::channel(16);
+        let token = CancellationToken::new();
         let mut market = MarketActor::new(
             game_id,
             MarketState::Open,
             DeliveryPeriodId::from(1),
             conn_tx,
+            token,
         );
         let market_tx = market.tx.clone();
         let mut state_rx = market.state_sender.subscribe();
@@ -781,11 +791,13 @@ mod tests {
     async fn test_opening_market_wrong_period_id_does_not_open_it() {
         let game_id = GameId::default();
         let (conn_tx, _) = mpsc::channel(16);
+        let token = CancellationToken::new();
         let mut market = MarketActor::new(
             game_id,
             MarketState::Closed,
             DeliveryPeriodId::from(1),
             conn_tx,
+            token,
         );
         let market_tx = market.tx.clone();
         let mut state_rx = market.state_sender.subscribe();
@@ -814,11 +826,13 @@ mod tests {
     async fn test_open_market_then_close_next_period() {
         let game_id = GameId::default();
         let (conn_tx, _) = mpsc::channel(16);
+        let token = CancellationToken::new();
         let mut market = MarketActor::new(
             game_id,
             MarketState::Closed,
             DeliveryPeriodId::from(1),
             conn_tx,
+            token,
         );
         let market_tx = market.tx.clone();
         let mut state_rx = market.state_sender.subscribe();
@@ -1093,19 +1107,19 @@ mod tests {
     #[tokio::test]
     async fn test_terminate_actor() {
         let (connections, _) = mpsc::channel(128);
+        let token = CancellationToken::new();
         let mut market = MarketActor::new(
             GameId::default(),
             MarketState::Open,
             DeliveryPeriodId::from(0),
             connections,
+            token.clone(),
         );
-        let tx = market.tx.clone();
         let handle = tokio::spawn(async move {
             market.process().await;
         });
 
-        tx.send(MarketMessage::Terminate).await.unwrap();
-
+        token.cancel();
         match tokio::time::timeout(Duration::from_millis(10), handle).await {
             Err(_) => unreachable!("Should have ended market actor"),
             Ok(_) => {}

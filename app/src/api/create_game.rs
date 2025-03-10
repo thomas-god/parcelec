@@ -10,6 +10,7 @@ use crate::{
         scores::{GameRankings, TierLimits},
     },
     market::{MarketActor, bots::start_bots},
+    utils::program_cleanup,
 };
 
 use super::ApiState;
@@ -34,7 +35,12 @@ pub async fn create_game(
     };
     let mut state = state.write().await;
     let game_id = GameId::default();
-    let market_context = MarketActor::start(&game_id, state.player_connections_repository.clone());
+    let cancellation_token = program_cleanup(Duration::from_secs(3600 * 24));
+    let market_context = MarketActor::start(
+        &game_id,
+        state.player_connections_repository.clone(),
+        cancellation_token.clone(),
+    );
     let last_delivery_period = DeliveryPeriodId::from(4);
     let game_context = Game::start(
         &game_id,
@@ -53,6 +59,7 @@ pub async fn create_game(
             market: Duration::from_secs(120),
             stacks: Duration::from_secs(120),
         }),
+        cancellation_token,
     );
 
     state

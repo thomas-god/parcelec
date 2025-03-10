@@ -8,6 +8,7 @@ use tokio::{
     sync::{mpsc, oneshot},
     time::sleep,
 };
+use tokio_util::sync::CancellationToken;
 
 use crate::{
     game::scores::compute_players_scores,
@@ -51,6 +52,7 @@ pub async fn start_delivery_period<StkS, MS>(
     stack_services: HashMap<PlayerId, StkS>,
     players_ready_rx: oneshot::Receiver<()>,
     timers: Option<DeliveryPeriodTimers>,
+    cancellation_token: CancellationToken,
 ) where
     StkS: Stack,
     MS: Market,
@@ -77,38 +79,49 @@ pub async fn start_delivery_period<StkS, MS>(
         let market_service_cloned = market_service.clone();
         let stack_services_cloned = stack_services.clone();
         set.spawn(async move {
-            join!(
+            Ok(join!(
                 close_market_future(market_service_cloned, current_period, timers.market),
                 close_stacks_future(stack_services_cloned, current_period, timers.stacks)
-            )
+            ))
         });
     }
 
     // Close market and stacks if all players are ready
     set.spawn(async move {
-        let _ = players_ready_rx.await;
+        let Ok(_) = players_ready_rx.await else {
+            tracing::warn!("Players ready rx closed");
+            return Err(());
+        };
         tracing::info!("All players ready, closing delivery period early");
-        join!(
+        Ok(join!(
             market_service.close_market(period_id),
             close_stacks(stack_services, period_id)
-        )
+        ))
     });
 
     let (trades, plants_outputs) = loop {
-        match set.join_next().await {
-            Some(Ok(result)) => {
-                // Got successful result, abort remaining tasks and break
-                set.abort_all();
-                break result;
+        tokio::select! {
+            res = set.join_next() => {
+                match res {
+                    Some(Ok(Ok(result))) => {
+                        // Got successful result, abort remaining tasks and break
+                        set.abort_all();
+                        break result;
+                    }
+                    Some(Ok(Err(_))) | Some(Err(_)) => {
+                        tracing::warn!("Task failed, trying next task");
+                        // Continue to next task if there is one
+                        continue;
+                    }
+                    None => {
+                        // No more tasks to try
+                        tracing::error!("All tasks failed or JoinSet was empty");
+                    }
+                }
             }
-            Some(Err(e)) => {
-                tracing::warn!("Task failed: {e}, trying next task");
-                // Continue to next task if there is one
-                continue;
-            }
-            None => {
-                // No more tasks to try
-                tracing::error!("All tasks failed or JoinSet was empty");
+            _ = cancellation_token.cancelled() => {
+                tracing::info!("Terminating delivery period {period_id:?}");
+                return;
             }
         }
     };
@@ -198,6 +211,7 @@ mod tests {
     use futures::future;
     use mockall::{Sequence, predicate::eq};
     use tokio::sync::{mpsc, oneshot};
+    use tokio_util::sync::CancellationToken;
 
     use crate::{
         game::{
@@ -280,12 +294,13 @@ mod tests {
         stack_service.expect_close_stack().never();
         let stacks_services = HashMap::from([(PlayerId::from("toto"), stack_service)]);
 
-        // Keep _players_ready_tx around to not dropt the channel and trigger early closing
+        // Keep _players_ready_tx around to not drop the channel and trigger early closing
         let (_players_ready_tx, players_ready_rx) = oneshot::channel();
         let timers = Some(DeliveryPeriodTimers {
             market: Duration::from_micros(1),
             stacks: Duration::from_micros(1),
         });
+        let token = CancellationToken::new();
 
         tokio::spawn(async move {
             start_delivery_period(
@@ -295,6 +310,7 @@ mod tests {
                 stacks_services,
                 players_ready_rx,
                 timers,
+                token,
             )
             .await;
         });
@@ -360,7 +376,7 @@ mod tests {
             .once()
             .returning(|_| Box::pin(future::ready(Ok(HashMap::new()))));
         let stacks_services = HashMap::from([(PlayerId::from("toto"), stack_service)]);
-
+        let token = CancellationToken::new();
         let timers = None;
 
         tokio::spawn(async move {
@@ -371,6 +387,7 @@ mod tests {
                 stacks_services,
                 players_ready_rx,
                 timers,
+                token,
             )
             .await;
         });

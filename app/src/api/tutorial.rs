@@ -1,7 +1,8 @@
-use std::{collections::HashMap, env};
+use std::{collections::HashMap, env, time::Duration as StdDuration};
 
 use axum::{extract::State, http::StatusCode, response::IntoResponse};
 use tokio::sync::oneshot;
+
 use tower_cookies::{
     Cookie, Cookies,
     cookie::{SameSite, time::Duration},
@@ -15,6 +16,7 @@ use crate::{
     },
     market::{MarketActor, bots::start_bots},
     player::PlayerName,
+    utils::program_cleanup,
 };
 
 use super::ApiState;
@@ -27,7 +29,12 @@ pub async fn create_tutorial_game(
     let game_id = GameId::default();
     let player_name = PlayerName::random();
     let game_name = GameName::from(format!("tutorial-{}", player_name));
-    let market_context = MarketActor::start(&game_id, state.player_connections_repository.clone());
+    let cancellation_token = program_cleanup(StdDuration::from_secs(3600 * 24));
+    let market_context = MarketActor::start(
+        &game_id,
+        state.player_connections_repository.clone(),
+        cancellation_token.clone(),
+    );
     let last_delivery_period = DeliveryPeriodId::from(4);
     let game_context = Game::start(
         &game_id,
@@ -43,6 +50,7 @@ pub async fn create_tutorial_game(
             }),
         },
         None,
+        cancellation_token,
     );
 
     state

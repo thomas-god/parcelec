@@ -10,6 +10,7 @@ use tokio::sync::{
     mpsc::{self, Receiver, Sender, channel},
     oneshot, watch,
 };
+use tokio_util::sync::CancellationToken;
 
 use crate::game::{GameState, Player, RegisterPlayerResponse};
 use crate::player::PlayerName;
@@ -44,6 +45,7 @@ pub struct Game<MS: Market> {
     delivery_period_timers: Option<DeliveryPeriodTimers>,
     all_players_ready_tx: Option<oneshot::Sender<()>>,
     ranking_calculator: GameRankings,
+    cancellation_token: CancellationToken,
 }
 
 impl<MS: Market> Game<MS> {
@@ -55,6 +57,7 @@ impl<MS: Market> Game<MS> {
         last_delivery_period: Option<DeliveryPeriodId>,
         ranking_calculator: GameRankings,
         delivery_period_timers: Option<DeliveryPeriodTimers>,
+        cancelation_token: CancellationToken,
     ) -> GameContext {
         let initial_state = GameState::Open;
         let (tx, rx) = channel::<GameMessage>(32);
@@ -76,6 +79,7 @@ impl<MS: Market> Game<MS> {
             last_delivery_period,
             all_players_ready_tx: None,
             ranking_calculator,
+            cancellation_token: cancelation_token,
         };
         let context = game.get_context();
 
@@ -85,8 +89,16 @@ impl<MS: Market> Game<MS> {
     }
 
     async fn run(&mut self) {
-        while let Some(msg) = self.rx.recv().await {
-            self.process_message(msg).await;
+        loop {
+            tokio::select! {
+                Some(msg) = self.rx.recv() => {
+                    self.process_message(msg).await;
+                }
+                _ = self.cancellation_token.cancelled() => {
+                    tracing::info!("Game actor {:?} terminated", self.game_id);
+                    break;
+                }
+            }
         }
     }
     #[tracing::instrument(name = "GameActor::process_message", skip(self))]
@@ -170,6 +182,7 @@ impl<MS: Market> Game<MS> {
             .collect();
         let (results_tx, results_rx) = oneshot::channel();
         let timers = self.delivery_period_timers.clone();
+        let token = self.cancellation_token.clone();
         tokio::spawn(async move {
             start_delivery_period(
                 delivery_period,
@@ -178,6 +191,7 @@ impl<MS: Market> Game<MS> {
                 stacks_tx,
                 results_rx,
                 timers,
+                token,
             )
             .await;
         });
@@ -255,6 +269,7 @@ impl<MS: Market> Game<MS> {
             StackState::Closed,
             self.current_delivery_period,
             self.players_connections.clone(),
+            self.cancellation_token.clone(),
         );
         let stack_context = player_stack.get_context();
         self.stacks_contexts
@@ -424,6 +439,7 @@ mod test_utils {
         let (state_tx, rx) = watch::channel(MarketState::Closed);
         let market = MockMarket { state_tx };
         let ranking_calculator = GameRankings { tier_limits: None };
+        let token = CancellationToken::new();
 
         let market_context = MarketContext {
             service: market,
@@ -438,6 +454,7 @@ mod test_utils {
                 None,
                 ranking_calculator,
                 None,
+                token,
             ),
             market_context,
         )
@@ -471,7 +488,7 @@ mod test_utils {
 
 #[cfg(test)]
 mod tests {
-    use std::time::Duration;
+    use std::{collections::HashMap, time::Duration};
 
     use tokio::{
         sync::{
@@ -481,10 +498,12 @@ mod tests {
         },
         time::timeout,
     };
+    use tokio_util::sync::CancellationToken;
 
     use crate::{
         game::{
-            GameId, GameMessage, GameState, GetPreviousScoresResult, RegisterPlayerResponse,
+            GameId, GameMessage, GameName, GameState, GetPreviousScoresResult,
+            RegisterPlayerResponse,
             actor::test_utils::{MockMarket, open_game, register_player, start_game},
             delivery_period::DeliveryPeriodId,
             scores::GameRankings,
@@ -734,6 +753,7 @@ mod tests {
             state_rx: rx,
         };
         let ranking_calculator = GameRankings { tier_limits: None };
+        let token = CancellationToken::new();
         let game = Game::start(
             &game_id,
             None,
@@ -742,6 +762,7 @@ mod tests {
             None,
             ranking_calculator,
             None,
+            token,
         );
 
         // Start game
@@ -785,6 +806,7 @@ mod tests {
             state_rx: rx,
         };
         let ranking_calculator = GameRankings { tier_limits: None };
+        let token = CancellationToken::new();
         let game = Game::start(
             &game_id,
             None,
@@ -793,6 +815,7 @@ mod tests {
             None,
             ranking_calculator,
             None,
+            token,
         );
 
         // Start the game
@@ -850,6 +873,7 @@ mod tests {
         };
 
         let ranking_calculator = GameRankings { tier_limits: None };
+        let token = CancellationToken::new();
         // Create a game with 2 max delivery periods
         let mut game = Game::start(
             &game_id,
@@ -859,6 +883,7 @@ mod tests {
             Some(DeliveryPeriodId::from(2)),
             ranking_calculator,
             None,
+            token,
         );
 
         // Register and start the game with one player
@@ -943,6 +968,7 @@ mod tests {
             service: MockMarket { state_tx },
             state_rx: rx,
         };
+        let token = CancellationToken::new();
         let ranking_calculator = GameRankings { tier_limits: None };
         let mut game = Game::start(
             &game_id,
@@ -952,6 +978,7 @@ mod tests {
             Some(DeliveryPeriodId::from(1)),
             ranking_calculator,
             None,
+            token,
         );
 
         // Register two players
@@ -1007,6 +1034,7 @@ mod tests {
             service: MockMarket { state_tx },
             state_rx: rx,
         };
+        let token = CancellationToken::new();
         let ranking_calculator = GameRankings { tier_limits: None };
         let mut game = Game::start(
             &game_id,
@@ -1016,6 +1044,7 @@ mod tests {
             Some(DeliveryPeriodId::from(1)),
             ranking_calculator,
             None,
+            token,
         );
         let (player, _, _) = register_player(game.tx.clone()).await;
 
@@ -1062,6 +1091,47 @@ mod tests {
         let Ok(GetPreviousScoresResult::PlayersRanking { scores: _ }) = rx_back.await else {
             unreachable!("Should have received scores for all players");
         };
+    }
+
+    #[tokio::test]
+    async fn test_terminate_actor() {
+        let (connections, _) = mpsc::channel(128);
+        let (state_tx, rx) = watch::channel(MarketState::Closed);
+        let market_context = MarketContext {
+            service: MockMarket { state_tx },
+            state_rx: rx,
+        };
+        let (state_tx, _) = watch::channel(GameState::Open);
+        let cancellation_token = CancellationToken::new();
+        let (tx, rx) = mpsc::channel(128);
+        let mut game = Game {
+            game_id: GameId::default(),
+            name: GameName::default(),
+            state: GameState::Open,
+            state_watch: state_tx,
+            players: Vec::new(),
+            players_scores: HashMap::new(),
+            players_connections: connections,
+            market_context,
+            stacks_contexts: HashMap::new(),
+            tx,
+            rx,
+            current_delivery_period: DeliveryPeriodId::default(),
+            last_delivery_period: None,
+            delivery_period_timers: None,
+            all_players_ready_tx: None,
+            ranking_calculator: GameRankings { tier_limits: None },
+            cancellation_token: cancellation_token.clone(),
+        };
+        let handle = tokio::spawn(async move {
+            game.run().await;
+        });
+
+        cancellation_token.cancel();
+        match tokio::time::timeout(Duration::from_millis(10), handle).await {
+            Err(_) => unreachable!("Should have ended game actor"),
+            Ok(_) => {}
+        }
     }
 }
 
@@ -1139,6 +1209,7 @@ mod test_readiness_status {
             state_rx: rx,
         };
         let ranking_calculator = GameRankings { tier_limits: None };
+        let token = CancellationToken::new();
         let game = Game::start(
             &game_id,
             None,
@@ -1147,6 +1218,7 @@ mod test_readiness_status {
             Some(DeliveryPeriodId::from(1)),
             ranking_calculator,
             None,
+            token,
         );
         (conn_rx, game)
     }

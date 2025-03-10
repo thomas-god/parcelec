@@ -10,6 +10,7 @@ pub mod game;
 pub mod market;
 pub mod plants;
 pub mod player;
+pub mod utils;
 
 #[tokio::main]
 async fn main() {

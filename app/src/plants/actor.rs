@@ -5,6 +5,7 @@ use tokio::sync::{
     mpsc::{self, Receiver, Sender, channel},
     oneshot, watch,
 };
+use tokio_util::sync::CancellationToken;
 
 use crate::{
     forecast::ForecastLevel,
@@ -37,7 +38,6 @@ pub enum StackMessage {
     ProgramSetpoint(ProgramPlant),
     GetSnapshot(oneshot::Sender<HashMap<PlantId, PowerPlantPublicRepr>>),
     GetForecasts(oneshot::Sender<HashMap<PlantId, Option<ForecastLevel>>>),
-    Terminate,
 }
 
 #[derive(Debug, PartialEq, Clone, Copy)]
@@ -82,6 +82,7 @@ pub struct StackActor {
     rx: Receiver<StackMessage>,
     players_connections: mpsc::Sender<ConnectionRepositoryMessage>,
     past_outputs: HashMap<DeliveryPeriodId, HashMap<PlantId, PlantOutput>>,
+    cancellation_token: CancellationToken,
 }
 
 impl StackActor {
@@ -91,6 +92,7 @@ impl StackActor {
         initial_state: StackState,
         delivery_period: DeliveryPeriodId,
         players_connections: mpsc::Sender<ConnectionRepositoryMessage>,
+        cancellation_token: CancellationToken,
     ) -> StackActor {
         let (state_tx, _) = watch::channel(initial_state);
         let (tx, rx) = channel::<StackMessage>(16);
@@ -106,6 +108,7 @@ impl StackActor {
             past_outputs: HashMap::new(),
             tx,
             rx,
+            cancellation_token,
         }
     }
 
@@ -113,6 +116,7 @@ impl StackActor {
         game: &GameId,
         player: &PlayerId,
         players_connections: mpsc::Sender<ConnectionRepositoryMessage>,
+        cancellation_token: CancellationToken,
     ) -> StackContext<StackService> {
         let mut stack = StackActor::new(
             game.clone(),
@@ -120,6 +124,7 @@ impl StackActor {
             StackState::Closed,
             DeliveryPeriodId::default(),
             players_connections,
+            cancellation_token,
         );
         let context = stack.get_context();
 
@@ -137,15 +142,21 @@ impl StackActor {
     }
 
     pub async fn run(&mut self) {
-        while let Some(message) = self.rx.recv().await {
-            if let Err(()) = self.process_message(message).await {
-                break;
+        loop {
+            tokio::select! {
+                Some(message) = self.rx.recv() => {
+                    self.process_message(message).await;
+                }
+                _ = self.cancellation_token.cancelled() => {
+                    tracing::info!("Stack actor for player {:?} terminated", self.player);
+                    break;
+                }
             }
         }
     }
 
     #[tracing::instrument(name = "StackActor::process_message", skip(self))]
-    async fn process_message(&mut self, message: StackMessage) -> Result<(), ()> {
+    async fn process_message(&mut self, message: StackMessage) {
         use StackMessage::*;
         use StackState::*;
         match (&self.state, message) {
@@ -189,16 +200,7 @@ impl StackActor {
                     let _ = tx_back.send(outputs.clone());
                 }
             }
-            (_, Terminate) => {
-                tracing::info!(
-                    "Stack actor received Terminate message for game {:?} and player {:?}.",
-                    self.game,
-                    self.player
-                );
-                return Err(());
-            }
         }
-        Ok(())
     }
 
     async fn send_stack_snapshot(&self) {
@@ -339,6 +341,7 @@ mod tests_stack {
         mpsc::{self, Sender},
         oneshot, watch,
     };
+    use tokio_util::sync::CancellationToken;
 
     use crate::{
         game::{GameId, delivery_period::DeliveryPeriodId},
@@ -358,12 +361,14 @@ mod tests_stack {
         let game_id = GameId::default();
         let (conn_tx, conn_rx) = mpsc::channel(16);
         let player_id = PlayerId::default();
+        let token = CancellationToken::new();
         let mut stack = StackActor::new(
             game_id,
             player_id.clone(),
             StackState::Open,
             DeliveryPeriodId::from(0),
             conn_tx,
+            token,
         );
         let tx = stack.tx.clone();
         let state_rx = stack.state_sender.subscribe();
@@ -519,12 +524,14 @@ mod tests_stack {
         let game_id = GameId::default();
         let (conn_tx, _) = mpsc::channel(16);
         let player_id = PlayerId::default();
+        let token = CancellationToken::new();
         let mut stack = StackActor::new(
             game_id,
             player_id.clone(),
             StackState::Open,
             DeliveryPeriodId::from(0),
             conn_tx,
+            token,
         );
         let stack_tx = stack.tx.clone();
         let mut state_rx = stack.state_sender.subscribe();
@@ -557,12 +564,14 @@ mod tests_stack {
     async fn test_try_closing_stack_wrong_period_id_does_not_close_it() {
         let game_id = GameId::default();
         let (conn_tx, _) = mpsc::channel(16);
+        let token = CancellationToken::new();
         let mut stack = StackActor::new(
             game_id,
             PlayerId::default(),
             StackState::Open,
             DeliveryPeriodId::from(1),
             conn_tx,
+            token,
         );
         let stack_tx = stack.tx.clone();
         let mut state_rx = stack.state_sender.subscribe();
@@ -599,12 +608,14 @@ mod tests_stack {
     async fn test_opening_stack_wrong_period_id_does_not_open_it() {
         let game_id = GameId::default();
         let (conn_tx, _) = mpsc::channel(16);
+        let token = CancellationToken::new();
         let mut stack = StackActor::new(
             game_id,
             PlayerId::default(),
             StackState::Closed,
             DeliveryPeriodId::from(1),
             conn_tx,
+            token,
         );
         let stack_tx = stack.tx.clone();
         let mut state_rx = stack.state_sender.subscribe();
@@ -633,12 +644,14 @@ mod tests_stack {
     async fn test_open_stack_then_close_next_period() {
         let game_id = GameId::default();
         let (conn_tx, _) = mpsc::channel(16);
+        let token = CancellationToken::new();
         let mut stack = StackActor::new(
             game_id,
             PlayerId::default(),
             StackState::Closed,
             DeliveryPeriodId::from(1),
             conn_tx,
+            token,
         );
         let stack_tx = stack.tx.clone();
         let mut state_rx = stack.state_sender.subscribe();
@@ -757,20 +770,20 @@ mod tests_stack {
     #[tokio::test]
     async fn test_terminate_actor() {
         let (connections, _) = mpsc::channel(128);
+        let token = CancellationToken::new();
         let mut market = StackActor::new(
             GameId::default(),
             PlayerId::default(),
             StackState::Open,
             DeliveryPeriodId::from(0),
             connections,
+            token.clone(),
         );
-        let tx = market.tx.clone();
         let handle = tokio::spawn(async move {
             market.run().await;
         });
 
-        tx.send(StackMessage::Terminate).await.unwrap();
-
+        token.cancel();
         match tokio::time::timeout(Duration::from_millis(10), handle).await {
             Err(_) => unreachable!("Should have ended stack actor"),
             Ok(_) => {}
