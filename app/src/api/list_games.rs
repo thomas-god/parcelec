@@ -39,7 +39,7 @@ pub async fn list_games(State(state): State<ApiState>) -> impl IntoResponse {
 #[cfg(test)]
 mod test_api_list_games {
     use crate::{
-        api::AppState,
+        api::state::AppState,
         game::{GameContext, GameId, GameName, delivery_period::DeliveryPeriodId},
     };
 
@@ -52,11 +52,13 @@ mod test_api_list_games {
 
     fn init_state() -> ApiState {
         let (tx, _) = mpsc::channel(16);
+        let (cleanup_tx, _) = mpsc::channel(16);
         Arc::new(RwLock::new(AppState {
             game_services: HashMap::new(),
             market_services: HashMap::new(),
             stack_services: HashMap::new(),
             player_connections_repository: tx,
+            cleanup_tx,
         }))
     }
 

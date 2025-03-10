@@ -2,7 +2,7 @@ use std::time::Duration;
 
 use tokio_util::sync::CancellationToken;
 
-pub fn program_cleanup(duration_before_cleaning: Duration) -> CancellationToken {
+pub fn program_actors_termination(duration_before_cleaning: Duration) -> CancellationToken {
     let token = CancellationToken::new();
     let cloned_token = token.clone();
 
@@ -18,11 +18,11 @@ pub fn program_cleanup(duration_before_cleaning: Duration) -> CancellationToken 
 mod test {
     use std::time::Duration;
 
-    use crate::utils::program_cleanup;
+    use crate::utils::program_actors_termination;
 
     #[tokio::test]
     async fn test_cleanup() {
-        let token = program_cleanup(Duration::from_millis(20));
+        let token = program_actors_termination(Duration::from_millis(20));
 
         assert!(!token.is_cancelled());
         tokio::time::sleep(Duration::from_millis(25)).await;

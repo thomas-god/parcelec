@@ -1,8 +1,5 @@
-use std::{collections::HashMap, sync::Arc};
-
-use api::{AppState, start_server};
+use api::{start_server, state::new_api_state};
 use player::repository::PlayerConnectionRepository;
-use tokio::sync::RwLock;
 
 pub mod api;
 pub mod forecast;
@@ -26,16 +23,7 @@ async fn main() {
         tracing::error!("Error while setting up tracing subscriber: {err:?}");
     };
     let connections_repo = PlayerConnectionRepository::start();
-    let market_services = HashMap::new();
-    let game_services = HashMap::new();
-    let stack_services = HashMap::new();
-
-    let app_state = Arc::new(RwLock::new(AppState {
-        player_connections_repository: connections_repo,
-        market_services,
-        game_services,
-        stack_services,
-    }));
+    let app_state = new_api_state(connections_repo);
 
     start_server(app_state).await;
 }

@@ -9,6 +9,7 @@ use tower_cookies::{
 };
 
 use crate::{
+    api::state::cleanup_state,
     game::{
         Game, GameId, GameMessage, GameName, RegisterPlayerResponse,
         delivery_period::DeliveryPeriodId,
@@ -16,7 +17,7 @@ use crate::{
     },
     market::{MarketActor, bots::start_bots},
     player::PlayerName,
-    utils::program_cleanup,
+    utils::program_actors_termination,
 };
 
 use super::ApiState;
@@ -29,7 +30,12 @@ pub async fn create_tutorial_game(
     let game_id = GameId::default();
     let player_name = PlayerName::random();
     let game_name = GameName::from(format!("tutorial-{}", player_name));
-    let cancellation_token = program_cleanup(StdDuration::from_secs(3600 * 24));
+    let cancellation_token = program_actors_termination(StdDuration::from_secs(3600 * 24));
+    cleanup_state(
+        game_id.clone(),
+        cancellation_token.clone(),
+        state.cleanup_tx.clone(),
+    );
     let market_context = MarketActor::start(
         &game_id,
         state.player_connections_repository.clone(),

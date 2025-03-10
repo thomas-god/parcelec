@@ -116,7 +116,7 @@ pub async fn join_game(
 #[cfg(test)]
 mod test_api_join_game {
     use crate::api::join_game::{JoinGame, join_game};
-    use crate::api::{ApiState, AppState};
+    use crate::api::{ApiState, state::AppState};
     use crate::game::{
         GameContext, GameId, GameMessage, GameName, GameState, RegisterPlayerResponse,
     };
@@ -135,11 +135,13 @@ mod test_api_join_game {
 
     fn init_state() -> ApiState {
         let (tx, _) = mpsc::channel(16);
+        let (cleanup_tx, _) = mpsc::channel(16);
         Arc::new(RwLock::new(AppState {
             game_services: HashMap::new(),
             market_services: HashMap::new(),
             stack_services: HashMap::new(),
             player_connections_repository: tx,
+            cleanup_tx,
         }))
     }
 

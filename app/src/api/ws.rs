@@ -106,7 +106,7 @@ async fn handle_socket<MS: Market, PS: Stack>(
 
 #[cfg(test)]
 mod tests {
-    use crate::api::{AppState, build_app};
+    use crate::api::{build_app, state::AppState};
     use axum::http::{Request, StatusCode};
     use std::{
         collections::HashMap,
@@ -119,11 +119,13 @@ mod tests {
 
     async fn build_server() -> SocketAddr {
         let (tx_conn, _) = mpsc::channel(1024);
+        let (cleanup_tx, _) = mpsc::channel(1024);
         let state = Arc::new(RwLock::new(AppState {
             player_connections_repository: tx_conn,
             market_services: HashMap::new(),
             game_services: HashMap::new(),
             stack_services: HashMap::new(),
+            cleanup_tx,
         }));
         let listener = tokio::net::TcpListener::bind(SocketAddr::from((Ipv4Addr::UNSPECIFIED, 0)))
             .await

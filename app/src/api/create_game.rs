@@ -4,13 +4,14 @@ use axum::{Json, extract::State, http::StatusCode, response::IntoResponse};
 use serde::{Deserialize, Serialize};
 
 use crate::{
+    api::state::cleanup_state,
     game::{
         Game, GameId, GameName,
         delivery_period::{DeliveryPeriodId, DeliveryPeriodTimers},
         scores::{GameRankings, TierLimits},
     },
     market::{MarketActor, bots::start_bots},
-    utils::program_cleanup,
+    utils::program_actors_termination,
 };
 
 use super::ApiState;
@@ -35,7 +36,12 @@ pub async fn create_game(
     };
     let mut state = state.write().await;
     let game_id = GameId::default();
-    let cancellation_token = program_cleanup(Duration::from_secs(3600 * 24));
+    let cancellation_token = program_actors_termination(Duration::from_secs(3600 * 24));
+    cleanup_state(
+        game_id.clone(),
+        cancellation_token.clone(),
+        state.cleanup_tx.clone(),
+    );
     let market_context = MarketActor::start(
         &game_id,
         state.player_connections_repository.clone(),
