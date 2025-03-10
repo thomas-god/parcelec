@@ -163,7 +163,7 @@ pub async fn start_player_connection<MS: Market, PS: Stack>(
         }
     }
 
-    register_connection(tx, connection_id, &context).await;
+    register_connection(tx, &connection_id, &context).await;
 
     send_player_name(&mut ws, &context).await?;
     send_initial_stack_snapshot(&mut ws, &context).await?;
@@ -187,7 +187,11 @@ pub async fn start_player_connection<MS: Market, PS: Stack>(
         context.stack.service.clone(),
         context.player_id.clone(),
     ));
-    let _ = tokio::try_join!(sink_handle, stream_handle);
+    tokio::select! {
+        _ = sink_handle => {},
+        _ = stream_handle => {}
+    }
+    tracing::info!("Connection {connection_id:?} finised.");
     Ok(())
 }
 
@@ -310,7 +314,7 @@ async fn send_readiness_satus<MS: Market, PS: Stack>(
 
 async fn register_connection<MS: Market, PS: Stack>(
     tx: Sender<PlayerMessage>,
-    connection_id: String,
+    connection_id: &str,
     context: &PlayerConnectionContext<MS, PS>,
 ) {
     let _ = context
@@ -318,7 +322,7 @@ async fn register_connection<MS: Market, PS: Stack>(
         .send(ConnectionRepositoryMessage::RegisterConnection(
             context.game_id.clone(),
             PlayerConnection {
-                id: connection_id.clone(),
+                id: connection_id.to_owned(),
                 player_id: context.player_id.clone(),
                 tx: tx.clone(),
             },
