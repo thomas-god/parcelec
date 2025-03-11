@@ -8,6 +8,9 @@ jobs:
   app-test:
     name: cargo test
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./app
     steps:
       - uses: actions/checkout@v4
       - uses: actions-rust-lang/setup-rust-toolchain@v1
@@ -16,12 +19,14 @@ jobs:
   client-test:
     name: svelte client test
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./client
     steps:
     - uses: actions/checkout@v4
     - name: Use Node.js 22.x
       uses: actions/setup-node@v4
       with:
         node-version: 22.x
-        cache: 'npm'
     - run: npm ci
-    - run: npm test:ci
+    - run: npm run test:ci
