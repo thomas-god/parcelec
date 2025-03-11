@@ -1,5 +1,4 @@
 use infra::api::{start_server, state::new_api_state};
-use player::infra::PlayerConnectionRepository;
 
 pub mod forecast;
 pub mod game;
@@ -22,8 +21,8 @@ async fn main() {
     if let Err(err) = tracing::subscriber::set_global_default(subscriber) {
         tracing::error!("Error while setting up tracing subscriber: {err:?}");
     };
-    let connections_repo = PlayerConnectionRepository::start();
-    let app_state = new_api_state(connections_repo);
+
+    let app_state = new_api_state();
 
     start_server(app_state).await;
 }

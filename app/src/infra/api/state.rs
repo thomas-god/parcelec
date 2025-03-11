@@ -7,7 +7,10 @@ use crate::{
     game::{GameContext, GameId},
     market::{MarketContext, MarketService},
     plants::{StackService, infra::StackContext},
-    player::{PlayerId, infra::ConnectionRepositoryMessage},
+    player::{
+        PlayerId,
+        infra::{ConnectionRepositoryMessage, PlayerConnectionRepository},
+    },
 };
 
 pub type ApiState = Arc<RwLock<AppState>>;
@@ -27,7 +30,8 @@ impl AppState {
     }
 }
 
-pub fn new_api_state(connections: mpsc::Sender<ConnectionRepositoryMessage>) -> ApiState {
+pub fn new_api_state() -> ApiState {
+    let connections = PlayerConnectionRepository::start();
     let (cleanup_tx, mut cleanup_rx) = mpsc::channel(128);
 
     let state = Arc::new(RwLock::new(AppState {
