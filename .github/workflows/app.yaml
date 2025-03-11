@@ -85,20 +85,20 @@ jobs:
             ghcr.io/thomas-god/parcelec-client:latest
             ghcr.io/thomas-god/parcelec-client:${{ github.sha }}
 
-  # deploy:
-  #   runs-on: ubuntu-latest
-  #   needs:
-  #     - build-app-docker-image
-  #     - build-client-docker-image
-  #   steps:
-  #   - name: Checkout code
-  #     uses: actions/checkout@v2
+  deploy:
+    runs-on: ubuntu-latest
+    needs:
+      - build-app-docker-image
+      - build-client-docker-image
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
 
-  #   - name: Docker Stack Deploy
-  #     uses: cssnr/stack-deploy-action@v1
-  #     with:
-  #       name: parcelec
-  #       file: docker-stack.yaml
-  #       host: parcelec.org
-  #       user: deploy
-  #       ssh_key: ${{ secrets.DEPLOY_SSH_PRIVATE_KEY }}
+    - name: Docker Stack Deploy
+      uses: cssnr/stack-deploy-action@v1
+      with:
+        name: parcelec
+        file: docker-stack.yaml
+        host: parcelec.org
+        user: deploy
+        ssh_key: ${{ secrets.DEPLOY_SSH_PRIVATE_KEY }}
