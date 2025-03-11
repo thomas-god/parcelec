@@ -9,12 +9,14 @@
     RenewablePlant: "☀️",
     Consumers: "🏙️",
     Battery: "🔋",
+    Nuclear: "↩️",
   };
   const names: Record<plantType, string> = {
     GasPlant: "Centrale gaz",
     RenewablePlant: "Solaire",
     Consumers: "Clients",
     Battery: "Batterie",
+    Nuclear: "Centrale nucléaire",
   };
   const levelsNames: Record<NonNullable<forecastType>, string> = {
     High: "haute",

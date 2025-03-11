@@ -77,6 +77,7 @@
         max={max_setpoint}
         step="25"
         oninput={debouncedUpdateSetpoint}
+        data-testid={`generic-plant-input-${type}`}
       />
 
       <div class="pl-2 justify-self-end">

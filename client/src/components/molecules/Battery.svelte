@@ -72,6 +72,7 @@
           max={max_charge}
           step="25"
           oninput={debouncedUpdateSetpoint}
+          data-testid="battery-input"
         />
       </div>
 

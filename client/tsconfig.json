@@ -15,6 +15,7 @@
     "checkJs": true,
     "strict": true,
     "isolatedModules": true,
-    "moduleDetection": "force"
+    "moduleDetection": "force",
+    "types": ["@testing-library/jest-dom"]
   }
 }
