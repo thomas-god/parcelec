@@ -10,17 +10,17 @@ use tokio_util::sync::CancellationToken;
 use crate::{
     forecast::ForecastLevel,
     game::{GameId, delivery_period::DeliveryPeriodId},
-    plants::PlantOutput,
+    plants::{
+        PlantId, PlantOutput, PowerPlant, PowerPlantPublicRepr, Stack,
+        technologies::{
+            battery::Battery, consumers::Consumers, gas_plant::GasPlant, nuclear::NuclearPlant,
+            renewable::RenewablePlant,
+        },
+    },
     player::{PlayerConnections, PlayerId, PlayerMessage},
 };
 
-use super::{
-    PlantId, PowerPlant, PowerPlantPublicRepr, Stack, StackService,
-    technologies::{
-        battery::Battery, consumers::Consumers, gas_plant::GasPlant, nuclear::NuclearPlant,
-        renewable::RenewablePlant,
-    },
-};
+use super::StackService;
 
 #[derive(Debug, Deserialize)]
 pub struct ProgramPlant {
@@ -329,12 +329,11 @@ mod tests_stack {
 
     use crate::{
         game::{GameId, delivery_period::DeliveryPeriodId},
-        plants::{
-            PlantId, PowerPlantPublicRepr,
-            actor::{ProgramPlant, StackActor, StackMessage, StackState},
-        },
+        plants::{PlantId, PowerPlantPublicRepr, infra::ProgramPlant},
         player::{PlayerConnections, PlayerId, PlayerMessage},
     };
+
+    use super::{StackActor, StackMessage, StackState};
 
     #[derive(Debug, Clone)]
     struct MockedPlayerConnections {

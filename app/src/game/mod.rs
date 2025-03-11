@@ -11,15 +11,15 @@ use tokio::sync::{
 };
 
 use crate::{
-    plants::{actor::StackContext, service::StackService},
+    plants::infra::{StackContext, StackService},
     player::{PlayerId, PlayerName, PlayerResultView},
 };
 
-pub mod actor;
 pub mod delivery_period;
+pub mod infra;
 pub mod scores;
 
-pub use actor::GameActor;
+pub use infra::actor::GameActor;
 
 #[derive(Debug)]
 struct Player {

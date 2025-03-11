@@ -121,7 +121,7 @@ mod test_api_join_game {
     use crate::infra::api::join_game::{JoinGame, join_game};
     use crate::infra::api::{ApiState, state::AppState};
     use crate::plants::StackService;
-    use crate::plants::actor::{StackContext, StackState};
+    use crate::plants::infra::{StackContext, StackState};
     use crate::player::PlayerId;
     use axum::Router;
     use axum::body::Body;

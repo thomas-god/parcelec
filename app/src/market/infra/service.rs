@@ -3,12 +3,16 @@ use std::future::Future;
 
 use tokio::sync::{mpsc, oneshot};
 
-use crate::{game::delivery_period::DeliveryPeriodId, market::MarketForecast, player::PlayerId};
-
-use super::{
-    Market, MarketMessage, OBS,
-    order_book::{OrderRequest, Trade, TradeLeg},
+use crate::{
+    game::delivery_period::DeliveryPeriodId,
+    market::{
+        Market, MarketForecast, OBS,
+        order_book::{OrderRequest, Trade, TradeLeg},
+    },
+    player::PlayerId,
 };
+
+use super::MarketMessage;
 
 #[derive(Debug, Clone)]
 pub struct MarketService {
@@ -122,8 +126,8 @@ mod tests {
         game::delivery_period::DeliveryPeriodId,
         market::{
             Direction, ForecastLevel, MarketForecast, MarketMessage,
+            infra::service::{Market, OBS},
             order_book::OrderRequest,
-            service::{Market, OBS},
         },
         player::PlayerId,
     };

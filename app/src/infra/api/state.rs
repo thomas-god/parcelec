@@ -6,7 +6,7 @@ use tokio_util::sync::CancellationToken;
 use crate::{
     game::{GameContext, GameId},
     market::{MarketContext, MarketService},
-    plants::{StackService, actor::StackContext},
+    plants::{StackService, infra::StackContext},
     player::{PlayerId, infra::ConnectionRepositoryMessage},
 };
 

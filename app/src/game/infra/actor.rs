@@ -1,10 +1,5 @@
 use std::collections::HashMap;
 
-use super::delivery_period::{
-    DeliveryPeriodId, DeliveryPeriodResults, DeliveryPeriodTimers, start_delivery_period,
-};
-use super::scores::{GameRankings, PlayerResult, PlayerScore};
-use super::{GameContext, GameId, GameMessage, GameName, GetPreviousScoresResult};
 use futures_util::future::join_all;
 use tokio::sync::{
     mpsc::{Receiver, Sender, channel},
@@ -12,16 +7,18 @@ use tokio::sync::{
 };
 use tokio_util::sync::CancellationToken;
 
-use crate::game::{GameState, Player, RegisterPlayerResponse};
-use crate::player::{PlayerConnections, PlayerName};
-use crate::player::{PlayerMessage, PlayerResultView};
+use crate::game::{
+    GameContext, GameId, GameMessage, GameName, GameState, GetPreviousScoresResult, Player,
+    RegisterPlayerResponse,
+    delivery_period::{
+        DeliveryPeriodId, DeliveryPeriodResults, DeliveryPeriodTimers, start_delivery_period,
+    },
+    scores::{GameRankings, PlayerResult, PlayerScore},
+};
 use crate::{
     market::{Market, MarketContext},
-    plants::{
-        actor::{StackActor, StackContext, StackState},
-        service::StackService,
-    },
-    player::PlayerId,
+    plants::infra::{StackActor, StackContext, StackService, StackState},
+    player::{PlayerConnections, PlayerId, PlayerMessage, PlayerName, PlayerResultView},
 };
 
 /// Main entrypoint for a given game of parcelec. Responsible for:
@@ -557,17 +554,17 @@ mod tests {
         game::{
             GameId, GameMessage, GameName, GameState, GetPreviousScoresResult,
             RegisterPlayerResponse,
-            actor::{
+            delivery_period::DeliveryPeriodId,
+            infra::actor::{
                 GameActorConfig,
                 test_utils::{
                     MockMarket, MockPlayerConnections, open_game, register_player, start_game,
                 },
             },
-            delivery_period::DeliveryPeriodId,
             scores::GameRankings,
         },
         market::{MarketContext, MarketState},
-        plants::actor::StackState,
+        plants::infra::StackState,
         player::{PlayerId, PlayerMessage, PlayerName},
     };
 
@@ -1157,7 +1154,7 @@ mod tests {
 #[cfg(test)]
 mod test_rankings_mapping {
     use crate::{
-        game::{Player, actor::map_rankings_to_player_name, scores::PlayerResult},
+        game::{Player, infra::actor::map_rankings_to_player_name, scores::PlayerResult},
         player::{PlayerId, PlayerName, PlayerResultView},
     };
 
@@ -1214,7 +1211,7 @@ mod test_rankings_mapping {
 #[cfg(test)]
 mod test_readiness_status {
 
-    use crate::{game::actor::test_utils::register_player, market::MarketState};
+    use crate::{game::infra::actor::test_utils::register_player, market::MarketState};
 
     use super::{
         test_utils::{MockMarket, MockPlayerConnections},

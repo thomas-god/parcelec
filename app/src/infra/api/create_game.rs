@@ -6,8 +6,8 @@ use serde::{Deserialize, Serialize};
 use crate::{
     game::{
         GameActor, GameId, GameName,
-        actor::GameActorConfig,
         delivery_period::{DeliveryPeriodId, DeliveryPeriodTimers},
+        infra::GameActorConfig,
         scores::{GameRankings, TierLimits},
     },
     infra::api::state::cleanup_state,

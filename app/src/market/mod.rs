@@ -8,13 +8,11 @@ use order_book::{Bid, Offer, OrderRequest, Trade, TradeLeg};
 
 use crate::{forecast::ForecastLevel, game::delivery_period::DeliveryPeriodId, player::PlayerId};
 
-pub mod actor;
 pub mod bots;
+pub mod infra;
 pub mod order_book;
-pub mod service;
 
-pub use actor::{MarketActor, MarketMessage};
-pub use service::MarketService;
+pub use infra::{MarketActor, MarketMessage, MarketService};
 
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
 pub enum Direction {

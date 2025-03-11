@@ -11,8 +11,8 @@ use tower_cookies::{
 use crate::{
     game::{
         GameActor, GameId, GameMessage, GameName, RegisterPlayerResponse,
-        actor::GameActorConfig,
         delivery_period::DeliveryPeriodId,
+        infra::actor::GameActorConfig,
         scores::{GameRankings, TierLimits},
     },
     infra::api::state::cleanup_state,

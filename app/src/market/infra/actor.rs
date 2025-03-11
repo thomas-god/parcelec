@@ -4,15 +4,16 @@ use futures_util::future::join_all;
 use tokio::sync::{mpsc, oneshot, watch};
 use tokio_util::sync::CancellationToken;
 
-use super::{
-    MarketContext, MarketForecast, MarketService, MarketState, OBS, OrderRepr,
-    order_book::{OrderBook, OrderRequest, Trade, TradeLeg},
-};
-
 use crate::{
     game::{GameId, delivery_period::DeliveryPeriodId},
+    market::{
+        MarketContext, MarketForecast, MarketState, OBS, OrderRepr,
+        order_book::{OrderBook, OrderRequest, Trade, TradeLeg},
+    },
     player::{PlayerConnections, PlayerId, PlayerMessage},
 };
+
+use super::MarketService;
 
 #[derive(Debug)]
 pub enum MarketMessage {

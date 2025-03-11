@@ -26,7 +26,7 @@ use crate::{
     },
     plants::{
         GetSnapshotError, Stack,
-        actor::{ProgramPlant, StackContext, StackState},
+        infra::{ProgramPlant, StackContext, StackState},
     },
     player::{
         PlayerMessage,

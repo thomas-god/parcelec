@@ -11,11 +11,10 @@ use technologies::nuclear::NuclearPublicRepr;
 use technologies::renewable::RenewablePlantPublicRepr;
 use uuid::Uuid;
 
-pub mod actor;
-pub mod service;
+pub mod infra;
 pub mod technologies;
 
-pub use service::StackService;
+pub use infra::StackService;
 
 use crate::forecast::ForecastLevel;
 use crate::game::delivery_period::DeliveryPeriodId;

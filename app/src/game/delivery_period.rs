@@ -218,8 +218,8 @@ mod tests {
             GameMessage,
             delivery_period::{DeliveryPeriodId, DeliveryPeriodTimers, start_delivery_period},
         },
-        market::service::MockMarketService,
-        plants::service::MockStackService,
+        market::infra::service::MockMarketService,
+        plants::infra::service::MockStackService,
         player::PlayerId,
     };
 

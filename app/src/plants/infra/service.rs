@@ -4,12 +4,15 @@ use std::future::Future;
 
 use tokio::sync::{mpsc, oneshot};
 
-use crate::{forecast::ForecastLevel, game::delivery_period::DeliveryPeriodId};
-
-use super::{
-    CloseStackError, GetSnapshotError, PlantId, PlantOutput, PowerPlantPublicRepr, Stack,
-    actor::{ProgramPlant, StackMessage},
+use crate::{
+    forecast::ForecastLevel,
+    game::delivery_period::DeliveryPeriodId,
+    plants::{
+        CloseStackError, GetSnapshotError, PlantId, PlantOutput, PowerPlantPublicRepr, Stack,
+    },
 };
+
+use super::{ProgramPlant, actor::StackMessage};
 
 #[derive(Debug, Clone)]
 pub struct StackService {
@@ -106,11 +109,7 @@ mod tests {
     use crate::{
         forecast::ForecastLevel,
         game::delivery_period::DeliveryPeriodId,
-        plants::{
-            PlantId,
-            actor::StackMessage,
-            service::{Stack, StackService},
-        },
+        plants::{PlantId, Stack, StackService, infra::actor::StackMessage},
     };
 
     #[tokio::test]
