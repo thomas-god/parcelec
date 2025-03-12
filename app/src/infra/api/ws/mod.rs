@@ -106,7 +106,10 @@ async fn handle_socket<MS: Market, PS: Stack>(
 
 #[cfg(test)]
 mod tests {
-    use crate::infra::api::{build_app, state::AppState};
+    use crate::{
+        infra::api::{build_router, state::AppState},
+        utils::config::AppConfig,
+    };
     use axum::http::{Request, StatusCode};
     use std::{
         collections::HashMap,
@@ -120,19 +123,21 @@ mod tests {
     async fn build_server() -> SocketAddr {
         let (tx_conn, _) = mpsc::channel(1024);
         let (cleanup_tx, _) = mpsc::channel(1024);
+        let config = AppConfig::default();
         let state = Arc::new(RwLock::new(AppState {
             player_connections_repository: tx_conn,
             market_services: HashMap::new(),
             game_services: HashMap::new(),
             stack_services: HashMap::new(),
             cleanup_tx,
+            config: config.clone(),
         }));
         let listener = tokio::net::TcpListener::bind(SocketAddr::from((Ipv4Addr::UNSPECIFIED, 0)))
             .await
             .unwrap();
         let addr = listener.local_addr().unwrap();
 
-        tokio::spawn(axum::serve(listener, build_app(state, "origin".to_string())).into_future());
+        tokio::spawn(axum::serve(listener, build_router(state, config)).into_future());
         addr
     }
 

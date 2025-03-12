@@ -1,12 +1,5 @@
-use infra::api::{start_server, state::new_api_state};
-
-pub mod forecast;
-pub mod game;
-pub mod infra;
-pub mod market;
-pub mod plants;
-pub mod player;
-pub mod utils;
+use parcelec_app::{AppConfig, build_router, new_api_state};
+use tokio::net::TcpListener;
 
 #[tokio::main]
 async fn main() {
@@ -22,7 +15,22 @@ async fn main() {
         tracing::error!("Error while setting up tracing subscriber: {err:?}");
     };
 
-    let app_state = new_api_state();
+    start_server().await;
+}
 
-    start_server(app_state).await;
+async fn start_server() {
+    let config = AppConfig::from_env();
+
+    let addr = std::net::SocketAddr::from(([0, 0, 0, 0], config.port));
+    let listener = TcpListener::bind(&addr)
+        .await
+        .expect("Unable to start TCP listener");
+    tracing::info!("Listenning on {addr}");
+
+    let state = new_api_state(&config);
+    let app = build_router(state, config);
+
+    axum::serve(listener, app.into_make_service())
+        .await
+        .unwrap();
 }

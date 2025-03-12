@@ -1,4 +1,4 @@
-use std::{collections::HashMap, env};
+use std::collections::HashMap;
 
 use axum::{Json, extract::State, http::StatusCode, response::IntoResponse};
 use serde::{Deserialize, Serialize};
@@ -32,11 +32,6 @@ pub async fn join_game(
         PlayerName::parse(&input.player_name),
     ) else {
         return StatusCode::BAD_REQUEST;
-    };
-
-    let Ok(domain) = env::var("DOMAIN") else {
-        tracing::error!("No DOMAIN environnement variable");
-        return StatusCode::INTERNAL_SERVER_ERROR;
     };
 
     let Some(game) = state.game_services.get(&game_id) else {
@@ -88,6 +83,7 @@ pub async fn join_game(
         }
     }
 
+    let domain = state.config.domain.clone();
     let player_id_cookie = Cookie::build(("player_id", player_id.to_string()))
         .max_age(Duration::days(1))
         .same_site(SameSite::Strict)
@@ -123,6 +119,7 @@ mod test_api_join_game {
     use crate::plants::StackService;
     use crate::plants::infra::{StackContext, StackState};
     use crate::player::PlayerId;
+    use crate::utils::config::AppConfig;
     use axum::Router;
     use axum::body::Body;
     use axum::http::{self, Request, StatusCode};
@@ -142,6 +139,7 @@ mod test_api_join_game {
             stack_services: HashMap::new(),
             player_connections_repository: tx,
             cleanup_tx,
+            config: AppConfig::default(),
         }))
     }
 

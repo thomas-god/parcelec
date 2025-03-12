@@ -1,4 +1,4 @@
-use std::{collections::HashMap, env, time::Duration as StdDuration};
+use std::{collections::HashMap, time::Duration as StdDuration};
 
 use axum::{extract::State, http::StatusCode, response::IntoResponse};
 use tokio::sync::oneshot;
@@ -116,11 +116,7 @@ pub async fn create_tutorial_game(
         .send(GameMessage::PlayerIsReady(player_id.clone()))
         .await;
 
-    // Write cookies back
-    let Ok(domain) = env::var("DOMAIN") else {
-        tracing::error!("No DOMAIN environnement variable");
-        return StatusCode::INTERNAL_SERVER_ERROR;
-    };
+    let domain = state.config.domain.clone();
     let player_id_cookie = Cookie::build(("player_id", player_id.to_string()))
         .max_age(Duration::days(1))
         .same_site(SameSite::Strict)

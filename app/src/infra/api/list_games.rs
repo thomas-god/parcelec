@@ -41,6 +41,7 @@ mod test_api_list_games {
     use crate::{
         game::{GameContext, GameId, GameName, delivery_period::DeliveryPeriodId},
         infra::api::state::AppState,
+        utils::config::AppConfig,
     };
 
     use super::*;
@@ -59,6 +60,7 @@ mod test_api_list_games {
             stack_services: HashMap::new(),
             player_connections_repository: tx,
             cleanup_tx,
+            config: AppConfig::default(),
         }))
     }
 

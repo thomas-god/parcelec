@@ -2,6 +2,8 @@ use std::time::Duration;
 
 use tokio_util::sync::CancellationToken;
 
+pub mod config;
+
 pub fn program_actors_termination(duration_before_cleaning: Duration) -> CancellationToken {
     let token = CancellationToken::new();
     let cloned_token = token.clone();

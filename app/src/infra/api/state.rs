@@ -11,6 +11,7 @@ use crate::{
         PlayerId,
         infra::{ConnectionRepositoryMessage, PlayerConnectionRepository},
     },
+    utils::config::AppConfig,
 };
 
 pub type ApiState = Arc<RwLock<AppState>>;
@@ -20,6 +21,7 @@ pub struct AppState {
     pub stack_services: HashMap<GameId, HashMap<PlayerId, StackContext<StackService>>>,
     pub player_connections_repository: mpsc::Sender<ConnectionRepositoryMessage>,
     pub cleanup_tx: mpsc::Sender<GameId>,
+    pub config: AppConfig,
 }
 
 impl AppState {
@@ -30,7 +32,7 @@ impl AppState {
     }
 }
 
-pub fn new_api_state() -> ApiState {
+pub fn new_api_state(config: &AppConfig) -> ApiState {
     let connections = PlayerConnectionRepository::start();
     let (cleanup_tx, mut cleanup_rx) = mpsc::channel(128);
 
@@ -40,6 +42,7 @@ pub fn new_api_state() -> ApiState {
         stack_services: HashMap::new(),
         player_connections_repository: connections,
         cleanup_tx,
+        config: config.clone(),
     }));
 
     let cloned_state = state.clone();
