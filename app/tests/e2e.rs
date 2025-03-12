@@ -1,8 +1,10 @@
+#![allow(dead_code, unused_imports)]
 use common::{DEFAULT_WAIT_TIMEOUT, init, init_webdriver_client};
 use fantoccini::Locator;
 
 mod common;
 
+#[cfg(all(test, feature = "e2e-tests"))]
 #[tokio::test]
 async fn test_run_totorial() {
     let (addr, _) = init().await;
