@@ -142,7 +142,7 @@ mod tests {
     }
 
     fn default_request(addr: SocketAddr) -> Request<()> {
-        let mut ws_request = format!("ws://{addr}/ws").into_client_request().unwrap();
+        let mut ws_request = format!("ws://{addr}/api/ws").into_client_request().unwrap();
         ws_request.headers_mut().insert("Cookie", "player_id=c083c29f-291d-4701-a9f0-50b9ed26b120; game_id=970b9e72-89be-4ba2-978a-4be4eb53ff51; player_name=tutorial_player".parse().unwrap());
         ws_request
     }
@@ -150,7 +150,7 @@ mod tests {
     #[tokio::test]
     async fn test_reject_ws_connection_game_cookie_not_found() {
         let addr = build_server().await;
-        let mut ws_request = format!("ws://{addr}/ws").into_client_request().unwrap();
+        let mut ws_request = format!("ws://{addr}/api/ws").into_client_request().unwrap();
         ws_request.headers_mut().insert(
             "Cookie",
             "player_id=c083c29f-291d-4701-a9f0-50b9ed26b120; player_name=tutorial_player"
@@ -172,7 +172,7 @@ mod tests {
     #[tokio::test]
     async fn test_reject_ws_connection_player_id_cookie_not_found() {
         let addr = build_server().await;
-        let mut ws_request = format!("ws://{addr}/ws").into_client_request().unwrap();
+        let mut ws_request = format!("ws://{addr}/api/ws").into_client_request().unwrap();
         ws_request.headers_mut().insert(
             "Cookie",
             "game_id=c083c29f-291d-4701-a9f0-50b9ed26b120; player_name=tutorial_player"
@@ -194,7 +194,7 @@ mod tests {
     #[tokio::test]
     async fn test_reject_ws_connection_player_name_cookie_not_found() {
         let addr = build_server().await;
-        let mut ws_request = format!("ws://{addr}/ws").into_client_request().unwrap();
+        let mut ws_request = format!("ws://{addr}/api/ws").into_client_request().unwrap();
         ws_request.headers_mut().insert(
             "Cookie",
             "game_id=c083c29f-291d-4701-a9f0-50b9ed26b120; player_id=tutorial_player"
