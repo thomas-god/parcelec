@@ -12,7 +12,7 @@
     type ReadinessStatus,
     type GameState,
   } from "$lib/message";
-  import { PUBLIC_WS_URL } from "$env/static/public";
+  import { PUBLIC_APP_URL } from "$env/static/public";
   import OrderBookElement from "../../components/organisms/OrderBook.svelte";
   import { goto } from "$app/navigation";
   import Stack from "../../components/organisms/Stack.svelte";
@@ -59,7 +59,7 @@
   let readiness_status: ReadinessStatus = $state(new SvelteMap());
 
   const connect = () => {
-    const socket = new WebSocket(`${PUBLIC_WS_URL}/ws`);
+    const socket = new WebSocket(`${PUBLIC_APP_URL}/ws`);
     socket.onmessage = (msg) => {
       const parseRes = parseMessage(msg.data);
       if (!parseRes.success) {

@@ -26,11 +26,11 @@ pub mod ws;
 
 pub fn build_router(state: ApiState, config: AppConfig) -> Router {
     Router::new()
-        .route("/game", post(create_game))
-        .route("/games", get(list_games))
-        .route("/game/join", post(join_game))
-        .route("/tutorial", post(create_tutorial_game))
-        .route("/ws", get(handle_ws_connection))
+        .route("/api/game", post(create_game))
+        .route("/api/games", get(list_games))
+        .route("/api/game/join", post(join_game))
+        .route("/api/tutorial", post(create_tutorial_game))
+        .route("/api/ws", get(handle_ws_connection))
         .with_state(state)
         .layer(TraceLayer::new_for_http())
         .layer(CookieManagerLayer::new())

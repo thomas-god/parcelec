@@ -1,7 +1,6 @@
 <script lang="ts">
   import { goto } from "$app/navigation";
   import { PUBLIC_APP_URL } from "$env/static/public";
-  import { set } from "zod";
   import Score from "../../components/molecules/CurrentScore.svelte";
   import GenericPlant from "../../components/molecules/GenericPlant.svelte";
 
