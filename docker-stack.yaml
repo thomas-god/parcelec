@@ -30,8 +30,7 @@ services:
     labels:
       - "traefik.enable=true"
       - "traefik.http.services.parcelec.loadbalancer.server.port=9002"
-      - "traefik.http.routers.parcelec.rule=Host(`parcelec.org`)"
-      - "traefik.http.routers.parcelec.rule=PathPrefix(`/api`)"
+      - "traefik.http.routers.parcelec.rule=Host(`parcelec.org`) && PathPrefix(`/api`)"
       - "traefik.http.routers.parcelec.entrypoints=websecure"
       - "traefik.http.routers.parcelec.tls.certresolver=myresolver"
     deploy:
