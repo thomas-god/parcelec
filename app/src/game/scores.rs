@@ -3,6 +3,7 @@ use std::{collections::HashMap, fmt::Debug, ops::Add};
 use serde::Serialize;
 
 use crate::{
+    constants::{NEGATIVE_IMBALANCE_COST, POSITIVE_IMBALANCE_COST},
     market::{
         Direction,
         order_book::{Trade, TradeLeg},
@@ -12,9 +13,6 @@ use crate::{
 };
 
 use super::delivery_period::DeliveryPeriodId;
-
-const POSITIVE_IMBALANCE_COST: isize = 15;
-const NEGATIVE_IMBALANCE_COST: isize = 100;
 
 #[derive(Debug, PartialEq, Default, Clone, Serialize)]
 pub struct PlayerScore {
