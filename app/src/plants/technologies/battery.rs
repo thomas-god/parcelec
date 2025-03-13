@@ -1,7 +1,7 @@
 use serde::Serialize;
 
 use crate::{
-    forecast::ForecastLevel,
+    forecast::Forecast,
     plants::{PlantOutput, PowerPlant, PowerPlantPublicRepr},
 };
 
@@ -84,7 +84,7 @@ impl PowerPlant for Battery {
         PlantOutput { cost, setpoint }
     }
 
-    fn get_forecast(&self) -> Option<ForecastLevel> {
+    fn get_forecast(&self) -> Option<Forecast> {
         None
     }
 }

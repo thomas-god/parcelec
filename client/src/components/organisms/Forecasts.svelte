@@ -18,12 +18,12 @@
     Battery: "Batterie",
     Nuclear: "Centrale nucléaire",
   };
-  const levelsNames: Record<NonNullable<forecastType>, string> = {
+  const levelsNames: Record<forecastLevel, string> = {
     High: "haute",
     Low: "basse",
     Medium: "moyenne",
   };
-  const levelsNamesMasculin: Record<NonNullable<forecastType>, string> = {
+  const levelsNamesMasculin: Record<forecastLevel, string> = {
     High: "haut",
     Low: "bas",
     Medium: "moyen",
@@ -46,14 +46,16 @@
     ? I
     : never)["type"];
   type forecastType = StackForecasts extends Map<any, infer I> ? I : never;
+  type forecastLevel = NonNullable<
+    Extract<forecastType, { type: "Level" }>["level"]
+  >;
 
   let forecast_per_plant = $derived.by(() => {
-    let mapped_forecasts: Map<string, [plantType, NonNullable<forecastType>]> =
-      new Map();
+    let mapped_forecasts: Map<string, [plantType, forecastLevel]> = new Map();
     for (const [plant_id, forecast] of plant_forecasts) {
       if (!!forecast && plant_snapshots.has(plant_id)) {
         const plant = plant_snapshots.get(plant_id)!;
-        mapped_forecasts.set(plant_id, [plant.type, forecast]);
+        mapped_forecasts.set(plant_id, [plant.type, forecast.level]);
       }
     }
     return mapped_forecasts;

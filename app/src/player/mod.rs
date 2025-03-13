@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 use crate::{
-    forecast::ForecastLevel,
+    forecast::Forecast,
     game::{
         GameId,
         delivery_period::DeliveryPeriodId,
@@ -74,7 +74,7 @@ pub enum PlayerMessage {
         plants: HashMap<PlantId, PowerPlantPublicRepr>,
     },
     StackForecasts {
-        forecasts: HashMap<PlantId, Option<ForecastLevel>>,
+        forecasts: HashMap<PlantId, Option<Forecast>>,
     },
     DeliveryPeriodResults {
         delivery_period: DeliveryPeriodId,

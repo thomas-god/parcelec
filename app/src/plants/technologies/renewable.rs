@@ -1,7 +1,7 @@
 use serde::Serialize;
 
 use crate::{
-    forecast::{ForecastLevel, map_value_to_forecast_level},
+    forecast::{Forecast, map_value_to_forecast_level},
     plants::{PlantOutput, PowerPlant, PowerPlantPublicRepr},
 };
 
@@ -76,16 +76,20 @@ impl<T: Timeseries> PowerPlant for RenewablePlant<T> {
             },
         })
     }
-    fn get_forecast(&self) -> Option<ForecastLevel> {
-        self.current_forecast
-            .map(|f| map_value_to_forecast_level(f as isize, self.max_power as isize))
+    fn get_forecast(&self) -> Option<Forecast> {
+        self.current_forecast.map(|f| {
+            Forecast::Level(map_value_to_forecast_level(
+                f as isize,
+                self.max_power as isize,
+            ))
+        })
     }
 }
 
 #[cfg(test)]
 mod tests {
     use crate::{
-        forecast::ForecastLevel,
+        forecast::{Forecast, ForecastLevel},
         plants::{PlantOutput, PowerPlant},
     };
 
@@ -120,14 +124,23 @@ mod tests {
     fn test_looping_consumers_forecasts() {
         let mut plant = RenewablePlant::new_with_looping(1000, vec![100, 500, 900]);
 
-        assert_eq!(plant.get_forecast(), Some(ForecastLevel::Medium));
+        assert_eq!(
+            plant.get_forecast(),
+            Some(Forecast::Level(ForecastLevel::Medium))
+        );
 
         plant.dispatch();
 
-        assert_eq!(plant.get_forecast(), Some(ForecastLevel::High));
+        assert_eq!(
+            plant.get_forecast(),
+            Some(Forecast::Level(ForecastLevel::High))
+        );
 
         plant.dispatch();
 
-        assert_eq!(plant.get_forecast(), Some(ForecastLevel::Low));
+        assert_eq!(
+            plant.get_forecast(),
+            Some(Forecast::Level(ForecastLevel::Low))
+        );
     }
 }

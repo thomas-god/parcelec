@@ -1,6 +1,13 @@
 use serde::Serialize;
 
 #[derive(Debug, Clone, Copy, PartialEq, PartialOrd, Serialize)]
+#[serde(tag = "type")]
+pub enum Forecast {
+    Level(ForecastLevel),
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, PartialOrd, Serialize)]
+#[serde(tag = "level")]
 pub enum ForecastLevel {
     Low,
     Medium,

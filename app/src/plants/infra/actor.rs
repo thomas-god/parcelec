@@ -8,7 +8,7 @@ use tokio::sync::{
 use tokio_util::sync::CancellationToken;
 
 use crate::{
-    forecast::ForecastLevel,
+    forecast::Forecast,
     game::{GameId, delivery_period::DeliveryPeriodId},
     plants::{
         PlantId, PlantOutput, PowerPlant, PowerPlantPublicRepr, Stack,
@@ -37,7 +37,7 @@ pub enum StackMessage {
     },
     ProgramSetpoint(ProgramPlant),
     GetSnapshot(oneshot::Sender<HashMap<PlantId, PowerPlantPublicRepr>>),
-    GetForecasts(oneshot::Sender<HashMap<PlantId, Option<ForecastLevel>>>),
+    GetForecasts(oneshot::Sender<HashMap<PlantId, Option<Forecast>>>),
 }
 
 #[derive(Debug, PartialEq, Clone, Copy)]
@@ -236,7 +236,7 @@ impl<PC: PlayerConnections> StackActor<PC> {
             .collect()
     }
 
-    fn stack_forecasts(&self) -> HashMap<PlantId, Option<ForecastLevel>> {
+    fn stack_forecasts(&self) -> HashMap<PlantId, Option<Forecast>> {
         self.stack
             .iter()
             .map(|(plant_id, plant)| (plant_id.to_owned(), plant.get_forecast()))
