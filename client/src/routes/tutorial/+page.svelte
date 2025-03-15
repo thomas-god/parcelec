@@ -120,7 +120,7 @@
     {/if}
 
     <div class="divider px-3"></div>
-    <div class="self-center">
+    <div class="self-center mb-4">
       <div class="join">
         <button
           class="join-item btn"

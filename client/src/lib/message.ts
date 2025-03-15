@@ -249,3 +249,10 @@ export const parseMessage = (
 > => {
   return WSMessageSchema.safeParse(JSON.parse(msg));
 };
+
+/// Outbound message types
+export type OrderRequest = {
+  price: number;
+  volume: number;
+  direction: "Sell" | "Buy";
+};

@@ -1,5 +1,7 @@
 <script lang="ts">
-  import type { OrderBook, Trade } from "$lib/message";
+  import type { OrderBook, OrderRequest, Trade } from "$lib/message";
+  import AddOrder from "../molecules/AddOrder.svelte";
+  import TradeList from "../molecules/TradeList.svelte";
 
   let {
     orderBook,
@@ -11,9 +13,6 @@
     trades: Trade[];
   } = $props();
 
-  let price = $state("50");
-  let volume = $state("100");
-
   let market_position = $derived(
     trades.reduce(
       (acc, trade) =>
@@ -22,14 +21,10 @@
     ),
   );
   let sendOrderDebouncedInterval: ReturnType<typeof setTimeout>;
-  const sendOrderRequest = (direction: "Sell" | "Buy") => {
+  const sendOrderRequest = (orderRequest: OrderRequest) => {
+    (document.getElementById("add_order") as any).close();
     clearTimeout(sendOrderDebouncedInterval);
     sendOrderDebouncedInterval = setTimeout(() => {
-      const orderRequest = {
-        price: Number.parseInt(price) * 100,
-        volume: Number.parseInt(volume),
-        direction,
-      };
       send(JSON.stringify({ OrderRequest: orderRequest }));
     }, 200);
   };
@@ -50,61 +45,32 @@
     </div>
   </div> -->
   <!-- Add an offer -->
-  <div class="flex flex-row justify-center">
+  <div class="flex flex-row justify-center gap-2">
     <button
       class="btn"
-      onclick={() => document.getElementById("add_order").showModal()}
+      onclick={() => (document.getElementById("add_order") as any).showModal()}
       >Ajouter un ordre</button
     >
     <dialog id="add_order" class="modal">
       <div class="modal-box bg-base-200 border border-base-300 p-4 rounded-box">
-        <fieldset class="fieldset">
-          <legend class="fieldset-legend text-xl pb-3">Ajouter un ordre</legend>
-
-          <label class="fieldset-label">
-            Volume (MW)
-            <input
-              type="text"
-              inputmode="numeric"
-              pattern="[0-9]*"
-              class="input max-w-48"
-              bind:value={volume}
-            />
-          </label>
-          <label class="fieldset-label">
-            Prix (€)
-            <input
-              type="text"
-              inputmode="numeric"
-              pattern="[0-9]*"
-              class="input max-w-48"
-              bind:value={price}
-            />
-          </label>
-          <div class="flex flex-row justify-around mt-2">
-            <button
-              class="px-4 py-2 bg-success text-white rounded"
-              onclick={() => {
-                document.getElementById("add_order").close();
-                sendOrderRequest("Buy");
-              }}>Acheter</button
-            >
-            <button
-              class="px-4 py-2 bg-warning text-white rounded"
-              onclick={() => {
-                document.getElementById("add_order").close();
-                sendOrderRequest("Sell");
-              }}>Vendre</button
-            >
-          </div>
-        </fieldset>
+        <AddOrder {sendOrderRequest} />
+      </div>
+    </dialog>
+    <button
+      class="btn"
+      onclick={() => (document.getElementById("trade_list") as any).showModal()}
+      >Transactions passées</button
+    >
+    <dialog id="trade_list" class="modal">
+      <div class="modal-box bg-base-200 border border-base-300 p-4 rounded-box">
+        <TradeList {trades} />
       </div>
     </dialog>
   </div>
 
   <div class="grid grid-cols-2 gap-4 mt-3">
     <div
-      class="flex flex-col h-64 overflow-y-auto p-2 max-w-64 justify-self-end"
+      class="flex flex-col overflow-y-auto p-2 max-w-64 max-h-64 justify-self-end"
     >
       <h3 class="text-xl font-semibold mb-2 text-end">Acheteurs</h3>
       <table class="table table-zebra table-sm sm:table-md">
@@ -132,7 +98,7 @@
     </div>
 
     <div
-      class="flex flex-col h-64 overflow-y-auto p-2 max-w-64 justify-self-start"
+      class="flex flex-col overflow-y-auto p-2 max-w-64 max-h-64 justify-self-start"
     >
       <h3 class="text-xl font-semibold mb-2 text-start">Vendeurs</h3>
       <table class="table table-zebra table-sm sm:table-md">
