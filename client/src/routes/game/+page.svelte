@@ -192,7 +192,7 @@
             aria-label="Centrales 🔌"
             checked={true}
           />
-          <div class="tab-content bg-base-100 border-base-300 p-4">
+          <div class="tab-content bg-base-100 border-base-300 p-1">
             <Stack {plants} send={sendMessage} />
           </div>
           <input

@@ -56,7 +56,7 @@
     vous ne pouvez contrôler,
   </li>
   <li>
-    🔋 <i>batterie</i> :vous pouvez choisir de la charger ou décharger pour stocker
+    🔋 <i>batterie</i> : vous pouvez choisir de la charger ou décharger pour stocker
     de l'énergie d'une période à l'autre.
   </li>
 </ul>
