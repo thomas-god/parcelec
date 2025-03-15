@@ -1,9 +1,12 @@
 use serde::Serialize;
 
+use crate::constants;
+
 #[derive(Debug, Clone, Copy, PartialEq, PartialOrd, Serialize)]
 #[serde(tag = "type")]
 pub enum Forecast {
     Level(ForecastLevel),
+    Value(ForecastValue),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, PartialOrd, Serialize)]
@@ -30,9 +33,30 @@ pub fn map_value_to_forecast_level(value: isize, max: isize) -> ForecastLevel {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, PartialOrd, Serialize)]
+pub struct ForecastValue {
+    value: usize,
+    deviation: usize,
+}
+
+pub fn forecast_value(target: usize, max: Option<usize>) -> ForecastValue {
+    let max = max
+        .map(|m| m.min(target + constants::FORECAST_BASE_DEVIATION))
+        .unwrap_or(target + constants::FORECAST_BASE_DEVIATION);
+    let range = (target.saturating_sub(constants::FORECAST_BASE_DEVIATION))..(max);
+    ForecastValue {
+        value: rand::random_range(range),
+        deviation: constants::FORECAST_BASE_DEVIATION,
+    }
+}
+
 #[cfg(test)]
 mod tests {
-    use crate::forecast::{ForecastLevel, map_value_to_forecast_level};
+    #![allow(unused_comparisons)]
+    use crate::{
+        constants,
+        forecast::{ForecastLevel, ForecastValue, forecast_value, map_value_to_forecast_level},
+    };
 
     #[test]
     fn test_map_forecast_level_default_min() {
@@ -77,5 +101,43 @@ mod tests {
             map_value_to_forecast_level(-1001, -1000),
             ForecastLevel::High
         );
+    }
+
+    #[test]
+    fn test_forecast_value() {
+        // Should be within [target - deviation, target + deviation]
+        let target = 1000;
+        for _ in 0..0x1e4 {
+            let ForecastValue {
+                value,
+                deviation: _,
+            } = forecast_value(target, None);
+            assert!(value >= target - constants::FORECAST_BASE_DEVIATION);
+            assert!(value <= target + constants::FORECAST_BASE_DEVIATION);
+        }
+    }
+
+    #[test]
+    fn test_forecast_value_positive() {
+        let target = 50;
+        for _ in 0..0x1e4 {
+            let ForecastValue {
+                value,
+                deviation: _,
+            } = forecast_value(target, None);
+            assert!(value >= 0);
+        }
+    }
+
+    #[test]
+    fn test_forecast_value_saturate_with_max() {
+        let target = 500;
+        for _ in 0..0x1e4 {
+            let ForecastValue {
+                value,
+                deviation: _,
+            } = forecast_value(target, Some(550));
+            assert!(value <= 550);
+        }
     }
 }
