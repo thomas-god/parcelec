@@ -8,6 +8,7 @@
   import PeriodsAndForecasts from "../../components/molecules/tutorial.svelte/PeriodsAndForecasts.svelte";
   import PowerPlants from "../../components/molecules/tutorial.svelte/PowerPlants.svelte";
   import { isSome, none, some, type Option } from "$lib/Options";
+  import TradeNotification from "../../components/molecules/TradeNotification.svelte";
 
   let error = $state(false);
   let orderBook: OrderBook = $state({
@@ -16,6 +17,13 @@
   });
   let trades: Trade[] = $state([]);
   let trades_to_display: Trade[] = $state([]);
+  const removeTradeToDisplay = (trade_to_remove: Trade) => {
+    trades_to_display = trades_to_display.filter(
+      (trade) =>
+        trade.direction !== trade_to_remove.direction ||
+        trade.execution_time !== trade_to_remove.execution_time,
+    );
+  };
   let game_socket: Option<WebSocket> = $state(none());
 
   const startTutorial = async () => {
@@ -99,6 +107,11 @@
       <PowerPlants />
     {:else if current_step === "Marché"}
       <Market {orderBook} {trades} send={sendMessage} />
+      <div class="toast mb-15 items-center content-center">
+        {#each trades_to_display as trade (`${trade.direction}-${trade.execution_time}`)}
+          <TradeNotification {trade} {removeTradeToDisplay} />
+        {/each}
+      </div>
     {:else if current_step === "Périodes et prévisions"}
       <PeriodsAndForecasts />
       <button onclick={() => goto("/game")} class="text-lg mt-3 mb-5"

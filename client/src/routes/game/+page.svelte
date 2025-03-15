@@ -219,7 +219,7 @@
           </div>
         </div>
 
-        <div class="toast mb-14 items-center content-center">
+        <div class="toast mb-15 items-center content-center">
           {#each trades_to_display as trade (`${trade.direction}-${trade.execution_time}`)}
             <TradeNotification {trade} {removeTradeToDisplay} />
           {/each}
