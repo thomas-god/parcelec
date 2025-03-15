@@ -1,10 +1,23 @@
 <script lang="ts">
   import { goto } from "$app/navigation";
   import { PUBLIC_APP_URL } from "$env/static/public";
-  import Score from "../../components/molecules/CurrentScore.svelte";
-  import GenericPlant from "../../components/molecules/GenericPlant.svelte";
+  import { parseMessage, type OrderBook, type Trade } from "$lib/message";
+  import { match } from "ts-pattern";
+  import Intro from "../../components/molecules/tutorial.svelte/Intro.svelte";
+  import Market from "../../components/molecules/tutorial.svelte/Market.svelte";
+  import PeriodsAndForecasts from "../../components/molecules/tutorial.svelte/PeriodsAndForecasts.svelte";
+  import PowerPlants from "../../components/molecules/tutorial.svelte/PowerPlants.svelte";
+  import { isSome, none, some, type Option } from "$lib/Options";
 
   let error = $state(false);
+  let orderBook: OrderBook = $state({
+    bids: [],
+    offers: [],
+  });
+  let trades: Trade[] = $state([]);
+  let trades_to_display: Trade[] = $state([]);
+  let game_socket: Option<WebSocket> = $state(none());
+
   const startTutorial = async () => {
     let response = await fetch(`${PUBLIC_APP_URL}/tutorial`, {
       method: "POST",
@@ -12,89 +25,109 @@
       credentials: "include",
     });
     if (response.status === 201) {
-      goto("/game");
+      const socket = new WebSocket(`${PUBLIC_APP_URL}/ws`);
+      socket.onmessage = (msg) => {
+        const parseRes = parseMessage(msg.data);
+        if (!parseRes.success) {
+          console.log(
+            `Error while parsing message ${msg.data}: ${parseRes.error}`,
+          );
+          return;
+        }
+
+        match(parseRes.data)
+          .with({ type: "OrderBookSnapshot" }, (snapshot) => {
+            orderBook.bids = snapshot.bids.toSorted(
+              (a, b) => b.price - a.price,
+            );
+            orderBook.offers = snapshot.offers.toSorted(
+              (a, b) => a.price - b.price,
+            );
+          })
+          .with({ type: "NewTrade" }, (new_trade) => {
+            trades.push(new_trade);
+            trades_to_display.push(new_trade);
+          })
+          .with({ type: "TradeList" }, (trade_list) => {
+            trades = trade_list.trades;
+          });
+      };
+      socket.onopen = () => {
+        socket.send(JSON.stringify("ConnectionReady"));
+      };
+      game_socket = some(socket);
     } else {
       error = true;
     }
   };
-  let position_index = $state(0);
-  let position_values = [-1200, 250, 0];
-  let position = $derived(position_values.at(position_index)!);
-  let pnl_values = [3000, -550, 1200];
-  let pnl = $derived(pnl_values.at(position_index)!);
-  setInterval(() => {
-    position_index = (position_index + 1) % position_values.length;
-  }, 1500);
 
-  let setpoint = $state(0);
-  let cost = $derived(setpoint * 60);
-  const updateSetpoint = (new_setpoint: number) => {
-    setpoint = Math.max(0, Math.min(new_setpoint, 700));
+  const sendMessage = (msg: string) => {
+    if (isSome(game_socket)) {
+      game_socket.value.send(msg);
+    }
+  };
+
+  const steps = [
+    "Introduction",
+    "Centrales",
+    "Marché",
+    "Périodes et prévisions",
+  ];
+  let steps_index = $state(0);
+  let current_step = $derived(steps.at(steps_index));
+  const next_step = () => {
+    if (steps_index < steps.length - 1) {
+      steps_index += 1;
+    }
+  };
+  const previous_step = () => {
+    if (steps_index > 0) {
+      steps_index -= 1;
+    }
   };
 </script>
 
-<div class="flex flex-col max-w-[500px] mx-auto text-justify">
-  <h1 class="text-center font-semibold text-xl my-3">
-    Bienvenue dans Parcelec !
-  </h1>
-  <div class="p-4">
-    Votre objectif est d'atteindre l'équilibre énergétique en produisant autant
-    que ce vos <i>clients</i> 🏙️ consomment. Mais attention il vous faudra trouver
-    l'équilibre au meilleur coût !
-  </div>
-  <div
-    class="px-4 sm:px-10 py-4 text-success-content bg-success rounded-md m-2"
-  >
-    <Score {position} {pnl} />
-  </div>
-  <h2 class="px-4 pt-2 font-semibold">Pilotage des centrales 🔌</h2>
-  <p class="p-4">
-    Vous pouvez piloter plusieurs sources d'énergie. La première et la plus
-    simple est une <i>centrale à gaz</i> 🔥: entièrement pilotable mais coûteuse
-    à exploiter. À l'inverse, <i>votre centrale nucléaire</i> ☢️ coute peu cher,
-    mais si vous la pilotez, elle sera bloquée la periode suivante ! Plus
-    simple, votre <i>centrale solaire</i> ☀️ a une production variable que vous
-    ne pouvez contrôler. Pour faire face à cette variabilité pour disposez d'une
-    <i>batterie</i> 🔋 que vous pouvez choisir de charger ou décharger.
-  </p>
-  <div class="p-5">
-    <GenericPlant
-      {cost}
-      {setpoint}
-      {updateSetpoint}
-      dispatchable={true}
-      max_setpoint={700}
-      type={"gaz"}
-      energy_cost={60}
-    />
-  </div>
-  <h2 class="px-4 pt-2 font-semibold">Le marché 💱</h2>
-  <p class="p-4">
-    Vous n'êtes pas tout seul dans le monde de Parcelec : vous pouvez acheter et
-    vendre de l'énergie aux autres acteurs et joueurs en déposant des offres via
-    l'onglet <i>marché </i> 💱. Si deux offres d'achat et de vente ont le même prix,
-    alors la transaction se fait.
-  </p>
-  <h2 class="px-4 pt-2 font-semibold">Les prévisions 🔮</h2>
-  <p class="p-4">
-    Pour vous aider dans vos décisions un onglet <i>prédictions</i> 🔮 vous donnera
-    une idée de ce qu'il pourra se passer à la prochaine période.
-  </p>
-  <h2 class="px-4 pt-2 font-semibold">Periodes de jeu et score</h2>
-  <p class="p-4">
-    Vous pouvez piloter vos centrales et utiliser le marché autant de fois que
-    vous le souhaitez. Quand vous êtes satisfait de votre équilibrage, vous
-    pouvez terminer la phase de préparation pour voir votre score et passez à la
-    période suivante. Les scores de chaque période s'additionnent, il faudra
-    penser aux périodes suivantes lors de vos calculs !
-  </p>
-  <div class="self-center">
-    <button onclick={startTutorial} class="text-lg mt-3 mb-5"
-      >➡️ Commencer une partie</button
-    >
-  </div>
-</div>
+{#await startTutorial() then}
+  <div class="flex flex-col max-w-[500px] mx-auto text-justify">
+    <h1 class="text-center font-semibold text-xl my-3">
+      Bienvenue dans Parcelec !
+    </h1>
 
-{#if error}
-  <p>Erreur lors de la création du tutoriel</p>
-{/if}
+    {#if current_step === "Introduction"}
+      <Intro />
+    {:else if current_step === "Centrales"}
+      <PowerPlants />
+    {:else if current_step === "Marché"}
+      <Market {orderBook} {trades} send={sendMessage} />
+    {:else if current_step === "Périodes et prévisions"}
+      <PeriodsAndForecasts />
+      <button onclick={() => goto("/game")} class="text-lg mt-3 mb-5"
+        >➡️ Commencer une partie</button
+      >
+    {/if}
+
+    <div class="divider px-3"></div>
+    <div class="self-center">
+      <div class="join">
+        <button
+          class="join-item btn"
+          onclick={previous_step}
+          disabled={steps_index === 0}>«</button
+        >
+        <button
+          class="join-item btn w-46 hover:bg-base-200 hover:border-none transition-none"
+          >{steps.at(steps_index)}</button
+        >
+        <button
+          class="join-item btn"
+          onclick={next_step}
+          disabled={steps_index === steps.length - 1}>»</button
+        >
+      </div>
+    </div>
+  </div>
+
+  {#if error}
+    <p>Erreur lors de la création du tutoriel</p>
+  {/if}
+{/await}

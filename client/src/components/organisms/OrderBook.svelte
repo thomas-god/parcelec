@@ -40,7 +40,7 @@
 </script>
 
 <div class="flex flex-col">
-  <div class="flex flex-row justify-between">
+  <!-- <div class="flex flex-row justify-between">
     <div class="pb-2">
       {#if market_position > 0}
         Acheté : {market_position} MWh
@@ -48,7 +48,7 @@
         Vendu : {Math.abs(market_position)} MWh
       {/if}
     </div>
-  </div>
+  </div> -->
   <!-- Add an offer -->
   <div class="flex flex-row justify-center">
     <button
@@ -83,18 +83,18 @@
           </label>
           <div class="flex flex-row justify-around mt-2">
             <button
-              class="px-4 py-2 bg-green-500 text-white rounded"
+              class="px-4 py-2 bg-success text-white rounded"
               onclick={() => {
                 document.getElementById("add_order").close();
                 sendOrderRequest("Buy");
-              }}>BUY</button
+              }}>Acheter</button
             >
             <button
-              class="px-4 py-2 bg-red-500 text-white rounded"
+              class="px-4 py-2 bg-warning text-white rounded"
               onclick={() => {
                 document.getElementById("add_order").close();
                 sendOrderRequest("Sell");
-              }}>SELL</button
+              }}>Vendre</button
             >
           </div>
         </fieldset>

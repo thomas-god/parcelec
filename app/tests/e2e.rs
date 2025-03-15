@@ -1,8 +1,67 @@
 #![allow(dead_code, unused_imports)]
 use common::{DEFAULT_WAIT_TIMEOUT, init, init_webdriver_client};
-use fantoccini::Locator;
+use fantoccini::{Client, Locator, error::CmdError};
 
 mod common;
+
+async fn navigate_tutorial_steps(client: &Client) {
+    // Introduction
+    client
+        .wait()
+        .at_most(DEFAULT_WAIT_TIMEOUT)
+        .for_element(Locator::XPath("//button[contains(text(), 'Introduction')]"))
+        .await
+        .unwrap();
+    // Navigate tutorial steps with "»" buttons
+    client
+        .find(Locator::XPath("//button[contains(text(), '»')]"))
+        .await
+        .unwrap()
+        .click()
+        .await
+        .unwrap();
+
+    // Plants
+    client
+        .wait()
+        .at_most(DEFAULT_WAIT_TIMEOUT)
+        .for_element(Locator::XPath("//button[contains(text(), 'Centrales')]"))
+        .await
+        .unwrap();
+    // Navigate tutorial steps with "»" buttons
+    client
+        .find(Locator::XPath("//button[contains(text(), '»')]"))
+        .await
+        .unwrap()
+        .click()
+        .await
+        .unwrap();
+
+    // Market
+    client
+        .wait()
+        .at_most(DEFAULT_WAIT_TIMEOUT)
+        .for_element(Locator::XPath("//button[contains(text(), 'Marché')]"))
+        .await
+        .unwrap();
+    // Navigate tutorial steps with "»" buttons
+    client
+        .find(Locator::XPath("//button[contains(text(), '»')]"))
+        .await
+        .unwrap()
+        .click()
+        .await
+        .unwrap();
+
+    // Forecasts
+    // Market
+    client
+        .wait()
+        .at_most(DEFAULT_WAIT_TIMEOUT)
+        .for_element(Locator::XPath("//button[contains(text(), 'prévisions')]"))
+        .await
+        .unwrap();
+}
 
 #[cfg(all(test, feature = "e2e-tests"))]
 #[tokio::test]
@@ -26,6 +85,8 @@ async fn test_run_totorial() {
             format!("{}/tutorial", addr)
         );
 
+        navigate_tutorial_steps(&c).await;
+
         let start_tutorial = c
             .wait()
             .at_most(DEFAULT_WAIT_TIMEOUT)
@@ -43,9 +104,9 @@ async fn test_run_totorial() {
 
         // Dispatch the battery and check the positions updates
         c.wait()
-            .at_most(DEFAULT_WAIT_TIMEOUT)
+            .at_most(DEFAULT_WAIT_TIMEOUT * 5)
             .for_element(Locator::XPath(
-                "//div[contains(text(), 'Déficit : 900 MW')]",
+                "//div[contains(text(), 'Déficit : 650 MW')]",
             ))
             .await
             .unwrap();
@@ -71,7 +132,7 @@ async fn test_run_totorial() {
         c.wait()
             .at_most(DEFAULT_WAIT_TIMEOUT)
             .for_element(Locator::XPath(
-                "//div[contains(text(), 'Déficit : 950 MW')]",
+                "//div[contains(text(), 'Déficit : 700 MW')]",
             ))
             .await
             .unwrap();
@@ -91,7 +152,7 @@ async fn test_run_totorial() {
         // Scores should be displayed
         c.wait()
             .at_most(DEFAULT_WAIT_TIMEOUT)
-            .for_element(Locator::XPath("//td[contains(text(), '-950 MW')]"))
+            .for_element(Locator::XPath("//td[contains(text(), '-700 MW')]"))
             .await
             .unwrap();
 

@@ -59,6 +59,15 @@ impl<MS: Market> InitialOrdersBot<MS> {
             // 1st period: do nothing
             period = period.next();
             self.wait_for_market_to_open().await;
+            self.market
+                .service
+                .new_order(OrderRequest {
+                    direction: Direction::Buy,
+                    price: 55_00,
+                    volume: 200,
+                    owner: self.id.clone(),
+                })
+                .await;
             self.wait_for_market_to_close().await;
 
             // 2nd period: do nothing

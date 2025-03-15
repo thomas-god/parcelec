@@ -14,7 +14,7 @@
   </div>
   <div class="@container-normal grow text-right">
     <span class="hidden @3xs:inline"> Score : </span>
-    <span class="inline @3xs:hidden"> 💰</span>
     {pnl.toLocaleString("fr-FR")} €
+    <span class="inline @3xs:hidden"> 💰</span>
   </div>
 </div>
