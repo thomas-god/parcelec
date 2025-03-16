@@ -1,5 +1,5 @@
 <script lang="ts">
-  import Score from "../../../components/molecules/CurrentScore.svelte";
+  import Score from "../CurrentScore.svelte";
 
   let position_index = $state(0);
   let position_values = [-1200, 250, 0];

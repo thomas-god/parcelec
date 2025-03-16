@@ -3,10 +3,10 @@
   import { PUBLIC_APP_URL } from "$env/static/public";
   import { parseMessage, type OrderBook, type Trade } from "$lib/message";
   import { match } from "ts-pattern";
-  import Intro from "../../components/molecules/tutorial.svelte/Intro.svelte";
-  import Market from "../../components/molecules/tutorial.svelte/Market.svelte";
-  import PeriodsAndForecasts from "../../components/molecules/tutorial.svelte/PeriodsAndForecasts.svelte";
-  import PowerPlants from "../../components/molecules/tutorial.svelte/PowerPlants.svelte";
+  import Intro from "../../components/molecules/tutorial/Intro.svelte";
+  import Market from "../../components/molecules/tutorial/Market.svelte";
+  import PeriodsAndForecasts from "../../components/molecules/tutorial/PeriodsAndForecasts.svelte";
+  import PowerPlants from "../../components/molecules/tutorial/PowerPlants.svelte";
   import { isSome, none, some, type Option } from "$lib/Options";
   import TradeNotification from "../../components/molecules/TradeNotification.svelte";
 
