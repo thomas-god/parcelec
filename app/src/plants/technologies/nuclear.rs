@@ -77,7 +77,7 @@ impl PowerPlant for NuclearPlant {
         }
     }
 
-    fn get_forecast(&self) -> Option<Forecast> {
+    fn get_forecast(&self) -> Option<Vec<Forecast>> {
         None
     }
 }

@@ -74,7 +74,7 @@ pub enum PlayerMessage {
         plants: HashMap<PlantId, PowerPlantPublicRepr>,
     },
     StackForecasts {
-        forecasts: HashMap<PlantId, Option<Forecast>>,
+        forecasts: HashMap<PlantId, Option<Vec<Forecast>>>,
     },
     DeliveryPeriodResults {
         delivery_period: DeliveryPeriodId,

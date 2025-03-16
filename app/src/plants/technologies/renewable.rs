@@ -1,7 +1,8 @@
 use serde::Serialize;
 
 use crate::{
-    forecast::{Forecast, map_value_to_forecast_level},
+    constants,
+    forecast::{Forecast, ForecastValue},
     game::delivery_period::DeliveryPeriodId,
     plants::{PlantOutput, PowerPlant, PowerPlantPublicRepr},
 };
@@ -18,14 +19,20 @@ pub struct RenewablePlant {
     setpoints: Timeseries,
     period: DeliveryPeriodId,
     current_setpoint: isize,
-    current_forecast: isize,
+    current_forecast: Forecast,
 }
 
 impl RenewablePlant {
     pub fn new(max_power: isize, setpoints: Timeseries) -> RenewablePlant {
         let period = DeliveryPeriodId::from(1);
         let current_setpoint = setpoints.value_at(period);
-        let current_forecast = setpoints.value_at(period.next());
+        let current_forecast = Forecast {
+            period: period.next(),
+            value: ForecastValue {
+                value: setpoints.value_at(period.next()),
+                deviation: constants::FORECAST_BASE_DEVIATION,
+            },
+        };
 
         RenewablePlant {
             current_setpoint,
@@ -55,7 +62,13 @@ impl PowerPlant for RenewablePlant {
         let previous_setpoint = self.current_setpoint;
         self.period = self.period.next();
         self.current_setpoint = self.setpoints.value_at(self.period);
-        self.current_forecast = self.setpoints.value_at(self.period.next());
+        self.current_forecast = Forecast {
+            period: self.period.next(),
+            value: ForecastValue {
+                value: self.setpoints.value_at(self.period.next()),
+                deviation: constants::FORECAST_BASE_DEVIATION,
+            },
+        };
         PlantOutput {
             setpoint: previous_setpoint,
             cost: 0,
@@ -70,20 +83,14 @@ impl PowerPlant for RenewablePlant {
             },
         })
     }
-    fn get_forecast(&self) -> Option<Forecast> {
-        Some(Forecast::Level(map_value_to_forecast_level(
-            self.current_forecast,
-            self.max_power,
-        )))
+    fn get_forecast(&self) -> Option<Vec<Forecast>> {
+        Some(vec![self.current_forecast])
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::{
-        forecast::{Forecast, ForecastLevel},
-        plants::{PlantOutput, PowerPlant},
-    };
+    use crate::plants::{PlantOutput, PowerPlant};
 
     use super::RenewablePlant;
 
@@ -104,29 +111,5 @@ mod tests {
         let previous_value = plant.current_setpoint;
         let returned_value = plant.dispatch();
         assert_eq!(previous_value as isize, returned_value.setpoint);
-    }
-
-    #[test]
-    fn test_renewable_plant_forecasts() {
-        let mut plant = RenewablePlant::from_values(1000, vec![100, 500, 900]);
-
-        assert_eq!(
-            plant.get_forecast(),
-            Some(Forecast::Level(ForecastLevel::Medium))
-        );
-
-        plant.dispatch();
-
-        assert_eq!(
-            plant.get_forecast(),
-            Some(Forecast::Level(ForecastLevel::High))
-        );
-
-        plant.dispatch();
-
-        assert_eq!(
-            plant.get_forecast(),
-            Some(Forecast::Level(ForecastLevel::Low))
-        );
     }
 }

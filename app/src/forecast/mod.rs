@@ -1,13 +1,6 @@
 use serde::Serialize;
 
-use crate::constants;
-
-#[derive(Debug, Clone, Copy, PartialEq, PartialOrd, Serialize)]
-#[serde(tag = "type")]
-pub enum Forecast {
-    Level(ForecastLevel),
-    Value(ForecastValue),
-}
+use crate::{constants, game::delivery_period::DeliveryPeriodId};
 
 #[derive(Debug, Clone, Copy, PartialEq, PartialOrd, Serialize)]
 #[serde(tag = "level")]
@@ -34,29 +27,54 @@ pub fn map_value_to_forecast_level(value: isize, max: isize) -> ForecastLevel {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, PartialOrd, Serialize)]
-pub struct ForecastValue {
-    value: usize,
-    deviation: usize,
+pub struct Forecast {
+    pub period: DeliveryPeriodId,
+    pub value: ForecastValue,
 }
 
-pub fn forecast_value(target: usize, max: Option<usize>) -> ForecastValue {
-    let max = max
-        .map(|m| m.min(target + constants::FORECAST_BASE_DEVIATION))
-        .unwrap_or(target + constants::FORECAST_BASE_DEVIATION);
-    let range = (target.saturating_sub(constants::FORECAST_BASE_DEVIATION))..(max);
+#[derive(Debug, Clone, Copy, PartialEq, PartialOrd, Serialize)]
+pub struct ForecastValue {
+    pub value: isize,
+    pub deviation: usize,
+}
+
+#[derive(Debug, Clone)]
+pub struct Clip {
+    min: isize,
+    max: isize,
+}
+
+pub fn forecast_value(target: isize, clip: Option<Clip>) -> ForecastValue {
+    let min =
+        clip.as_ref()
+            .map(|c| c.min)
+            .unwrap_or(target.saturating_sub_unsigned(constants::FORECAST_BASE_DEVIATION))
+            .max(target.saturating_sub_unsigned(constants::FORECAST_BASE_DEVIATION)) as i64;
+    let max =
+        clip.map(|c| c.max)
+            .unwrap_or(target.saturating_add_unsigned(constants::FORECAST_BASE_DEVIATION))
+            .min(target.saturating_add_unsigned(constants::FORECAST_BASE_DEVIATION)) as i64;
     ForecastValue {
-        value: rand::random_range(range),
+        value: i64_to_isize_saturating(rand::random_range(min..max)),
         deviation: constants::FORECAST_BASE_DEVIATION,
+    }
+}
+
+fn i64_to_isize_saturating(value: i64) -> isize {
+    if value > isize::MAX as i64 {
+        isize::MAX
+    } else if value < isize::MIN as i64 {
+        isize::MIN
+    } else {
+        value as isize
     }
 }
 
 #[cfg(test)]
 mod tests {
     #![allow(unused_comparisons)]
-    use crate::{
-        constants,
-        forecast::{ForecastLevel, ForecastValue, forecast_value, map_value_to_forecast_level},
-    };
+    use super::{Clip, ForecastLevel, ForecastValue, forecast_value, map_value_to_forecast_level};
+    use crate::constants;
 
     #[test]
     fn test_map_forecast_level_default_min() {
@@ -112,32 +130,22 @@ mod tests {
                 value,
                 deviation: _,
             } = forecast_value(target, None);
-            assert!(value >= target - constants::FORECAST_BASE_DEVIATION);
-            assert!(value <= target + constants::FORECAST_BASE_DEVIATION);
+            assert!(value >= target.saturating_sub_unsigned(constants::FORECAST_BASE_DEVIATION));
+            assert!(value <= target.saturating_add_unsigned(constants::FORECAST_BASE_DEVIATION));
         }
     }
 
     #[test]
-    fn test_forecast_value_positive() {
+    fn test_forecast_value_within_clip() {
         let target = 50;
+        let clip = Clip { min: 30, max: 60 };
         for _ in 0..0x1e4 {
             let ForecastValue {
                 value,
                 deviation: _,
-            } = forecast_value(target, None);
-            assert!(value >= 0);
-        }
-    }
-
-    #[test]
-    fn test_forecast_value_saturate_with_max() {
-        let target = 500;
-        for _ in 0..0x1e4 {
-            let ForecastValue {
-                value,
-                deviation: _,
-            } = forecast_value(target, Some(550));
-            assert!(value <= 550);
+            } = forecast_value(target, Some(clip.clone()));
+            assert!(value >= clip.min);
+            assert!(value <= clip.max);
         }
     }
 }

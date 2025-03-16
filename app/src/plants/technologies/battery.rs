@@ -84,7 +84,7 @@ impl PowerPlant for Battery {
         PlantOutput { cost, setpoint }
     }
 
-    fn get_forecast(&self) -> Option<Forecast> {
+    fn get_forecast(&self) -> Option<Vec<Forecast>> {
         None
     }
 }

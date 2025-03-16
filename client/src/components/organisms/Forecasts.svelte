@@ -45,17 +45,17 @@
   type plantType = (StackSnapshot extends Map<any, infer I>
     ? I
     : never)["type"];
-  type forecastType = StackForecasts extends Map<any, infer I> ? I : never;
-  type forecastLevel = NonNullable<
-    Extract<forecastType, { type: "Level" }>["level"]
-  >;
+  type forecastLevel = MarketForecast["volume"];
 
   let forecast_per_plant = $derived.by(() => {
-    let mapped_forecasts: Map<string, [plantType, forecastLevel]> = new Map();
+    let mapped_forecasts: Map<string, [plantType, number]> = new Map();
     for (const [plant_id, forecast] of plant_forecasts) {
       if (!!forecast && plant_snapshots.has(plant_id)) {
         const plant = plant_snapshots.get(plant_id)!;
-        mapped_forecasts.set(plant_id, [plant.type, forecast.level]);
+        mapped_forecasts.set(plant_id, [
+          plant.type,
+          forecast.at(0)?.value.value,
+        ]);
       }
     }
     return mapped_forecasts;
@@ -72,8 +72,8 @@
         </span>
         {names[plant_type]}: la {plant_type === "Consumers"
           ? "consommation"
-          : "production"} sera
-        <span class="italic underline">{levelsNames[forecast]}</span>
+          : "production"} sera autour de
+        <span class="italic underline">{forecast} MW</span>
       </div>
     {:else}
       <div>Pas de prévisions</div>

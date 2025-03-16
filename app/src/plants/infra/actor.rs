@@ -37,7 +37,7 @@ pub enum StackMessage {
     },
     ProgramSetpoint(ProgramPlant),
     GetSnapshot(oneshot::Sender<HashMap<PlantId, PowerPlantPublicRepr>>),
-    GetForecasts(oneshot::Sender<HashMap<PlantId, Option<Forecast>>>),
+    GetForecasts(oneshot::Sender<HashMap<PlantId, Option<Vec<Forecast>>>>),
 }
 
 #[derive(Debug, PartialEq, Clone, Copy)]
@@ -236,7 +236,7 @@ impl<PC: PlayerConnections> StackActor<PC> {
             .collect()
     }
 
-    fn stack_forecasts(&self) -> HashMap<PlantId, Option<Forecast>> {
+    fn stack_forecasts(&self) -> HashMap<PlantId, Option<Vec<Forecast>>> {
         self.stack
             .iter()
             .map(|(plant_id, plant)| (plant_id.to_owned(), plant.get_forecast()))

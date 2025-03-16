@@ -91,12 +91,13 @@ const WSMessageSchema = z.discriminatedUnion("type", [
       .record(
         z.string(),
         z.nullable(
-          z.discriminatedUnion("type", [
-            z.object({
-              type: z.literal("Level"),
-              level: z.enum(["Low", "Medium", "High"]),
-            }),
-          ]),
+          z.array(z.object({
+            period: z.number(),
+            value: z.object({
+              value: z.number(),
+              deviation: z.number()
+            })
+          }))
         ),
       )
       .transform((rec) => new Map(Object.entries(rec))),
