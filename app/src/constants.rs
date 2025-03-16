@@ -15,3 +15,6 @@ pub const MARKET_EXTREME_OFFERS_VOLUME: usize = 250;
 
 /// Base deviation when forecasting a value (in MW)
 pub const FORECAST_BASE_DEVIATION: usize = 100;
+
+/// Base for setpoints, i.e. setpoints should be a multiple of these value (in MW)
+pub const SETPOINT_BASE_VALUE: isize = 25;

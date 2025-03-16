@@ -1,8 +1,7 @@
 use serde::Serialize;
 
 use crate::{
-    constants,
-    forecast::{Forecast, ForecastValue},
+    forecast::{Clip, Forecast, Forecasts, forecast_from_timeseries},
     game::delivery_period::DeliveryPeriodId,
     plants::{PlantOutput, PowerPlant, PowerPlantPublicRepr},
 };
@@ -19,26 +18,27 @@ pub struct RenewablePlant {
     setpoints: Timeseries,
     period: DeliveryPeriodId,
     current_setpoint: isize,
-    current_forecast: Forecast,
+    current_forecasts: Forecasts,
 }
 
 impl RenewablePlant {
     pub fn new(max_power: isize, setpoints: Timeseries) -> RenewablePlant {
         let period = DeliveryPeriodId::from(1);
         let current_setpoint = setpoints.value_at(period);
-        let current_forecast = Forecast {
-            period: period.next(),
-            value: ForecastValue {
-                value: setpoints.value_at(period.next()),
-                deviation: constants::FORECAST_BASE_DEVIATION,
-            },
-        };
+        let current_forecasts = forecast_from_timeseries(
+            &setpoints,
+            period,
+            &Some(Clip {
+                min: 0,
+                max: max_power,
+            }),
+        );
 
         RenewablePlant {
             current_setpoint,
             setpoints,
             max_power,
-            current_forecast,
+            current_forecasts,
             period,
         }
     }
@@ -62,13 +62,14 @@ impl PowerPlant for RenewablePlant {
         let previous_setpoint = self.current_setpoint;
         self.period = self.period.next();
         self.current_setpoint = self.setpoints.value_at(self.period);
-        self.current_forecast = Forecast {
-            period: self.period.next(),
-            value: ForecastValue {
-                value: self.setpoints.value_at(self.period.next()),
-                deviation: constants::FORECAST_BASE_DEVIATION,
-            },
-        };
+        self.current_forecasts = forecast_from_timeseries(
+            &self.setpoints,
+            self.period,
+            &Some(Clip {
+                min: 0,
+                max: self.max_power,
+            }),
+        );
         PlantOutput {
             setpoint: previous_setpoint,
             cost: 0,
@@ -84,7 +85,7 @@ impl PowerPlant for RenewablePlant {
         })
     }
     fn get_forecast(&self) -> Option<Vec<Forecast>> {
-        Some(vec![self.current_forecast])
+        Some(self.current_forecasts.clone())
     }
 }
 

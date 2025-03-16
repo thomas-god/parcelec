@@ -22,6 +22,14 @@ impl Timeseries {
         };
         *self.values.get(index).unwrap()
     }
+
+    pub fn len(&self) -> usize {
+        self.values.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.values.is_empty()
+    }
 }
 
 #[cfg(test)]
