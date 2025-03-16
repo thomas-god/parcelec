@@ -1,6 +1,6 @@
 use std::{collections::HashMap, time::Duration};
 
-use derive_more::{Display, From};
+use derive_more::{Display, From, Into};
 use futures_util::future::join_all;
 use serde::Serialize;
 use tokio::{
@@ -20,7 +20,7 @@ use crate::{
 use super::{GameMessage, scores::PlayerScore};
 
 #[derive(
-    Debug, Clone, PartialEq, PartialOrd, Eq, Hash, Copy, Default, Serialize, Display, From,
+    Debug, Clone, PartialEq, PartialOrd, Eq, Hash, Copy, Default, Serialize, Display, From, Into,
 )]
 pub struct DeliveryPeriodId(isize);
 

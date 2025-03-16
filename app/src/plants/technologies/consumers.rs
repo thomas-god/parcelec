@@ -2,80 +2,68 @@ use serde::Serialize;
 
 use crate::{
     forecast::{Forecast, map_value_to_forecast_level},
+    game::delivery_period::DeliveryPeriodId,
     plants::{PlantOutput, PowerPlant, PowerPlantPublicRepr},
 };
 
-use super::timeseries::{LoopingTimeseries, RngTimeseries, Timeseries};
+use super::timeseries::Timeseries;
 
 #[derive(Debug, Serialize, Clone, Copy)]
 pub struct ConsumersPublicRepr {
-    pub max_power: i64,
+    pub max_power: isize,
     pub output: PlantOutput,
 }
-pub struct Consumers<T: Timeseries> {
-    max_power: i64,
-    price_per_mwh: i64,
-    current_setpoint: i64,
-    setpoints: T,
-    current_forecast: Option<i64>,
-    forecasts: Option<T>,
+pub struct Consumers {
+    max_power: isize,
+    price_per_mwh: isize,
+    setpoints: Timeseries,
+    period: DeliveryPeriodId,
+    current_setpoint: isize,
+    current_forecast: isize,
 }
 
-impl<T: Timeseries> Consumers<T> {
-    pub fn new(
-        max_power: i64,
-        price_per_mwh: i64,
-        mut setpoints: T,
-        mut forecasts: Option<T>,
-    ) -> Consumers<T> {
+impl Consumers {
+    pub fn new(max_power: isize, price_per_mwh: isize, setpoints: Timeseries) -> Consumers {
+        let period = DeliveryPeriodId::from(1);
+        let current_setpoint = setpoints.value_at(period);
+        let current_forecast = setpoints.value_at(period.next());
+
         Consumers {
-            current_setpoint: setpoints.next_value() as i64,
+            current_setpoint,
             setpoints,
             price_per_mwh,
             max_power,
-            current_forecast: forecasts.as_mut().map(|f| f.next_value() as i64),
-            forecasts,
+            current_forecast,
+            period,
         }
     }
 }
 
-impl Consumers<RngTimeseries> {
-    pub fn new_with_rng(max_power: i64, price_per_mwh: i64) -> Consumers<RngTimeseries> {
-        let timeseries = RngTimeseries::new(-max_power, 0);
-        let forecasts = None;
-        Consumers::new(max_power, price_per_mwh, timeseries, forecasts)
+impl Consumers {
+    pub fn from_values(max_power: isize, price_per_mwh: isize, values: Vec<isize>) -> Consumers {
+        let timeseries = Timeseries::from(&values[..]);
+
+        Consumers::new(max_power, price_per_mwh, timeseries)
     }
 }
 
-impl Consumers<LoopingTimeseries> {
-    pub fn new_with_looping(
-        max_power: i64,
-        price_per_mwh: i64,
-        mut values: Vec<isize>,
-    ) -> Consumers<LoopingTimeseries> {
-        let timeseries = LoopingTimeseries::from(&values[..]);
-        values.rotate_left(1);
-        let forecasts = LoopingTimeseries::from(&values[..]);
-        Consumers::new(max_power, price_per_mwh, timeseries, Some(forecasts))
-    }
-}
-
-impl<T: Timeseries> PowerPlant for Consumers<T> {
+impl PowerPlant for Consumers {
     fn program_setpoint(&mut self, _setpoint: isize) -> PlantOutput {
         PlantOutput {
-            cost: (self.current_setpoint * self.price_per_mwh) as isize,
-            setpoint: self.current_setpoint as isize,
+            cost: self.current_setpoint * self.price_per_mwh,
+            setpoint: self.current_setpoint,
         }
     }
 
     fn dispatch(&mut self) -> PlantOutput {
         let previous_setpoint = self.current_setpoint;
         let cost = previous_setpoint * self.price_per_mwh;
-        self.current_forecast = self.forecasts.as_mut().map(|f| f.next_value() as i64);
-        self.current_setpoint = self.setpoints.next_value() as i64;
+        self.period = self.period.next();
+        self.current_forecast = self.setpoints.value_at(self.period.next());
+        self.current_setpoint = self.setpoints.value_at(self.period);
         PlantOutput {
-            cost: cost as isize,
-            setpoint: previous_setpoint as isize,
+            cost,
+            setpoint: previous_setpoint,
         }
     }
 
@@ -83,74 +71,56 @@ impl<T: Timeseries> PowerPlant for Consumers<T> {
         PowerPlantPublicRepr::Consumers(ConsumersPublicRepr {
             max_power: self.max_power,
             output: PlantOutput {
-                setpoint: self.current_setpoint as isize,
-                cost: (self.current_setpoint * self.price_per_mwh) as isize,
+                setpoint: self.current_setpoint,
+                cost: (self.current_setpoint * self.price_per_mwh),
             },
         })
     }
 
     fn get_forecast(&self) -> Option<Forecast> {
-        self.current_forecast.map(|f| {
-            Forecast::Level(map_value_to_forecast_level(
-                f as isize,
-                -self.max_power as isize,
-            ))
-        })
+        Some(Forecast::Level(map_value_to_forecast_level(
+            self.current_forecast,
+            -self.max_power,
+        )))
     }
 }
 
 #[cfg(test)]
 mod tests {
+
     use crate::{
         forecast::{Forecast, ForecastLevel},
-        plants::{
-            PlantOutput, PowerPlant, PowerPlantPublicRepr,
-            technologies::consumers::ConsumersPublicRepr,
-        },
+        plants::PowerPlant,
     };
 
     use super::Consumers;
 
     #[test]
     fn test_consumers() {
-        let mut plant = Consumers::new_with_rng(1000, 65);
-
-        // Consumers have negative setpoint, i.e. they consume energy
-        assert!(plant.current_setpoint < 0);
-        // Consumers have negative costs, i.e. they pay you
-        let PowerPlantPublicRepr::Consumers(ConsumersPublicRepr {
-            output: PlantOutput { cost, .. },
-            ..
-        }) = plant.current_state()
-        else {
-            unreachable!()
-        };
-        assert!(cost < 0);
+        let max_power = 1000;
+        let energy_cost = 75;
+        let mut consumers = Consumers::from_values(max_power, energy_cost, vec![-100, -500, -900]);
 
         // Consumers cannot be programed
-        let initial_setpoint = plant.current_setpoint as isize;
-        plant.program_setpoint(initial_setpoint);
-        assert_eq!(plant.current_setpoint as isize, initial_setpoint);
+        let initial_setpoint = consumers.current_setpoint;
+        consumers.program_setpoint(initial_setpoint);
+        assert_eq!(consumers.current_setpoint, initial_setpoint);
 
         // Consumption value changes when dispatched
-        plant.dispatch();
-        assert_ne!(plant.current_setpoint as isize, initial_setpoint);
+        consumers.dispatch();
+        assert_ne!(consumers.current_setpoint, initial_setpoint);
 
         // Dispatching should return the previous setpoint
-        let previous_value = plant.current_setpoint;
-        let returned_value = plant.dispatch();
-        assert_eq!(previous_value as isize, returned_value.setpoint);
+        let previous_value = consumers.current_setpoint;
+        let returned_value = consumers.dispatch();
+        assert_eq!(previous_value, returned_value.setpoint);
     }
 
     #[test]
-    fn test_rng_consumers_have_no_forecast() {
-        let consumers = Consumers::new_with_rng(1000, 85);
-        assert!(consumers.get_forecast().is_none());
-    }
-
-    #[test]
-    fn test_looping_consumers_forecasts() {
-        let mut consumers = Consumers::new_with_looping(1000, 85, vec![-100, -500, -900]);
+    fn test_consumers_forecasts() {
+        let max_power = 1000;
+        let energy_cost = 75;
+        let mut consumers = Consumers::from_values(max_power, energy_cost, vec![-100, -500, -900]);
 
         assert_eq!(
             consumers.get_forecast(),

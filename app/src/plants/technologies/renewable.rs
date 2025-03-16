@@ -2,68 +2,62 @@ use serde::Serialize;
 
 use crate::{
     forecast::{Forecast, map_value_to_forecast_level},
+    game::delivery_period::DeliveryPeriodId,
     plants::{PlantOutput, PowerPlant, PowerPlantPublicRepr},
 };
 
-use super::timeseries::{LoopingTimeseries, RngTimeseries, Timeseries};
+use super::timeseries::Timeseries;
 
 #[derive(Debug, Serialize, Clone, Copy)]
 pub struct RenewablePlantPublicRepr {
-    pub max_power: i64,
+    pub max_power: isize,
     pub output: PlantOutput,
 }
-pub struct RenewablePlant<T: Timeseries> {
-    max_power: i64,
-    current_setpoint: i64,
-    setpoints: T,
-    current_forecast: Option<i64>,
-    forecasts: Option<T>,
+pub struct RenewablePlant {
+    max_power: isize,
+    setpoints: Timeseries,
+    period: DeliveryPeriodId,
+    current_setpoint: isize,
+    current_forecast: isize,
 }
 
-impl<T: Timeseries> RenewablePlant<T> {
-    pub fn new(max_power: i64, mut timeseries: T, mut forecasts: Option<T>) -> RenewablePlant<T> {
+impl RenewablePlant {
+    pub fn new(max_power: isize, setpoints: Timeseries) -> RenewablePlant {
+        let period = DeliveryPeriodId::from(1);
+        let current_setpoint = setpoints.value_at(period);
+        let current_forecast = setpoints.value_at(period.next());
+
         RenewablePlant {
-            current_setpoint: timeseries.next_value() as i64,
-            setpoints: timeseries,
+            current_setpoint,
+            setpoints,
             max_power,
-            current_forecast: forecasts.as_mut().map(|f| f.next_value() as i64),
-            forecasts,
+            current_forecast,
+            period,
         }
     }
 }
 
-impl RenewablePlant<RngTimeseries> {
-    pub fn new_with_rng(max_power: i64) -> RenewablePlant<RngTimeseries> {
-        let timeseries = RngTimeseries::new(0, max_power);
-        RenewablePlant::new(max_power, timeseries, None)
+impl RenewablePlant {
+    pub fn from_values(max_power: isize, values: Vec<isize>) -> RenewablePlant {
+        let setpoints = Timeseries::from(&values[..]);
+        RenewablePlant::new(max_power, setpoints)
     }
 }
 
-impl RenewablePlant<LoopingTimeseries> {
-    pub fn new_with_looping(
-        max_power: i64,
-        mut values: Vec<isize>,
-    ) -> RenewablePlant<LoopingTimeseries> {
-        let setpoints = LoopingTimeseries::from(&values[..]);
-        values.rotate_left(1);
-        let forecasts = LoopingTimeseries::from(&values[..]);
-        RenewablePlant::new(max_power, setpoints, Some(forecasts))
-    }
-}
-
-impl<T: Timeseries> PowerPlant for RenewablePlant<T> {
+impl PowerPlant for RenewablePlant {
     fn program_setpoint(&mut self, _setpoint: isize) -> PlantOutput {
         PlantOutput {
-            setpoint: self.current_setpoint as isize,
+            setpoint: self.current_setpoint,
             cost: 0,
         }
     }
     fn dispatch(&mut self) -> PlantOutput {
         let previous_setpoint = self.current_setpoint;
-        self.current_forecast = self.forecasts.as_mut().map(|f| f.next_value() as i64);
-        self.current_setpoint = self.setpoints.next_value() as i64;
+        self.period = self.period.next();
+        self.current_setpoint = self.setpoints.value_at(self.period);
+        self.current_forecast = self.setpoints.value_at(self.period.next());
         PlantOutput {
-            setpoint: previous_setpoint as isize,
+            setpoint: previous_setpoint,
             cost: 0,
         }
     }
@@ -71,18 +65,16 @@ impl<T: Timeseries> PowerPlant for RenewablePlant<T> {
         PowerPlantPublicRepr::RenewablePlant(RenewablePlantPublicRepr {
             max_power: self.max_power,
             output: PlantOutput {
-                setpoint: self.current_setpoint as isize,
+                setpoint: self.current_setpoint,
                 cost: 0,
             },
         })
     }
     fn get_forecast(&self) -> Option<Forecast> {
-        self.current_forecast.map(|f| {
-            Forecast::Level(map_value_to_forecast_level(
-                f as isize,
-                self.max_power as isize,
-            ))
-        })
+        Some(Forecast::Level(map_value_to_forecast_level(
+            self.current_forecast,
+            self.max_power,
+        )))
     }
 }
 
@@ -97,7 +89,7 @@ mod tests {
 
     #[test]
     fn test_renewable_plant() {
-        let mut plant = RenewablePlant::new_with_rng(1000);
+        let mut plant = RenewablePlant::from_values(1000, vec![100, 500]);
 
         // Plant has no associated cost
         let PlantOutput { cost, .. } = plant.program_setpoint(100);
@@ -115,14 +107,8 @@ mod tests {
     }
 
     #[test]
-    fn test_rng_renewable_plant_has_no_forecast() {
-        let plant = RenewablePlant::new_with_rng(1000);
-        assert!(plant.get_forecast().is_none());
-    }
-
-    #[test]
-    fn test_looping_consumers_forecasts() {
-        let mut plant = RenewablePlant::new_with_looping(1000, vec![100, 500, 900]);
+    fn test_renewable_plant_forecasts() {
+        let mut plant = RenewablePlant::from_values(1000, vec![100, 500, 900]);
 
         assert_eq!(
             plant.get_forecast(),
