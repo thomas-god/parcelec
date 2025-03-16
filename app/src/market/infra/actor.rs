@@ -966,7 +966,7 @@ mod tests {
         let _ = tx
             .send(MarketMessage::RegisterForecast(MarketForecast {
                 issuer: PlayerId::default(),
-                period: DeliveryPeriodId::from(-1),
+                period: DeliveryPeriodId::from(0),
                 direction: Direction::Buy,
                 volume: ForecastLevel::Low,
                 price: None,

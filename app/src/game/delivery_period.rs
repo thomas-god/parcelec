@@ -22,10 +22,13 @@ use super::{GameMessage, scores::PlayerScore};
 #[derive(
     Debug, Clone, PartialEq, PartialOrd, Eq, Hash, Copy, Default, Serialize, Display, From, Into,
 )]
-pub struct DeliveryPeriodId(isize);
+pub struct DeliveryPeriodId(usize);
 
 impl DeliveryPeriodId {
     pub fn previous(&self) -> DeliveryPeriodId {
+        if self.0 == 0 {
+            return DeliveryPeriodId(0);
+        }
         DeliveryPeriodId(self.0 - 1)
     }
     pub fn next(&self) -> DeliveryPeriodId {
