@@ -3,7 +3,6 @@ use serde::Serialize;
 use crate::{constants, game::delivery_period::DeliveryPeriodId};
 
 #[derive(Debug, Clone, Copy, PartialEq, PartialOrd, Serialize)]
-#[serde(tag = "level")]
 pub enum ForecastLevel {
     Low,
     Medium,
