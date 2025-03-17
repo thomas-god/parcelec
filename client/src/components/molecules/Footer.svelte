@@ -1,14 +1,17 @@
 <script lang="ts">
   import type { GameState } from "$lib/message";
+  import type { Periods } from "./CurrentScore.svelte";
 
   let {
     game_state,
     startGame,
     player_is_ready,
+    periods,
   }: {
     game_state: GameState;
     player_is_ready: boolean;
     startGame: () => void;
+    periods: Periods;
   } = $props();
 </script>
 
@@ -32,8 +35,10 @@
       Retour au menu ➡️
     {:else if player_is_ready}
       En attente des autres joueurs
-    {:else}
+    {:else if periods.current < periods.last}
       Période suivante ➡️
+    {:else}
+      Terminer la partie ➡️
     {/if}</button
   >
 </footer>

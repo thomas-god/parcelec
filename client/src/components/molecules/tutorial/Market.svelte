@@ -4,6 +4,7 @@
   import type { OrderBook, Trade } from "$lib/message";
   import { marketPosition } from "$lib/position";
   import { marketPnl } from "$lib/pnl";
+  import { none } from "$lib/Options";
 
   let {
     orderBook,
@@ -21,7 +22,7 @@
 </script>
 
 <div class="px-4 sm:px-10 py-4 text-success-content bg-success rounded-md m-2">
-  <Score {position} {pnl} />
+  <Score {position} {pnl} periods={none()} />
 </div>
 <h2 class="px-4 pt-2 font-semibold">Le marché 💱</h2>
 <p class="px-4 pt-2">

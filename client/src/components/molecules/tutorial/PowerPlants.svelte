@@ -1,6 +1,7 @@
 <script lang="ts">
   import GenericPlant from "../GenericPlant.svelte";
   import Score from "../CurrentScore.svelte";
+  import { none } from "$lib/Options";
 
   let base_position = 300;
   let base_pnl = 300 * 65;
@@ -21,7 +22,7 @@
 </script>
 
 <div class="px-4 sm:px-10 py-4 text-success-content bg-success rounded-md m-2">
-  <Score {position} {pnl} />
+  <Score {position} {pnl} periods={none()} />
 </div>
 
 <h2 class="px-4 pt-2 font-semibold">Pilotage des centrales 🔌</h2>

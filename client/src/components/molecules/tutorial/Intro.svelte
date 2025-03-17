@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { none } from "$lib/Options";
   import Score from "../CurrentScore.svelte";
 
   let position_index = $state(0);
@@ -18,5 +19,5 @@
 </div>
 
 <div class="px-4 sm:px-10 py-4 text-success-content bg-success rounded-md m-2">
-  <Score {position} {pnl} />
+  <Score {position} {pnl} periods={none()} />
 </div>
