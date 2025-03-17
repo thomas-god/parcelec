@@ -1,7 +1,13 @@
 <script lang="ts">
   import { goto } from "$app/navigation";
   import { PUBLIC_APP_URL } from "$env/static/public";
-  import { parseMessage, type OrderBook, type Trade } from "$lib/message";
+  import {
+    parseMessage,
+    type OrderBook,
+    type StackForecasts,
+    type StackSnapshot,
+    type Trade,
+  } from "$lib/message";
   import { match } from "ts-pattern";
   import Intro from "../../components/molecules/tutorial/Intro.svelte";
   import Market from "../../components/molecules/tutorial/Market.svelte";
@@ -24,6 +30,8 @@
         trade.execution_time !== trade_to_remove.execution_time,
     );
   };
+  let plants: StackSnapshot = $state(new Map());
+  let plant_forecasts: StackForecasts = $state(new Map());
   let game_socket: Option<WebSocket> = $state(none());
 
   const startTutorial = async () => {
@@ -58,6 +66,12 @@
           })
           .with({ type: "TradeList" }, (trade_list) => {
             trades = trade_list.trades;
+          })
+          .with({ type: "StackSnapshot" }, (stack_snapshot) => {
+            plants = stack_snapshot.plants;
+          })
+          .with({ type: "StackForecasts" }, ({ forecasts }) => {
+            plant_forecasts = forecasts;
           });
       };
       socket.onopen = () => {
@@ -113,8 +127,8 @@
         {/each}
       </div>
     {:else if current_step === "Périodes et prévisions"}
-      <PeriodsAndForecasts />
-      <button onclick={() => goto("/game")} class="text-lg mt-3 mb-5"
+      <PeriodsAndForecasts forecasts={plant_forecasts} {plants} />
+      <button onclick={() => goto("/game")} class="text-lg mt-5 mb-5"
         >➡️ Commencer une partie</button
       >
     {/if}

@@ -1,13 +1,29 @@
-<h2 class="px-4 pt-2 font-semibold">Les prévisions 🔮</h2>
-<p class="p-4">
-  Pour vous aider dans vos décisions un onglet <i>prédictions</i> 🔮 vous donnera
-  une idée de ce qu'il pourra se passer à la prochaine période.
-</p>
+<script lang="ts">
+  import type { StackForecasts, StackSnapshot } from "$lib/message";
+  import PlantForecasts from "../PlantForecasts.svelte";
+
+  let {
+    forecasts,
+    plants,
+  }: { forecasts: StackForecasts; plants: StackSnapshot } = $props();
+</script>
+
 <h2 class="px-4 pt-2 font-semibold">Periodes de jeu et score</h2>
-<p class="p-4">
-  Vous pouvez piloter vos centrales et utiliser le marché autant de fois que
-  vous le souhaitez. Quand vous êtes satisfait de votre équilibrage, vous pouvez
-  terminer la phase de préparation pour voir votre score et passez à la période
-  suivante. Les scores de chaque période s'additionnent, il faudra penser aux
-  périodes suivantes lors de vos calculs !
+<p class="px-4 pt-2">
+  Une partie se compose de plusieurs périodes pour lesquelles vous devrez, à
+  chaque fois, équilibrer votre parc. Vous pouvez changer les consignes de vos
+  centrales et utiliser le marhcé autant de fois que vous le souhaitez pendant
+  une période.
 </p>
+<p class="px-4">
+  Certaines de vos actions (comme choisir de charger votre batterie avec votre
+  production excédentaire au lieu de la vendre) auront des répercussions sur les
+  périodes suivantes.
+</p>
+<p class="px-4 pb-2">
+  Pour vous aider dans vos décisions vous disposez d'un onglet <i>prévisions</i>
+  🔮 qui vous donnera une idée des consommations et production pour les périodes
+  suivantes. Mais attention ces prévisions peuvent se tromper !
+</p>
+
+<PlantForecasts {forecasts} {plants} />

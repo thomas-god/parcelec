@@ -25,7 +25,7 @@
 </div>
 
 <h2 class="px-4 pt-2 font-semibold">Pilotage des centrales 🔌</h2>
-<p class="px-4 pt-4">
+<p class="px-4 pt-2">
   Pour vous équilibrer vous disposez de centrales que vous pouvez piloter.
   Essayez de réduire votre déficit avec cette centrale !
 </p>
