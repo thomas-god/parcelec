@@ -19,5 +19,5 @@
 {:else if game_state === "Ended"}
   <div class="text-2xl text-center mx-auto">Partie terminée !</div>
 {:else}
-  <div class="text-2xl text-center mx-auto">Phase terminée !</div>
+  <div class="text-2xl text-center mx-auto">Période terminée !</div>
 {/if}

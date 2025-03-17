@@ -20,7 +20,7 @@
       {#if player_is_ready}
         En attente des autres joueurs
       {:else}
-        Terminer la phase ➡️
+        Terminer la période ➡️
       {/if}
     {:else if game_state === "Open"}
       {#if player_is_ready}
@@ -33,7 +33,7 @@
     {:else if player_is_ready}
       En attente des autres joueurs
     {:else}
-      Phase suivante ➡️
+      Période suivante ➡️
     {/if}</button
   >
 </footer>

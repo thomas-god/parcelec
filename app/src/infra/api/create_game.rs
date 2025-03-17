@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use crate::{
     game::{
         GameActor, GameId, GameName,
-        delivery_period::{DeliveryPeriodId, DeliveryPeriodTimers},
+        delivery_period::DeliveryPeriodTimers,
         infra::GameActorConfig,
         scores::{GameRankings, TierLimits},
     },
@@ -58,7 +58,7 @@ pub async fn create_game(
             market: Duration::from_secs(120),
             stacks: Duration::from_secs(120),
         }),
-        last_delivery_period: Some(DeliveryPeriodId::from(4)),
+        number_of_delivery_periods: 4,
         ranking_calculator: GameRankings {
             tier_limits: Some(TierLimits {
                 gold: 80_000,

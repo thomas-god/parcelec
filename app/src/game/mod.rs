@@ -67,9 +67,13 @@ pub enum RegisterPlayerResponse {
 
 #[derive(Debug, PartialEq, Clone, Display)]
 pub enum GameState {
+    /// Game is open for players to join.
     Open,
+    /// Game has started and stacks and market are open for [DeliveryPeriodId]
     Running(DeliveryPeriodId),
+    /// [DeliveryPeriodId] is closed.
     PostDelivery(DeliveryPeriodId),
+    /// Game has ended.
     Ended(DeliveryPeriodId),
 }
 

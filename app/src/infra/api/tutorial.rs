@@ -11,7 +11,6 @@ use tower_cookies::{
 use crate::{
     game::{
         GameActor, GameId, GameMessage, GameName, RegisterPlayerResponse,
-        delivery_period::DeliveryPeriodId,
         infra::actor::GameActorConfig,
         scores::{GameRankings, TierLimits},
     },
@@ -47,7 +46,7 @@ pub async fn create_tutorial_game(
     let game_config = GameActorConfig {
         id: game_id.clone(),
         name: Some(game_name),
-        last_delivery_period: Some(DeliveryPeriodId::from(4)),
+        number_of_delivery_periods: 4,
         delivery_period_timers: None,
         ranking_calculator: GameRankings {
             tier_limits: Some(TierLimits {

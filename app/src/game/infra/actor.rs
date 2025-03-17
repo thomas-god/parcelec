@@ -38,7 +38,7 @@ pub struct GameActor<MS: Market, PC: PlayerConnections> {
     rx: Receiver<GameMessage>,
     tx: Sender<GameMessage>,
     current_delivery_period: DeliveryPeriodId,
-    last_delivery_period: Option<DeliveryPeriodId>,
+    last_delivery_period: DeliveryPeriodId,
     delivery_period_timers: Option<DeliveryPeriodTimers>,
     all_players_ready_tx: Option<oneshot::Sender<()>>,
     ranking_calculator: GameRankings,
@@ -48,21 +48,9 @@ pub struct GameActor<MS: Market, PC: PlayerConnections> {
 pub struct GameActorConfig {
     pub id: GameId,
     pub name: Option<GameName>,
-    pub last_delivery_period: Option<DeliveryPeriodId>,
+    pub number_of_delivery_periods: usize,
     pub ranking_calculator: GameRankings,
     pub delivery_period_timers: Option<DeliveryPeriodTimers>,
-}
-
-impl Default for GameActorConfig {
-    fn default() -> Self {
-        GameActorConfig {
-            id: GameId::default(),
-            name: None,
-            last_delivery_period: None,
-            ranking_calculator: GameRankings { tier_limits: None },
-            delivery_period_timers: None,
-        }
-    }
 }
 
 impl<MS: Market, PC: PlayerConnections> GameActor<MS, PC> {
@@ -89,7 +77,7 @@ impl<MS: Market, PC: PlayerConnections> GameActor<MS, PC> {
             tx,
             current_delivery_period: DeliveryPeriodId::default(),
             delivery_period_timers: config.delivery_period_timers,
-            last_delivery_period: config.last_delivery_period,
+            last_delivery_period: DeliveryPeriodId::from(config.number_of_delivery_periods),
             all_players_ready_tx: None,
             ranking_calculator: config.ranking_calculator,
             cancellation_token: cancelation_token,
@@ -221,10 +209,7 @@ impl<MS: Market, PC: PlayerConnections> GameActor<MS, PC> {
     }
 
     fn game_should_end(&self) -> bool {
-        if let Some(last_delivery_period) = self.last_delivery_period {
-            return self.current_delivery_period >= last_delivery_period;
-        };
-        false
+        self.current_delivery_period >= self.last_delivery_period
     }
 
     async fn end_game(&mut self) {
@@ -479,6 +464,16 @@ mod test_utils {
         }
     }
 
+    pub fn default_game_config() -> GameActorConfig {
+        GameActorConfig {
+            delivery_period_timers: None,
+            id: GameId::default(),
+            name: Some(GameName::default()),
+            number_of_delivery_periods: 4,
+            ranking_calculator: GameRankings { tier_limits: None },
+        }
+    }
+
     pub fn open_game() -> (GameContext, MarketContext<MockMarket>) {
         let (tx_1, _) = mpsc::channel(16);
         let (tx_2, _) = mpsc::channel(16);
@@ -494,13 +489,9 @@ mod test_utils {
             service: market,
             state_rx: rx,
         };
+        let game_config = default_game_config();
         (
-            GameActor::start(
-                GameActorConfig::default(),
-                connections,
-                market_context.clone(),
-                token,
-            ),
+            GameActor::start(game_config, connections, market_context.clone(), token),
             market_context,
         )
     }
@@ -553,7 +544,8 @@ mod tests {
             infra::actor::{
                 GameActorConfig,
                 test_utils::{
-                    MockMarket, MockPlayerConnections, open_game, register_player, start_game,
+                    MockMarket, MockPlayerConnections, default_game_config, open_game,
+                    register_player, start_game,
                 },
             },
             scores::GameRankings,
@@ -799,7 +791,7 @@ mod tests {
             state_rx: rx,
         };
         let token = CancellationToken::new();
-        let game = GameActor::start(GameActorConfig::default(), connections, market, token);
+        let game = GameActor::start(default_game_config(), connections, market, token);
 
         // Start game
         let (player, _) = start_game(game.tx.clone()).await;
@@ -837,7 +829,7 @@ mod tests {
             state_rx: rx,
         };
         let token = CancellationToken::new();
-        let mut game = GameActor::start(GameActorConfig::default(), connections, market, token);
+        let mut game = GameActor::start(default_game_config(), connections, market, token);
         game.state_rx.borrow_and_update();
 
         // Start the game
@@ -897,8 +889,8 @@ mod tests {
         // Create a game with 2 max delivery periods
         let mut game = GameActor::start(
             GameActorConfig {
-                last_delivery_period: Some(DeliveryPeriodId::from(2)),
-                ..Default::default()
+                number_of_delivery_periods: 2,
+                ..default_game_config()
             },
             connections,
             market,
@@ -989,8 +981,8 @@ mod tests {
         let token = CancellationToken::new();
         let mut game = GameActor::start(
             GameActorConfig {
-                last_delivery_period: Some(DeliveryPeriodId::from(1)),
-                ..Default::default()
+                number_of_delivery_periods: 1,
+                ..default_game_config()
             },
             connections,
             market,
@@ -1050,8 +1042,8 @@ mod tests {
         let token = CancellationToken::new();
         let mut game = GameActor::start(
             GameActorConfig {
-                last_delivery_period: Some(DeliveryPeriodId::from(1)),
-                ..Default::default()
+                number_of_delivery_periods: 1,
+                ..default_game_config()
             },
             connections,
             market,
@@ -1128,7 +1120,7 @@ mod tests {
             tx,
             rx,
             current_delivery_period: DeliveryPeriodId::default(),
-            last_delivery_period: None,
+            last_delivery_period: DeliveryPeriodId::from(3),
             delivery_period_timers: None,
             all_players_ready_tx: None,
             ranking_calculator: GameRankings { tier_limits: None },
@@ -1209,7 +1201,7 @@ mod test_readiness_status {
     use crate::{game::infra::actor::test_utils::register_player, market::MarketState};
 
     use super::{
-        test_utils::{MockMarket, MockPlayerConnections},
+        test_utils::{MockMarket, MockPlayerConnections, default_game_config},
         *,
     };
     use tokio::sync::mpsc;
@@ -1224,8 +1216,8 @@ mod test_readiness_status {
         let token = CancellationToken::new();
         let game = GameActor::start(
             GameActorConfig {
-                last_delivery_period: Some(DeliveryPeriodId::from(1)),
-                ..Default::default()
+                number_of_delivery_periods: 1,
+                ..default_game_config()
             },
             connections,
             market,
