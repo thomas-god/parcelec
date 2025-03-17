@@ -27,7 +27,7 @@ impl RenewablePlant {
         let current_setpoint = setpoints.value_at(period);
         let current_forecasts = forecast_from_timeseries(
             &setpoints,
-            period,
+            period.next(),
             &Some(Clip {
                 min: 0,
                 max: max_power,
@@ -64,7 +64,7 @@ impl PowerPlant for RenewablePlant {
         self.current_setpoint = self.setpoints.value_at(self.period);
         self.current_forecasts = forecast_from_timeseries(
             &self.setpoints,
-            self.period,
+            self.period.next(),
             &Some(Clip {
                 min: 0,
                 max: self.max_power,
@@ -91,7 +91,10 @@ impl PowerPlant for RenewablePlant {
 
 #[cfg(test)]
 mod tests {
-    use crate::plants::{PlantOutput, PowerPlant};
+    use crate::{
+        game::delivery_period::DeliveryPeriodId,
+        plants::{PlantOutput, PowerPlant},
+    };
 
     use super::RenewablePlant;
 
@@ -112,5 +115,38 @@ mod tests {
         let previous_value = plant.current_setpoint;
         let returned_value = plant.dispatch();
         assert_eq!(previous_value as isize, returned_value.setpoint);
+    }
+
+    #[test]
+    fn test_renewable_forecasts_periods() {
+        let max_power = 1000;
+        let mut plant = RenewablePlant::from_values(max_power, vec![-100, -500, -900]);
+
+        let forecasts = plant.get_forecast().unwrap();
+        assert_eq!(
+            forecasts.iter().map(|f| f.period).collect::<Vec<_>>(),
+            vec![DeliveryPeriodId::from(2), DeliveryPeriodId::from(3)]
+        );
+
+        plant.dispatch();
+        let forecasts = plant.get_forecast().unwrap();
+        assert_eq!(
+            forecasts.iter().map(|f| f.period).collect::<Vec<_>>(),
+            vec![DeliveryPeriodId::from(3)]
+        );
+
+        plant.dispatch();
+        let forecasts = plant.get_forecast().unwrap();
+        assert_eq!(
+            forecasts.iter().map(|f| f.period).collect::<Vec<_>>(),
+            vec![]
+        );
+
+        plant.dispatch();
+        let forecasts = plant.get_forecast().unwrap();
+        assert_eq!(
+            forecasts.iter().map(|f| f.period).collect::<Vec<_>>(),
+            vec![]
+        );
     }
 }

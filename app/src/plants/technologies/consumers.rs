@@ -28,7 +28,7 @@ impl Consumers {
         let current_setpoint = setpoints.value_at(period);
         let current_forecasts = forecast_from_timeseries(
             &setpoints,
-            period,
+            period.next(),
             &Some(Clip {
                 min: -max_power,
                 max: 0,
@@ -68,7 +68,7 @@ impl PowerPlant for Consumers {
         self.period = self.period.next();
         self.current_forecasts = forecast_from_timeseries(
             &self.setpoints,
-            self.period,
+            self.period.next(),
             &Some(Clip {
                 min: -self.max_power,
                 max: 0,
@@ -99,7 +99,7 @@ impl PowerPlant for Consumers {
 #[cfg(test)]
 mod tests {
 
-    use crate::plants::PowerPlant;
+    use crate::{game::delivery_period::DeliveryPeriodId, plants::PowerPlant};
 
     use super::Consumers;
 
@@ -122,5 +122,42 @@ mod tests {
         let previous_value = consumers.current_setpoint;
         let returned_value = consumers.dispatch();
         assert_eq!(previous_value, returned_value.setpoint);
+    }
+
+    #[test]
+    fn test_consumers_forecasts_periods() {
+        let max_power = 1000;
+        let energy_cost = 75;
+        let mut consumers = Consumers::from_values(max_power, energy_cost, vec![-100, -500, -900]);
+
+        let forecasts = consumers.get_forecast().unwrap();
+        assert_eq!(
+            forecasts.iter().map(|f| f.period).collect::<Vec<_>>(),
+            vec![DeliveryPeriodId::from(2), DeliveryPeriodId::from(3)]
+        );
+
+        consumers.dispatch();
+
+        let forecasts = consumers.get_forecast().unwrap();
+        assert_eq!(
+            forecasts.iter().map(|f| f.period).collect::<Vec<_>>(),
+            vec![DeliveryPeriodId::from(3)]
+        );
+
+        consumers.dispatch();
+
+        let forecasts = consumers.get_forecast().unwrap();
+        assert_eq!(
+            forecasts.iter().map(|f| f.period).collect::<Vec<_>>(),
+            vec![]
+        );
+
+        consumers.dispatch();
+
+        let forecasts = consumers.get_forecast().unwrap();
+        assert_eq!(
+            forecasts.iter().map(|f| f.period).collect::<Vec<_>>(),
+            vec![]
+        );
     }
 }
