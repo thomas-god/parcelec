@@ -4,7 +4,6 @@
     parseMessage,
     type DeliveryPeriodScore,
     type GameResults,
-    type MarketForecast,
     type OrderBook,
     type StackForecasts,
     type StackSnapshot,
@@ -53,9 +52,6 @@
   let delivery_period_id = $state(0);
   let scores: SvelteMap<number, DeliveryPeriodScore> = $state(new SvelteMap());
   let final_scores: GameResults = $state(new Array());
-  let market_forecasts: SvelteMap<number, MarketForecast[]> = $state(
-    new SvelteMap(),
-  );
   let readiness_status: ReadinessStatus = $state(new SvelteMap());
 
   const connect = () => {
@@ -115,22 +111,6 @@
         })
         .with({ type: "GameResults" }, ({ rankings }) => {
           final_scores = rankings;
-        })
-        .with({ type: "NewMarketForecast" }, (forecast) => {
-          if (market_forecasts.has(forecast.period)) {
-            market_forecasts.get(forecast.period)!.push(forecast);
-          } else {
-            market_forecasts.set(forecast.period, [forecast]);
-          }
-        })
-        .with({ type: "MarketForecasts" }, (forecasts) => {
-          for (const forecast of forecasts.forecasts) {
-            if (market_forecasts.has(forecast.period)) {
-              market_forecasts.get(forecast.period)!.push(forecast);
-            } else {
-              market_forecasts.set(forecast.period, [forecast]);
-            }
-          }
         })
         .with({ type: "ReadinessStatus" }, (readiness) => {
           readiness_status = readiness.readiness;
@@ -211,11 +191,7 @@
             aria-label="Prévisions 🔮"
           />
           <div class="tab-content bg-base-100 border-base-300 p-4">
-            <Forecasts
-              market_forecasts={market_forecasts.get(delivery_period_id + 1)!}
-              {plant_forecasts}
-              plant_snapshots={plants}
-            />
+            <Forecasts {plant_forecasts} plant_snapshots={plants} />
           </div>
         </div>
 

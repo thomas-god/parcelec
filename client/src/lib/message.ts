@@ -156,26 +156,6 @@ const WSMessageSchema = z.discriminatedUnion("type", [
     ),
   }),
   z.object({
-    type: z.literal("NewMarketForecast"),
-    issuer: z.string(),
-    period: z.number(),
-    direction: Direction,
-    volume: z.enum(["Low", "Medium", "High"]),
-    price: z.number().nullable(),
-  }),
-  z.object({
-    type: z.literal("MarketForecasts"),
-    forecasts: z.array(
-      z.object({
-        issuer: z.string(),
-        period: z.number(),
-        direction: Direction,
-        volume: z.enum(["Low", "Medium", "High"]),
-        price: z.number().nullable(),
-      }),
-    ),
-  }),
-  z.object({
     type: z.literal("ReadinessStatus"),
     readiness: z
       .record(z.string(), z.boolean())
@@ -234,10 +214,7 @@ export type GameResults = Pick<
   Extract<WSMessage, { type: "GameResults" }>,
   "rankings"
 >["rankings"];
-export type MarketForecast = Omit<
-  Extract<WSMessage, { type: "NewMarketForecast" }>,
-  "type"
->;
+
 export type ReadinessStatus = Extract<
   WSMessage,
   { type: "ReadinessStatus" }
