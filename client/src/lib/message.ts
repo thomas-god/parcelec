@@ -165,6 +165,10 @@ const WSMessageSchema = z.discriminatedUnion("type", [
     type: z.literal("YourName"),
     name: z.string(),
   }),
+  z.object({
+    type: z.literal("GameDuration"),
+    last_period: z.number(),
+  }),
 ]);
 
 type WSMessage = z.infer<typeof WSMessageSchema>;

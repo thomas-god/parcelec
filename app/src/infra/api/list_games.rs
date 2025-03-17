@@ -70,6 +70,7 @@ mod test_api_list_games {
         GameContext {
             id,
             name,
+            last_delivery_period: DeliveryPeriodId::from(3),
             tx,
             state_rx,
         }

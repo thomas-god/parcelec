@@ -85,6 +85,9 @@ pub enum PlayerMessage {
     YourName {
         name: PlayerName,
     },
+    GameDuration {
+        last_period: DeliveryPeriodId,
+    },
 }
 
 pub trait PlayerConnections: Clone + Send + Sync + 'static {

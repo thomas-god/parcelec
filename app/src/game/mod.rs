@@ -155,6 +155,7 @@ impl Default for GameName {
 pub struct GameContext {
     pub id: GameId,
     pub name: GameName,
+    pub last_delivery_period: DeliveryPeriodId,
     pub tx: mpsc::Sender<GameMessage>,
     pub state_rx: watch::Receiver<GameState>,
 }

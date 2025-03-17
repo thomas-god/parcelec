@@ -326,6 +326,7 @@ impl<MS: Market, PC: PlayerConnections> GameActor<MS, PC> {
         GameContext {
             id: self.game_id.clone(),
             name: self.name.clone(),
+            last_delivery_period: self.last_delivery_period,
             tx: self.tx.clone(),
             state_rx: self.state_watch.subscribe(),
         }

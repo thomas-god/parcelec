@@ -50,6 +50,7 @@
   let stack_state: "Open" | "Closed" = $state("Open");
   let game_state: GameState = $state("Open");
   let delivery_period_id = $state(0);
+  let last_delivery_period_id = $state(0);
   let scores: SvelteMap<number, DeliveryPeriodScore> = $state(new SvelteMap());
   let final_scores: GameResults = $state(new Array());
   let readiness_status: ReadinessStatus = $state(new SvelteMap());
@@ -117,6 +118,9 @@
         })
         .with({ type: "YourName" }, (p_name) => {
           player_name = p_name.name;
+        })
+        .with({ type: "GameDuration" }, ({ last_period }) => {
+          last_delivery_period_id = last_period;
         })
         .exhaustive();
     };

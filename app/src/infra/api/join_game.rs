@@ -111,6 +111,7 @@ pub async fn join_game(
 
 #[cfg(test)]
 mod test_api_join_game {
+    use crate::game::delivery_period::DeliveryPeriodId;
     use crate::game::{
         GameContext, GameId, GameMessage, GameName, GameState, RegisterPlayerResponse,
     };
@@ -150,6 +151,7 @@ mod test_api_join_game {
             GameContext {
                 id,
                 name: GameName::default(),
+                last_delivery_period: DeliveryPeriodId::from(3),
                 tx,
                 state_rx,
             },
