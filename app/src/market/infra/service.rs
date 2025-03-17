@@ -6,7 +6,7 @@ use tokio::sync::{mpsc, oneshot};
 use crate::{
     game::delivery_period::DeliveryPeriodId,
     market::{
-        Market, MarketForecast, OBS,
+        Market, OBS,
         order_book::{OrderRequest, Trade, TradeLeg},
     },
     player::PlayerId,
@@ -46,10 +46,7 @@ impl Market for MarketService {
         rx.await.unwrap_or(Vec::new())
     }
 
-    async fn get_market_snapshot(
-        &self,
-        player: PlayerId,
-    ) -> (Vec<TradeLeg>, OBS, Vec<MarketForecast>) {
+    async fn get_market_snapshot(&self, player: PlayerId) -> (Vec<TradeLeg>, OBS) {
         let (tx, rx) = oneshot::channel();
 
         let _ = self
@@ -66,7 +63,6 @@ impl Market for MarketService {
                 bids: Vec::new(),
                 offers: Vec::new(),
             },
-            Vec::new(),
         ))
     }
 
@@ -78,13 +74,6 @@ impl Market for MarketService {
         let _ = self
             .tx
             .send(MarketMessage::OrderDeletionRequest { order_id })
-            .await;
-    }
-
-    async fn register_forecast(&self, forecast: MarketForecast) {
-        let _ = self
-            .tx
-            .send(MarketMessage::RegisterForecast(forecast))
             .await;
     }
 }
@@ -104,13 +93,12 @@ mockall::mock! {
         fn get_market_snapshot(
             &self,
             player: PlayerId,
-        ) -> impl Future<Output = (Vec<TradeLeg>, OBS, Vec<MarketForecast>)> + Send;
+        ) -> impl Future<Output = (Vec<TradeLeg>, OBS)> + Send;
 
         fn new_order(&self, request: OrderRequest) -> impl Future<Output = ()> + Send;
 
         fn delete_order(&self, order_id: String) -> impl Future<Output = ()> + Send;
 
-        fn register_forecast(&self, forecast: MarketForecast) -> impl Future<Output = ()> + Send;
     }
 
     impl Clone for MarketService {
@@ -125,7 +113,7 @@ mod tests {
     use crate::{
         game::delivery_period::DeliveryPeriodId,
         market::{
-            Direction, ForecastLevel, MarketForecast, MarketMessage,
+            Direction, MarketMessage,
             infra::service::{Market, OBS},
             order_book::OrderRequest,
         },
@@ -197,7 +185,6 @@ mod tests {
                     bids: Vec::new(),
                     offers: Vec::new(),
                 },
-                Vec::new(),
             ));
         });
 
@@ -212,12 +199,11 @@ mod tests {
         // Close receiving end to simulate err
         rx.close();
 
-        let (trades, obs, forecasts) = service.get_market_snapshot(PlayerId::default()).await;
+        let (trades, obs) = service.get_market_snapshot(PlayerId::default()).await;
         // Should still receive an empty vec
         assert_eq!(trades.len(), 0);
         assert_eq!(obs.offers.len(), 0);
         assert_eq!(obs.bids.len(), 0);
-        assert!(forecasts.is_empty());
     }
 
     #[tokio::test]
@@ -251,25 +237,5 @@ mod tests {
             unreachable!();
         };
         assert_eq!(order_id, String::from("toto"));
-    }
-
-    #[tokio::test]
-    async fn test_register_forecast() {
-        let (tx, mut rx) = mpsc::channel(16);
-        let service = MarketService::new(tx);
-
-        let forecast = MarketForecast {
-            issuer: PlayerId::default(),
-            period: DeliveryPeriodId::from(1),
-            direction: Direction::Buy,
-            volume: ForecastLevel::Low,
-            price: None,
-        };
-
-        let _ = service.register_forecast(forecast).await;
-
-        let Some(MarketMessage::RegisterForecast(_)) = rx.recv().await else {
-            unreachable!("Should have received a market forecast");
-        };
     }
 }

@@ -12,7 +12,7 @@ use crate::{
         delivery_period::DeliveryPeriodId,
         scores::{PlayerScore, RankTier},
     },
-    market::{MarketForecast, OrderRepr, order_book::TradeLeg},
+    market::{OrderRepr, order_book::TradeLeg},
     plants::{PlantId, PowerPlantPublicRepr},
 };
 
@@ -65,10 +65,6 @@ pub enum PlayerMessage {
     },
     TradeList {
         trades: Vec<TradeLeg>,
-    },
-    NewMarketForecast(MarketForecast),
-    MarketForecasts {
-        forecasts: Vec<MarketForecast>,
     },
     StackSnapshot {
         plants: HashMap<PlantId, PowerPlantPublicRepr>,

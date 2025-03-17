@@ -7,7 +7,7 @@ use tokio_util::sync::CancellationToken;
 use crate::{
     game::{GameId, delivery_period::DeliveryPeriodId},
     market::{
-        MarketContext, MarketForecast, MarketState, OBS, OrderRepr,
+        MarketContext, MarketState, OBS, OrderRepr,
         order_book::{OrderBook, OrderRequest, Trade, TradeLeg},
     },
     player::{PlayerConnections, PlayerId, PlayerMessage},
@@ -19,7 +19,7 @@ use super::MarketService;
 pub enum MarketMessage {
     GetMarketSnapshot {
         player_id: PlayerId,
-        tx_back: oneshot::Sender<(Vec<TradeLeg>, OBS, Vec<MarketForecast>)>,
+        tx_back: oneshot::Sender<(Vec<TradeLeg>, OBS)>,
     },
     OpenMarket(DeliveryPeriodId),
     CloseMarket {
@@ -30,7 +30,6 @@ pub enum MarketMessage {
     OrderDeletionRequest {
         order_id: String,
     },
-    RegisterForecast(MarketForecast),
 }
 
 pub struct MarketActor<PC: PlayerConnections> {
@@ -44,7 +43,6 @@ pub struct MarketActor<PC: PlayerConnections> {
     players: Vec<PlayerId>,
     players_connections: PC,
     past_trades: HashMap<DeliveryPeriodId, Vec<Trade>>,
-    forecasts: HashMap<DeliveryPeriodId, Vec<MarketForecast>>,
     cancellation_token: CancellationToken,
 }
 
@@ -70,7 +68,6 @@ impl<PC: PlayerConnections> MarketActor<PC> {
             players_connections,
             order_book: OrderBook::new(),
             past_trades: HashMap::new(),
-            forecasts: HashMap::new(),
             cancellation_token,
         }
     }
@@ -121,14 +118,7 @@ impl<PC: PlayerConnections> MarketActor<PC> {
         match (&self.state, message) {
             (_, MarketMessage::GetMarketSnapshot { player_id, tx_back }) => {
                 self.players.push(player_id.clone());
-                let _ = tx_back.send((
-                    self.player_trades(&player_id),
-                    self.player_obs(&player_id),
-                    self.forecasts
-                        .get(&self.delivery_period.next())
-                        .cloned()
-                        .unwrap_or_else(Vec::new),
-                ));
+                let _ = tx_back.send((self.player_trades(&player_id), self.player_obs(&player_id)));
             }
             (MarketState::Open, MarketMessage::OrderRequest(request)) => {
                 self.process_order_request(request).await
@@ -155,9 +145,6 @@ impl<PC: PlayerConnections> MarketActor<PC> {
                 if let Some(trades) = self.past_trades.get(&period_id) {
                     let _ = tx_back.send(trades.clone());
                 }
-            }
-            (_, MarketMessage::RegisterForecast(forecast)) => {
-                self.register_forecast(forecast).await;
             }
             (MarketState::Closed, MarketMessage::OrderRequest(_))
             | (MarketState::Closed, MarketMessage::OrderDeletionRequest { order_id: _ }) => {
@@ -209,48 +196,6 @@ impl<PC: PlayerConnections> MarketActor<PC> {
         // Notify all players about the updated state
         self.send_order_book_snapshot_to_all().await;
         self.send_empty_trade_list_to_all().await;
-    }
-
-    async fn register_forecast(&mut self, forecast: MarketForecast) {
-        if forecast.period == self.delivery_period {
-            tracing::warn!(
-                "Period {:?} is running, cannot receive market forecast",
-                forecast.period
-            );
-            return;
-        }
-
-        if forecast.period < self.delivery_period {
-            tracing::warn!(
-                "Period {:?} is closed, cannot receive market forecast",
-                forecast.period
-            );
-            return;
-        }
-
-        // Store forecast
-        match self.forecasts.get_mut(&forecast.period) {
-            Some(forecasts) => {
-                forecasts.push(forecast.clone());
-            }
-            None => {
-                self.forecasts
-                    .insert(forecast.period, vec![forecast.clone()]);
-            }
-        };
-
-        tracing::info!(
-            "Registered market forecast for delivery period {:?}",
-            forecast.period
-        );
-
-        // Broadcast forecast to all players
-        self.players_connections
-            .send_to_all_players(
-                &self.game_id,
-                PlayerMessage::NewMarketForecast(forecast.clone()),
-            )
-            .await;
     }
 
     async fn send_order_book_snapshot_to_all(&self) {
@@ -322,19 +267,6 @@ impl<PC: PlayerConnections> MarketActor<PC> {
                     .await;
             });
         }
-        // if !trades.is_empty() {
-        //     join_all(trades.iter().flat_map(|trade| {
-        //         trade.split().map(|leg| {
-        //             let owner = leg.owner.clone();
-        //             self.players_connections.send_to_player(
-        //                 &self.game_id,
-        //                 &owner,
-        //                 PlayerMessage::NewTrade(leg.clone()),
-        //             )
-        //         })
-        //     }))
-        //     .await;
-        // }
     }
 
     #[tracing::instrument(name = "ActorMarket::process_order_request", skip(self))]
@@ -354,18 +286,15 @@ impl<PC: PlayerConnections> MarketActor<PC> {
 mod tests {
     use std::time::Duration;
 
-    use tokio::{
-        sync::{
-            mpsc::{self},
-            oneshot, watch,
-        },
-        time::timeout,
+    use tokio::sync::{
+        mpsc::{self},
+        oneshot, watch,
     };
     use tokio_util::sync::CancellationToken;
 
     use crate::{
         game::{GameId, delivery_period::DeliveryPeriodId},
-        market::{Direction, ForecastLevel, MarketForecast, MarketState, order_book::OrderRequest},
+        market::{Direction, MarketState, order_book::OrderRequest},
         player::{PlayerConnections, PlayerId},
     };
 
@@ -916,69 +845,6 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_register_forecast_sends_it_to_all_players() {
-        let game_id = GameId::default();
-        let (conn_tx, _, mut conn_rx) = MockPlayerConnections::new();
-        let (tx, _) = start_market_actor(&game_id, conn_tx.clone());
-
-        let _ = tx
-            .send(MarketMessage::RegisterForecast(MarketForecast {
-                issuer: PlayerId::default(),
-                period: DeliveryPeriodId::from(1),
-                direction: Direction::Buy,
-                volume: ForecastLevel::Low,
-                price: None,
-            }))
-            .await;
-
-        let Some(PlayerMessage::NewMarketForecast(_)) = conn_rx.recv().await else {
-            unreachable!("Should have sent a market forecast to all players")
-        };
-    }
-
-    #[tokio::test]
-    async fn test_register_forecast_does_nothing_if_period_is_running() {
-        let game_id = GameId::default();
-        let (conn_tx, _, mut conn_rx) = MockPlayerConnections::new();
-        let (tx, _) = start_market_actor(&game_id, conn_tx.clone());
-
-        let _ = tx
-            .send(MarketMessage::RegisterForecast(MarketForecast {
-                issuer: PlayerId::default(),
-                period: DeliveryPeriodId::from(0),
-                direction: Direction::Buy,
-                volume: ForecastLevel::Low,
-                price: None,
-            }))
-            .await;
-
-        let _ = timeout(Duration::from_micros(10), conn_rx.recv())
-            .await
-            .expect_err("Should not have sent a market forecast to all players");
-    }
-
-    #[tokio::test]
-    async fn test_register_forecast_does_nothing_if_period_is_finished() {
-        let game_id = GameId::default();
-        let (conn_tx, _, mut conn_rx) = MockPlayerConnections::new();
-        let (tx, _) = start_market_actor(&game_id, conn_tx.clone());
-
-        let _ = tx
-            .send(MarketMessage::RegisterForecast(MarketForecast {
-                issuer: PlayerId::default(),
-                period: DeliveryPeriodId::from(0),
-                direction: Direction::Buy,
-                volume: ForecastLevel::Low,
-                price: None,
-            }))
-            .await;
-
-        let _ = timeout(Duration::from_micros(10), conn_rx.recv())
-            .await
-            .expect_err("Should not have sent a market forecast to all players");
-    }
-
-    #[tokio::test]
     async fn test_market_snapshot() {
         let game_id = GameId::default();
         let (conn_tx, ..) = MockPlayerConnections::new();
@@ -995,11 +861,10 @@ mod tests {
             .await;
 
         // Verify the snapshot
-        let (trades, obs, forecasts) = rx_back.await.expect("Should have received a snapshot");
+        let (trades, obs) = rx_back.await.expect("Should have received a snapshot");
         assert!(trades.is_empty());
         assert!(obs.bids.is_empty());
         assert!(obs.offers.is_empty());
-        assert!(forecasts.is_empty());
 
         // Send an order
         let _ = tx
@@ -1021,11 +886,10 @@ mod tests {
             .await;
 
         // Verify the snapshot
-        let (trades, obs, forecasts) = rx_back.await.expect("Should have received a snapshot");
+        let (trades, obs) = rx_back.await.expect("Should have received a snapshot");
         assert!(trades.is_empty());
         assert_eq!(obs.bids.len(), 1);
         assert!(obs.offers.is_empty());
-        assert!(forecasts.is_empty());
 
         // Send a matching order to have a trade
         let _ = tx
@@ -1045,59 +909,10 @@ mod tests {
                 tx_back,
             })
             .await;
-        let (trades, obs, forecasts) = rx_back.await.expect("Should have received a snapshot");
+        let (trades, obs) = rx_back.await.expect("Should have received a snapshot");
         assert_eq!(trades.len(), 2); // 1 trade = 2 trade legs
         assert!(obs.bids.is_empty());
         assert!(obs.offers.is_empty());
-        assert!(forecasts.is_empty());
-
-        // Send a forecast for next period and check the snapshot contains it
-        let _ = tx
-            .send(MarketMessage::RegisterForecast(MarketForecast {
-                direction: Direction::Buy,
-                issuer: PlayerId::default(),
-                period: DeliveryPeriodId::from(1),
-                price: None,
-                volume: ForecastLevel::Low,
-            }))
-            .await;
-
-        let (tx_back, rx_back) = oneshot::channel();
-        let _ = tx
-            .send(MarketMessage::GetMarketSnapshot {
-                player_id: player_id.clone(),
-                tx_back,
-            })
-            .await;
-        let (trades, obs, forecasts) = rx_back.await.expect("Should have received a snapshot");
-        assert_eq!(trades.len(), 2);
-        assert!(obs.bids.is_empty());
-        assert!(obs.offers.is_empty());
-        assert_eq!(forecasts.len(), 1);
-
-        // Send a forecast for the period after and check the snapshot does not contain it
-        let _ = tx
-            .send(MarketMessage::RegisterForecast(MarketForecast {
-                direction: Direction::Buy,
-                issuer: PlayerId::default(),
-                period: DeliveryPeriodId::from(2),
-                price: None,
-                volume: ForecastLevel::Low,
-            }))
-            .await;
-
-        let (tx_back, rx_back) = oneshot::channel();
-        let _ = tx
-            .send(MarketMessage::GetMarketSnapshot {
-                player_id: player_id.clone(),
-                tx_back,
-            })
-            .await;
-        let (trades, obs, forecasts) = rx_back.await.expect("Should have received a snapshot");
-        assert_eq!(trades.len(), 2);
-        assert!(obs.bids.is_empty());
-        assert!(obs.offers.is_empty());
-        assert_eq!(forecasts.len(), 1);
     }
 
     #[tokio::test]

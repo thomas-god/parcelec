@@ -410,7 +410,7 @@ fn map_rankings_to_player_name(
 mod test_utils {
     use tokio::sync::mpsc;
 
-    use crate::market::{MarketForecast, MarketState, OBS, order_book::TradeLeg};
+    use crate::market::{MarketState, OBS, order_book::TradeLeg};
 
     use super::*;
 
@@ -427,24 +427,19 @@ mod test_utils {
             Vec::new()
         }
         async fn delete_order(&self, _order_id: String) {}
-        async fn get_market_snapshot(
-            &self,
-            _player: PlayerId,
-        ) -> (Vec<TradeLeg>, OBS, Vec<MarketForecast>) {
+        async fn get_market_snapshot(&self, _player: PlayerId) -> (Vec<TradeLeg>, OBS) {
             (
                 Vec::new(),
                 OBS {
                     offers: Vec::new(),
                     bids: Vec::new(),
                 },
-                Vec::new(),
             )
         }
         async fn new_order(&self, _request: crate::market::order_book::OrderRequest) {}
         async fn open_market(&self, _delivery_period: DeliveryPeriodId) {
             let _ = self.state_tx.send(MarketState::Open);
         }
-        async fn register_forecast(&self, _forecast: crate::market::MarketForecast) {}
     }
 
     #[derive(Debug, Clone)]
@@ -814,7 +809,7 @@ mod tests {
             .tx
             .send(GameMessage::PlayerIsReady(player.clone()))
             .await;
-        // Flush stack snapshot and forecasts sent at the end of the delivery
+        // Flush stack snapshot sent at the end of the delivery
         let _ = rx_send_to_player.recv().await;
         let _ = rx_send_to_player.recv().await;
 

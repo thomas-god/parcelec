@@ -142,7 +142,7 @@ async fn send_initial_trades_and_obs<MS: Market, PS: Stack>(
     ws: &mut WebSocket,
     context: &PlayerConnectionContext<MS, PS>,
 ) -> Result<(), PlayerConnectionError> {
-    let (trades, obs, forecasts) = context
+    let (trades, obs) = context
         .market
         .service
         .get_market_snapshot(context.player_id.clone())
@@ -157,8 +157,6 @@ async fn send_initial_trades_and_obs<MS: Market, PS: Stack>(
         .into(),
     )
     .await?;
-    ws.send(serde_json::to_string(&PlayerMessage::MarketForecasts { forecasts })?.into())
-        .await?;
 
     Ok(())
 }

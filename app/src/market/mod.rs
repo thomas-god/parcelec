@@ -6,7 +6,7 @@ use tokio::sync::watch;
 
 use order_book::{Bid, Offer, OrderRequest, Trade, TradeLeg};
 
-use crate::{forecast::ForecastLevel, game::delivery_period::DeliveryPeriodId, player::PlayerId};
+use crate::{game::delivery_period::DeliveryPeriodId, player::PlayerId};
 
 pub mod bots;
 pub mod infra;
@@ -41,7 +41,7 @@ pub trait Market: Clone + Send + Sync + 'static {
     fn get_market_snapshot(
         &self,
         player: PlayerId,
-    ) -> impl Future<Output = (Vec<TradeLeg>, OBS, Vec<MarketForecast>)> + Send;
+    ) -> impl Future<Output = (Vec<TradeLeg>, OBS)> + Send;
 
     /// Post a new order for the current delivery period. If the market is closed the request is
     /// ignored.
@@ -50,12 +50,6 @@ pub trait Market: Clone + Send + Sync + 'static {
     /// Delete an order from the market. Silently fails if the order does not exist or if the market
     /// is closed.
     fn delete_order(&self, order_id: String) -> impl Future<Output = ()> + Send;
-
-    /// Allow a player (real or a bot) to register a forecast for a given delivery period. A
-    /// forecast notifies the rest of the market participants of the player's intent to buy or sell
-    /// an amount of energy at an optional price. This is not binding, and the player is not
-    /// enforced to post matching order(s) during the actual delivery period.
-    fn register_forecast(&self, forecast: MarketForecast) -> impl Future<Output = ()> + Send;
 }
 
 #[derive(Debug, Clone, Serialize, PartialEq)]
@@ -125,15 +119,6 @@ impl Serialize for MarketState {
 pub struct MarketContext<MS: Market> {
     pub service: MS,
     pub state_rx: watch::Receiver<MarketState>,
-}
-
-#[derive(Debug, Serialize, Clone)]
-pub struct MarketForecast {
-    pub issuer: PlayerId,
-    pub period: DeliveryPeriodId,
-    pub direction: Direction,
-    pub volume: ForecastLevel,
-    pub price: Option<ForecastLevel>,
 }
 
 #[cfg(test)]

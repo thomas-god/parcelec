@@ -1,11 +1,8 @@
 use tokio::sync::mpsc::{Receiver, channel};
 
 use crate::{
-    forecast::ForecastLevel,
     game::delivery_period::DeliveryPeriodId,
-    market::{
-        Direction, Market, MarketContext, MarketForecast, MarketState, order_book::OrderRequest,
-    },
+    market::{Direction, Market, MarketContext, MarketState, order_book::OrderRequest},
     player::{PlayerId, PlayerMessage},
 };
 
@@ -73,18 +70,6 @@ impl<MS: Market> InitialOrdersBot<MS> {
             // 2nd period: do nothing
             period = period.next();
             self.wait_for_market_to_open().await;
-            // Send forecast for next period (will buy)
-            let _ = self
-                .market
-                .service
-                .register_forecast(MarketForecast {
-                    direction: Direction::Buy,
-                    volume: ForecastLevel::Medium,
-                    issuer: self.id.clone(),
-                    period: period.next(),
-                    price: None,
-                })
-                .await;
             self.wait_for_market_to_close().await;
 
             // 3rd period: buy 200MW
@@ -97,18 +82,6 @@ impl<MS: Market> InitialOrdersBot<MS> {
                     price: 55_00,
                     volume: 200,
                     owner: self.id.clone(),
-                })
-                .await;
-            // Send forecast for next period (will sell)
-            let _ = self
-                .market
-                .service
-                .register_forecast(MarketForecast {
-                    direction: Direction::Sell,
-                    volume: ForecastLevel::Medium,
-                    issuer: self.id.clone(),
-                    period: period.next(),
-                    price: None,
                 })
                 .await;
             self.wait_for_market_to_close().await;
