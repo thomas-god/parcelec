@@ -47,22 +47,34 @@ pub struct Clip {
     pub max: isize,
 }
 
+/// Generate a forecast from a given target value. If a [Clip] is given, the forecasted value will
+/// be within this range. If target is out of the [Clip]'s range, this function will not fail and
+/// will return the closest bound of the [Clip]. Forecasted value will be a multiple of
+/// [constants::SETPOINT_BASE_VALUE].
 pub fn forecast_value(target: isize, clip: &Option<Clip>) -> ForecastValue {
-    let min =
+    let mut min =
         clip.as_ref()
             .map(|c| c.min)
             .unwrap_or(target.saturating_sub_unsigned(constants::FORECAST_BASE_DEVIATION))
             .max(target.saturating_sub_unsigned(constants::FORECAST_BASE_DEVIATION)) as i64;
-    let max =
+    let mut max =
         clip.as_ref()
             .map(|c| c.max)
             .unwrap_or(target.saturating_add_unsigned(constants::FORECAST_BASE_DEVIATION))
             .min(target.saturating_add_unsigned(constants::FORECAST_BASE_DEVIATION)) as i64;
+    let value = round_to_nearest(
+        if min == max {
+            min as isize
+        } else {
+            if min > max {
+                std::mem::swap(&mut min, &mut max);
+            }
+            i64_to_isize_saturating(rand::random_range(min..max))
+        },
+        constants::SETPOINT_BASE_VALUE,
+    );
     ForecastValue {
-        value: round_to_nearest(
-            i64_to_isize_saturating(rand::random_range(min..max)),
-            constants::SETPOINT_BASE_VALUE,
-        ),
+        value,
         deviation: constants::FORECAST_BASE_DEVIATION,
     }
 }
@@ -94,12 +106,13 @@ pub fn forecast_from_timeseries(
     }
 
     let number_of_forecasts = timeseries.len() - start_idx + 1;
-    let period = start_period;
+    let mut period = start_period;
     for _ in 0..number_of_forecasts {
         forecasts.push(Forecast {
             period,
             value: forecast_value(timeseries.value_at(period), clip),
         });
+        period = period.next();
     }
 
     forecasts
@@ -176,7 +189,7 @@ mod tests {
     #[test]
     fn test_forecast_value_within_clip() {
         let target = 50;
-        let clip = Clip { min: 30, max: 60 };
+        let clip = Clip { min: 25, max: 75 };
         for _ in 0..0x1e4 {
             let ForecastValue {
                 value,
@@ -185,6 +198,15 @@ mod tests {
             assert!(value >= clip.min);
             assert!(value <= clip.max);
         }
+    }
+
+    #[test]
+    fn test_forecast_value_should_not_fail_if_target_out_of_clip_range() {
+        let clip = Some(Clip { min: 0, max: 500 });
+        forecast_value(-100, &clip);
+        forecast_value(0, &clip);
+        forecast_value(500, &clip);
+        forecast_value(1000, &clip);
     }
 
     #[test]
@@ -207,6 +229,27 @@ mod tests {
         assert_eq!(
             forecast_from_timeseries(&timeseries, DeliveryPeriodId::from(4), &clip).len(),
             0
+        );
+    }
+
+    #[test]
+    fn test_forecast_from_timeseries_periods() {
+        let timeseries = Timeseries::from([100, 200, 300].as_slice());
+        let clip = None;
+
+        let forecasts_periods: Vec<DeliveryPeriodId> =
+            forecast_from_timeseries(&timeseries, DeliveryPeriodId::from(1), &clip)
+                .iter()
+                .map(|f| f.period)
+                .collect();
+
+        assert_eq!(
+            forecasts_periods,
+            vec![
+                DeliveryPeriodId::from(1),
+                DeliveryPeriodId::from(2),
+                DeliveryPeriodId::from(3)
+            ]
         );
     }
 }

@@ -305,7 +305,7 @@ fn default_stack() -> HashMap<PlantId, Box<dyn PowerPlant + Send + Sync>> {
     map.insert(
         PlantId::default(),
         Box::new(Consumers::from_values(
-            1500,
+            1800,
             56,
             vec![-1150, -1200, -600, -1800],
         )),
