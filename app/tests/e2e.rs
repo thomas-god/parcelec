@@ -141,7 +141,7 @@ async fn test_run_totorial() {
         c.wait()
             .at_most(DEFAULT_WAIT_TIMEOUT)
             .for_element(Locator::XPath(
-                "//button[contains(text(), 'Terminer la phase')]",
+                "//button[contains(text(), 'Terminer la période')]",
             ))
             .await
             .unwrap()
@@ -158,7 +158,7 @@ async fn test_run_totorial() {
 
         // Start the next period
         c.find(Locator::XPath(
-            "//button[contains(text(), 'Phase suivante')]",
+            "//button[contains(text(), 'Période suivante')]",
         ))
         .await
         .unwrap()
