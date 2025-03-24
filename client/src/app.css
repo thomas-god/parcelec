@@ -3,41 +3,6 @@
   themes: retro;
 }
 
-@theme {
-  --animate-fade-in-scale: fade-in-scale 0.3s ease-out;
-
-  @keyframes fade-in-scale {
-    0% {
-      opacity: 0;
-      transform: scale(0.95);
-    }
-    100% {
-      opacity: 1;
-      transform: scale(1);
-    }
-  }
-
-  /* --color-*: initial; */
-  --color-main: #386641;
-  --color-accent: #6a994e;
-  --color-light-accent: #a7c957;
-  --color-neutral: #f2e8cf;
-  --color-bold: #bc4749;
+html {
+  background-color: var(--color-base-200);
 }
-/* 
-input[type="range"] {
-  -webkit-appearance: none;
-  appearance: none;
-  background: transparent;
-  cursor: pointer;
-}
-
-input[type="range"]::-webkit-slider-runnable-track {
-  background: #053a5f;
-  height: 0.5rem;
-}
-
-input[type="range"]::-moz-range-track {
-  background: #053a5f;
-  height: 0.5rem;
-} */
