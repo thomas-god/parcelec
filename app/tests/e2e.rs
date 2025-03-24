@@ -106,7 +106,7 @@ async fn test_run_totorial() {
         c.wait()
             .at_most(DEFAULT_WAIT_TIMEOUT * 5)
             .for_element(Locator::XPath(
-                "//div[contains(text(), 'Déficit : 650 MW')]",
+                "//div[contains(text(), 'Déficit : 900 MW')]",
             ))
             .await
             .unwrap();
@@ -132,7 +132,7 @@ async fn test_run_totorial() {
         c.wait()
             .at_most(DEFAULT_WAIT_TIMEOUT)
             .for_element(Locator::XPath(
-                "//div[contains(text(), 'Déficit : 700 MW')]",
+                "//div[contains(text(), 'Déficit : 950 MW')]",
             ))
             .await
             .unwrap();
@@ -141,7 +141,7 @@ async fn test_run_totorial() {
         c.wait()
             .at_most(DEFAULT_WAIT_TIMEOUT)
             .for_element(Locator::XPath(
-                "//button[contains(text(), 'Terminer la période')]",
+                "//button[contains(text(), 'Terminer la phase')]",
             ))
             .await
             .unwrap()
@@ -152,13 +152,13 @@ async fn test_run_totorial() {
         // Scores should be displayed
         c.wait()
             .at_most(DEFAULT_WAIT_TIMEOUT)
-            .for_element(Locator::XPath("//td[contains(text(), '-700 MW')]"))
+            .for_element(Locator::XPath("//td[contains(text(), '-950 MW')]"))
             .await
             .unwrap();
 
         // Start the next period
         c.find(Locator::XPath(
-            "//button[contains(text(), 'Période suivante')]",
+            "//button[contains(text(), 'Phase suivante')]",
         ))
         .await
         .unwrap()
