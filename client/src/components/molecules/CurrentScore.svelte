@@ -30,7 +30,7 @@
     </div>
   </div>
   {#if isSome(periods)}
-    <div class="italic text-center">
+    <div class="italic text-center pt-1">
       Période {periods.value.current}/{periods.value.last}
     </div>
   {/if}

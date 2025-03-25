@@ -28,33 +28,37 @@
   };
 </script>
 
-<div class="mt-8 mx-6 flex flex-col">
-  {#await loadGames()}
-    <div class="mt-32 loading loading-ring loading-xl self-center"></div>
-  {:then}
-    {#if games.length > 0}
-      <ul class="list bg-base-100 rounded-box shadow-md">
-        <li class="p-4 pb-2 text-sm font-semibold tracking-wide">
-          Parties ouvertes
-        </li>
-
-        {#each games as game (game.id)}
-          <li class="list-row items-center">
-            <div class="list-col-grow">{game.name}</div>
-            <button
-              class="btn btn-square btn-ghost text-lg"
-              onclick={() => gotoGame(game.id)}
-            >
-              ▶️
-            </button>
+<div class="card max-w-96 mx-auto mt-6 bg-base-100 shadow-sm">
+  <div class="card-body">
+    {#await loadGames()}
+      <div class="mt-32 loading loading-ring loading-xl self-center"></div>
+    {:then}
+      {#if games.length > 0}
+        <ul class="list bg-base-100">
+          <li class="p-4 pb-2 text-sm font-semibold tracking-wide">
+            Parties ouvertes
           </li>
-        {/each}
-      </ul>
-    {:else}
-      <div class="flex flex-col w-full gap-3 mt-16">
-        <div class="text-center text-lg">Pas de parties en cours 😞</div>
-        <a href="/game/new" class="self-center text-lg">➕ Créer une partie</a>
-      </div>
-    {/if}
-  {/await}
+
+          {#each games as game (game.id)}
+            <li class="list-row items-center">
+              <div class="list-col-grow">{game.name}</div>
+              <button
+                class="btn btn-square btn-ghost text-lg"
+                onclick={() => gotoGame(game.id)}
+              >
+                ▶️
+              </button>
+            </li>
+          {/each}
+        </ul>
+      {:else}
+        <div class="flex flex-col w-full gap-5">
+          <div class="text-center text-lg">Pas de parties en cours 😞</div>
+          <button class="btn btn-neutral btn-lg">
+            <a href="/game/new" class="self-center">➕ Créer une partie</a>
+          </button>
+        </div>
+      {/if}
+    {/await}
+  </div>
 </div>

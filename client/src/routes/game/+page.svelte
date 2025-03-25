@@ -162,7 +162,7 @@
   {#if socketIsOpen}
     <div class="flex flex-col gap-6 items-stretch">
       <div
-        class="sticky top-0 px-2 pt-5 pb-2 @sm:p-6 text-success-content bg-success rounded-b-md"
+        class="sticky top-0 px-2 pt-5 pb-5 @sm:p-6 text-success-content bg-success rounded-b-md"
       >
         <Header
           {game_state}

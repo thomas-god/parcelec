@@ -23,31 +23,31 @@
   };
 </script>
 
-<div class="flex flex-col w-full mt-6">
-  <fieldset
-    class="fieldset w-xs bg-base-200 border border-base-300 p-4 rounded-box self-center"
-  >
-    <legend class="fieldset-legend text-base">Rejoindre une partie</legend>
+<div class="card max-w-96 mx-auto mt-6 bg-base-100 shadow-sm">
+  <div class="card-body">
+    <fieldset class="fieldset w-xs bg-base-100 p-4 rounded-box self-center">
+      <legend class="fieldset-legend text-base">Rejoindre une partie</legend>
 
-    <label class="fieldset-label flex-col"
-      ><div class="self-start text-sm">Votre pseudo</div>
-      <input
-        type="text"
-        class="input"
-        bind:value={player_name}
-        onkeypress={(key) => {
-          if (key.code === "Enter") {
-            registerPlayer();
-          }
-        }}
-      />
-    </label>
-    {#if error}
-      <p class="fieldset-label">Ce pseudo est déjà pris !</p>
-    {/if}
+      <label class="fieldset-label flex-col"
+        ><div class="self-start text-sm">Votre pseudo</div>
+        <input
+          type="text"
+          class="input"
+          bind:value={player_name}
+          onkeypress={(key) => {
+            if (key.code === "Enter") {
+              registerPlayer();
+            }
+          }}
+        />
+      </label>
+      {#if error}
+        <p class="fieldset-label">Ce pseudo est déjà pris !</p>
+      {/if}
 
-    <button class="btn btn-neutral mt-4 text-base" onclick={registerPlayer}
-      >Créer</button
-    >
-  </fieldset>
+      <button class="btn btn-neutral mt-4 text-base" onclick={registerPlayer}
+        >Créer</button
+      >
+    </fieldset>
+  </div>
 </div>

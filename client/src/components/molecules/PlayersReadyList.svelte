@@ -16,7 +16,7 @@
   });
 </script>
 
-<ul class="list bg-base-100 rounded-box shadow-md">
+<ul class="list bg-base-100 rounded-box shadow-md mx-3">
   <li class="p-4 pb-2 text-xs opacity-60 tracking-wide">Joueurs</li>
   {#each sorted_readines_status as { player, ready } (player)}
     <li class="list-row">
