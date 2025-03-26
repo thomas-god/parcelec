@@ -27,6 +27,23 @@
     return merged;
   });
 
+  let sum_by_period = $derived.by(() => {
+    const sums = new Map<number, number>();
+
+    // Initialize sums for all periods
+    periods.forEach((period) => sums.set(period, 0));
+
+    // Sum up values for each period across all forecasts
+    for (const [_, __, forecast] of merged_forecasts) {
+      for (const point of forecast) {
+        const currentSum = sums.get(point.period) || 0;
+        sums.set(point.period, currentSum + point.value.value);
+      }
+    }
+
+    return sums;
+  });
+
   let periods = $derived.by(() => {
     if (merged_forecasts.length > 0) {
       const [_, __, forecast] = merged_forecasts[0];
@@ -64,6 +81,16 @@
           {/each}
         </tr>
       {/each}
+      <tr class="font-bold">
+        <th class="text-end">Total</th>
+        {#each periods as period (`${forecasts}-total-${period}`)}
+          <td class="text-center">
+            {(sum_by_period.get(period) || 0).toLocaleString("fr-FR", {
+              signDisplay: "exceptZero",
+            })} MW
+          </td>
+        {/each}
+      </tr>
     </tbody>
   </table>
 </div>
