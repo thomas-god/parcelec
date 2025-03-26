@@ -176,7 +176,7 @@
       </div>
 
       {#if game_state === "Running"}
-        <div class="tabs tabs-border tabs-sm p-1">
+        <div class="tabs tabs-lift tabs-md p-3 [400px]:p-1">
           <input
             type="radio"
             name="market_forecast_tabs"
@@ -184,7 +184,7 @@
             aria-label="Centrales 🔌"
             checked={true}
           />
-          <div class="tab-content bg-base-100 border-base-300 p-1">
+          <div class="tab-content bg-base-100 border-base-300 p-1 pb-4">
             <Stack {plants} send={sendMessage} />
           </div>
           <input
