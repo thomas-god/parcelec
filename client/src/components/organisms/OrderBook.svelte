@@ -13,13 +13,6 @@
     trades: Trade[];
   } = $props();
 
-  let market_position = $derived(
-    trades.reduce(
-      (acc, trade) =>
-        acc + (trade.direction === "Buy" ? trade.volume : -trade.volume),
-      0,
-    ),
-  );
   let sendOrderDebouncedInterval: ReturnType<typeof setTimeout>;
   const sendOrderRequest = (orderRequest: OrderRequest) => {
     (document.getElementById("add_order") as any).close();
@@ -35,15 +28,6 @@
 </script>
 
 <div class="flex flex-col">
-  <!-- <div class="flex flex-row justify-between">
-    <div class="pb-2">
-      {#if market_position > 0}
-        Acheté : {market_position} MWh
-      {:else if market_position < 0}
-        Vendu : {Math.abs(market_position)} MWh
-      {/if}
-    </div>
-  </div> -->
   <!-- Add an offer -->
   <div class="flex flex-row justify-center gap-2">
     <button
@@ -69,11 +53,9 @@
   </div>
 
   <div class="grid grid-cols-2 gap-4 mt-3">
-    <div
-      class="flex flex-col overflow-y-auto p-2 max-w-64 max-h-64 justify-self-end"
-    >
+    <div class="flex flex-col p-2 justify-self-end">
       <h3 class="text-xl font-semibold mb-2 text-end">Acheteurs</h3>
-      <table class="table table-zebra table-sm sm:table-md">
+      <table class="table table-zebra table-xs min-[400px]:table-sm">
         <thead>
           <tr>
             <th>🗑️</th>
@@ -101,7 +83,7 @@
       class="flex flex-col overflow-y-auto p-2 max-w-64 max-h-64 justify-self-start"
     >
       <h3 class="text-xl font-semibold mb-2 text-start">Vendeurs</h3>
-      <table class="table table-zebra table-sm sm:table-md">
+      <table class="table table-zebra table-xs min-[400px]:table-sm">
         <thead>
           <tr>
             <th>Prix</th>
