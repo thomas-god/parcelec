@@ -20,28 +20,30 @@
   };
 </script>
 
-<div class="card max-w-96 mx-auto mt-6 bg-base-100 shadow-sm">
-  <div class="card-body">
-    <fieldset class="fieldset w-xs bg-base-100 self-center">
-      <legend class="fieldset-legend text-base">Créer une partie</legend>
+<div class="flex flex-row justify-center w-full">
+  <div class="card w-86 mx-6 mt-6 bg-base-100 shadow-sm">
+    <div class="card-body">
+      <fieldset class="fieldset bg-base-100">
+        <legend class="fieldset-legend text-base">Créer une partie</legend>
 
-      <label class="fieldset-label flex-col"
-        ><div class="self-start text-sm">Nom de la partie</div>
-        <input
-          type="text"
-          class="input"
-          bind:value={game_name}
-          onkeypress={(key) => {
-            if (key.code === "Enter") {
-              createGame();
-            }
-          }}
-        />
-      </label>
+        <label class="fieldset-label flex-col"
+          ><div class="self-start text-sm">Nom de la partie</div>
+          <input
+            type="text"
+            class="input"
+            bind:value={game_name}
+            onkeypress={(key) => {
+              if (key.code === "Enter") {
+                createGame();
+              }
+            }}
+          />
+        </label>
 
-      <button class="btn btn-neutral mt-4 text-base" onclick={createGame}
-        >Créer</button
-      >
-    </fieldset>
+        <button class="btn btn-neutral mt-4 text-base" onclick={createGame}
+          >Créer</button
+        >
+      </fieldset>
+    </div>
   </div>
 </div>
