@@ -18,3 +18,6 @@ pub const FORECAST_BASE_DEVIATION: usize = 100;
 
 /// Base for setpoints, i.e. setpoints should be a multiple of these value (in MW)
 pub const SETPOINT_BASE_VALUE: isize = 25;
+
+/// Default duration for market and stacks periods in seconds
+pub const DEFAULT_PERIOD_DURATION_SECONDS: u64 = 120;

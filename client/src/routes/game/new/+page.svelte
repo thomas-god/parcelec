@@ -3,7 +3,39 @@
   import { PUBLIC_APP_URL } from "$env/static/public";
 
   let game_name = $state("");
+  let period_duration_seconds = $state("120");
+  let apiError = $state("");
+
+  let isGameNameValid = $derived(game_name && game_name.trim() !== "");
+
+  let isPeriodDurationValid = $derived(
+    period_duration_seconds !== "" &&
+      !isNaN(Number(period_duration_seconds)) &&
+      Number(period_duration_seconds) >= 30,
+  );
+
+  let isFormValid = $derived(isGameNameValid && isPeriodDurationValid);
+
+  let gameNameError = $derived(
+    !isGameNameValid && game_name !== ""
+      ? "Le nom de la partie est requis"
+      : "",
+  );
+
+  let periodDurationError = $derived(
+    period_duration_seconds !== "" &&
+      !isNaN(Number(period_duration_seconds)) &&
+      Number(period_duration_seconds) < 30
+      ? "La durée doit être d'au moins 30 secondes"
+      : "",
+  );
+
   const createGame = async () => {
+    const requestBody = {
+      game_name: game_name.trim(),
+      period_duration_seconds: Number(period_duration_seconds), // Convert to number for API
+    };
+
     let rest = await fetch(`${PUBLIC_APP_URL}/game`, {
       method: "POST",
       headers: {
@@ -11,11 +43,13 @@
       },
       mode: "cors",
       credentials: "include",
-      body: JSON.stringify({ game_name }),
+      body: JSON.stringify(requestBody),
     });
     if (rest.status === 201) {
       let { game_id } = await rest.json();
       goto(`/game/${game_id}/join`);
+    } else {
+      apiError = "Erreur lors de la création de la partie";
     }
   };
 </script>
@@ -27,10 +61,11 @@
         <legend class="fieldset-legend text-base">Créer une partie</legend>
 
         <label class="fieldset-label flex-col"
-          ><div class="self-start text-sm">Nom de la partie</div>
+          ><div class="self-start text-sm">Nom de la partie (requis)</div>
           <input
             type="text"
             class="input"
+            class:input-error={gameNameError}
             bind:value={game_name}
             onkeypress={(key) => {
               if (key.code === "Enter") {
@@ -38,11 +73,43 @@
               }
             }}
           />
+          {#if gameNameError}
+            <div class="text-error text-xs mt-1">{gameNameError}</div>
+          {/if}
         </label>
 
-        <button class="btn btn-neutral mt-4 text-base" onclick={createGame}
-          >Créer</button
+        <label class="fieldset-label flex-col mt-4">
+          <div class="flex justify-between items-center w-full">
+            <div class="self-start text-sm">
+              Durée des périodes (en secondes)
+            </div>
+          </div>
+          <input
+            type="number"
+            min="30"
+            class="input"
+            class:input-error={periodDurationError}
+            bind:value={period_duration_seconds}
+            placeholder="120"
+          />
+          {#if periodDurationError}
+            <div class="text-error text-xs mt-1">{periodDurationError}</div>
+          {/if}
+        </label>
+
+        {#if apiError}
+          <div class="alert alert-error mt-4 py-2">
+            <span>{apiError}</span>
+          </div>
+        {/if}
+
+        <button
+          class="btn btn-neutral mt-4 text-base"
+          onclick={createGame}
+          disabled={!isFormValid}
         >
+          Créer
+        </button>
       </fieldset>
     </div>
   </div>

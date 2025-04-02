@@ -4,6 +4,7 @@ use axum::{Json, extract::State, http::StatusCode, response::IntoResponse};
 use serde::{Deserialize, Serialize};
 
 use crate::{
+    constants::DEFAULT_PERIOD_DURATION_SECONDS,
     game::{
         GameActor, GameId, GameName,
         delivery_period::DeliveryPeriodTimers,
@@ -21,6 +22,7 @@ use super::ApiState;
 #[derive(Debug, Deserialize)]
 pub struct NewGameRequest {
     game_name: String,
+    period_duration_seconds: Option<u64>,
 }
 
 #[derive(Debug, Serialize)]
@@ -51,12 +53,16 @@ pub async fn create_game(
         connections_service.clone(),
         cancellation_token.clone(),
     );
+    let period_duration = input
+        .period_duration_seconds
+        .unwrap_or(DEFAULT_PERIOD_DURATION_SECONDS);
+
     let game_config = GameActorConfig {
         id: game_id.clone(),
         name: Some(game_name.clone()),
         delivery_period_timers: Some(DeliveryPeriodTimers {
-            market: Duration::from_secs(120),
-            stacks: Duration::from_secs(120),
+            market: Duration::from_secs(period_duration),
+            stacks: Duration::from_secs(period_duration),
         }),
         number_of_delivery_periods: 4,
         ranking_calculator: GameRankings {
