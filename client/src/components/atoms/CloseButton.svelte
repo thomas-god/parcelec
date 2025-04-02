@@ -1,8 +1,14 @@
 <script lang="ts">
-  let { onClick }: { onClick: () => void } = $props();
+  let { onClick, success = false }: { onClick: () => void; success: boolean } =
+    $props();
 </script>
 
-<button class="btn btn-xs" onclick={onClick} aria-label="close">
+<button
+  class="btn btn-xs btn-success"
+  class:btn-success={success}
+  onclick={onClick}
+  aria-label="close"
+>
   <svg
     width="24px"
     height="24px"

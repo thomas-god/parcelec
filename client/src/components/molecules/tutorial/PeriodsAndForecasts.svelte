@@ -8,8 +8,7 @@
   }: { forecasts: StackForecasts; plants: StackSnapshot } = $props();
 </script>
 
-<h2 class="px-4 pt-2 font-semibold">Periodes de jeu et score</h2>
-<p class="px-4 pt-2">
+<p class="px-4">
   Une partie se compose de plusieurs périodes pour lesquelles vous devrez, à
   chaque fois, équilibrer votre parc. Vous pouvez changer les consignes de vos
   centrales et utiliser le marhcé autant de fois que vous le souhaitez pendant

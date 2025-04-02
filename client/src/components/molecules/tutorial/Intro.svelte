@@ -9,9 +9,12 @@
   let pnl = $derived(pnl_values.at(position_index)!);
   setInterval(() => {
     position_index = (position_index + 1) % position_values.length;
-  }, 1500);
+  }, 1000);
 </script>
 
+<h1 class="text-left px-4 font-semibold text-lg mt-2">
+  Bienvenue dans Parcelec !
+</h1>
 <div class="p-4">
   Votre objectif est d'atteindre l'équilibre énergétique en produisant autant
   que ce vos <i>clients</i> 🏙️ consomment. Mais attention il vous faudra trouver

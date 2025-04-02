@@ -24,7 +24,7 @@
     <legend class="fieldset-legend text-xl">Ajouter un ordre</legend>
     <div class="modal-action !my-auto">
       <form method="dialog">
-        <CloseButton onClick={() => {}} />
+        <CloseButton onClick={() => {}} success={false} />
       </form>
     </div>
   </div>

@@ -111,30 +111,7 @@
 
 {#await startTutorial() then}
   <div class="flex flex-col max-w-[500px] mx-auto text-justify">
-    <h1 class="text-center font-semibold text-xl my-3">
-      Bienvenue dans Parcelec !
-    </h1>
-
-    {#if current_step === "Introduction"}
-      <Intro />
-    {:else if current_step === "Centrales"}
-      <PowerPlants />
-    {:else if current_step === "Marché"}
-      <Market {orderBook} {trades} send={sendMessage} />
-      <div class="toast mb-15 items-center content-center">
-        {#each trades_to_display as trade (`${trade.direction}-${trade.execution_time}`)}
-          <TradeNotification {trade} {removeTradeToDisplay} />
-        {/each}
-      </div>
-    {:else if current_step === "Périodes et prévisions"}
-      <PeriodsAndForecasts forecasts={plant_forecasts} {plants} />
-      <button onclick={() => goto("/game")} class="text-lg mt-5 mb-5"
-        >➡️ Commencer une partie</button
-      >
-    {/if}
-
-    <div class="divider px-3"></div>
-    <div class="self-center mb-4">
+    <div class="self-center mb-4 mt-1 min-[400px]:mt-4">
       <div class="join">
         <button
           class="join-item btn"
@@ -152,6 +129,26 @@
         >
       </div>
     </div>
+
+    {#if current_step === "Introduction"}
+      <Intro />
+    {:else if current_step === "Centrales"}
+      <PowerPlants />
+    {:else if current_step === "Marché"}
+      <Market {orderBook} {trades} send={sendMessage} />
+      <div class="toast mb-15 items-center content-center">
+        {#each trades_to_display as trade (`${trade.direction}-${trade.execution_time}`)}
+          <TradeNotification {trade} {removeTradeToDisplay} />
+        {/each}
+      </div>
+    {:else if current_step === "Périodes et prévisions"}
+      <PeriodsAndForecasts forecasts={plant_forecasts} {plants} />
+      <button
+        onclick={() => goto("/game")}
+        class="btn btn-success text-lg mt-5 mb-5 mx-2"
+        >➡️ Commencer une partie</button
+      >
+    {/if}
   </div>
 
   {#if error}

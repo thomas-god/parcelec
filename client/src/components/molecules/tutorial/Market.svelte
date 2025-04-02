@@ -21,10 +21,9 @@
   let pnl = $derived(marketPnl(trades));
 </script>
 
-<div class="px-4 sm:px-10 py-4 text-success-content bg-success rounded-md m-2">
+<div class="px-4 sm:px-10 py-4 text-success-content bg-success rounded-md mx-2">
   <Score {position} {pnl} periods={none()} />
 </div>
-<h2 class="px-4 pt-2 font-semibold">Le marché 💱</h2>
 <p class="px-4 pt-2">
   En plus de vos centrales, vous pouvez intéragir avec d'autres acteurs et
   joueurs pour acheter ou vendre de l'énergie en déposant des offres via
@@ -41,4 +40,8 @@
   !
 </p>
 
-<OrderBookComponent {orderBook} {trades} {send} />
+<div
+  class="bg-base-100 rounded-lg border-transparent pt-4 p-2 mx-2 max-w-96 self-center"
+>
+  <OrderBookComponent {orderBook} {trades} {send} />
+</div>

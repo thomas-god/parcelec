@@ -21,11 +21,10 @@
   };
 </script>
 
-<div class="px-4 sm:px-10 py-4 text-success-content bg-success rounded-md m-2">
+<div class="px-4 sm:px-10 py-4 text-success-content bg-success rounded-md mx-2">
   <Score {position} {pnl} periods={none()} />
 </div>
 
-<h2 class="px-4 pt-2 font-semibold">Pilotage des centrales 🔌</h2>
 <p class="px-4 pt-2">
   Pour vous équilibrer vous disposez de centrales que vous pouvez piloter.
   Essayez de réduire votre déficit avec cette centrale !
