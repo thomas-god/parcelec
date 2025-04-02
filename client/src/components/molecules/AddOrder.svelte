@@ -35,7 +35,7 @@
       type="text"
       inputmode="numeric"
       pattern="[0-9]*"
-      class="input max-w-48"
+      class="input max-w-48 text-base"
       bind:value={volume}
     />
   </label>
@@ -45,7 +45,7 @@
       type="text"
       inputmode="numeric"
       pattern="[0-9]*"
-      class="input max-w-48"
+      class="input max-w-48 text-base"
       bind:value={price}
     />
   </label>

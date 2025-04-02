@@ -33,7 +33,7 @@
           ><div class="self-start text-sm">Votre pseudo</div>
           <input
             type="text"
-            class="input"
+            class="input text-base"
             bind:value={player_name}
             onkeypress={(key) => {
               if (key.code === "Enter") {

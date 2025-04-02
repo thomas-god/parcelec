@@ -64,7 +64,7 @@
           ><div class="self-start text-sm">Nom de la partie (requis)</div>
           <input
             type="text"
-            class="input"
+            class="input text-base"
             class:input-error={gameNameError}
             bind:value={game_name}
             onkeypress={(key) => {
@@ -87,7 +87,7 @@
           <input
             type="number"
             min="30"
-            class="input"
+            class="input text-base"
             class:input-error={periodDurationError}
             bind:value={period_duration_seconds}
             placeholder="120"
