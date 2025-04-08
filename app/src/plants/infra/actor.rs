@@ -8,7 +8,7 @@ use tokio::sync::{
 use tokio_util::sync::CancellationToken;
 
 use crate::{
-    forecast::Forecast,
+    forecast::{Forecast, ForecastValue},
     game::{GameId, delivery_period::DeliveryPeriodId},
     plants::{
         PlantId, PlantOutput, PowerPlant, PowerPlantPublicRepr, Stack,
@@ -304,10 +304,39 @@ fn default_stack() -> HashMap<PlantId, Box<dyn PowerPlant + Send + Sync>> {
     );
     map.insert(
         PlantId::default(),
-        Box::new(Consumers::from_values(
+        Box::new(Consumers::new(
             1800,
             56,
-            vec![-1150, -1200, -600, -1800],
+            vec![
+                Forecast {
+                    period: DeliveryPeriodId::from(1),
+                    value: ForecastValue {
+                        value: -1000,
+                        deviation: 100,
+                    },
+                },
+                Forecast {
+                    period: DeliveryPeriodId::from(2),
+                    value: ForecastValue {
+                        value: -1200,
+                        deviation: 50,
+                    },
+                },
+                Forecast {
+                    period: DeliveryPeriodId::from(3),
+                    value: ForecastValue {
+                        value: -600,
+                        deviation: 100,
+                    },
+                },
+                Forecast {
+                    period: DeliveryPeriodId::from(4),
+                    value: ForecastValue {
+                        value: -1800,
+                        deviation: 150,
+                    },
+                },
+            ],
         )),
     );
     map.insert(PlantId::default(), Box::new(NuclearPlant::new(1000, 35)));

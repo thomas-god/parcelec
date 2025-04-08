@@ -1,12 +1,12 @@
 use serde::Serialize;
 
 use crate::{
-    forecast::{Clip, Forecast, Forecasts, forecast_from_timeseries},
+    forecast::{Forecast, Forecasts},
     game::delivery_period::DeliveryPeriodId,
     plants::{PlantOutput, PowerPlant, PowerPlantPublicRepr},
 };
 
-use super::timeseries::Timeseries;
+use super::variable::VariablePlant;
 
 #[derive(Debug, Serialize, Clone, Copy)]
 pub struct ConsumersPublicRepr {
@@ -16,41 +16,27 @@ pub struct ConsumersPublicRepr {
 pub struct Consumers {
     max_power: isize,
     price_per_mwh: isize,
-    setpoints: Timeseries,
+    state: VariablePlant,
     period: DeliveryPeriodId,
     current_setpoint: isize,
     current_forecasts: Forecasts,
 }
 
 impl Consumers {
-    pub fn new(max_power: isize, price_per_mwh: isize, setpoints: Timeseries) -> Consumers {
+    pub fn new(max_power: isize, price_per_mwh: isize, forecasts: Vec<Forecast>) -> Consumers {
         let period = DeliveryPeriodId::from(1);
-        let current_setpoint = setpoints.value_at(period);
-        let current_forecasts = forecast_from_timeseries(
-            &setpoints,
-            period.next(),
-            &Some(Clip {
-                min: -max_power,
-                max: 0,
-            }),
-        );
+        let state = VariablePlant::new(forecasts);
+        let current_setpoint = state.get_setpoint(period).unwrap_or(0);
+        let current_forecasts = state.get_forecasts(period);
 
         Consumers {
             current_setpoint,
-            setpoints,
             price_per_mwh,
             max_power,
             current_forecasts,
             period,
+            state,
         }
-    }
-}
-
-impl Consumers {
-    pub fn from_values(max_power: isize, price_per_mwh: isize, values: Vec<isize>) -> Consumers {
-        let timeseries = Timeseries::from(&values[..]);
-
-        Consumers::new(max_power, price_per_mwh, timeseries)
     }
 }
 
@@ -66,15 +52,8 @@ impl PowerPlant for Consumers {
         let previous_setpoint = self.current_setpoint;
         let cost = previous_setpoint * self.price_per_mwh;
         self.period = self.period.next();
-        self.current_forecasts = forecast_from_timeseries(
-            &self.setpoints,
-            self.period.next(),
-            &Some(Clip {
-                min: -self.max_power,
-                max: 0,
-            }),
-        );
-        self.current_setpoint = self.setpoints.value_at(self.period);
+        self.current_forecasts = self.state.get_forecasts(self.period);
+        self.current_setpoint = self.state.get_setpoint(self.period).unwrap_or(0);
         PlantOutput {
             cost,
             setpoint: previous_setpoint,
@@ -99,15 +78,46 @@ impl PowerPlant for Consumers {
 #[cfg(test)]
 mod tests {
 
-    use crate::{game::delivery_period::DeliveryPeriodId, plants::PowerPlant};
+    use crate::{
+        forecast::{Forecast, ForecastValue},
+        game::delivery_period::DeliveryPeriodId,
+        plants::PowerPlant,
+    };
 
     use super::Consumers;
+
+    fn get_forecasts() -> Vec<Forecast> {
+        vec![
+            Forecast {
+                period: DeliveryPeriodId::from(1),
+                value: ForecastValue {
+                    value: -100,
+                    deviation: 50,
+                },
+            },
+            Forecast {
+                period: DeliveryPeriodId::from(2),
+                value: ForecastValue {
+                    value: -600,
+                    deviation: 100,
+                },
+            },
+            Forecast {
+                period: DeliveryPeriodId::from(3),
+                value: ForecastValue {
+                    value: -1000,
+                    deviation: 150,
+                },
+            },
+        ]
+    }
 
     #[test]
     fn test_consumers() {
         let max_power = 1000;
         let energy_cost = 75;
-        let mut consumers = Consumers::from_values(max_power, energy_cost, vec![-100, -500, -900]);
+        let forecasts = get_forecasts();
+        let mut consumers = Consumers::new(max_power, energy_cost, forecasts);
 
         // Consumers cannot be programed
         let initial_setpoint = consumers.current_setpoint;
@@ -128,7 +138,8 @@ mod tests {
     fn test_consumers_forecasts_periods() {
         let max_power = 1000;
         let energy_cost = 75;
-        let mut consumers = Consumers::from_values(max_power, energy_cost, vec![-100, -500, -900]);
+        let forecsts = get_forecasts();
+        let mut consumers = Consumers::new(max_power, energy_cost, forecsts);
 
         let forecasts = consumers.get_forecast().unwrap();
         assert_eq!(
