@@ -20,7 +20,19 @@ use crate::{
 use super::{GameMessage, scores::PlayerScore};
 
 #[derive(
-    Debug, Clone, PartialEq, PartialOrd, Eq, Hash, Copy, Default, Serialize, Display, From, Into,
+    Debug,
+    Clone,
+    PartialEq,
+    PartialOrd,
+    Eq,
+    Ord,
+    Hash,
+    Copy,
+    Default,
+    Serialize,
+    Display,
+    From,
+    Into,
 )]
 pub struct DeliveryPeriodId(usize);
 
