@@ -16,18 +16,6 @@ pub enum State {
 
 type PlantState = HashMap<TargetPeriod, HashMap<CurrentPeriod, State>>;
 
-#[derive(Debug, Clone)]
-pub struct Limits {
-    pub min: isize,
-    pub max: isize,
-}
-
-impl Limits {
-    pub fn clip(&self, target: isize) -> isize {
-        self.min.max(self.max.min(target))
-    }
-}
-
 /// [VariablePlant] handles the forecasts and setpoints generation for variable sources like
 /// renewable plants and consumers. Target period refers to the [DeliveryPeriodId] the forecast or
 /// the setpoint apply to, in contrast to the current period.
@@ -59,7 +47,7 @@ impl VariablePlant {
 
             // Generate setpoint for target period, based on last forecast
             let last_forecast = match target_period_state.get(&target_period.previous()) {
-                Some(State::Forecast(f)) => f.clone(),
+                Some(State::Forecast(f)) => *f,
                 _ => forecast.value,
             };
             target_period_state.insert(
@@ -107,25 +95,6 @@ impl VariablePlant {
         }
         forecasts.sort_by(|a, b| a.period.cmp(&b.period));
         forecasts
-    }
-}
-
-#[cfg(test)]
-mod tests_clip {
-    use super::Limits;
-
-    #[test]
-    fn test_limits_clip_target_value() {
-        let limits = Limits {
-            min: -100,
-            max: 1000,
-        };
-
-        assert_eq!(limits.clip(-101), -100);
-        assert_eq!(limits.clip(-100), -100);
-        assert_eq!(limits.clip(500), 500);
-        assert_eq!(limits.clip(1000), 1000);
-        assert_eq!(limits.clip(1001), 1000);
     }
 }
 

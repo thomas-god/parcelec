@@ -300,7 +300,39 @@ fn default_stack() -> HashMap<PlantId, Box<dyn PowerPlant + Send + Sync>> {
     map.insert(PlantId::default(), Box::new(GasPlant::new(80, 500)));
     map.insert(
         PlantId::default(),
-        Box::new(RenewablePlant::from_values(300, vec![250, 150, 300, 100])),
+        Box::new(RenewablePlant::new(
+            300,
+            vec![
+                Forecast {
+                    period: DeliveryPeriodId::from(1),
+                    value: ForecastValue {
+                        value: 250,
+                        deviation: 50,
+                    },
+                },
+                Forecast {
+                    period: DeliveryPeriodId::from(2),
+                    value: ForecastValue {
+                        value: 150,
+                        deviation: 25,
+                    },
+                },
+                Forecast {
+                    period: DeliveryPeriodId::from(3),
+                    value: ForecastValue {
+                        value: 300,
+                        deviation: 50,
+                    },
+                },
+                Forecast {
+                    period: DeliveryPeriodId::from(4),
+                    value: ForecastValue {
+                        value: 100,
+                        deviation: 25,
+                    },
+                },
+            ],
+        )),
     );
     map.insert(
         PlantId::default(),

@@ -1,12 +1,12 @@
 use serde::Serialize;
 
 use crate::{
-    forecast::{Clip, Forecast, Forecasts, forecast_from_timeseries},
+    forecast::{Forecast, Forecasts},
     game::delivery_period::DeliveryPeriodId,
     plants::{PlantOutput, PowerPlant, PowerPlantPublicRepr},
 };
 
-use super::timeseries::Timeseries;
+use super::variable::VariablePlant;
 
 #[derive(Debug, Serialize, Clone, Copy)]
 pub struct RenewablePlantPublicRepr {
@@ -15,39 +15,26 @@ pub struct RenewablePlantPublicRepr {
 }
 pub struct RenewablePlant {
     max_power: isize,
-    setpoints: Timeseries,
+    state: VariablePlant,
     period: DeliveryPeriodId,
     current_setpoint: isize,
     current_forecasts: Forecasts,
 }
 
 impl RenewablePlant {
-    pub fn new(max_power: isize, setpoints: Timeseries) -> RenewablePlant {
+    pub fn new(max_power: isize, forecasts: Vec<Forecast>) -> RenewablePlant {
         let period = DeliveryPeriodId::from(1);
-        let current_setpoint = setpoints.value_at(period);
-        let current_forecasts = forecast_from_timeseries(
-            &setpoints,
-            period.next(),
-            &Some(Clip {
-                min: 0,
-                max: max_power,
-            }),
-        );
+        let plant = VariablePlant::new(forecasts);
+        let current_setpoint = plant.get_setpoint(period).unwrap_or(0);
+        let current_forecasts = plant.get_forecasts(period);
 
         RenewablePlant {
             current_setpoint,
-            setpoints,
+            state: plant,
             max_power,
             current_forecasts,
             period,
         }
-    }
-}
-
-impl RenewablePlant {
-    pub fn from_values(max_power: isize, values: Vec<isize>) -> RenewablePlant {
-        let setpoints = Timeseries::from(&values[..]);
-        RenewablePlant::new(max_power, setpoints)
     }
 }
 
@@ -61,15 +48,9 @@ impl PowerPlant for RenewablePlant {
     fn dispatch(&mut self) -> PlantOutput {
         let previous_setpoint = self.current_setpoint;
         self.period = self.period.next();
-        self.current_setpoint = self.setpoints.value_at(self.period);
-        self.current_forecasts = forecast_from_timeseries(
-            &self.setpoints,
-            self.period.next(),
-            &Some(Clip {
-                min: 0,
-                max: self.max_power,
-            }),
-        );
+        self.current_setpoint = self.state.get_setpoint(self.period).unwrap_or(0);
+        self.current_forecasts = self.state.get_forecasts(self.period);
+
         PlantOutput {
             setpoint: previous_setpoint,
             cost: 0,
@@ -92,15 +73,42 @@ impl PowerPlant for RenewablePlant {
 #[cfg(test)]
 mod tests {
     use crate::{
+        forecast::{Forecast, ForecastValue},
         game::delivery_period::DeliveryPeriodId,
         plants::{PlantOutput, PowerPlant},
     };
 
     use super::RenewablePlant;
 
+    fn get_forecasts() -> Vec<Forecast> {
+        vec![
+            Forecast {
+                period: DeliveryPeriodId::from(1),
+                value: ForecastValue {
+                    value: 100,
+                    deviation: 50,
+                },
+            },
+            Forecast {
+                period: DeliveryPeriodId::from(2),
+                value: ForecastValue {
+                    value: 500,
+                    deviation: 100,
+                },
+            },
+            Forecast {
+                period: DeliveryPeriodId::from(3),
+                value: ForecastValue {
+                    value: 900,
+                    deviation: 100,
+                },
+            },
+        ]
+    }
+
     #[test]
     fn test_renewable_plant() {
-        let mut plant = RenewablePlant::from_values(1000, vec![100, 500]);
+        let mut plant = RenewablePlant::new(1000, get_forecasts());
 
         // Plant has no associated cost
         let PlantOutput { cost, .. } = plant.program_setpoint(100);
@@ -119,8 +127,7 @@ mod tests {
 
     #[test]
     fn test_renewable_forecasts_periods() {
-        let max_power = 1000;
-        let mut plant = RenewablePlant::from_values(max_power, vec![-100, -500, -900]);
+        let mut plant = RenewablePlant::new(1000, get_forecasts());
 
         let forecasts = plant.get_forecast().unwrap();
         assert_eq!(
