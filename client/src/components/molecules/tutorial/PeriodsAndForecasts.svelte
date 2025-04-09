@@ -15,7 +15,7 @@
   <Score {position} {pnl} />
 </div>
 
-<p class="px-4">
+<p class="px-4 pt-2">
   Une partie se compose de plusieurs périodes pour lesquelles vous devrez, à
   chaque fois, équilibrer votre parc. Vous pouvez changer les consignes de vos
   centrales et utiliser le marhcé autant de fois que vous le souhaitez pendant
