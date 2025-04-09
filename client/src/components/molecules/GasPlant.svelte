@@ -1,15 +1,4 @@
 <script lang="ts">
-  const icons = {
-    gaz: "🔥",
-    renewable: "☀️",
-    consumers: "🏙️",
-  };
-  const names = {
-    gaz: "Centrale gaz",
-    renewable: "Solaire",
-    consumers: "Clients",
-  };
-
   let {
     cost,
     max_setpoint,
@@ -17,19 +6,17 @@
     updateSetpoint,
     energy_cost,
     dispatchable,
-    type,
   }: {
     setpoint: number;
     max_setpoint: number;
     cost: number;
     energy_cost: number;
     updateSetpoint: (setpoint: number) => void;
-    type: "gaz" | "renewable" | "consumers";
     dispatchable: boolean;
   } = $props();
   let current_setpoint = $state(0);
   $effect(() => {
-    current_setpoint = type === "consumers" ? -setpoint : setpoint;
+    current_setpoint = setpoint;
   });
 
   let debounceTimer: ReturnType<typeof setTimeout>;
@@ -54,10 +41,10 @@
 </script>
 
 <div class="flex flex-row gap-1 w-full justify-stretch">
-  <div class="self-center text-2xl">{icons[type]}</div>
+  <div class="self-center text-2xl">🔥</div>
   <div class="flex flex-col grow">
     <div class="flex flex-row justify-between">
-      <div class="italic">{names[type]}</div>
+      <div class="italic">Centrale gaz</div>
       <div>
         {(-cost).toLocaleString("fr-FR", { signDisplay: "exceptZero" })} €
         {#if energy_cost !== 0}
@@ -77,7 +64,7 @@
         max={max_setpoint}
         step="25"
         oninput={debouncedUpdateSetpoint}
-        data-testid={`generic-plant-input-${type}`}
+        data-testid={`generic-plant-input-gas`}
       />
 
       <div class="pl-2 justify-self-end">

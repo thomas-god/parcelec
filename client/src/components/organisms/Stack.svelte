@@ -1,7 +1,7 @@
 <script lang="ts">
   import type { Plant, StackSnapshot } from "$lib/message";
   import Battery from "../molecules/Battery.svelte";
-  import GenericPlant from "../molecules/GenericPlant.svelte";
+  import GasPlant from "../molecules/GasPlant.svelte";
   import NuclearPlant from "../molecules/NuclearPlant.svelte";
 
   let { plants, send }: { plants: StackSnapshot; send: (msg: string) => void } =
@@ -91,36 +91,15 @@
       </div>
     {:else if plant.type === "GasPlant"}
       <div class="pl-1 pr-2 mx-auto w-full">
-        <GenericPlant
+        <GasPlant
           cost={plant.output.cost}
           dispatchable={true}
           energy_cost={plant.settings.energy_cost}
           max_setpoint={plant.settings.max_setpoint}
-          type="gaz"
           setpoint={plant.output.setpoint}
           updateSetpoint={(setpoint) => programSetpoint(id, setpoint)}
         />
       </div>
-      <!-- {:else if plant.type === "RenewablePlant"}
-        <GenericPlant
-          cost={plant.output.cost}
-          dispatchable={false}
-          energy_cost={0}
-          max_setpoint={plant.max_power}
-          type="renewable"
-          setpoint={plant.output.setpoint}
-          updateSetpoint={(setpoint) => programSetpoint(id, setpoint)}
-        /> -->
-      <!-- {:else if plant.type === "Consumers"}
-        <GenericPlant
-          cost={plant.output.cost}
-          dispatchable={false}
-          energy_cost={0}
-          max_setpoint={plant.max_power}
-          type="consumers"
-          setpoint={plant.output.setpoint}
-          updateSetpoint={(setpoint) => programSetpoint(id, setpoint)}
-        /> -->
     {:else if plant.type === "Nuclear"}
       <div class="pl-1 pr-2 mx-auto w-full">
         <NuclearPlant

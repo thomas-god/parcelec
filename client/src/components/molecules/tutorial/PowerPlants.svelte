@@ -1,7 +1,6 @@
 <script lang="ts">
-  import GenericPlant from "../GenericPlant.svelte";
+  import GasPlant from "../GasPlant.svelte";
   import Score from "../CurrentScore.svelte";
-  import { none } from "$lib/Options";
 
   let base_position = 300;
   let base_pnl = 300 * 65;
@@ -31,13 +30,12 @@
 </p>
 
 <div class="p-5">
-  <GenericPlant
+  <GasPlant
     {cost}
     {setpoint}
     {updateSetpoint}
     dispatchable={true}
     max_setpoint={700}
-    type={"gaz"}
     {energy_cost}
   />
 </div>
