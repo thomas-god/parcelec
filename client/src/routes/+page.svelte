@@ -10,16 +10,16 @@
         but ? Satisfaire la consommation de vos clients en utilisant
         astucieusement vos centrales et les marchés de l'électricité.
       </p>
-      <button class="btn btn-primary">
-        <a href="/tutorial">📖 Tutoriel</a>
-      </button>
+      <a href="/tutorial">
+        <button class="btn btn-primary"> 📖 Tutoriel </button>
+      </a>
       <div class="divider font-semibold">Partie</div>
-      <button class="btn btn-primary">
-        <a href="/game/new">➕ Créer</a>
-      </button>
-      <button class="btn btn-primary">
-        <a href="/games">▶️ Rejoindre</a>
-      </button>
+      <a href="/game/new">
+        <button class="btn btn-primary"> ➕ Créer </button>
+      </a>
+      <a href="/games">
+        <button class="btn btn-primary"> ▶️ Rejoindre </button>
+      </a>
     </div>
   </div>
 </div>

@@ -54,9 +54,11 @@
       {:else}
         <div class="flex flex-col w-full gap-5">
           <div class="text-center text-lg">Pas de parties en cours 😞</div>
-          <button class="btn btn-neutral btn-lg">
-            <a href="/game/new" class="self-center">➕ Créer une partie</a>
-          </button>
+          <a href="/game/new" class="self-center">
+            <button class="btn btn-neutral btn-lg">
+              ➕ Créer une partie
+            </button>
+          </a>
         </div>
       {/if}
     {/await}
