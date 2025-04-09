@@ -1,15 +1,5 @@
 <script lang="ts">
-  import { isSome, type Option } from "$lib/Options";
-
-  export interface Periods {
-    current: number;
-    last: number;
-  }
-  let {
-    position,
-    pnl,
-    periods,
-  }: { position: number; pnl: number; periods: Option<Periods> } = $props();
+  let { position, pnl }: { position: number; pnl: number } = $props();
 </script>
 
 <div class="flex flex-col">
@@ -29,9 +19,4 @@
       <span class="inline @3xs:hidden"> 💰</span>
     </div>
   </div>
-  {#if isSome(periods)}
-    <div class="italic text-center pt-1">
-      Période {periods.value.current}/{periods.value.last}
-    </div>
-  {/if}
 </div>

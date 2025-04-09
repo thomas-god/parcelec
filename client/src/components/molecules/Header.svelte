@@ -1,9 +1,8 @@
 <script lang="ts">
   import type { GameState } from "$lib/message";
-  import { some } from "$lib/Options";
-  import CurrentScore, {
-    type Periods,
-  } from "../../components/molecules/CurrentScore.svelte";
+  import type { Periods } from "$lib/types";
+  import CurrentScore from "../../components/molecules/CurrentScore.svelte";
+
   let {
     game_state,
     pnl,
@@ -18,13 +17,13 @@
 </script>
 
 {#if game_state === "Running"}
-  <CurrentScore {position} {pnl} periods={some(periods)} />
+  <CurrentScore {position} {pnl} />
 {:else if game_state === "Open"}
   <div class="text-2xl text-center mx-auto">En attente d'autres joueurs</div>
 {:else if game_state === "Ended"}
   <div class="text-2xl text-center mx-auto">Partie terminée !</div>
 {:else}
   <div class="text-2xl text-center mx-auto">
-    Période terminée ! <i>({periods.current}/{periods.last})</i>
+    Période terminée ! ({periods.current}/{periods.last})
   </div>
 {/if}
