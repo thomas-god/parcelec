@@ -1,12 +1,19 @@
 <script lang="ts">
   import type { StackForecasts, StackSnapshot } from "$lib/message";
   import PlantForecasts from "../PlantForecasts.svelte";
+  import Score from "../CurrentScore.svelte";
 
   let {
     forecasts,
     plants,
   }: { forecasts: StackForecasts; plants: StackSnapshot } = $props();
+  let position = 0;
+  let pnl = 0;
 </script>
+
+<div class="mx-6 mb-2 p-4 text-success-content bg-success rounded-md">
+  <Score {position} {pnl} />
+</div>
 
 <p class="px-4">
   Une partie se compose de plusieurs périodes pour lesquelles vous devrez, à

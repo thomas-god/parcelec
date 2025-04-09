@@ -15,6 +15,7 @@
   import PowerPlants from "../../components/molecules/tutorial/PowerPlants.svelte";
   import { isSome, none, some, type Option } from "$lib/Options";
   import TradeNotification from "../../components/molecules/TradeNotification.svelte";
+  import Stepper from "../../components/molecules/tutorial/Stepper.svelte";
 
   let error = $state(false);
   let orderBook: OrderBook = $state({
@@ -111,44 +112,32 @@
 
 {#await startTutorial() then}
   <div class="flex flex-col max-w-[500px] mx-auto text-justify">
-    <div class="self-center mb-4 mt-1 min-[400px]:mt-4">
-      <div class="join">
-        <button
-          class="join-item btn"
-          onclick={previous_step}
-          disabled={steps_index === 0}>«</button
-        >
-        <button
-          class="join-item btn w-46 hover:bg-base-200 hover:border-none transition-none"
-          >{steps.at(steps_index)}</button
-        >
-        <button
-          class="join-item btn"
-          onclick={next_step}
-          disabled={steps_index === steps.length - 1}>»</button
-        >
-      </div>
+    <div class="mt-6">
+      {#if current_step === "Introduction"}
+        <Intro />
+      {:else if current_step === "Centrales"}
+        <PowerPlants />
+      {:else if current_step === "Marché"}
+        <div class="flex flex-col">
+          <Market {orderBook} {trades} send={sendMessage} />
+        </div>
+        <div class="toast mb-15 items-center content-center">
+          {#each trades_to_display as trade (`${trade.direction}-${trade.execution_time}`)}
+            <TradeNotification {trade} {removeTradeToDisplay} />
+          {/each}
+        </div>
+      {:else if current_step === "Périodes et prévisions"}
+        <PeriodsAndForecasts forecasts={plant_forecasts} {plants} />
+        <div class="flex flex-col mt-5">
+          <button
+            onclick={() => goto("/game")}
+            class="btn btn-success text-lg max-w-64 self-center"
+            >➡️ Commencer</button
+          >
+        </div>
+      {/if}
     </div>
-
-    {#if current_step === "Introduction"}
-      <Intro />
-    {:else if current_step === "Centrales"}
-      <PowerPlants />
-    {:else if current_step === "Marché"}
-      <Market {orderBook} {trades} send={sendMessage} />
-      <div class="toast mb-15 items-center content-center">
-        {#each trades_to_display as trade (`${trade.direction}-${trade.execution_time}`)}
-          <TradeNotification {trade} {removeTradeToDisplay} />
-        {/each}
-      </div>
-    {:else if current_step === "Périodes et prévisions"}
-      <PeriodsAndForecasts forecasts={plant_forecasts} {plants} />
-      <button
-        onclick={() => goto("/game")}
-        class="btn btn-success text-lg mt-5 mb-5 mx-2"
-        >➡️ Commencer une partie</button
-      >
-    {/if}
+    <Stepper {steps} {steps_index} {next_step} {previous_step} />
   </div>
 
   {#if error}

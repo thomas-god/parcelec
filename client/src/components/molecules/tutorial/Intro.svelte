@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { none } from "$lib/Options";
   import Score from "../CurrentScore.svelte";
 
   let position_index = $state(0);
@@ -12,7 +11,7 @@
   }, 1000);
 </script>
 
-<h1 class="text-left px-4 font-semibold text-lg mt-2">
+<h1 class="text-center px-4 font-semibold text-2xl">
   Bienvenue dans Parcelec !
 </h1>
 <div class="p-4">
@@ -21,6 +20,6 @@
   l'équilibre au meilleur coût !
 </div>
 
-<div class="px-4 sm:px-10 py-4 text-success-content bg-success rounded-md m-2">
-  <Score {position} {pnl} periods={none()} />
+<div class="mx-6 mb-4 p-4 text-success-content bg-success rounded-md">
+  <Score {position} {pnl} />
 </div>

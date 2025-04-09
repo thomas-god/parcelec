@@ -21,8 +21,8 @@
   };
 </script>
 
-<div class="px-4 sm:px-10 py-4 text-success-content bg-success rounded-md mx-2">
-  <Score {position} {pnl} periods={none()} />
+<div class="mx-6 mb-2 p-4 text-success-content bg-success rounded-md">
+  <Score {position} {pnl} />
 </div>
 
 <p class="px-4 pt-2">

@@ -4,7 +4,6 @@
   import type { OrderBook, Trade } from "$lib/message";
   import { marketPosition } from "$lib/position";
   import { marketPnl } from "$lib/pnl";
-  import { none } from "$lib/Options";
 
   let {
     orderBook,
@@ -21,13 +20,12 @@
   let pnl = $derived(marketPnl(trades));
 </script>
 
-<div class="px-4 sm:px-10 py-4 text-success-content bg-success rounded-md mx-2">
-  <Score {position} {pnl} periods={none()} />
+<div class="mx-6 mb-2 p-4 text-success-content bg-success rounded-md">
+  <Score {position} {pnl} />
 </div>
 <p class="px-4 pt-2">
-  En plus de vos centrales, vous pouvez intéragir avec d'autres acteurs et
-  joueurs pour acheter ou vendre de l'énergie en déposant des offres via
-  l'onglet <i>marché </i> 💱.
+  En plus de vos centrales, le <i>marché </i> 💱 vous permet d'acheter ou de vendre
+  de l'énergie avec d'autres joueurs.
 </p>
 
 <p class="px-4">
