@@ -25,4 +25,6 @@
   suivantes. Mais attention ces prévisions peuvent se tromper !
 </p>
 
-<PlantForecasts {forecasts} {plants} />
+<div class="my-1 mx-3 bg-base-100 rounded-lg">
+  <PlantForecasts {forecasts} {plants} />
+</div>

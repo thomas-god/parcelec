@@ -202,7 +202,7 @@
             class="tab text-base font-semibold"
             aria-label="Prévisions 🔮"
           />
-          <div class="tab-content bg-base-100 border-base-300 p-4">
+          <div class="tab-content bg-base-100 border-base-300 p-2">
             <Forecasts {plant_forecasts} plant_snapshots={plants} />
           </div>
         </div>
