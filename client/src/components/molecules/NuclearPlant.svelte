@@ -46,9 +46,11 @@
   });
 </script>
 
-<div class="flex flex-row gap-1 w-full justify-stretch">
+<div class="flex flex-row gap-1 w-full justify-stretch @container">
   <div class="self-center text-2xl">☢️</div>
-  <div class="flex flex-col grow">
+
+  <!-- Large screens: info are on the left of the slider -->
+  <div class="flex flex-col grow @max-[450px]:hidden">
     <div class="flex flex-row justify-between">
       <div>
         <span class="italic"> Centrale nucléaire </span>
@@ -78,6 +80,43 @@
         data-testid="nuclear-plant-input"
       />
 
+      <div class="pl-2 justify-self-end">
+        {current_setpoint.toLocaleString("fr-FR")} / {max_setpoint.toLocaleString(
+          "fr-FR",
+        )} MW
+      </div>
+    </div>
+  </div>
+
+  <!-- Small screens: info are below the slider -->
+  <div class="flex flex-col grow @min-[450px]:hidden">
+    <div>
+      <span class="italic"> Centrale nucléaire </span>
+      {#if !dispatchable}
+        🔒
+      {:else if dispatchable && current_setpoint !== previous_setpoint}
+        <button onclick={resetSetpoint}> ↩️ </button>
+      {/if}
+    </div>
+    <div class="p-1.5">
+      <input
+        class={sliderClass}
+        type="range"
+        disabled={!dispatchable}
+        bind:value={current_setpoint}
+        max={max_setpoint}
+        step="25"
+        oninput={debouncedUpdateSetpoint}
+        data-testid="nuclear-plant-input"
+      />
+    </div>
+    <div class="flex flex-row justify-between">
+      <div>
+        {(-cost).toLocaleString("fr-FR", { signDisplay: "exceptZero" })} €
+        <span class="font-light italic">
+          ({energy_cost.toLocaleString("fr-FR")} €/MWh)
+        </span>
+      </div>
       <div class="pl-2 justify-self-end">
         {current_setpoint.toLocaleString("fr-FR")} / {max_setpoint.toLocaleString(
           "fr-FR",
