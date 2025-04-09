@@ -1,13 +1,11 @@
 <script lang="ts">
-  import type { StackSnapshot } from "$lib/message";
+  import type { Plant, StackSnapshot } from "$lib/message";
   import Battery from "../molecules/Battery.svelte";
   import GenericPlant from "../molecules/GenericPlant.svelte";
-  import { sortStack } from "$lib/sortStack";
   import NuclearPlant from "../molecules/NuclearPlant.svelte";
 
   let { plants, send }: { plants: StackSnapshot; send: (msg: string) => void } =
     $props();
-  let sortedPlants = $derived(sortStack(plants));
   const programSetpoint = (plant_id: string, setpoint: number) => {
     const parsed_setpoint = Number.isNaN(setpoint) ? 0 : setpoint;
     send(
@@ -39,6 +37,31 @@
     }
     return setpoint;
   });
+
+  let other_plants = $derived.by(() => {
+    const other_plants = new Map<string, Plant>();
+
+    let gas_plant = plants
+      .entries()
+      .find(([_, plant]) => plant.type === "GasPlant");
+    if (gas_plant !== undefined) {
+      other_plants.set(gas_plant[0], gas_plant[1]);
+    }
+    let nuke_plant = plants
+      .entries()
+      .find(([_, plant]) => plant.type === "Nuclear");
+    if (nuke_plant !== undefined) {
+      other_plants.set(nuke_plant[0], nuke_plant[1]);
+    }
+    let battery = plants
+      .entries()
+      .find(([_, plant]) => plant.type === "Battery");
+    if (battery !== undefined) {
+      other_plants.set(battery[0], battery[1]);
+    }
+
+    return other_plants;
+  });
 </script>
 
 <div class="flex flex-col gap-4 pt-4 items-start">
@@ -56,7 +79,7 @@
       })} MW
     </div>
   </div>
-  {#each sortedPlants.entries() as [id, plant] (id)}
+  {#each other_plants.entries() as [id, plant] (id)}
     {#if plant.type === "Battery"}
       <div class="pl-1 pr-2 mx-auto w-full">
         <Battery

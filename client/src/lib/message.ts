@@ -182,6 +182,7 @@ export type StackSnapshot = Omit<
   Extract<WSMessage, { type: "StackSnapshot" }>,
   "type"
 >["plants"];
+export type Plant = StackSnapshot extends Map<any, infer I> ? I : never;
 export type StackForecasts = Omit<
   Extract<WSMessage, { type: "StackForecasts" }>,
   "type"
