@@ -40,22 +40,18 @@
 
   let other_plants = $derived.by(() => {
     const other_plants = new Map<string, Plant>();
+    /// Cannot use plants.entries().find(/.../) on WebKit...
+    const _plants = [...plants.entries()];
 
-    let gas_plant = plants
-      .entries()
-      .find(([_, plant]) => plant.type === "GasPlant");
+    let gas_plant = _plants.find(([_, plant]) => plant.type === "GasPlant");
     if (gas_plant !== undefined) {
       other_plants.set(gas_plant[0], gas_plant[1]);
     }
-    let nuke_plant = plants
-      .entries()
-      .find(([_, plant]) => plant.type === "Nuclear");
+    let nuke_plant = _plants.find(([_, plant]) => plant.type === "Nuclear");
     if (nuke_plant !== undefined) {
       other_plants.set(nuke_plant[0], nuke_plant[1]);
     }
-    let battery = plants
-      .entries()
-      .find(([_, plant]) => plant.type === "Battery");
+    let battery = _plants.find(([_, plant]) => plant.type === "Battery");
     if (battery !== undefined) {
       other_plants.set(battery[0], battery[1]);
     }
