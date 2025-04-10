@@ -2,13 +2,14 @@ use std::{collections::HashMap, time::Duration};
 
 use axum::{Json, extract::State, http::StatusCode, response::IntoResponse};
 use serde::{Deserialize, Serialize};
+use tracing::warn;
 
 use crate::{
     constants::DEFAULT_PERIOD_DURATION_SECONDS,
-    forecast::{Forecast, ForecastValue},
+    forecast::Forecast,
     game::{
         GameActor, GameId, GameName,
-        delivery_period::{DeliveryPeriodId, DeliveryPeriodTimers},
+        delivery_period::DeliveryPeriodTimers,
         infra::GameActorConfig,
         scores::{GameRankings, TierLimits},
     },
@@ -45,11 +46,13 @@ struct BatteryConfig {
     max_charge: usize,
 }
 
-#[derive(Debug, Deserialize, Clone, Copy)]
+#[derive(Debug, Deserialize, Clone)]
 struct StackConfig {
     gas: GasPlantConfig,
     nuclear: NuclearPlantConfig,
     battery: BatteryConfig,
+    consumers_forecasts: Vec<Forecast>,
+    renewable_forecasts: Vec<Forecast>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -73,6 +76,19 @@ pub async fn create_game(
     let Ok(game_name) = GameName::new(request.game_name) else {
         return Err(StatusCode::BAD_REQUEST);
     };
+
+    if request.stack.consumers_forecasts.len() != request.number_of_periods
+        || request.stack.renewable_forecasts.len() != request.number_of_periods
+    {
+        warn!(
+            "Invalid number of forecasts, expected {}, got ({}, {}) for consumers and renewable",
+            request.number_of_periods,
+            request.stack.consumers_forecasts.len(),
+            request.stack.renewable_forecasts.len()
+        );
+        return Err(StatusCode::BAD_REQUEST);
+    }
+
     let mut state = state.write().await;
     let game_id = GameId::default();
     let cancellation_token = program_actors_termination(Duration::from_secs(3600 * 24));
@@ -144,7 +160,9 @@ fn stack_plants_builder(
             gas,
             nuclear,
             battery,
-        } = config;
+            consumers_forecasts,
+            renewable_forecasts,
+        } = &config;
         let mut map: StackPlants = HashMap::new();
         map.insert(
             PlantId::default(),
@@ -160,76 +178,11 @@ fn stack_plants_builder(
         );
         map.insert(
             PlantId::default(),
-            Box::new(RenewablePlant::new(
-                300,
-                vec![
-                    Forecast {
-                        period: DeliveryPeriodId::from(1),
-                        value: ForecastValue {
-                            value: 250,
-                            deviation: 50,
-                        },
-                    },
-                    Forecast {
-                        period: DeliveryPeriodId::from(2),
-                        value: ForecastValue {
-                            value: 150,
-                            deviation: 25,
-                        },
-                    },
-                    Forecast {
-                        period: DeliveryPeriodId::from(3),
-                        value: ForecastValue {
-                            value: 300,
-                            deviation: 50,
-                        },
-                    },
-                    Forecast {
-                        period: DeliveryPeriodId::from(4),
-                        value: ForecastValue {
-                            value: 100,
-                            deviation: 25,
-                        },
-                    },
-                ],
-            )),
+            Box::new(RenewablePlant::new(300, renewable_forecasts.clone())),
         );
         map.insert(
             PlantId::default(),
-            Box::new(Consumers::new(
-                1800,
-                56,
-                vec![
-                    Forecast {
-                        period: DeliveryPeriodId::from(1),
-                        value: ForecastValue {
-                            value: -1000,
-                            deviation: 100,
-                        },
-                    },
-                    Forecast {
-                        period: DeliveryPeriodId::from(2),
-                        value: ForecastValue {
-                            value: -1200,
-                            deviation: 50,
-                        },
-                    },
-                    Forecast {
-                        period: DeliveryPeriodId::from(3),
-                        value: ForecastValue {
-                            value: -600,
-                            deviation: 100,
-                        },
-                    },
-                    Forecast {
-                        period: DeliveryPeriodId::from(4),
-                        value: ForecastValue {
-                            value: -1800,
-                            deviation: 150,
-                        },
-                    },
-                ],
-            )),
+            Box::new(Consumers::new(1800, 56, consumers_forecasts.clone())),
         );
         map
     }

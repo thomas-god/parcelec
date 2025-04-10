@@ -81,6 +81,66 @@
         battery: {
           max_charge: Number(battery_charge),
         },
+        consumers_forecasts: [
+          {
+            period: 1,
+            value: {
+              value: -1000,
+              deviation: 100,
+            },
+          },
+          {
+            period: 2,
+            value: {
+              value: -1200,
+              deviation: 50,
+            },
+          },
+          {
+            period: 3,
+            value: {
+              value: -600,
+              deviation: 100,
+            },
+          },
+          {
+            period: 4,
+            value: {
+              value: -1800,
+              deviation: 150,
+            },
+          },
+        ],
+        renewable_forecasts: [
+          {
+            period: 1,
+            value: {
+              value: 250,
+              deviation: 50,
+            },
+          },
+          {
+            period: 2,
+            value: {
+              value: 150,
+              deviation: 25,
+            },
+          },
+          {
+            period: 3,
+            value: {
+              value: 300,
+              deviation: 50,
+            },
+          },
+          {
+            period: 4,
+            value: {
+              value: 100,
+              deviation: 25,
+            },
+          },
+        ],
       },
     };
 

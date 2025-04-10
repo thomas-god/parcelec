@@ -1,4 +1,4 @@
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 use crate::{
     constants, game::delivery_period::DeliveryPeriodId,
@@ -6,13 +6,13 @@ use crate::{
 };
 
 pub type Forecasts = Vec<Forecast>;
-#[derive(Debug, Clone, Copy, PartialEq, PartialOrd, Serialize)]
+#[derive(Debug, Clone, Copy, PartialEq, PartialOrd, Serialize, Deserialize)]
 pub struct Forecast {
     pub period: DeliveryPeriodId,
     pub value: ForecastValue,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, PartialOrd, Serialize)]
+#[derive(Debug, Clone, Copy, PartialEq, PartialOrd, Serialize, Deserialize)]
 pub struct ForecastValue {
     pub value: isize,
     pub deviation: usize,

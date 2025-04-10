@@ -2,7 +2,7 @@ use std::{collections::HashMap, time::Duration};
 
 use derive_more::{Display, From, Into};
 use futures_util::future::join_all;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use tokio::{
     join,
     sync::{mpsc, oneshot},
@@ -30,6 +30,7 @@ use super::{GameMessage, scores::PlayerScore};
     Copy,
     Default,
     Serialize,
+    Deserialize,
     Display,
     From,
     Into,
