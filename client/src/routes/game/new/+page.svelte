@@ -68,17 +68,18 @@
     const requestBody = {
       game_name: game_name.trim(),
       period_duration_seconds: Number(period_duration_seconds),
+      number_of_periods: 4,
       stack: {
         gas: {
-          max_power: gas_installed_capacity,
-          cost: gas_cost,
+          max_power: Number(gas_installed_capacity),
+          cost: Number(gas_cost),
         },
         nuclear: {
-          max_power: nuclear_installed_capacity,
-          cost: nuclear_cost,
+          max_power: Number(nuclear_installed_capacity),
+          cost: Number(nuclear_cost),
         },
         battery: {
-          max_charge: 300,
+          max_charge: Number(battery_charge),
         },
       },
     };

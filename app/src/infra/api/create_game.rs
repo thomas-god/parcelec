@@ -56,6 +56,7 @@ struct StackConfig {
 pub struct NewGameRequest {
     game_name: String,
     period_duration_seconds: Option<u64>,
+    number_of_periods: usize,
     stack: StackConfig,
 }
 
@@ -67,9 +68,9 @@ struct NewGameSuccess {
 
 pub async fn create_game(
     State(state): State<ApiState>,
-    Json(input): Json<NewGameRequest>,
+    Json(request): Json<NewGameRequest>,
 ) -> Result<impl IntoResponse, StatusCode> {
-    let Ok(game_name) = GameName::new(input.game_name) else {
+    let Ok(game_name) = GameName::new(request.game_name) else {
         return Err(StatusCode::BAD_REQUEST);
     };
     let mut state = state.write().await;
@@ -87,7 +88,7 @@ pub async fn create_game(
         connections_service.clone(),
         cancellation_token.clone(),
     );
-    let period_duration = input
+    let period_duration = request
         .period_duration_seconds
         .unwrap_or(DEFAULT_PERIOD_DURATION_SECONDS);
 
@@ -98,7 +99,7 @@ pub async fn create_game(
             market: Duration::from_secs(period_duration),
             stacks: Duration::from_secs(period_duration),
         }),
-        number_of_delivery_periods: 4,
+        number_of_delivery_periods: request.number_of_periods,
         ranking_calculator: GameRankings {
             tier_limits: Some(TierLimits {
                 gold: 80_000,
@@ -106,7 +107,7 @@ pub async fn create_game(
                 bronze: 25_000,
             }),
         },
-        build_stack: stack_plants_builder(input.stack),
+        build_stack: stack_plants_builder(request.stack),
     };
     let game_context = GameActor::start(
         game_config,
