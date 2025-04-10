@@ -70,6 +70,8 @@ pub struct StackContext<PS: Stack> {
     pub state_rx: watch::Receiver<StackState>,
 }
 
+pub type StackPlants = HashMap<PlantId, Box<dyn PowerPlant + Send + Sync>>;
+
 /// A stack is the collection of power plants owned by a given player
 pub struct StackActor<PC: PlayerConnections> {
     game: GameId,
@@ -77,7 +79,7 @@ pub struct StackActor<PC: PlayerConnections> {
     state_sender: watch::Sender<StackState>,
     delivery_period: DeliveryPeriodId,
     player: PlayerId,
-    stack: HashMap<PlantId, Box<dyn PowerPlant + Send + Sync>>,
+    plants: StackPlants,
     tx: Sender<StackMessage>,
     rx: Receiver<StackMessage>,
     players_connections: PC,
@@ -89,6 +91,7 @@ impl<PC: PlayerConnections> StackActor<PC> {
     pub fn new(
         game: GameId,
         player: PlayerId,
+        plants: StackPlants,
         initial_state: StackState,
         delivery_period: DeliveryPeriodId,
         players_connections: PC,
@@ -103,7 +106,7 @@ impl<PC: PlayerConnections> StackActor<PC> {
             state_sender: state_tx,
             delivery_period,
             player,
-            stack: default_stack(),
+            plants,
             players_connections,
             past_outputs: HashMap::new(),
             tx,
@@ -121,6 +124,7 @@ impl<PC: PlayerConnections> StackActor<PC> {
         let mut stack = StackActor::new(
             game.clone(),
             player.clone(),
+            default_stack_plants(),
             StackState::Closed,
             DeliveryPeriodId::default(),
             players_connections,
@@ -230,14 +234,14 @@ impl<PC: PlayerConnections> StackActor<PC> {
     }
 
     fn stack_snapshot(&self) -> HashMap<PlantId, PowerPlantPublicRepr> {
-        self.stack
+        self.plants
             .iter()
             .map(|(plant_id, plant)| (plant_id.to_owned(), plant.current_state()))
             .collect()
     }
 
     fn stack_forecasts(&self) -> HashMap<PlantId, Option<Vec<Forecast>>> {
-        self.stack
+        self.plants
             .iter()
             .map(|(plant_id, plant)| (plant_id.to_owned(), plant.get_forecast()))
             .collect()
@@ -253,7 +257,7 @@ impl<PC: PlayerConnections> StackActor<PC> {
 
         // Collect outputs from plants
         let plant_outputs: HashMap<PlantId, PlantOutput> = self
-            .stack
+            .plants
             .iter_mut()
             .map(|(plant_id, plant)| (plant_id.clone(), plant.dispatch()))
             .collect();
@@ -286,7 +290,7 @@ impl<PC: PlayerConnections> StackActor<PC> {
     }
 
     async fn program_plant_setpoint(&mut self, plant_id: PlantId, setpoint: isize) {
-        if let Some(plant) = self.stack.get_mut(&plant_id) {
+        if let Some(plant) = self.plants.get_mut(&plant_id) {
             let PlantOutput { cost, .. } = plant.program_setpoint(setpoint);
             tracing::info!("Programmed setpoint {setpoint} for plant {plant_id} (cost: {cost}");
             self.send_stack_snapshot().await;
@@ -294,7 +298,7 @@ impl<PC: PlayerConnections> StackActor<PC> {
     }
 }
 
-fn default_stack() -> HashMap<PlantId, Box<dyn PowerPlant + Send + Sync>> {
+pub fn default_stack_plants() -> HashMap<PlantId, Box<dyn PowerPlant + Send + Sync>> {
     let mut map: HashMap<PlantId, Box<dyn PowerPlant + Send + Sync>> = HashMap::new();
     map.insert(PlantId::default(), Box::new(Battery::new(300, 0)));
     map.insert(PlantId::default(), Box::new(GasPlant::new(80, 500)));
@@ -391,7 +395,7 @@ mod tests_stack {
         player::{PlayerConnections, PlayerId, PlayerMessage},
     };
 
-    use super::{StackActor, StackMessage, StackState};
+    use super::{StackActor, StackMessage, StackState, default_stack_plants};
 
     #[derive(Debug, Clone)]
     struct MockedPlayerConnections {
@@ -426,6 +430,7 @@ mod tests_stack {
         let mut stack = StackActor::new(
             game_id,
             player_id.clone(),
+            default_stack_plants(),
             StackState::Open,
             DeliveryPeriodId::from(0),
             connections,
@@ -584,6 +589,7 @@ mod tests_stack {
         let mut stack = StackActor::new(
             game_id,
             player_id.clone(),
+            default_stack_plants(),
             StackState::Open,
             DeliveryPeriodId::from(0),
             connections,
@@ -624,6 +630,7 @@ mod tests_stack {
         let mut stack = StackActor::new(
             game_id,
             PlayerId::default(),
+            default_stack_plants(),
             StackState::Open,
             DeliveryPeriodId::from(1),
             connections,
@@ -668,6 +675,7 @@ mod tests_stack {
         let mut stack = StackActor::new(
             game_id,
             PlayerId::default(),
+            default_stack_plants(),
             StackState::Closed,
             DeliveryPeriodId::from(1),
             connections,
@@ -704,6 +712,7 @@ mod tests_stack {
         let mut stack = StackActor::new(
             game_id,
             PlayerId::default(),
+            default_stack_plants(),
             StackState::Closed,
             DeliveryPeriodId::from(1),
             connections,
@@ -815,6 +824,7 @@ mod tests_stack {
         let mut market = StackActor::new(
             GameId::default(),
             PlayerId::default(),
+            default_stack_plants(),
             StackState::Open,
             DeliveryPeriodId::from(0),
             connections,

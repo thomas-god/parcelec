@@ -7,13 +7,16 @@ use tokio::sync::{
 };
 use tokio_util::sync::CancellationToken;
 
-use crate::game::{
-    GameContext, GameId, GameMessage, GameName, GameState, GetPreviousScoresResult, Player,
-    RegisterPlayerResponse,
-    delivery_period::{
-        DeliveryPeriodId, DeliveryPeriodResults, DeliveryPeriodTimers, start_delivery_period,
+use crate::{
+    game::{
+        GameContext, GameId, GameMessage, GameName, GameState, GetPreviousScoresResult, Player,
+        RegisterPlayerResponse,
+        delivery_period::{
+            DeliveryPeriodId, DeliveryPeriodResults, DeliveryPeriodTimers, start_delivery_period,
+        },
+        scores::{GameRankings, PlayerResult, PlayerScore},
     },
-    scores::{GameRankings, PlayerResult, PlayerScore},
+    plants::infra::actor::StackPlants,
 };
 use crate::{
     market::{Market, MarketContext},
@@ -35,6 +38,7 @@ pub struct GameActor<MS: Market, PC: PlayerConnections> {
     players_connections: PC,
     market_context: MarketContext<MS>,
     stacks_contexts: HashMap<PlayerId, StackContext<StackService>>,
+    build_stack: fn() -> StackPlants,
     rx: Receiver<GameMessage>,
     tx: Sender<GameMessage>,
     current_delivery_period: DeliveryPeriodId,
@@ -51,6 +55,7 @@ pub struct GameActorConfig {
     pub number_of_delivery_periods: usize,
     pub ranking_calculator: GameRankings,
     pub delivery_period_timers: Option<DeliveryPeriodTimers>,
+    pub build_stack: fn() -> StackPlants,
 }
 
 impl<MS: Market, PC: PlayerConnections> GameActor<MS, PC> {
@@ -73,6 +78,7 @@ impl<MS: Market, PC: PlayerConnections> GameActor<MS, PC> {
             players_connections,
             players_scores: HashMap::new(),
             stacks_contexts: HashMap::new(),
+            build_stack: config.build_stack,
             rx,
             tx,
             current_delivery_period: DeliveryPeriodId::default(),
@@ -264,6 +270,7 @@ impl<MS: Market, PC: PlayerConnections> GameActor<MS, PC> {
         let mut player_stack = StackActor::new(
             self.game_id.clone(),
             player_id.clone(),
+            (self.build_stack)(),
             StackState::Closed,
             self.current_delivery_period,
             self.players_connections.clone(),
@@ -396,7 +403,10 @@ fn map_rankings_to_player_name(
 mod test_utils {
     use tokio::sync::mpsc;
 
-    use crate::market::{MarketState, OBS, order_book::TradeLeg};
+    use crate::{
+        market::{MarketState, OBS, order_book::TradeLeg},
+        plants::infra::actor::default_stack_plants,
+    };
 
     use super::*;
 
@@ -472,6 +482,7 @@ mod test_utils {
             name: Some(GameName::default()),
             number_of_delivery_periods: 4,
             ranking_calculator: GameRankings { tier_limits: None },
+            build_stack: default_stack_plants,
         }
     }
 
@@ -552,7 +563,7 @@ mod tests {
             scores::GameRankings,
         },
         market::{MarketContext, MarketState},
-        plants::infra::StackState,
+        plants::infra::{StackState, actor::default_stack_plants},
         player::{PlayerId, PlayerMessage, PlayerName},
     };
 
@@ -1118,6 +1129,7 @@ mod tests {
             players_connections: connections,
             market_context,
             stacks_contexts: HashMap::new(),
+            build_stack: default_stack_plants,
             tx,
             rx,
             current_delivery_period: DeliveryPeriodId::default(),

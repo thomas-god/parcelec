@@ -13,6 +13,7 @@ use crate::{
     },
     infra::api::state::cleanup_state,
     market::{MarketActor, bots::start_bots},
+    plants::infra::actor::default_stack_plants,
     player::infra::PlayerConnectionsService,
     utils::program_actors_termination,
 };
@@ -72,6 +73,7 @@ pub async fn create_game(
                 bronze: 25_000,
             }),
         },
+        build_stack: default_stack_plants,
     };
     let game_context = GameActor::start(
         game_config,
