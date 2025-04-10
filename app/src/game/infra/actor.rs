@@ -28,7 +28,11 @@ use crate::{
 /// - new player registration,
 /// - passing game context to new player connection (market and player's stack tx),
 /// - delivery period lifecycle
-pub struct GameActor<MS: Market, PC: PlayerConnections> {
+pub struct GameActor<
+    MS: Market,
+    PC: PlayerConnections,
+    F: Fn() -> StackPlants + Clone + Send + Sync + 'static,
+> {
     game_id: GameId,
     name: GameName,
     state: GameState,
@@ -38,7 +42,7 @@ pub struct GameActor<MS: Market, PC: PlayerConnections> {
     players_connections: PC,
     market_context: MarketContext<MS>,
     stacks_contexts: HashMap<PlayerId, StackContext<StackService>>,
-    build_stack: fn() -> StackPlants,
+    build_stack: F,
     rx: Receiver<GameMessage>,
     tx: Sender<GameMessage>,
     current_delivery_period: DeliveryPeriodId,
@@ -49,18 +53,23 @@ pub struct GameActor<MS: Market, PC: PlayerConnections> {
     cancellation_token: CancellationToken,
 }
 
-pub struct GameActorConfig {
+pub struct GameActorConfig<F>
+where
+    F: Fn() -> StackPlants + Clone + Send + Sync + 'static,
+{
     pub id: GameId,
     pub name: Option<GameName>,
     pub number_of_delivery_periods: usize,
     pub ranking_calculator: GameRankings,
     pub delivery_period_timers: Option<DeliveryPeriodTimers>,
-    pub build_stack: fn() -> StackPlants,
+    pub build_stack: F,
 }
 
-impl<MS: Market, PC: PlayerConnections> GameActor<MS, PC> {
+impl<MS: Market, PC: PlayerConnections, F: Fn() -> StackPlants + Clone + Send + Sync + 'static>
+    GameActor<MS, PC, F>
+{
     pub fn start(
-        config: GameActorConfig,
+        config: GameActorConfig<F>,
         players_connections: PC,
         market_context: MarketContext<MS>,
         cancelation_token: CancellationToken,
@@ -405,7 +414,7 @@ mod test_utils {
 
     use crate::{
         market::{MarketState, OBS, order_book::TradeLeg},
-        plants::infra::actor::default_stack_plants,
+        plants::infra::actor::default_stack_plants_builder,
     };
 
     use super::*;
@@ -475,14 +484,15 @@ mod test_utils {
         }
     }
 
-    pub fn default_game_config() -> GameActorConfig {
+    pub fn default_game_config() -> GameActorConfig<impl Fn() -> StackPlants + Clone + Send + Sync>
+    {
         GameActorConfig {
             delivery_period_timers: None,
             id: GameId::default(),
             name: Some(GameName::default()),
             number_of_delivery_periods: 4,
             ranking_calculator: GameRankings { tier_limits: None },
-            build_stack: default_stack_plants,
+            build_stack: default_stack_plants_builder(),
         }
     }
 
@@ -563,7 +573,7 @@ mod tests {
             scores::GameRankings,
         },
         market::{MarketContext, MarketState},
-        plants::infra::{StackState, actor::default_stack_plants},
+        plants::infra::{StackState, actor::default_stack_plants_builder},
         player::{PlayerId, PlayerMessage, PlayerName},
     };
 
@@ -1129,7 +1139,7 @@ mod tests {
             players_connections: connections,
             market_context,
             stacks_contexts: HashMap::new(),
-            build_stack: default_stack_plants,
+            build_stack: default_stack_plants_builder(),
             tx,
             rx,
             current_delivery_period: DeliveryPeriodId::default(),

@@ -1,29 +1,62 @@
-use std::time::Duration;
+use std::{collections::HashMap, time::Duration};
 
 use axum::{Json, extract::State, http::StatusCode, response::IntoResponse};
 use serde::{Deserialize, Serialize};
 
 use crate::{
     constants::DEFAULT_PERIOD_DURATION_SECONDS,
+    forecast::{Forecast, ForecastValue},
     game::{
         GameActor, GameId, GameName,
-        delivery_period::DeliveryPeriodTimers,
+        delivery_period::{DeliveryPeriodId, DeliveryPeriodTimers},
         infra::GameActorConfig,
         scores::{GameRankings, TierLimits},
     },
     infra::api::state::cleanup_state,
     market::{MarketActor, bots::start_bots},
-    plants::infra::actor::default_stack_plants,
+    plants::{
+        PlantId,
+        infra::actor::StackPlants,
+        technologies::{
+            battery::Battery, consumers::Consumers, gas_plant::GasPlant, nuclear::NuclearPlant,
+            renewable::RenewablePlant,
+        },
+    },
     player::infra::PlayerConnectionsService,
     utils::program_actors_termination,
 };
 
 use super::ApiState;
 
+#[derive(Debug, Deserialize, Clone, Copy)]
+struct GasPlantConfig {
+    max_power: isize,
+    cost: isize,
+}
+
+#[derive(Debug, Deserialize, Clone, Copy)]
+struct NuclearPlantConfig {
+    max_power: isize,
+    cost: isize,
+}
+
+#[derive(Debug, Deserialize, Clone, Copy)]
+struct BatteryConfig {
+    max_charge: usize,
+}
+
+#[derive(Debug, Deserialize, Clone, Copy)]
+struct StackConfig {
+    gas: GasPlantConfig,
+    nuclear: NuclearPlantConfig,
+    battery: BatteryConfig,
+}
+
 #[derive(Debug, Deserialize)]
 pub struct NewGameRequest {
     game_name: String,
     period_duration_seconds: Option<u64>,
+    stack: StackConfig,
 }
 
 #[derive(Debug, Serialize)]
@@ -73,7 +106,7 @@ pub async fn create_game(
                 bronze: 25_000,
             }),
         },
-        build_stack: default_stack_plants,
+        build_stack: stack_plants_builder(input.stack),
     };
     let game_context = GameActor::start(
         game_config,
@@ -100,4 +133,103 @@ pub async fn create_game(
         StatusCode::CREATED,
         Json(NewGameSuccess { game_id, game_name }),
     ))
+}
+
+fn stack_plants_builder(
+    config: StackConfig,
+) -> impl Fn() -> StackPlants + Clone + Send + Sync + 'static {
+    move || {
+        let StackConfig {
+            gas,
+            nuclear,
+            battery,
+        } = config;
+        let mut map: StackPlants = HashMap::new();
+        map.insert(
+            PlantId::default(),
+            Box::new(Battery::new(battery.max_charge, 0)),
+        );
+        map.insert(
+            PlantId::default(),
+            Box::new(GasPlant::new(gas.cost, gas.max_power)),
+        );
+        map.insert(
+            PlantId::default(),
+            Box::new(NuclearPlant::new(nuclear.max_power, nuclear.cost)),
+        );
+        map.insert(
+            PlantId::default(),
+            Box::new(RenewablePlant::new(
+                300,
+                vec![
+                    Forecast {
+                        period: DeliveryPeriodId::from(1),
+                        value: ForecastValue {
+                            value: 250,
+                            deviation: 50,
+                        },
+                    },
+                    Forecast {
+                        period: DeliveryPeriodId::from(2),
+                        value: ForecastValue {
+                            value: 150,
+                            deviation: 25,
+                        },
+                    },
+                    Forecast {
+                        period: DeliveryPeriodId::from(3),
+                        value: ForecastValue {
+                            value: 300,
+                            deviation: 50,
+                        },
+                    },
+                    Forecast {
+                        period: DeliveryPeriodId::from(4),
+                        value: ForecastValue {
+                            value: 100,
+                            deviation: 25,
+                        },
+                    },
+                ],
+            )),
+        );
+        map.insert(
+            PlantId::default(),
+            Box::new(Consumers::new(
+                1800,
+                56,
+                vec![
+                    Forecast {
+                        period: DeliveryPeriodId::from(1),
+                        value: ForecastValue {
+                            value: -1000,
+                            deviation: 100,
+                        },
+                    },
+                    Forecast {
+                        period: DeliveryPeriodId::from(2),
+                        value: ForecastValue {
+                            value: -1200,
+                            deviation: 50,
+                        },
+                    },
+                    Forecast {
+                        period: DeliveryPeriodId::from(3),
+                        value: ForecastValue {
+                            value: -600,
+                            deviation: 100,
+                        },
+                    },
+                    Forecast {
+                        period: DeliveryPeriodId::from(4),
+                        value: ForecastValue {
+                            value: -1800,
+                            deviation: 150,
+                        },
+                    },
+                ],
+            )),
+        );
+        map
+    }
 }

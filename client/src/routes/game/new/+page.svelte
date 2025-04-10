@@ -33,7 +33,20 @@
   const createGame = async () => {
     const requestBody = {
       game_name: game_name.trim(),
-      period_duration_seconds: Number(period_duration_seconds), // Convert to number for API
+      period_duration_seconds: Number(period_duration_seconds),
+      stack: {
+        gas: {
+          max_power: 500,
+          cost: 80,
+        },
+        nuclear: {
+          max_power: 1000,
+          cost: 35,
+        },
+        battery: {
+          max_charge: 300,
+        },
+      },
     };
 
     let rest = await fetch(`${PUBLIC_APP_URL}/game`, {

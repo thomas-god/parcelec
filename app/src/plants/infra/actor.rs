@@ -121,10 +121,11 @@ impl<PC: PlayerConnections> StackActor<PC> {
         players_connections: PC,
         cancellation_token: CancellationToken,
     ) -> StackContext<StackService> {
+        let plants_builder = default_stack_plants_builder();
         let mut stack = StackActor::new(
             game.clone(),
             player.clone(),
-            default_stack_plants(),
+            plants_builder(),
             StackState::Closed,
             DeliveryPeriodId::default(),
             players_connections,
@@ -298,85 +299,87 @@ impl<PC: PlayerConnections> StackActor<PC> {
     }
 }
 
-pub fn default_stack_plants() -> HashMap<PlantId, Box<dyn PowerPlant + Send + Sync>> {
-    let mut map: HashMap<PlantId, Box<dyn PowerPlant + Send + Sync>> = HashMap::new();
-    map.insert(PlantId::default(), Box::new(Battery::new(300, 0)));
-    map.insert(PlantId::default(), Box::new(GasPlant::new(80, 500)));
-    map.insert(
-        PlantId::default(),
-        Box::new(RenewablePlant::new(
-            300,
-            vec![
-                Forecast {
-                    period: DeliveryPeriodId::from(1),
-                    value: ForecastValue {
-                        value: 250,
-                        deviation: 50,
+pub fn default_stack_plants_builder() -> impl Fn() -> StackPlants + Clone + Send + Sync + 'static {
+    move || {
+        let mut map: HashMap<PlantId, Box<dyn PowerPlant + Send + Sync>> = HashMap::new();
+        map.insert(PlantId::default(), Box::new(Battery::new(300, 0)));
+        map.insert(PlantId::default(), Box::new(GasPlant::new(80, 500)));
+        map.insert(
+            PlantId::default(),
+            Box::new(RenewablePlant::new(
+                300,
+                vec![
+                    Forecast {
+                        period: DeliveryPeriodId::from(1),
+                        value: ForecastValue {
+                            value: 250,
+                            deviation: 50,
+                        },
                     },
-                },
-                Forecast {
-                    period: DeliveryPeriodId::from(2),
-                    value: ForecastValue {
-                        value: 150,
-                        deviation: 25,
+                    Forecast {
+                        period: DeliveryPeriodId::from(2),
+                        value: ForecastValue {
+                            value: 150,
+                            deviation: 25,
+                        },
                     },
-                },
-                Forecast {
-                    period: DeliveryPeriodId::from(3),
-                    value: ForecastValue {
-                        value: 300,
-                        deviation: 50,
+                    Forecast {
+                        period: DeliveryPeriodId::from(3),
+                        value: ForecastValue {
+                            value: 300,
+                            deviation: 50,
+                        },
                     },
-                },
-                Forecast {
-                    period: DeliveryPeriodId::from(4),
-                    value: ForecastValue {
-                        value: 100,
-                        deviation: 25,
+                    Forecast {
+                        period: DeliveryPeriodId::from(4),
+                        value: ForecastValue {
+                            value: 100,
+                            deviation: 25,
+                        },
                     },
-                },
-            ],
-        )),
-    );
-    map.insert(
-        PlantId::default(),
-        Box::new(Consumers::new(
-            1800,
-            56,
-            vec![
-                Forecast {
-                    period: DeliveryPeriodId::from(1),
-                    value: ForecastValue {
-                        value: -1000,
-                        deviation: 100,
+                ],
+            )),
+        );
+        map.insert(
+            PlantId::default(),
+            Box::new(Consumers::new(
+                1800,
+                56,
+                vec![
+                    Forecast {
+                        period: DeliveryPeriodId::from(1),
+                        value: ForecastValue {
+                            value: -1000,
+                            deviation: 100,
+                        },
                     },
-                },
-                Forecast {
-                    period: DeliveryPeriodId::from(2),
-                    value: ForecastValue {
-                        value: -1200,
-                        deviation: 50,
+                    Forecast {
+                        period: DeliveryPeriodId::from(2),
+                        value: ForecastValue {
+                            value: -1200,
+                            deviation: 50,
+                        },
                     },
-                },
-                Forecast {
-                    period: DeliveryPeriodId::from(3),
-                    value: ForecastValue {
-                        value: -600,
-                        deviation: 100,
+                    Forecast {
+                        period: DeliveryPeriodId::from(3),
+                        value: ForecastValue {
+                            value: -600,
+                            deviation: 100,
+                        },
                     },
-                },
-                Forecast {
-                    period: DeliveryPeriodId::from(4),
-                    value: ForecastValue {
-                        value: -1800,
-                        deviation: 150,
+                    Forecast {
+                        period: DeliveryPeriodId::from(4),
+                        value: ForecastValue {
+                            value: -1800,
+                            deviation: 150,
+                        },
                     },
-                },
-            ],
-        )),
-    );
-    map.insert(PlantId::default(), Box::new(NuclearPlant::new(1000, 35)));
-    map
+                ],
+            )),
+        );
+        map.insert(PlantId::default(), Box::new(NuclearPlant::new(1000, 35)));
+        map
+    }
 }
 
 #[cfg(test)]
@@ -395,7 +398,7 @@ mod tests_stack {
         player::{PlayerConnections, PlayerId, PlayerMessage},
     };
 
-    use super::{StackActor, StackMessage, StackState, default_stack_plants};
+    use super::{StackActor, StackMessage, StackState, default_stack_plants_builder};
 
     #[derive(Debug, Clone)]
     struct MockedPlayerConnections {
@@ -430,7 +433,7 @@ mod tests_stack {
         let mut stack = StackActor::new(
             game_id,
             player_id.clone(),
-            default_stack_plants(),
+            default_stack_plants_builder()(),
             StackState::Open,
             DeliveryPeriodId::from(0),
             connections,
@@ -589,7 +592,7 @@ mod tests_stack {
         let mut stack = StackActor::new(
             game_id,
             player_id.clone(),
-            default_stack_plants(),
+            default_stack_plants_builder()(),
             StackState::Open,
             DeliveryPeriodId::from(0),
             connections,
@@ -630,7 +633,7 @@ mod tests_stack {
         let mut stack = StackActor::new(
             game_id,
             PlayerId::default(),
-            default_stack_plants(),
+            default_stack_plants_builder()(),
             StackState::Open,
             DeliveryPeriodId::from(1),
             connections,
@@ -675,7 +678,7 @@ mod tests_stack {
         let mut stack = StackActor::new(
             game_id,
             PlayerId::default(),
-            default_stack_plants(),
+            default_stack_plants_builder()(),
             StackState::Closed,
             DeliveryPeriodId::from(1),
             connections,
@@ -712,7 +715,7 @@ mod tests_stack {
         let mut stack = StackActor::new(
             game_id,
             PlayerId::default(),
-            default_stack_plants(),
+            default_stack_plants_builder()(),
             StackState::Closed,
             DeliveryPeriodId::from(1),
             connections,
@@ -824,7 +827,7 @@ mod tests_stack {
         let mut market = StackActor::new(
             GameId::default(),
             PlayerId::default(),
-            default_stack_plants(),
+            default_stack_plants_builder()(),
             StackState::Open,
             DeliveryPeriodId::from(0),
             connections,
