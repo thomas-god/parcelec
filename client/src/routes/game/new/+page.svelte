@@ -1,9 +1,13 @@
 <script lang="ts">
   import { goto } from "$app/navigation";
   import { PUBLIC_APP_URL } from "$env/static/public";
+  import { PLANT_ICONS, PLANT_NAMES } from "$lib/label";
+  import NumericInput from "../../../components/atoms/NumericInput.svelte";
 
   let game_name = $state("");
   let period_duration_seconds = $state("120");
+  let gas_installed_capacity = $state("500");
+  let gas_cost = $state("80");
   let apiError = $state("");
 
   let isGameNameValid = $derived(game_name && game_name.trim() !== "");
@@ -14,20 +18,20 @@
       Number(period_duration_seconds) >= 30,
   );
 
-  let isFormValid = $derived(isGameNameValid && isPeriodDurationValid);
+  let areGasPlantOptionsValid = $derived.by(() => {
+    const max_power_valid =
+      gas_installed_capacity !== "" &&
+      !isNaN(Number(gas_installed_capacity)) &&
+      Number(gas_installed_capacity) > 0;
 
-  let gameNameError = $derived(
-    !isGameNameValid && game_name !== ""
-      ? "Le nom de la partie est requis"
-      : "",
-  );
+    const cost_valid =
+      gas_cost !== "" && !isNaN(Number(gas_cost)) && Number(gas_cost) > 0;
 
-  let periodDurationError = $derived(
-    period_duration_seconds !== "" &&
-      !isNaN(Number(period_duration_seconds)) &&
-      Number(period_duration_seconds) < 30
-      ? "La durée doit être d'au moins 30 secondes"
-      : "",
+    return max_power_valid && gas_cost;
+  });
+
+  let isFormValid = $derived(
+    isGameNameValid && isPeriodDurationValid && areGasPlantOptionsValid,
   );
 
   const createGame = async () => {
@@ -36,8 +40,8 @@
       period_duration_seconds: Number(period_duration_seconds),
       stack: {
         gas: {
-          max_power: 500,
-          cost: 80,
+          max_power: gas_installed_capacity,
+          cost: gas_cost,
         },
         nuclear: {
           max_power: 1000,
@@ -77,21 +81,40 @@
           ><div class="self-start text-sm">Nom de la partie (requis)</div>
           <input
             type="text"
-            class="input text-base"
-            class:input-error={gameNameError}
+            class="input validator text-base"
+            required
             bind:value={game_name}
-            onkeypress={(key) => {
-              if (key.code === "Enter") {
-                createGame();
-              }
-            }}
           />
-          {#if gameNameError}
-            <div class="text-error text-xs mt-1">{gameNameError}</div>
-          {/if}
         </label>
 
-        <label class="fieldset-label flex-col mt-4">
+        <div class="divider divider-start">Options</div>
+
+        <NumericInput
+          title="Durée des périodes (en secondes)"
+          error_message="La durée doit être d'au moins 30 secondes"
+          min_value="30"
+          bind:value={period_duration_seconds}
+        />
+
+        <!-- GAS PLANT OPTIONS -->
+        <div class="divider divider-start">
+          {PLANT_ICONS["GasPlant"]}
+          {PLANT_NAMES["GasPlant"]}
+        </div>
+        <NumericInput
+          title="Puissance installée (en MW)"
+          error_message="La puissance doit être > 0"
+          min_value="1"
+          bind:value={gas_installed_capacity}
+        />
+        <NumericInput
+          title="Coût de production (en €/MWh)"
+          error_message="Le coût doit être >= 0"
+          min_value="0"
+          bind:value={gas_cost}
+        />
+
+        <!-- <label class="fieldset-label flex-col">
           <div class="flex justify-between items-center w-full">
             <div class="self-start text-sm">
               Durée des périodes (en secondes)
@@ -100,15 +123,14 @@
           <input
             type="number"
             min="30"
-            class="input text-base"
-            class:input-error={periodDurationError}
+            class="input validator text-base"
             bind:value={period_duration_seconds}
-            placeholder="120"
+            required
           />
-          {#if periodDurationError}
-            <div class="text-error text-xs mt-1">{periodDurationError}</div>
-          {/if}
-        </label>
+          <p class="validator-hint self-start mt-0">
+            La durée doit être d'au moins 30 secondes
+          </p>
+        </label> -->
 
         {#if apiError}
           <div class="alert alert-error mt-4 py-2">
