@@ -9,6 +9,7 @@
   let period_duration_seconds = $state("120");
   let clients_pmax = $state("1800");
   let clients_pmin = $state("300");
+  let clients_revenues = $state("56");
   let renewable_pmax = $state("300");
   let gas_installed_capacity = $state("500");
   let gas_cost = $state("80");
@@ -79,6 +80,11 @@
       Number(clients_pmin) > 0 &&
       Number(clients_pmin) <= Number(clients_pmax);
 
+    const revenues_valid =
+      clients_revenues !== "" &&
+      !isNaN(Number(clients_revenues)) &&
+      Number(clients_revenues) > 0;
+
     return max_power_valid && min_power_valid;
   });
 
@@ -120,7 +126,10 @@
         battery: {
           max_charge: Number(battery_charge),
         },
-        consumers_forecasts,
+        consumers: {
+          revenues: 56,
+          forecasts: consumers_forecasts,
+        },
         renewable_forecasts,
       },
     };
@@ -213,12 +222,12 @@
                   La puissance doit être > 0 et inférieure à Pmax
                 </p>
               </label>
-              <!-- <NumericInput
+              <NumericInput
                 title="Revenus (en €/MWh)"
                 error_message="Le revenue doit être >= 0"
                 min_value="0"
-                bind:value={}
-              /> -->
+                bind:value={clients_revenues}
+              />
             </div>
           </div>
 

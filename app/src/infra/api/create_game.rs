@@ -41,6 +41,12 @@ struct NuclearPlantConfig {
     cost: isize,
 }
 
+#[derive(Debug, Deserialize, Clone)]
+struct ConsumersConfig {
+    revenues: isize,
+    forecasts: Vec<Forecast>,
+}
+
 #[derive(Debug, Deserialize, Clone, Copy)]
 struct BatteryConfig {
     max_charge: usize,
@@ -51,7 +57,7 @@ struct StackConfig {
     gas: GasPlantConfig,
     nuclear: NuclearPlantConfig,
     battery: BatteryConfig,
-    consumers_forecasts: Vec<Forecast>,
+    consumers: ConsumersConfig,
     renewable_forecasts: Vec<Forecast>,
 }
 
@@ -77,13 +83,13 @@ pub async fn create_game(
         return Err(StatusCode::BAD_REQUEST);
     };
 
-    if request.stack.consumers_forecasts.len() != request.number_of_periods
+    if request.stack.consumers.forecasts.len() != request.number_of_periods
         || request.stack.renewable_forecasts.len() != request.number_of_periods
     {
         warn!(
             "Invalid number of forecasts, expected {}, got ({}, {}) for consumers and renewable",
             request.number_of_periods,
-            request.stack.consumers_forecasts.len(),
+            request.stack.consumers.forecasts.len(),
             request.stack.renewable_forecasts.len()
         );
         return Err(StatusCode::BAD_REQUEST);
@@ -160,7 +166,7 @@ fn stack_plants_builder(
             gas,
             nuclear,
             battery,
-            consumers_forecasts,
+            consumers,
             renewable_forecasts,
         } = &config;
         let mut map: StackPlants = HashMap::new();
@@ -182,7 +188,10 @@ fn stack_plants_builder(
         );
         map.insert(
             PlantId::default(),
-            Box::new(Consumers::new(56, consumers_forecasts.clone())),
+            Box::new(Consumers::new(
+                consumers.revenues,
+                consumers.forecasts.clone(),
+            )),
         );
         map
     }
