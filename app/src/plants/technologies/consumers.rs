@@ -10,11 +10,9 @@ use super::variable::VariablePlant;
 
 #[derive(Debug, Serialize, Clone, Copy)]
 pub struct ConsumersPublicRepr {
-    pub max_power: isize,
     pub output: PlantOutput,
 }
 pub struct Consumers {
-    max_power: isize,
     price_per_mwh: isize,
     state: VariablePlant,
     period: DeliveryPeriodId,
@@ -23,7 +21,7 @@ pub struct Consumers {
 }
 
 impl Consumers {
-    pub fn new(max_power: isize, price_per_mwh: isize, forecasts: Vec<Forecast>) -> Consumers {
+    pub fn new(price_per_mwh: isize, forecasts: Vec<Forecast>) -> Consumers {
         let period = DeliveryPeriodId::from(1);
         let state = VariablePlant::new(forecasts);
         let current_setpoint = state.get_setpoint(period).unwrap_or(0);
@@ -32,7 +30,6 @@ impl Consumers {
         Consumers {
             current_setpoint,
             price_per_mwh,
-            max_power,
             current_forecasts,
             period,
             state,
@@ -62,7 +59,6 @@ impl PowerPlant for Consumers {
 
     fn current_state(&self) -> PowerPlantPublicRepr {
         PowerPlantPublicRepr::Consumers(ConsumersPublicRepr {
-            max_power: self.max_power,
             output: PlantOutput {
                 setpoint: self.current_setpoint,
                 cost: (self.current_setpoint * self.price_per_mwh),
@@ -114,10 +110,9 @@ mod tests {
 
     #[test]
     fn test_consumers() {
-        let max_power = 1000;
         let energy_cost = 75;
         let forecasts = get_forecasts();
-        let mut consumers = Consumers::new(max_power, energy_cost, forecasts);
+        let mut consumers = Consumers::new(energy_cost, forecasts);
 
         // Consumers cannot be programed
         let initial_setpoint = consumers.current_setpoint;
@@ -136,10 +131,9 @@ mod tests {
 
     #[test]
     fn test_consumers_forecasts_periods() {
-        let max_power = 1000;
         let energy_cost = 75;
         let forecsts = get_forecasts();
-        let mut consumers = Consumers::new(max_power, energy_cost, forecsts);
+        let mut consumers = Consumers::new(energy_cost, forecsts);
 
         let forecasts = consumers.get_forecast().unwrap();
         assert_eq!(

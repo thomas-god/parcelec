@@ -178,11 +178,11 @@ fn stack_plants_builder(
         );
         map.insert(
             PlantId::default(),
-            Box::new(RenewablePlant::new(300, renewable_forecasts.clone())),
+            Box::new(RenewablePlant::new(renewable_forecasts.clone())),
         );
         map.insert(
             PlantId::default(),
-            Box::new(Consumers::new(1800, 56, consumers_forecasts.clone())),
+            Box::new(Consumers::new(56, consumers_forecasts.clone())),
         );
         map
     }

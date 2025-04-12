@@ -306,44 +306,40 @@ pub fn default_stack_plants_builder() -> impl Fn() -> StackPlants + Clone + Send
         map.insert(PlantId::default(), Box::new(GasPlant::new(80, 500)));
         map.insert(
             PlantId::default(),
-            Box::new(RenewablePlant::new(
-                300,
-                vec![
-                    Forecast {
-                        period: DeliveryPeriodId::from(1),
-                        value: ForecastValue {
-                            value: 250,
-                            deviation: 50,
-                        },
+            Box::new(RenewablePlant::new(vec![
+                Forecast {
+                    period: DeliveryPeriodId::from(1),
+                    value: ForecastValue {
+                        value: 250,
+                        deviation: 50,
                     },
-                    Forecast {
-                        period: DeliveryPeriodId::from(2),
-                        value: ForecastValue {
-                            value: 150,
-                            deviation: 25,
-                        },
+                },
+                Forecast {
+                    period: DeliveryPeriodId::from(2),
+                    value: ForecastValue {
+                        value: 150,
+                        deviation: 25,
                     },
-                    Forecast {
-                        period: DeliveryPeriodId::from(3),
-                        value: ForecastValue {
-                            value: 300,
-                            deviation: 50,
-                        },
+                },
+                Forecast {
+                    period: DeliveryPeriodId::from(3),
+                    value: ForecastValue {
+                        value: 300,
+                        deviation: 50,
                     },
-                    Forecast {
-                        period: DeliveryPeriodId::from(4),
-                        value: ForecastValue {
-                            value: 100,
-                            deviation: 25,
-                        },
+                },
+                Forecast {
+                    period: DeliveryPeriodId::from(4),
+                    value: ForecastValue {
+                        value: 100,
+                        deviation: 25,
                     },
-                ],
-            )),
+                },
+            ])),
         );
         map.insert(
             PlantId::default(),
             Box::new(Consumers::new(
-                1800,
                 56,
                 vec![
                     Forecast {

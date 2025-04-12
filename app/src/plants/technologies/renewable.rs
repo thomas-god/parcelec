@@ -10,11 +10,9 @@ use super::variable::VariablePlant;
 
 #[derive(Debug, Serialize, Clone, Copy)]
 pub struct RenewablePlantPublicRepr {
-    pub max_power: isize,
     pub output: PlantOutput,
 }
 pub struct RenewablePlant {
-    max_power: isize,
     state: VariablePlant,
     period: DeliveryPeriodId,
     current_setpoint: isize,
@@ -22,7 +20,7 @@ pub struct RenewablePlant {
 }
 
 impl RenewablePlant {
-    pub fn new(max_power: isize, forecasts: Vec<Forecast>) -> RenewablePlant {
+    pub fn new(forecasts: Vec<Forecast>) -> RenewablePlant {
         let period = DeliveryPeriodId::from(1);
         let plant = VariablePlant::new(forecasts);
         let current_setpoint = plant.get_setpoint(period).unwrap_or(0);
@@ -31,7 +29,6 @@ impl RenewablePlant {
         RenewablePlant {
             current_setpoint,
             state: plant,
-            max_power,
             current_forecasts,
             period,
         }
@@ -58,7 +55,6 @@ impl PowerPlant for RenewablePlant {
     }
     fn current_state(&self) -> PowerPlantPublicRepr {
         PowerPlantPublicRepr::RenewablePlant(RenewablePlantPublicRepr {
-            max_power: self.max_power,
             output: PlantOutput {
                 setpoint: self.current_setpoint,
                 cost: 0,
@@ -108,7 +104,7 @@ mod tests {
 
     #[test]
     fn test_renewable_plant() {
-        let mut plant = RenewablePlant::new(1000, get_forecasts());
+        let mut plant = RenewablePlant::new(get_forecasts());
 
         // Plant has no associated cost
         let PlantOutput { cost, .. } = plant.program_setpoint(100);
@@ -127,7 +123,7 @@ mod tests {
 
     #[test]
     fn test_renewable_forecasts_periods() {
-        let mut plant = RenewablePlant::new(1000, get_forecasts());
+        let mut plant = RenewablePlant::new(get_forecasts());
 
         let forecasts = plant.get_forecast().unwrap();
         assert_eq!(

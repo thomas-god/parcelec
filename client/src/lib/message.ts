@@ -34,12 +34,10 @@ const PowerPlantRepr = z.discriminatedUnion("type", [
   }),
   z.object({
     type: z.literal("RenewablePlant"),
-    max_power: z.number(),
     output: PlantOutput,
   }),
   z.object({
     type: z.literal("Consumers"),
-    max_power: z.number(),
     output: PlantOutput,
   }),
   z.object({
