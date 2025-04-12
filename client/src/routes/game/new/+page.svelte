@@ -8,6 +8,7 @@
   let game_name = $state("");
   let period_duration_seconds = $state("120");
   let clients_pmax = $state("1800");
+  let clients_pmin = $state("300");
   let renewable_pmax = $state("300");
   let gas_installed_capacity = $state("500");
   let gas_cost = $state("80");
@@ -66,11 +67,30 @@
       Number(number_of_periods) > 0,
   );
 
+  let areConsumersOptionsValid = $derived.by(() => {
+    const max_power_valid =
+      clients_pmax !== "" &&
+      !isNaN(Number(clients_pmax)) &&
+      Number(clients_pmax) > 0;
+
+    const min_power_valid =
+      clients_pmin !== "" &&
+      !isNaN(Number(clients_pmin)) &&
+      Number(clients_pmin) > 0 &&
+      Number(clients_pmin) <= Number(clients_pmax);
+
+    return max_power_valid && min_power_valid;
+  });
+
   let consumers_forecasts = $derived(
-    generateForecast(Number(number_of_periods), -Number(clients_pmax), 0),
+    generateForecast(
+      Number(number_of_periods),
+      -Number(clients_pmax),
+      -Number(clients_pmin),
+    ),
   );
   let renewable_forecasts = $derived(
-    generateForecast(Number(number_of_periods), 0, 300),
+    generateForecast(Number(number_of_periods), 0, Number(renewable_pmax)),
   );
 
   let isFormValid = $derived(
@@ -79,7 +99,8 @@
       areGasPlantOptionsValid &&
       areNuclearPlantOptionsValid &&
       areBatteryOptionsValid &&
-      isNumberOfPeriodsValid,
+      isNumberOfPeriodsValid &&
+      areConsumersOptionsValid,
   );
 
   const createGame = async () => {
@@ -174,6 +195,24 @@
                 min_value="1"
                 bind:value={clients_pmax}
               />
+              <label class="fieldset-label flex-col">
+                <div class="flex justify-between items-center w-full">
+                  <div class="self-start text-sm">
+                    Puissance minimale consommée par les clients (en MW)
+                  </div>
+                </div>
+                <input
+                  type="number"
+                  min="1"
+                  max={clients_pmax}
+                  class="input validator text-base"
+                  bind:value={clients_pmin}
+                  required
+                />
+                <p class="validator-hint self-start mt-0">
+                  La puissance doit être > 0 et inférieure à Pmax
+                </p>
+              </label>
               <!-- <NumericInput
                 title="Revenus (en €/MWh)"
                 error_message="Le revenue doit être >= 0"
