@@ -1,6 +1,7 @@
 <script lang="ts">
   import { goto } from "$app/navigation";
   import { PUBLIC_APP_URL } from "$env/static/public";
+  import { generateForecast } from "$lib/forecasts";
   import { PLANT_ICONS, PLANT_NAMES } from "$lib/label";
   import NumericInput from "../../../components/atoms/NumericInput.svelte";
 
@@ -11,6 +12,7 @@
   let nuclear_installed_capacity = $state("1000");
   let nuclear_cost = $state("35");
   let battery_charge = $state("300");
+  let number_of_periods = $state("4");
   let apiError = $state("");
 
   let isGameNameValid = $derived(game_name && game_name.trim() !== "");
@@ -56,19 +58,33 @@
     return max_charge_valid;
   });
 
+  let isNumberOfPeriodsValid = $derived(
+    number_of_periods !== "" &&
+      !isNaN(Number(number_of_periods)) &&
+      Number(number_of_periods) > 0,
+  );
+
+  let consumers_forecasts = $derived(
+    generateForecast(Number(number_of_periods), -1800, 0),
+  );
+  let renewable_forecasts = $derived(
+    generateForecast(Number(number_of_periods), 0, 300),
+  );
+
   let isFormValid = $derived(
     isGameNameValid &&
       isPeriodDurationValid &&
       areGasPlantOptionsValid &&
       areNuclearPlantOptionsValid &&
-      areBatteryOptionsValid,
+      areBatteryOptionsValid &&
+      isNumberOfPeriodsValid,
   );
 
   const createGame = async () => {
     const requestBody = {
       game_name: game_name.trim(),
       period_duration_seconds: Number(period_duration_seconds),
-      number_of_periods: 4,
+      number_of_periods: Number(number_of_periods),
       stack: {
         gas: {
           max_power: Number(gas_installed_capacity),
@@ -81,66 +97,8 @@
         battery: {
           max_charge: Number(battery_charge),
         },
-        consumers_forecasts: [
-          {
-            period: 1,
-            value: {
-              value: -1000,
-              deviation: 100,
-            },
-          },
-          {
-            period: 2,
-            value: {
-              value: -1200,
-              deviation: 50,
-            },
-          },
-          {
-            period: 3,
-            value: {
-              value: -600,
-              deviation: 100,
-            },
-          },
-          {
-            period: 4,
-            value: {
-              value: -1800,
-              deviation: 150,
-            },
-          },
-        ],
-        renewable_forecasts: [
-          {
-            period: 1,
-            value: {
-              value: 250,
-              deviation: 50,
-            },
-          },
-          {
-            period: 2,
-            value: {
-              value: 150,
-              deviation: 25,
-            },
-          },
-          {
-            period: 3,
-            value: {
-              value: 300,
-              deviation: 50,
-            },
-          },
-          {
-            period: 4,
-            value: {
-              value: 100,
-              deviation: 25,
-            },
-          },
-        ],
+        consumers_forecasts,
+        renewable_forecasts,
       },
     };
 
@@ -253,6 +211,20 @@
                 error_message="La charge doit être > 0"
                 min_value="1"
                 bind:value={battery_charge}
+              />
+            </div>
+          </div>
+
+          <!-- FORECASTS OPTIONS -->
+          <div class="collapse collapse-arrow join-item border-base-300 border">
+            <input type="checkbox" />
+            <div class="collapse-title font-semibold">🔮 Prévisions</div>
+            <div class="collapse-content text-sm">
+              <NumericInput
+                title="Nombre de périodes"
+                error_message="Il doit y avoir au moins une période"
+                min_value="1"
+                bind:value={number_of_periods}
               />
             </div>
           </div>

@@ -7,7 +7,7 @@
     plants,
   }: { forecasts: StackForecasts; plants: StackSnapshot } = $props();
 
-  type Forecast = NonNullable<
+  export type Forecast = NonNullable<
     StackForecasts extends Map<any, infer I> ? I : never
   >;
   export type ForecastValue = (Forecast extends Array<infer I>
