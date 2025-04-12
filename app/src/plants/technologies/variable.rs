@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
 use crate::{
+    constants,
     forecast::{Forecast, ForecastValue, forecast_in_range},
     game::delivery_period::DeliveryPeriodId,
 };
@@ -39,13 +40,25 @@ impl VariablePlant {
         for forecast in forecasts.iter() {
             let target_period = forecast.period;
             let mut target_period_state = HashMap::new();
-            // Generate forecasts for each period up to target period (excluded)
-            for idx in 1..target_period.into() {
-                target_period_state
-                    .insert(DeliveryPeriodId::from(idx), State::Forecast(forecast.value));
+            // For first period, we take the initial forecast
+            target_period_state.insert(DeliveryPeriodId::from(1), State::Forecast(forecast.value));
+
+            // For subsequent periods, generate forecast up to the target period (excluded)
+            let mut previous_forecast = forecast.value;
+            for idx in 2..target_period.into() {
+                let current_forecast = generate_forecast(
+                    DeliveryPeriodId::from(idx),
+                    target_period,
+                    previous_forecast,
+                );
+                target_period_state.insert(
+                    DeliveryPeriodId::from(idx),
+                    State::Forecast(current_forecast),
+                );
+                previous_forecast = current_forecast;
             }
 
-            // Generate setpoint for target period, based on last forecast
+            // Generate a setpoint for target period, based on last forecast
             let last_forecast = match target_period_state.get(&target_period.previous()) {
                 Some(State::Forecast(f)) => *f,
                 _ => forecast.value,
@@ -95,6 +108,37 @@ impl VariablePlant {
         }
         forecasts.sort_by(|a, b| a.period.cmp(&b.period));
         forecasts
+    }
+}
+
+fn generate_forecast(
+    current_period: DeliveryPeriodId,
+    target_period: DeliveryPeriodId,
+    previous_forecast: ForecastValue,
+) -> ForecastValue {
+    let distance_to_target: usize =
+        usize::from(target_period).saturating_sub(usize::from(current_period));
+
+    let deviation = if distance_to_target <= 4 {
+        distance_to_target * constants::SETPOINT_BASE_VALUE as usize
+    } else {
+        4 * constants::SETPOINT_BASE_VALUE as usize
+    };
+
+    let deviation_variation_in_steps = previous_forecast.deviation.saturating_sub(deviation)
+        / constants::SETPOINT_BASE_VALUE as usize;
+
+    if deviation_variation_in_steps == 0 {
+        return previous_forecast;
+    }
+
+    let new_value_offset = rand::random_range(
+        (-(deviation_variation_in_steps as i64))..=(deviation_variation_in_steps as i64),
+    ) as isize;
+
+    ForecastValue {
+        value: previous_forecast.value + new_value_offset * constants::SETPOINT_BASE_VALUE,
+        deviation,
     }
 }
 
@@ -308,5 +352,94 @@ mod tests {
             assert_eq!(forecasts.get(0).unwrap().period, DeliveryPeriodId::from(2));
             assert_eq!(forecasts.get(1).unwrap().period, DeliveryPeriodId::from(3));
         }
+    }
+}
+
+#[cfg(test)]
+mod tests_generate_forecast {
+    use crate::{forecast::ForecastValue, game::delivery_period::DeliveryPeriodId};
+
+    use super::generate_forecast;
+
+    #[test]
+    fn test_generated_forecast_within_previous_forecast_range() {
+        let current_period = DeliveryPeriodId::from(1);
+        let target_period = DeliveryPeriodId::from(2);
+        let previous_forecast = ForecastValue {
+            value: 500,
+            deviation: 50,
+        };
+
+        let forecast = generate_forecast(current_period, target_period, previous_forecast);
+
+        assert!(forecast.included_in(&previous_forecast));
+    }
+
+    #[test]
+    fn test_generated_forecast_depends_on_current_to_target_period_distance() {
+        let target_period = DeliveryPeriodId::from(6);
+        let forecast = ForecastValue {
+            value: 500,
+            deviation: 200,
+        };
+        let test_cases = vec![
+            // (current_period, expected_deviation)
+            (DeliveryPeriodId::from(1), 100),
+            (DeliveryPeriodId::from(2), 100),
+            (DeliveryPeriodId::from(3), 75),
+            (DeliveryPeriodId::from(4), 50),
+            (DeliveryPeriodId::from(5), 25),
+            (DeliveryPeriodId::from(6), 0),
+            (DeliveryPeriodId::from(7), 0),
+        ];
+
+        for (current_period, expected_deviation) in test_cases.iter() {
+            let forecast = generate_forecast(*current_period, target_period, forecast);
+            assert_eq!(forecast.deviation, *expected_deviation);
+        }
+    }
+
+    #[test]
+    fn test_generated_forecast_when_new_variation_greater_than_previous_forecast() {
+        let target_period = DeliveryPeriodId::from(4);
+        let current_period = DeliveryPeriodId::from(1);
+        let forecast = ForecastValue {
+            value: 500,
+            deviation: 50,
+        };
+
+        // expected deviation is 75, but greater than 50 so we dont update the forecast
+        assert_eq!(
+            generate_forecast(current_period, target_period, forecast),
+            ForecastValue {
+                value: 500,
+                deviation: 50
+            }
+        );
+    }
+
+    #[test]
+    fn test_generated_forecast_update_value() {
+        let target_period = DeliveryPeriodId::from(4);
+        let current_period = DeliveryPeriodId::from(1);
+        let forecast = ForecastValue {
+            value: 500,
+            deviation: 100,
+        };
+
+        // new deviation = 75
+        // possibile forecast values that are included in 500 +/- 100 are
+        // 475 +/- 75
+        // 500 +/- 75
+        // 525 +/- 75
+
+        let values: Vec<isize> = (0..1000)
+            .into_iter()
+            .map(|_| generate_forecast(current_period, target_period, forecast).value)
+            .collect();
+
+        assert!(values.contains(&475));
+        assert!(values.contains(&500));
+        assert!(values.contains(&525));
     }
 }
