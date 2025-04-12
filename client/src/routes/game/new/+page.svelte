@@ -1,12 +1,14 @@
 <script lang="ts">
   import { goto } from "$app/navigation";
   import { PUBLIC_APP_URL } from "$env/static/public";
-  import { generateForecast } from "$lib/forecasts";
+  import { FORECAST_STEP, generateForecast } from "$lib/forecasts";
   import { PLANT_ICONS, PLANT_NAMES } from "$lib/label";
   import NumericInput from "../../../components/atoms/NumericInput.svelte";
 
   let game_name = $state("");
   let period_duration_seconds = $state("120");
+  let clients_pmax = $state("1800");
+  let renewable_pmax = $state("300");
   let gas_installed_capacity = $state("500");
   let gas_cost = $state("80");
   let nuclear_installed_capacity = $state("1000");
@@ -65,7 +67,7 @@
   );
 
   let consumers_forecasts = $derived(
-    generateForecast(Number(number_of_periods), -1800, 0),
+    generateForecast(Number(number_of_periods), -Number(clients_pmax), 0),
   );
   let renewable_forecasts = $derived(
     generateForecast(Number(number_of_periods), 0, 300),
@@ -144,10 +146,56 @@
             <div class="collapse-title font-semibold">Général</div>
             <div class="collapse-content text-sm">
               <NumericInput
+                title="Nombre de périodes"
+                error_message="Il doit y avoir au moins une période"
+                min_value="1"
+                bind:value={number_of_periods}
+              />
+              <NumericInput
                 title="Durée des périodes (en secondes)"
                 error_message="La durée doit être d'au moins 30 secondes"
                 min_value="30"
                 bind:value={period_duration_seconds}
+              />
+            </div>
+          </div>
+
+          <!-- CONSUMERS OPTIONS -->
+          <div class="collapse collapse-arrow join-item border-base-300 border">
+            <input type="checkbox" />
+            <div class="collapse-title font-semibold">
+              {PLANT_ICONS["Consumers"]}
+              {PLANT_NAMES["Consumers"]}
+            </div>
+            <div class="collapse-content text-sm">
+              <NumericInput
+                title="Puissance maximale consommée par les clients (en MW)"
+                error_message="La puissance doit être > 0"
+                min_value="1"
+                bind:value={clients_pmax}
+              />
+              <!-- <NumericInput
+                title="Revenus (en €/MWh)"
+                error_message="Le revenue doit être >= 0"
+                min_value="0"
+                bind:value={}
+              /> -->
+            </div>
+          </div>
+
+          <!-- RENEWABLE PLANT OPTIONS -->
+          <div class="collapse collapse-arrow join-item border-base-300 border">
+            <input type="checkbox" />
+            <div class="collapse-title font-semibold">
+              {PLANT_ICONS["RenewablePlant"]}
+              {PLANT_NAMES["RenewablePlant"]}
+            </div>
+            <div class="collapse-content text-sm">
+              <NumericInput
+                title="Puissance installée (en MW)"
+                error_message="La puissance doit être > 0"
+                min_value="1"
+                bind:value={renewable_pmax}
               />
             </div>
           </div>
@@ -211,20 +259,6 @@
                 error_message="La charge doit être > 0"
                 min_value="1"
                 bind:value={battery_charge}
-              />
-            </div>
-          </div>
-
-          <!-- FORECASTS OPTIONS -->
-          <div class="collapse collapse-arrow join-item border-base-300 border">
-            <input type="checkbox" />
-            <div class="collapse-title font-semibold">🔮 Prévisions</div>
-            <div class="collapse-content text-sm">
-              <NumericInput
-                title="Nombre de périodes"
-                error_message="Il doit y avoir au moins une période"
-                min_value="1"
-                bind:value={number_of_periods}
               />
             </div>
           </div>
