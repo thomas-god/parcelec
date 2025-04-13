@@ -5,6 +5,8 @@
   let player_name = $state("");
   let error = $state(false);
 
+  let button_disabled = $derived(player_name === "");
+
   const registerPlayer = async () => {
     let rest = await fetch(`${PUBLIC_APP_URL}/game/join`, {
       method: "POST",
@@ -46,8 +48,10 @@
           <p class="fieldset-label">Ce pseudo est déjà pris !</p>
         {/if}
 
-        <button class="btn btn-neutral mt-4 text-base" onclick={registerPlayer}
-          >Créer</button
+        <button
+          class="btn btn-neutral mt-4 text-base"
+          onclick={registerPlayer}
+          disabled={button_disabled}>Rejoindre</button
         >
       </fieldset>
     </div>
