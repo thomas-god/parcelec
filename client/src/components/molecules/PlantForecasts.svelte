@@ -139,6 +139,10 @@
           </div>
         </th>
       </tr>
+    {:else}
+      <tr>
+        <td colspan="4" class="text-center py-4">Pas de prévisions</td>
+      </tr>
     {/each}
   </tbody>
 </table>
