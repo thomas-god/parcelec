@@ -158,11 +158,16 @@
   let pnl = $derived(plants_pnl + market_pnl);
 </script>
 
-<main class="max-w-[600px] mx-auto">
+<main class="max-w-[600px] mx-auto @container">
   {#if socketIsOpen}
     <div class="flex flex-col gap-6 items-stretch">
       <div
-        class="sticky top-0 px-2 pt-5 pb-5 @sm:p-6 text-success-content bg-success rounded-b-md"
+        class={`
+        sticky top-0 px-2 pt-5 pb-5
+        text-success-content bg-success rounded-b-md
+        @sm:p-6
+        @min-[600px]:mt-8 @min-[600px]:rounded-t-md
+        `}
       >
         <Header
           {game_state}

@@ -16,7 +16,11 @@
 </script>
 
 <footer
-  class="footer fixed bottom-0 bg-success text-success-content rounded-t-md p-2 pb-4 w-screen max-w-[600px] flex flex-col items-center text-xl"
+  class={`
+  footer bg-success text-success-content rounded-t-md p-2 pb-4 flex flex-col items-center text-xl
+  @max-[600px]:fixed @max-[600px]:bottom-0 @max-[600px]:w-full
+  @min-[600px]:rounded-b-md @min-[600px]:mx-auto @min-[600px]:max-w-[500px]
+  `}
 >
   <button onclick={startGame}>
     {#if game_state === "Running"}
