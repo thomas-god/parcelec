@@ -52,8 +52,8 @@
   <div
     class={`
       w-full grid
-      @min-[${BREAKPOINT}]:grid-cols-[auto_1fr_auto_135px]
-      @max-[${BREAKPOINT}]:grid-cols-[auto_1fr_1fr]
+      @min-[450px]:grid-cols-[auto_1fr_auto_135px]
+      @max-[450px]:grid-cols-[auto_1fr_1fr]
     `}
   >
     <div class="col-start-1 row-start-1 row-span-2 self-center text-2xl">
@@ -62,8 +62,8 @@
     <div
       class={`
         row-start-1 col-start-2
-        @min-[${BREAKPOINT}]:col-span-1
-        @max-[${BREAKPOINT}]:col-span-2
+        @min-[450px]:col-span-1
+        @max-[450px]:col-span-2
       `}
     >
       <span class="italic pl-1.5"> Centrale nucléaire </span>
@@ -75,8 +75,8 @@
     </div>
     <div
       class={`
-        @min-[${BREAKPOINT}]:row-start-1 @min-[${BREAKPOINT}]:col-start-3 @min-[${BREAKPOINT}]:col-span-2 @min-[${BREAKPOINT}]:text-end
-        @max-[${BREAKPOINT}]:row-start-3 @max-[${BREAKPOINT}]:col-start-2 @max-[${BREAKPOINT}]:text-start
+        @min-[450px]:row-start-1 @min-[450px]:col-start-3 @min-[450px]:col-span-2 @min-[450px]:text-end
+        @max-[450px]:row-start-3 @max-[450px]:col-start-2 @max-[450px]:text-start
       `}
     >
       {(-cost).toLocaleString("fr-FR", { signDisplay: "exceptZero" })} €
@@ -99,8 +99,8 @@
     <div
       class={`
         text-end
-        @min-[${BREAKPOINT}]:row-start-2 @min-[${BREAKPOINT}]:col-start-4 @min-[${BREAKPOINT}]:p-1.5
-        @max-[${BREAKPOINT}]:row-start-3 @max-[${BREAKPOINT}]:col-start-3
+        @min-[450px]:row-start-2 @min-[450px]:col-start-4 @min-[450px]:p-1.5
+        @max-[450px]:row-start-3 @max-[450px]:col-start-3
     `}
     >
       {current_setpoint.toLocaleString("fr-FR")} / {max_setpoint.toLocaleString(
