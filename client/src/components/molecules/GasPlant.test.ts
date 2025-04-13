@@ -23,7 +23,7 @@ describe("Generic plant component", () => {
       max_setpoint: 1000,
     });
 
-    const slider = screen.getByTestId("generic-plant-input-gas");
+    const slider = screen.getByTestId("gas-plant-input");
     await fireEvent.input(slider, { target: { value: "200" } });
 
     vi.runAllTimers(); // Run the debounced function
@@ -42,7 +42,7 @@ describe("Generic plant component", () => {
       max_setpoint: 1000,
     });
 
-    const slider = screen.getByTestId("generic-plant-input-gas");
+    const slider = screen.getByTestId("gas-plant-input");
     expect(slider).toBeDisabled();
   });
 });

@@ -1,4 +1,5 @@
 <script lang="ts">
+  const BREAKPOINT = "450px";
   let {
     max_charge,
     charge,
@@ -54,64 +55,38 @@
 </script>
 
 <div class="flex flex-row gap-1 w-full justify-stretch @container">
-  <div class="self-center text-2xl">🔋</div>
-
-  <!-- Large screens: info are on the left of the slider -->
-  <div class="flex flex-col grow @max-[450px]:hidden">
-    <div class="flex flex-row justify-between">
-      <div class="italic">Batteries</div>
-      <div>0 €</div>
+  <div
+    class={`
+      w-full grid
+      @min-[${BREAKPOINT}]:grid-cols-[auto_1fr_auto_135px]
+      @max-[${BREAKPOINT}]:grid-cols-[auto_1fr_1fr]
+    `}
+  >
+    <div class="col-start-1 row-start-1 row-span-2 self-center text-2xl">
+      🔋
     </div>
-
-    <div class="grid grid-cols-[1fr_135px] p-1.5">
-      <div class="flex flex-col gap-1">
-        <input
-          class="range block my-auto w-full rounded-lg appearance-none cursor-pointer"
-          type="range"
-          disabled={false}
-          bind:value={current_setpoint}
-          min={0}
-          max={max_charge}
-          step="25"
-          oninput={debouncedUpdateSetpoint}
-          data-testid="battery-input"
-        />
-      </div>
-
-      <div class="pl-2 justify-self-end">
-        {signed_current_setpoint.toLocaleString("fr-FR")} MW
-      </div>
+    <div
+      class={`
+        row-start-1 col-start-2
+        @min-[${BREAKPOINT}]:col-span-1
+        @max-[${BREAKPOINT}]:col-span-2
+      `}
+    >
+      <span class="italic pl-1.5">Batterie</span>
     </div>
-    <div class="flex flex-row justify-between">
-      <span>
-        {charge} / {max_charge} MWh
-        {#if setpoint !== 0}
-          ({(-setpoint).toLocaleString("fr-FR", {
-            signDisplay: "exceptZero",
-          })} MWh)
-        {/if}
-      </span>
-      <label class="swap text-right font-semibold">
-        <input
-          type="checkbox"
-          bind:checked={current_charge_state}
-          oninput={debouncedUpdateSetpoint}
-        />
-        <div class="swap-on">Charge 🔄</div>
-        <div class="swap-off">Décharge 🔄</div>
-      </label>
+    <div
+      class={`
+        @min-[${BREAKPOINT}]:row-start-1 @min-[${BREAKPOINT}]:col-start-3 @min-[${BREAKPOINT}]:col-span-2 @min-[${BREAKPOINT}]:text-end
+        @max-[${BREAKPOINT}]:row-start-3 @max-[${BREAKPOINT}]:col-start-2 @max-[${BREAKPOINT}]:text-start
+        pl-1.5
+      `}
+    >
+      0 €
     </div>
-  </div>
-
-  <!-- Small screens: info are below the slider -->
-  <div class="flex flex-col grow @min-[450px]:hidden">
-    <div class="italic">Batteries</div>
-
-    <div class="p-1.5">
+    <div class="p-1.5 row-start-2 col-start-2 col-span-2">
       <input
         class="range block my-auto w-full rounded-lg appearance-none cursor-pointer"
         type="range"
-        disabled={false}
         bind:value={current_setpoint}
         min={0}
         max={max_charge}
@@ -120,13 +95,22 @@
         data-testid="battery-input"
       />
     </div>
-    <div class="flex flex-row justify-between">
-      <div>0 €</div>
-      <div class="pl-2 justify-self-end">
-        {signed_current_setpoint.toLocaleString("fr-FR")} MW
-      </div>
+    <div
+      class={`
+        text-end
+        @min-[${BREAKPOINT}]:row-start-2 @min-[${BREAKPOINT}]:col-start-4 @min-[${BREAKPOINT}]:p-1.5
+        @max-[${BREAKPOINT}]:row-start-3 @max-[${BREAKPOINT}]:col-start-3
+    `}
+    >
+      {signed_current_setpoint.toLocaleString("fr-FR")} MW
     </div>
-    <div class="flex flex-row justify-between">
+    <div
+      class={`
+        flex flex-row justify-between col-start-2 col-span-3 pl-1.5
+        @min-[${BREAKPOINT}]:row-start-3
+        @max-[${BREAKPOINT}]:row-start-4
+    `}
+    >
       <span>
         {charge} / {max_charge} MWh
         {#if setpoint !== 0}

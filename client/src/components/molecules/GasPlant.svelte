@@ -19,6 +19,8 @@
     current_setpoint = setpoint;
   });
 
+  const BREAKPOINT = "450px";
+
   let debounceTimer: ReturnType<typeof setTimeout>;
   const debouncedUpdateSetpoint = () => {
     clearTimeout(debounceTimer);
@@ -41,23 +43,37 @@
 </script>
 
 <div class="flex flex-row gap-1 w-full justify-stretch @container">
-  <div class="self-center text-2xl">🔥</div>
-
-  <!-- Large screens: info are on the left of the slider -->
-  <div class="flex flex-col grow @max-[450px]:hidden">
-    <div class="flex flex-row justify-between">
-      <div class="italic">Centrale gaz</div>
-      <div>
-        {(-cost).toLocaleString("fr-FR", { signDisplay: "exceptZero" })} €
-        {#if energy_cost !== 0}
-          <span class="font-light italic">
-            ({energy_cost.toLocaleString("fr-FR")} €/MWh)
-          </span>
-        {/if}
-      </div>
+  <div
+    class={`
+      w-full grid
+      @min-[${BREAKPOINT}]:grid-cols-[auto_1fr_auto_135px]
+      @max-[${BREAKPOINT}]:grid-cols-[auto_1fr_1fr]
+    `}
+  >
+    <div class="col-start-1 row-start-1 row-span-2 self-center text-2xl">
+      🔥
     </div>
-
-    <div class="grid grid-cols-[1fr_135px] p-1.5">
+    <div
+      class={`
+        row-start-1 col-start-2
+        @min-[${BREAKPOINT}]:col-span-1
+        @max-[${BREAKPOINT}]:col-span-2
+      `}
+    >
+      <span class="italic pl-1.5"> Centrale Gaz</span>
+    </div>
+    <div
+      class={`
+        @min-[${BREAKPOINT}]:row-start-1 @min-[${BREAKPOINT}]:col-start-3 @min-[${BREAKPOINT}]:col-span-2 @min-[${BREAKPOINT}]:text-end
+        @max-[${BREAKPOINT}]:row-start-3 @max-[${BREAKPOINT}]:col-start-2 @max-[${BREAKPOINT}]:text-start
+      `}
+    >
+      {(-cost).toLocaleString("fr-FR", { signDisplay: "exceptZero" })} €
+      <span class="font-light italic">
+        ({energy_cost.toLocaleString("fr-FR")} €/MWh)
+      </span>
+    </div>
+    <div class="p-1.5 row-start-2 col-start-2 col-span-2">
       <input
         class={sliderClass}
         type="range"
@@ -66,47 +82,19 @@
         max={max_setpoint}
         step="25"
         oninput={debouncedUpdateSetpoint}
-        data-testid={`generic-plant-input-gas`}
-      />
-
-      <div class="pl-2 justify-self-end">
-        {current_setpoint.toLocaleString("fr-FR")} / {max_setpoint.toLocaleString(
-          "fr-FR",
-        )} MW
-      </div>
-    </div>
-  </div>
-
-  <!-- Small screens: info are below the slider -->
-  <div class="flex flex-col grow @min-[450px]:hidden">
-    <div class="italic">Centrale gaz</div>
-
-    <div class="p-1.5">
-      <input
-        class={sliderClass}
-        type="range"
-        disabled={!dispatchable}
-        bind:value={current_setpoint}
-        max={max_setpoint}
-        step="25"
-        oninput={debouncedUpdateSetpoint}
-        data-testid={`generic-plant-input-gas`}
+        data-testid="gas-plant-input"
       />
     </div>
-    <div class="flex flex-row justify-between">
-      <div>
-        {(-cost).toLocaleString("fr-FR", { signDisplay: "exceptZero" })} €
-        {#if energy_cost !== 0}
-          <span class="font-light italic">
-            ({energy_cost.toLocaleString("fr-FR")} €/MWh)
-          </span>
-        {/if}
-      </div>
-      <div class="pl-2 justify-self-end">
-        {current_setpoint.toLocaleString("fr-FR")} / {max_setpoint.toLocaleString(
-          "fr-FR",
-        )} MW
-      </div>
+    <div
+      class={`
+        text-end
+        @min-[${BREAKPOINT}]:row-start-2 @min-[${BREAKPOINT}]:col-start-4 @min-[${BREAKPOINT}]:p-1.5
+        @max-[${BREAKPOINT}]:row-start-3 @max-[${BREAKPOINT}]:col-start-3
+    `}
+    >
+      {current_setpoint.toLocaleString("fr-FR")} / {max_setpoint.toLocaleString(
+        "fr-FR",
+      )} MW
     </div>
   </div>
 </div>
