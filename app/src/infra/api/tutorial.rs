@@ -48,7 +48,7 @@ pub async fn create_tutorial_game(
         id: game_id.clone(),
         name: Some(game_name),
         number_of_delivery_periods: 4,
-        delivery_period_timers: None,
+        delivery_period_duration: None,
         ranking_calculator: GameRankings {
             tier_limits: Some(TierLimits {
                 gold: 80_000,

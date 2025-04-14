@@ -9,7 +9,6 @@ use crate::{
     forecast::Forecast,
     game::{
         GameActor, GameId, GameName,
-        delivery_period::DeliveryPeriodTimers,
         infra::GameActorConfig,
         scores::{GameRankings, TierLimits},
     },
@@ -117,10 +116,7 @@ pub async fn create_game(
     let game_config = GameActorConfig {
         id: game_id.clone(),
         name: Some(game_name.clone()),
-        delivery_period_timers: Some(DeliveryPeriodTimers {
-            market: Duration::from_secs(period_duration),
-            stacks: Duration::from_secs(period_duration),
-        }),
+        delivery_period_duration: Some(Duration::from_secs(period_duration)),
         number_of_delivery_periods: request.number_of_periods,
         ranking_calculator: GameRankings {
             tier_limits: Some(TierLimits {

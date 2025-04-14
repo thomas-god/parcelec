@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, time::Duration};
 
 use futures_util::future::join_all;
 use tokio::sync::{
@@ -11,9 +11,7 @@ use crate::{
     game::{
         GameContext, GameId, GameMessage, GameName, GameState, GetPreviousScoresResult, Player,
         RegisterPlayerResponse,
-        delivery_period::{
-            DeliveryPeriodId, DeliveryPeriodResults, DeliveryPeriodTimers, start_delivery_period,
-        },
+        delivery_period::{DeliveryPeriodId, DeliveryPeriodResults, start_delivery_period},
         scores::{GameRankings, PlayerResult, PlayerScore},
     },
     plants::infra::actor::StackPlants,
@@ -47,7 +45,7 @@ pub struct GameActor<
     tx: Sender<GameMessage>,
     current_delivery_period: DeliveryPeriodId,
     last_delivery_period: DeliveryPeriodId,
-    delivery_period_timers: Option<DeliveryPeriodTimers>,
+    delivery_period_duration: Option<Duration>,
     all_players_ready_tx: Option<oneshot::Sender<()>>,
     ranking_calculator: GameRankings,
     cancellation_token: CancellationToken,
@@ -61,7 +59,7 @@ where
     pub name: Option<GameName>,
     pub number_of_delivery_periods: usize,
     pub ranking_calculator: GameRankings,
-    pub delivery_period_timers: Option<DeliveryPeriodTimers>,
+    pub delivery_period_duration: Option<Duration>,
     pub build_stack: F,
 }
 
@@ -91,7 +89,7 @@ impl<MS: Market, PC: PlayerConnections, F: Fn() -> StackPlants + Clone + Send + 
             rx,
             tx,
             current_delivery_period: DeliveryPeriodId::default(),
-            delivery_period_timers: config.delivery_period_timers,
+            delivery_period_duration: config.delivery_period_duration,
             last_delivery_period: DeliveryPeriodId::from(config.number_of_delivery_periods),
             all_players_ready_tx: None,
             ranking_calculator: config.ranking_calculator,
@@ -197,7 +195,7 @@ impl<MS: Market, PC: PlayerConnections, F: Fn() -> StackPlants + Clone + Send + 
             .map(|(id, context)| (id.clone(), context.service.clone()))
             .collect();
         let (results_tx, results_rx) = oneshot::channel();
-        let timers = self.delivery_period_timers.clone();
+        let timers = self.delivery_period_duration;
         let token = self.cancellation_token.clone();
         tokio::spawn(async move {
             start_delivery_period(
@@ -487,7 +485,7 @@ mod test_utils {
     pub fn default_game_config() -> GameActorConfig<impl Fn() -> StackPlants + Clone + Send + Sync>
     {
         GameActorConfig {
-            delivery_period_timers: None,
+            delivery_period_duration: None,
             id: GameId::default(),
             name: Some(GameName::default()),
             number_of_delivery_periods: 4,
@@ -1144,7 +1142,7 @@ mod tests {
             rx,
             current_delivery_period: DeliveryPeriodId::default(),
             last_delivery_period: DeliveryPeriodId::from(3),
-            delivery_period_timers: None,
+            delivery_period_duration: None,
             all_players_ready_tx: None,
             ranking_calculator: GameRankings { tier_limits: None },
             cancellation_token: cancellation_token.clone(),

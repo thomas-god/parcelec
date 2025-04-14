@@ -49,12 +49,6 @@ impl DeliveryPeriodId {
     }
 }
 
-#[derive(Debug, Clone)]
-pub struct DeliveryPeriodTimers {
-    pub market: Duration,
-    pub stacks: Duration,
-}
-
 #[derive(Debug)]
 pub struct DeliveryPeriodResults {
     pub period_id: DeliveryPeriodId,
@@ -67,7 +61,7 @@ pub async fn start_delivery_period<StkS, MS>(
     market_service: MS,
     stack_services: HashMap<PlayerId, StkS>,
     players_ready_rx: oneshot::Receiver<()>,
-    timers: Option<DeliveryPeriodTimers>,
+    period_duration: Option<Duration>,
     cancellation_token: CancellationToken,
 ) where
     StkS: Stack,
@@ -89,15 +83,15 @@ pub async fn start_delivery_period<StkS, MS>(
 
     let mut set = tokio::task::JoinSet::new();
 
-    if let Some(timers) = timers {
+    if let Some(duration) = period_duration {
         // Close market and stacks when time has elapsed
         let current_period = period_id;
         let market_service_cloned = market_service.clone();
         let stack_services_cloned = stack_services.clone();
         set.spawn(async move {
             Ok(join!(
-                close_market_future(market_service_cloned, current_period, timers.market),
-                close_stacks_future(stack_services_cloned, current_period, timers.stacks)
+                close_market_future(market_service_cloned, current_period, duration),
+                close_stacks_future(stack_services_cloned, current_period, duration)
             ))
         });
     }
@@ -232,7 +226,7 @@ mod tests {
     use crate::{
         game::{
             GameMessage,
-            delivery_period::{DeliveryPeriodId, DeliveryPeriodTimers, start_delivery_period},
+            delivery_period::{DeliveryPeriodId, start_delivery_period},
         },
         market::infra::service::MockMarketService,
         plants::infra::service::MockStackService,
@@ -312,10 +306,7 @@ mod tests {
 
         // Keep _players_ready_tx around to not drop the channel and trigger early closing
         let (_players_ready_tx, players_ready_rx) = oneshot::channel();
-        let timers = Some(DeliveryPeriodTimers {
-            market: Duration::from_micros(1),
-            stacks: Duration::from_micros(1),
-        });
+        let duration = Some(Duration::from_micros(1));
         let token = CancellationToken::new();
 
         tokio::spawn(async move {
@@ -325,7 +316,7 @@ mod tests {
                 market_service,
                 stacks_services,
                 players_ready_rx,
-                timers,
+                duration,
                 token,
             )
             .await;
