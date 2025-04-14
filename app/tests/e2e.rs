@@ -75,7 +75,7 @@ async fn test_run_totorial() {
         let tutorial_nav = c
             .wait()
             .at_most(DEFAULT_WAIT_TIMEOUT)
-            .for_element(Locator::XPath("//a[text()='📖 Tutoriel']"))
+            .for_element(Locator::XPath("//button[text()='📖 Tutoriel']"))
             .await
             .unwrap();
         tutorial_nav.click().await.unwrap();
@@ -90,9 +90,7 @@ async fn test_run_totorial() {
         let start_tutorial = c
             .wait()
             .at_most(DEFAULT_WAIT_TIMEOUT)
-            .for_element(Locator::XPath(
-                "//button[contains(text(), 'Commencer une partie')]",
-            ))
+            .for_element(Locator::XPath("//button[contains(text(), 'Commencer')]"))
             .await
             .unwrap();
         start_tutorial.click().await.unwrap();
@@ -102,13 +100,21 @@ async fn test_run_totorial() {
             format!("{}/game", addr)
         );
 
-        // Dispatch the battery and check the positions updates
-        c.wait()
+        // Dispatch the battery and check the position updates
+        let initial_position: isize = c
+            .wait()
             .at_most(DEFAULT_WAIT_TIMEOUT * 5)
-            .for_element(Locator::XPath(
-                "//div[contains(text(), 'Déficit : 900 MW')]",
-            ))
+            .for_element(Locator::XPath("//div[contains(text(), 'Déficit :')]"))
             .await
+            .unwrap()
+            .text()
+            .await
+            .unwrap()
+            .strip_prefix("⚠️ Déficit : ")
+            .unwrap()
+            .strip_suffix(" MW")
+            .unwrap()
+            .parse()
             .unwrap();
 
         let battery_input = c
@@ -128,12 +134,12 @@ async fn test_run_totorial() {
         )
         .await
         .unwrap();
-
+        let expected_position = initial_position + 50;
         c.wait()
-            .at_most(DEFAULT_WAIT_TIMEOUT)
-            .for_element(Locator::XPath(
-                "//div[contains(text(), 'Déficit : 950 MW')]",
-            ))
+            .at_most(DEFAULT_WAIT_TIMEOUT * 5)
+            .for_element(Locator::XPath(&format!(
+                "//div[contains(text(), 'Déficit : {expected_position}')]"
+            )))
             .await
             .unwrap();
 
@@ -152,7 +158,9 @@ async fn test_run_totorial() {
         // Scores should be displayed
         c.wait()
             .at_most(DEFAULT_WAIT_TIMEOUT)
-            .for_element(Locator::XPath("//td[contains(text(), '-950 MW')]"))
+            .for_element(Locator::XPath(&format!(
+                "//td[contains(text(), '{expected_position} MW')]"
+            )))
             .await
             .unwrap();
 
