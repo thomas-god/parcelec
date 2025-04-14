@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use chrono::Utc;
 use delivery_period::{DeliveryPeriodId, DeliveryPeriodResults};
 use derive_more::{AsRef, Display, From};
 use petname::petname;
@@ -70,7 +71,11 @@ pub enum GameState {
     /// Game is open for players to join.
     Open,
     /// Game has started and stacks and market are open for [DeliveryPeriodId]
-    Running(DeliveryPeriodId),
+    #[display("Running")]
+    Running {
+        period: DeliveryPeriodId,
+        end_at: Option<chrono::DateTime<Utc>>,
+    },
     /// [DeliveryPeriodId] is closed.
     PostDelivery(DeliveryPeriodId),
     /// Game has ended.
@@ -82,22 +87,33 @@ impl Serialize for GameState {
     where
         S: serde::Serializer,
     {
-        let mut state = serializer.serialize_struct("GameState", 3)?;
+        let mut state = serializer.serialize_struct("GameState", 4)?;
         state.serialize_field("type", "GameState")?;
         state.serialize_field(
             "state",
             match self {
-                Self::Running(_) => "Running",
+                Self::Running { .. } => "Running",
                 Self::Open => "Open",
                 Self::PostDelivery(_) => "PostDelivery",
                 Self::Ended(_) => "Ended",
             },
         )?;
         let period = match self {
-            Self::Running(period) | Self::PostDelivery(period) | Self::Ended(period) => *period,
+            Self::Running { period, .. } | Self::PostDelivery(period) | Self::Ended(period) => {
+                *period
+            }
             Self::Open => DeliveryPeriodId::from(0),
         };
         state.serialize_field("delivery_period", &period)?;
+        if let Self::Running {
+            end_at: Some(end_at),
+            ..
+        } = self
+        {
+            state.serialize_field("end_at", &end_at.to_string())?;
+        } else {
+            state.serialize_field("end_at", "None")?;
+        };
         state.end()
     }
 }
@@ -162,6 +178,8 @@ pub struct GameContext {
 
 #[cfg(test)]
 mod test_game_state {
+    use chrono::Utc;
+
     use crate::game::GameState;
 
     use super::delivery_period::DeliveryPeriodId;
@@ -170,19 +188,28 @@ mod test_game_state {
     fn test_game_state_serialize() {
         assert_eq!(
             serde_json::to_string(&GameState::Open).unwrap(),
-            "{\"type\":\"GameState\",\"state\":\"Open\",\"delivery_period\":0}".to_string()
+            "{\"type\":\"GameState\",\"state\":\"Open\",\"delivery_period\":0,\"end_at\":\"None\"}"
+                .to_string()
         );
+        let date = Utc::now();
         assert_eq!(
-            serde_json::to_string(&GameState::Running(DeliveryPeriodId::from(1))).unwrap(),
-            "{\"type\":\"GameState\",\"state\":\"Running\",\"delivery_period\":1}".to_string()
+            serde_json::to_string(&GameState::Running {
+                period: DeliveryPeriodId::from(1),
+                end_at: Some(date.clone())
+            })
+            .unwrap(),
+            format!(
+                "{{\"type\":\"GameState\",\"state\":\"Running\",\"delivery_period\":1,\"end_at\":\"{}\"}}",
+                date.to_string()
+            )
         );
         assert_eq!(
             serde_json::to_string(&GameState::PostDelivery(DeliveryPeriodId::from(2))).unwrap(),
-            "{\"type\":\"GameState\",\"state\":\"PostDelivery\",\"delivery_period\":2}".to_string()
+            "{\"type\":\"GameState\",\"state\":\"PostDelivery\",\"delivery_period\":2,\"end_at\":\"None\"}".to_string()
         );
         assert_eq!(
             serde_json::to_string(&GameState::Ended(DeliveryPeriodId::from(3))).unwrap(),
-            "{\"type\":\"GameState\",\"state\":\"Ended\",\"delivery_period\":3}".to_string()
+            "{\"type\":\"GameState\",\"state\":\"Ended\",\"delivery_period\":3,\"end_at\":\"None\"}".to_string()
         );
     }
 }

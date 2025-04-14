@@ -1,5 +1,6 @@
 use std::{collections::HashMap, time::Duration};
 
+use chrono::Utc;
 use futures_util::future::join_all;
 use tokio::sync::{
     mpsc::{Receiver, Sender, channel},
@@ -159,7 +160,7 @@ impl<MS: Market, PC: PlayerConnections, F: Fn() -> StackPlants + Clone + Send + 
             (true, Open) => {
                 self.start_next_delivery_period();
             }
-            (true, Running(_)) => {
+            (true, Running { .. }) => {
                 tracing::info!("All players ready, ending delivery period");
                 if let Some(tx) = self.all_players_ready_tx.take() {
                     let _ = tx.send(());
@@ -183,7 +184,12 @@ impl<MS: Market, PC: PlayerConnections, F: Fn() -> StackPlants + Clone + Send + 
             self.current_delivery_period.next()
         );
         self.current_delivery_period = self.current_delivery_period.next();
-        self.state = GameState::Running(self.current_delivery_period);
+        self.state = GameState::Running {
+            period: self.current_delivery_period,
+            end_at: self
+                .delivery_period_duration
+                .map(|period| Utc::now() + period),
+        };
         self.reset_players_ready();
 
         let delivery_period = self.current_delivery_period;
@@ -210,9 +216,7 @@ impl<MS: Market, PC: PlayerConnections, F: Fn() -> StackPlants + Clone + Send + 
             .await;
         });
         self.all_players_ready_tx = Some(results_tx);
-        let _ = self
-            .state_watch
-            .send(GameState::Running(self.current_delivery_period));
+        let _ = self.state_watch.send(self.state.clone());
     }
 
     fn reset_players_ready(&mut self) {
@@ -347,9 +351,20 @@ impl<MS: Market, PC: PlayerConnections, F: Fn() -> StackPlants + Clone + Send + 
     }
 
     async fn process_delivery_period_results(&mut self, results: DeliveryPeriodResults) {
-        if self.state != GameState::Running(results.period_id) {
+        let GameState::Running {
+            period: current_period,
+            ..
+        } = self.state
+        else {
             tracing::warn!(
                 "Received results for delivery period {:?} while game is not running",
+                results.period_id
+            );
+            return;
+        };
+        if results.period_id != current_period {
+            tracing::warn!(
+                "Received results for delivery period {:?} while game is not running for this period",
                 results.period_id
             );
             return;
@@ -742,10 +757,10 @@ mod tests {
 
         // Market should be open
         assert!(game.state_rx.changed().await.is_ok());
-        assert_eq!(
-            *game.state_rx.borrow_and_update(),
-            GameState::Running(DeliveryPeriodId::from(1))
-        );
+        let GameState::Running { period, .. } = *game.state_rx.borrow_and_update() else {
+            unreachable!("Game should be running")
+        };
+        assert_eq!(period, DeliveryPeriodId::from(1));
     }
 
     #[tokio::test]
@@ -774,10 +789,10 @@ mod tests {
 
         // Game should be running
         assert!(game.state_rx.changed().await.is_ok());
-        assert_eq!(
-            *game.state_rx.borrow_and_update(),
-            GameState::Running(DeliveryPeriodId::from(1))
-        );
+        let GameState::Running { period, .. } = *game.state_rx.borrow_and_update() else {
+            unreachable!("Game should be running")
+        };
+        assert_eq!(period, DeliveryPeriodId::from(1));
     }
 
     #[tokio::test]
@@ -785,10 +800,10 @@ mod tests {
         let (mut game, _) = open_game();
         let (player, _) = start_game(game.tx.clone()).await;
         assert!(game.state_rx.changed().await.is_ok());
-        assert_eq!(
-            *game.state_rx.borrow_and_update(),
-            GameState::Running(DeliveryPeriodId::from(1))
-        );
+        let GameState::Running { period, .. } = *game.state_rx.borrow_and_update() else {
+            unreachable!("Game should be running")
+        };
+        assert_eq!(period, DeliveryPeriodId::from(1));
 
         let _ = game
             .tx
@@ -926,10 +941,10 @@ mod tests {
             .send(GameMessage::PlayerIsReady(player.clone()))
             .await;
         assert!(game.state_rx.changed().await.is_ok());
-        assert_eq!(
-            *game.state_rx.borrow_and_update(),
-            GameState::Running(DeliveryPeriodId::from(1))
-        );
+        let GameState::Running { period, .. } = *game.state_rx.borrow_and_update() else {
+            unreachable!("Game should be running")
+        };
+        assert_eq!(period, DeliveryPeriodId::from(1));
 
         // End delivery period 1
         let _ = game
@@ -948,10 +963,10 @@ mod tests {
             .send(GameMessage::PlayerIsReady(player.clone()))
             .await;
         assert!(game.state_rx.changed().await.is_ok());
-        assert_eq!(
-            *game.state_rx.borrow_and_update(),
-            GameState::Running(DeliveryPeriodId::from(2))
-        );
+        let GameState::Running { period, .. } = *game.state_rx.borrow_and_update() else {
+            unreachable!("Game should be running")
+        };
+        assert_eq!(period, DeliveryPeriodId::from(2));
 
         // End delivery period 2
         let _ = game
@@ -1016,10 +1031,10 @@ mod tests {
         // All players ready, starts period 1
         mark_players_ready(&game.tx, &player1, &player2).await;
         assert!(game.state_rx.changed().await.is_ok());
-        assert_eq!(
-            *game.state_rx.borrow_and_update(),
-            GameState::Running(DeliveryPeriodId::from(1))
-        );
+        let GameState::Running { period, .. } = *game.state_rx.borrow_and_update() else {
+            unreachable!("Game should be running")
+        };
+        assert_eq!(period, DeliveryPeriodId::from(1));
 
         // End delivery period 1
         mark_players_ready(&game.tx, &player1, &player2).await;

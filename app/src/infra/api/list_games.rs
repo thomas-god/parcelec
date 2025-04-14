@@ -136,7 +136,10 @@ mod test_api_list_games {
         // Add games for each variant of GameState
         for game_state in [
             GameState::Open,
-            GameState::Running(DeliveryPeriodId::from(0)),
+            GameState::Running {
+                period: DeliveryPeriodId::from(0),
+                end_at: None,
+            },
             GameState::PostDelivery(DeliveryPeriodId::from(0)),
             GameState::Ended(DeliveryPeriodId::from(0)),
         ] {
