@@ -25,6 +25,8 @@
   import PlayersReadyList from "../../components/molecules/PlayersReadyList.svelte";
   import FinalScores from "../../components/molecules/FinalScores.svelte";
   import Footer from "../../components/molecules/Footer.svelte";
+  import { isSome, none, some, type Option } from "$lib/Options";
+  import Countdown from "../../components/atoms/Countdown.svelte";
 
   let player_name: string = $state("");
   let player_is_ready = $derived.by(() => {
@@ -50,6 +52,7 @@
   let stack_state: "Open" | "Closed" = $state("Open");
   let game_state: GameState = $state("Open");
   let delivery_period_id = $state(0);
+  let delivery_period_end: Option<Date> = $state(none());
   let last_delivery_period_id = $state(0);
   let scores: SvelteMap<number, DeliveryPeriodScore> = $state(new SvelteMap());
   let final_scores: GameResults = $state(new Array());
@@ -86,9 +89,14 @@
         .with({ type: "TradeList" }, (trade_list) => {
           trades = trade_list.trades;
         })
-        .with({ type: "GameState" }, ({ state, delivery_period }) => {
+        .with({ type: "GameState" }, ({ state, delivery_period, end_at }) => {
           game_state = state;
           delivery_period_id = delivery_period;
+          if (end_at === "None") {
+            delivery_period_end = none();
+          } else {
+            delivery_period_end = some(new Date(end_at));
+          }
           if (state === "Running") {
             console.log(`Starting delivery period no: ${delivery_period_id}`);
           }
@@ -225,6 +233,12 @@
         </div>
       {:else if game_state === "Ended"}
         <FinalScores {player_name} {final_scores} />
+      {/if}
+      {#if isSome(delivery_period_end)}
+        <div class="self-center text-lg">
+          Termine dans :
+          <Countdown end_at={delivery_period_end.value} />
+        </div>
       {/if}
       <Footer
         {player_is_ready}

@@ -114,6 +114,7 @@ const WSMessageSchema = z.discriminatedUnion("type", [
     type: z.literal("GameState"),
     state: z.enum(["Open", "Running", "PostDelivery", "Ended"]),
     delivery_period: z.number(),
+    end_at: z.string(),
   }),
   z.object({
     type: z.literal("DeliveryPeriodResults"),
