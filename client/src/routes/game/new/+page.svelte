@@ -16,7 +16,7 @@
   let nuclear_installed_capacity = $state("1000");
   let nuclear_cost = $state("35");
   let battery_charge = $state("300");
-  let number_of_periods = $state("4");
+  let number_of_periods = $state("6");
   let apiError = $state("");
 
   let isGameNameValid = $derived(game_name && game_name.trim() !== "");
