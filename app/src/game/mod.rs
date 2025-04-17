@@ -110,7 +110,7 @@ impl Serialize for GameState {
             ..
         } = self
         {
-            state.serialize_field("end_at", &end_at.to_string())?;
+            state.serialize_field("end_at", &end_at.to_rfc3339())?;
         } else {
             state.serialize_field("end_at", "None")?;
         };
@@ -200,7 +200,7 @@ mod test_game_state {
             .unwrap(),
             format!(
                 "{{\"type\":\"GameState\",\"state\":\"Running\",\"delivery_period\":1,\"end_at\":\"{}\"}}",
-                date.to_string()
+                date.to_rfc3339()
             )
         );
         assert_eq!(

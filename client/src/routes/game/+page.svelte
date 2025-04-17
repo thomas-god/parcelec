@@ -171,7 +171,7 @@
     <div class="flex flex-col gap-6 items-stretch">
       <div
         class={`
-        sticky top-0 px-2 pt-5 pb-5
+        sticky top-0 px-2 pt-5 pb-5 z-30
         text-success-content bg-success rounded-b-md
         @sm:p-6
         @min-[600px]:mt-8 @min-[600px]:rounded-t-md
@@ -235,7 +235,7 @@
         <FinalScores {player_name} {final_scores} />
       {/if}
       {#if isSome(delivery_period_end)}
-        <div class="self-center text-lg">
+        <div class="self-center text-lg mb-18">
           Termine dans :
           <Countdown end_at={delivery_period_end.value} />
         </div>
