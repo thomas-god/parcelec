@@ -17,7 +17,7 @@
 
 <footer
   class={`
-  footer bg-success text-success-content rounded-t-md p-2 pb-4 flex flex-col items-center text-xl
+  footer bg-success text-success-content rounded-t-md px-2 py-4 flex flex-col items-center text-xl
   @max-[600px]:fixed @max-[600px]:bottom-0 @max-[600px]:w-full
   @min-[600px]:rounded-b-md @min-[600px]:mx-auto @min-[600px]:max-w-[500px]
   `}
