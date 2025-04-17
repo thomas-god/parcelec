@@ -15,7 +15,9 @@
   import PowerPlants from "../../components/molecules/tutorial/PowerPlants.svelte";
   import { isSome, none, some, type Option } from "$lib/Options";
   import TradeNotification from "../../components/molecules/TradeNotification.svelte";
-  import Stepper from "../../components/molecules/tutorial/Stepper.svelte";
+  import { marketPosition, plantsPosition } from "$lib/position";
+  import { marketPnl, plantsPnl } from "$lib/pnl";
+  import CurrentScore from "../../components/molecules/CurrentScore.svelte";
 
   let error = $state(false);
   let orderBook: OrderBook = $state({
@@ -84,28 +86,16 @@
     }
   };
 
+  let plants_position = $derived(plantsPosition(plants));
+  let trades_position = $derived(marketPosition(trades));
+  let position = $derived(plants_position + trades_position);
+  let plants_pnl = $derived(plantsPnl(plants));
+  let market_pnl = $derived(marketPnl(trades));
+  let pnl = $derived(plants_pnl + market_pnl);
+
   const sendMessage = (msg: string) => {
     if (isSome(game_socket)) {
       game_socket.value.send(msg);
-    }
-  };
-
-  const steps = [
-    "Introduction",
-    "Centrales",
-    "Marché",
-    "Périodes et prévisions",
-  ];
-  let steps_index = $state(0);
-  let current_step = $derived(steps.at(steps_index));
-  const next_step = () => {
-    if (steps_index < steps.length - 1) {
-      steps_index += 1;
-    }
-  };
-  const previous_step = () => {
-    if (steps_index > 0) {
-      steps_index -= 1;
     }
   };
 </script>
@@ -113,31 +103,31 @@
 {#await startTutorial() then}
   <div class="flex flex-col max-w-[500px] mx-auto text-justify">
     <div class="mt-6">
-      {#if current_step === "Introduction"}
-        <Intro />
-      {:else if current_step === "Centrales"}
-        <PowerPlants />
-      {:else if current_step === "Marché"}
-        <div class="flex flex-col">
-          <Market {orderBook} {trades} send={sendMessage} />
-        </div>
-        <div class="toast mb-15 items-center content-center">
-          {#each trades_to_display as trade (`${trade.direction}-${trade.execution_time}`)}
-            <TradeNotification {trade} {removeTradeToDisplay} />
-          {/each}
-        </div>
-      {:else if current_step === "Périodes et prévisions"}
-        <PeriodsAndForecasts forecasts={plant_forecasts} {plants} />
-        <div class="flex flex-col mt-5">
-          <button
-            onclick={() => goto("/game")}
-            class="btn btn-success text-lg max-w-64 self-center"
-            >➡️ Commencer</button
-          >
-        </div>
-      {/if}
+      <Intro />
+      <div class="divider mx-3"></div>
+
+      <div
+        class="mx-6 mb-4 p-4 text-success-content bg-success rounded-md sticky top-3 z-30"
+      >
+        <CurrentScore {position} {pnl} />
+      </div>
+
+      <PowerPlants {sendMessage} {plants} />
+      <Market {orderBook} {trades} send={sendMessage} />
+      <PeriodsAndForecasts forecasts={plant_forecasts} {plants} />
+      <div class="my-5 mx-auto sticky bottom-3 z-30">
+        <button
+          onclick={() => goto("/game")}
+          class="btn btn-success text-lg max-w-64 mx-auto block"
+          >➡️ Commencer</button
+        >
+      </div>
     </div>
-    <Stepper {steps} {steps_index} {next_step} {previous_step} />
+    <div class="toast mb-15 items-center content-center z-30">
+      {#each trades_to_display as trade (`${trade.direction}-${trade.execution_time}`)}
+        <TradeNotification {trade} {removeTradeToDisplay} />
+      {/each}
+    </div>
   </div>
 
   {#if error}

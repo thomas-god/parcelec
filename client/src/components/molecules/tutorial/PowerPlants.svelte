@@ -1,43 +1,45 @@
 <script lang="ts">
   import GasPlant from "../GasPlant.svelte";
-  import Score from "../CurrentScore.svelte";
+  import type { StackSnapshot } from "$lib/message";
 
-  let base_position = 300;
-  let base_pnl = 300 * 65;
+  let {
+    sendMessage,
+    plants,
+  }: { sendMessage: (msg: string) => void; plants: StackSnapshot } = $props();
 
-  let position = $derived.by(() => {
-    return setpoint - base_position;
-  });
-  let energy_cost = 60;
-  let pnl = $derived.by(() => {
-    return base_pnl - setpoint * energy_cost;
-  });
-
-  let setpoint = $state(0);
-  let cost = $derived(setpoint * 60);
-  const updateSetpoint = (new_setpoint: number) => {
-    setpoint = Math.max(0, Math.min(new_setpoint, 700));
+  const programSetpoint = (plant_id: string, setpoint: number) => {
+    const parsed_setpoint = Number.isNaN(setpoint) ? 0 : setpoint;
+    sendMessage(
+      JSON.stringify({
+        ProgramPlant: {
+          plant_id,
+          setpoint: parsed_setpoint,
+        },
+      }),
+    );
   };
 </script>
 
-<div class="mx-6 mb-2 p-4 text-success-content bg-success rounded-md">
-  <Score {position} {pnl} />
-</div>
+<h2 class="font-semibold text-lg max-[500px]:pl-4">Centrales ⚡</h2>
 
 <p class="px-4 pt-2">
-  Pour vous équilibrer vous disposez de centrales que vous pouvez piloter.
+  Vous disposez de centrales que vous pouvez piloter pour vous équilibrer.
   Essayez de réduire votre déficit avec cette centrale !
 </p>
 
 <div class="p-5">
-  <GasPlant
-    {cost}
-    {setpoint}
-    {updateSetpoint}
-    dispatchable={true}
-    max_setpoint={700}
-    {energy_cost}
-  />
+  {#each plants as [id, plant] (id)}
+    {#if plant.type === "GasPlant"}
+      <GasPlant
+        cost={plant.output.cost}
+        dispatchable={true}
+        energy_cost={plant.settings.energy_cost}
+        max_setpoint={plant.settings.max_setpoint}
+        setpoint={plant.output.setpoint}
+        updateSetpoint={(setpoint) => programSetpoint(id, setpoint)}
+      />
+    {/if}
+  {/each}
 </div>
 
 <p class="px-4">Il existe plusieurs types de centrales :</p>

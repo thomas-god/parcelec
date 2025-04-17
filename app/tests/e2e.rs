@@ -4,65 +4,6 @@ use fantoccini::{Client, Locator, error::CmdError};
 
 mod common;
 
-async fn navigate_tutorial_steps(client: &Client) {
-    // Introduction
-    client
-        .wait()
-        .at_most(DEFAULT_WAIT_TIMEOUT)
-        .for_element(Locator::XPath("//button[contains(text(), 'Introduction')]"))
-        .await
-        .unwrap();
-    // Navigate tutorial steps with "»" buttons
-    client
-        .find(Locator::XPath("//button[contains(text(), '»')]"))
-        .await
-        .unwrap()
-        .click()
-        .await
-        .unwrap();
-
-    // Plants
-    client
-        .wait()
-        .at_most(DEFAULT_WAIT_TIMEOUT)
-        .for_element(Locator::XPath("//button[contains(text(), 'Centrales')]"))
-        .await
-        .unwrap();
-    // Navigate tutorial steps with "»" buttons
-    client
-        .find(Locator::XPath("//button[contains(text(), '»')]"))
-        .await
-        .unwrap()
-        .click()
-        .await
-        .unwrap();
-
-    // Market
-    client
-        .wait()
-        .at_most(DEFAULT_WAIT_TIMEOUT)
-        .for_element(Locator::XPath("//button[contains(text(), 'Marché')]"))
-        .await
-        .unwrap();
-    // Navigate tutorial steps with "»" buttons
-    client
-        .find(Locator::XPath("//button[contains(text(), '»')]"))
-        .await
-        .unwrap()
-        .click()
-        .await
-        .unwrap();
-
-    // Forecasts
-    // Market
-    client
-        .wait()
-        .at_most(DEFAULT_WAIT_TIMEOUT)
-        .for_element(Locator::XPath("//button[contains(text(), 'prévisions')]"))
-        .await
-        .unwrap();
-}
-
 #[cfg(all(test, feature = "e2e-tests"))]
 #[tokio::test]
 async fn test_run_totorial() {
@@ -84,8 +25,6 @@ async fn test_run_totorial() {
             c.current_url().await.unwrap().as_ref(),
             format!("{}/tutorial", addr)
         );
-
-        navigate_tutorial_steps(&c).await;
 
         let start_tutorial = c
             .wait()

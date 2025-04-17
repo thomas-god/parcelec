@@ -1,6 +1,5 @@
 <script lang="ts">
   import OrderBookComponent from "../../organisms/OrderBook.svelte";
-  import Score from "../CurrentScore.svelte";
   import type { OrderBook, Trade } from "$lib/message";
   import { marketPosition } from "$lib/position";
   import { marketPnl } from "$lib/pnl";
@@ -20,9 +19,8 @@
   let pnl = $derived(marketPnl(trades));
 </script>
 
-<div class="mx-6 mb-2 p-4 text-success-content bg-success rounded-md">
-  <Score {position} {pnl} />
-</div>
+<h2 class="font-semibold text-lg mt-4 max-[500px]:pl-4">Marché 💱</h2>
+
 <p class="px-4 pt-2">
   En plus de vos centrales, le <i>marché </i> 💱 vous permet d'acheter ou de vendre
   de l'énergie avec d'autres joueurs.
@@ -39,7 +37,7 @@
 </p>
 
 <div
-  class="bg-base-100 rounded-lg border-transparent pt-4 p-2 mx-2 max-w-96 self-center"
+  class="bg-base-100 rounded-lg border-transparent pt-4 p-2 mx-auto max-w-96"
 >
   <OrderBookComponent {orderBook} {trades} {send} />
 </div>
