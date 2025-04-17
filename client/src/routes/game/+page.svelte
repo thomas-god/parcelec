@@ -166,7 +166,7 @@
   let pnl = $derived(plants_pnl + market_pnl);
 </script>
 
-<main class="h-screen max-w-[600px] mx-auto @container">
+<main class="h-dvh max-w-[600px] mx-auto @container">
   {#if socketIsOpen}
     <div class="flex flex-col gap-6 items-stretch">
       <div
