@@ -311,28 +311,28 @@ pub fn default_stack_plants_builder() -> impl Fn() -> StackPlants + Clone + Send
                     period: DeliveryPeriodId::from(1),
                     value: ForecastValue {
                         value: 250,
-                        deviation: 50,
+                        deviation: 25,
                     },
                 },
                 Forecast {
                     period: DeliveryPeriodId::from(2),
                     value: ForecastValue {
                         value: 150,
-                        deviation: 25,
+                        deviation: 50,
                     },
                 },
                 Forecast {
                     period: DeliveryPeriodId::from(3),
                     value: ForecastValue {
                         value: 300,
-                        deviation: 50,
+                        deviation: 75,
                     },
                 },
                 Forecast {
                     period: DeliveryPeriodId::from(4),
                     value: ForecastValue {
                         value: 100,
-                        deviation: 25,
+                        deviation: 75,
                     },
                 },
             ])),
@@ -346,7 +346,7 @@ pub fn default_stack_plants_builder() -> impl Fn() -> StackPlants + Clone + Send
                         period: DeliveryPeriodId::from(1),
                         value: ForecastValue {
                             value: -1000,
-                            deviation: 100,
+                            deviation: 25,
                         },
                     },
                     Forecast {
@@ -360,14 +360,14 @@ pub fn default_stack_plants_builder() -> impl Fn() -> StackPlants + Clone + Send
                         period: DeliveryPeriodId::from(3),
                         value: ForecastValue {
                             value: -600,
-                            deviation: 100,
+                            deviation: 75,
                         },
                     },
                     Forecast {
                         period: DeliveryPeriodId::from(4),
                         value: ForecastValue {
                             value: -1800,
-                            deviation: 150,
+                            deviation: 100,
                         },
                     },
                 ],

@@ -15,7 +15,7 @@ use crate::{
         scores::{GameRankings, TierLimits},
     },
     infra::api::state::cleanup_state,
-    market::{MarketActor, bots::start_bots},
+    market::{MarketActor, bots::start_bots_tutorial},
     plants::infra::actor::default_stack_plants_builder,
     player::{PlayerName, infra::PlayerConnectionsService},
     utils::program_actors_termination,
@@ -75,7 +75,7 @@ pub async fn create_tutorial_game(
     // Start the bots
     let cloned_market_context = market_context.clone();
     tokio::spawn(async move {
-        start_bots(cloned_market_context).await;
+        start_bots_tutorial(cloned_market_context).await;
     });
 
     // Register a player for this game

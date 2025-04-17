@@ -24,7 +24,7 @@
 
 <p class="px-4 pt-2">
   Vous disposez de centrales que vous pouvez piloter pour vous équilibrer.
-  Essayez de réduire votre déficit avec cette centrale !
+  Essayez de réduire votre déficit avec votre centrale à gaz !
 </p>
 
 <div class="p-5">

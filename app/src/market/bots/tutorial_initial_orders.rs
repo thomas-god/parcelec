@@ -6,18 +6,18 @@ use crate::{
     player::{PlayerId, PlayerMessage},
 };
 
-pub struct InitialOrdersBot<MS: Market> {
+pub struct TutorialInitialOrdersBot<MS: Market> {
     id: PlayerId,
     market: MarketContext<MS>,
     _rx: Receiver<PlayerMessage>,
 }
 
-impl<MS: Market> InitialOrdersBot<MS> {
-    fn new(market: MarketContext<MS>) -> InitialOrdersBot<MS> {
+impl<MS: Market> TutorialInitialOrdersBot<MS> {
+    fn new(market: MarketContext<MS>) -> TutorialInitialOrdersBot<MS> {
         let bot_id = PlayerId::default();
         let (_, rx) = channel(16);
 
-        InitialOrdersBot {
+        TutorialInitialOrdersBot {
             id: bot_id,
             market,
             _rx: rx,
@@ -25,7 +25,7 @@ impl<MS: Market> InitialOrdersBot<MS> {
     }
 
     pub fn start(market: MarketContext<MS>) {
-        let mut bot = InitialOrdersBot::new(market);
+        let mut bot = TutorialInitialOrdersBot::new(market);
 
         tokio::spawn(async move {
             bot.run().await;
@@ -52,53 +52,36 @@ impl<MS: Market> InitialOrdersBot<MS> {
             .await;
 
         let mut period = DeliveryPeriodId::default();
+
         loop {
-            // 1st period: do nothing
-            period = period.next();
             self.wait_for_market_to_open().await;
-            self.market
-                .service
-                .new_order(OrderRequest {
-                    direction: Direction::Buy,
-                    price: 55_00,
-                    volume: 200,
-                    owner: self.id.clone(),
-                })
-                .await;
-            self.wait_for_market_to_close().await;
+            period = period.next();
 
-            // 2nd period: do nothing
-            period = period.next();
-            self.wait_for_market_to_open().await;
+            self.post_orders(&period).await;
             self.wait_for_market_to_close().await;
+        }
+    }
 
-            // 3rd period: buy 200MW
-            period = period.next();
-            self.wait_for_market_to_open().await;
-            self.market
-                .service
-                .new_order(OrderRequest {
-                    direction: Direction::Buy,
-                    price: 55_00,
-                    volume: 200,
-                    owner: self.id.clone(),
-                })
-                .await;
-            self.wait_for_market_to_close().await;
-
-            // 4rd period: sell 200MW
-            period = period.next();
-            self.wait_for_market_to_open().await;
+    async fn post_orders(&mut self, period: &DeliveryPeriodId) {
+        if *period == DeliveryPeriodId::from(1) {
             self.market
                 .service
                 .new_order(OrderRequest {
                     direction: Direction::Sell,
-                    price: 85_00,
-                    volume: 200,
+                    price: 60_00,
+                    volume: 300,
                     owner: self.id.clone(),
                 })
                 .await;
-            self.wait_for_market_to_close().await;
+            self.market
+                .service
+                .new_order(OrderRequest {
+                    direction: Direction::Buy,
+                    price: 50_00,
+                    volume: 300,
+                    owner: self.id.clone(),
+                })
+                .await;
         }
     }
 }

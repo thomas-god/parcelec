@@ -32,12 +32,10 @@
   dépose une nouvelle offre ou que la période se termine.
 </p>
 <p class="px-4 pb-4">
-  Essayer de vendre votre surplus sur le marché en créer les ordres nécessaires
-  !
+  Essayer d'acheter l'énergie qu'il vous manque en créant les ordres nécessaires
+  sur le marché !
 </p>
 
-<div
-  class="bg-base-100 rounded-lg border-transparent pt-4 p-2 mx-auto max-w-96"
->
+<div class="bg-base-100 rounded-lg border-transparent pt-4 p-2 mx-3">
   <OrderBookComponent {orderBook} {trades} {send} />
 </div>
