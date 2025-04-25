@@ -18,7 +18,7 @@ use super::delivery_period::DeliveryPeriodId;
 #[derive(Debug, PartialEq, Default, Clone, Serialize)]
 pub struct PlayerScore {
     pub balance: Power,
-    pub pnl: isize,
+    pub pnl: Money,
     pub imbalance_cost: Money,
 }
 
@@ -47,19 +47,18 @@ impl Add<&PlantOutput> for PlayerScore {
 impl Add<TradeLeg> for PlayerScore {
     type Output = PlayerScore;
     fn add(self, rhs: TradeLeg) -> Self::Output {
-        let volume = isize::saturating_add_unsigned(0, rhs.volume);
         let trade_volume = if rhs.direction == Direction::Buy {
-            volume
+            rhs.volume
         } else {
-            -volume
+            -rhs.volume
         };
         let trade_pnl = if rhs.direction == Direction::Buy {
-            -rhs.price * volume / 100 // Price in cts
+            -rhs.price * rhs.volume / 100 // Price in cts
         } else {
-            rhs.price * volume / 100 // Price in cts
+            rhs.price * rhs.volume / 100 // Price in cts
         };
         PlayerScore {
-            balance: self.balance + trade_volume.into(),
+            balance: self.balance + trade_volume / TIMESTEP,
             pnl: self.pnl + trade_pnl,
             imbalance_cost: self.imbalance_cost,
         }
@@ -120,7 +119,7 @@ mod tests {
         market::order_book::Trade,
         plants::{PlantId, PlantOutput},
         player::PlayerId,
-        utils::units::{Money, Power},
+        utils::units::{Energy, EnergyCost, Money, Power},
     };
 
     #[test]
@@ -141,14 +140,14 @@ mod tests {
                     PlantId::from("plant_1"),
                     PlantOutput {
                         setpoint: Power::from(100),
-                        cost: 100,
+                        cost: Money::from(100),
                     },
                 ),
                 (
                     PlantId::from("plant_2"),
                     PlantOutput {
                         setpoint: Power::from(200),
-                        cost: 500,
+                        cost: Money::from(500),
                     },
                 ),
             ]),
@@ -160,7 +159,7 @@ mod tests {
                 PlayerId::from("player_1"),
                 PlayerScore {
                     balance: Power::from(300),
-                    pnl: -600,
+                    pnl: Money::from(-600),
                     imbalance_cost: Money::from(300 * POSITIVE_IMBALANCE_COST)
                 }
             )])
@@ -173,8 +172,8 @@ mod tests {
             buyer: PlayerId::from("player_1"),
             seller: PlayerId::from("another_player"),
             execution_time: Utc::now(),
-            price: 80_00,
-            volume: 100,
+            price: EnergyCost::from(80_00),
+            volume: Energy::from(100),
         }]);
         let plants_outputs = HashMap::from([(
             PlayerId::from("player_1"),
@@ -183,14 +182,14 @@ mod tests {
                     PlantId::from("plant_1"),
                     PlantOutput {
                         setpoint: Power::from(100),
-                        cost: 100,
+                        cost: Money::from(100),
                     },
                 ),
                 (
                     PlantId::from("plant_2"),
                     PlantOutput {
                         setpoint: Power::from(200),
-                        cost: 500,
+                        cost: Money::from(500),
                     },
                 ),
             ]),
@@ -202,7 +201,7 @@ mod tests {
                 PlayerId::from("player_1"),
                 PlayerScore {
                     balance: Power::from(300 + 100),
-                    pnl: -600 - (80 * 100),
+                    pnl: Money::from(-600 - (80 * 100)),
                     imbalance_cost: Money::from(400 * POSITIVE_IMBALANCE_COST)
                 }
             )])
@@ -215,8 +214,8 @@ mod tests {
             buyer: PlayerId::from("player_1"),
             seller: PlayerId::from("another_player"),
             execution_time: Utc::now(),
-            price: 80_00,
-            volume: 100,
+            price: EnergyCost::from(80_00),
+            volume: Energy::from(100),
         }]);
         let plants_outputs = HashMap::from([
             (
@@ -226,14 +225,14 @@ mod tests {
                         PlantId::from("plant_1"),
                         PlantOutput {
                             setpoint: Power::from(100),
-                            cost: 100,
+                            cost: Money::from(100),
                         },
                     ),
                     (
                         PlantId::from("plant_2"),
                         PlantOutput {
                             setpoint: Power::from(200),
-                            cost: 500,
+                            cost: Money::from(500),
                         },
                     ),
                 ]),
@@ -244,7 +243,7 @@ mod tests {
                     PlantId::from("another_plant"),
                     PlantOutput {
                         setpoint: Power::from(-1000),
-                        cost: 0,
+                        cost: Money::from(0),
                     },
                 )]),
             ),
@@ -257,7 +256,7 @@ mod tests {
                     PlayerId::from("player_1"),
                     PlayerScore {
                         balance: Power::from(300 + 100),
-                        pnl: -600 - (80 * 100),
+                        pnl: Money::from(-600 - (80 * 100)),
                         imbalance_cost: Money::from(400 * POSITIVE_IMBALANCE_COST)
                     }
                 ),
@@ -266,7 +265,7 @@ mod tests {
                     PlayerScore {
                         balance: Power::from(-1000 - 100),
                         #[allow(clippy::identity_op)] // Make test more explicit
-                        pnl: 0 + (80 * 100),
+                        pnl: Money::from(0 + (80 * 100)),
                         imbalance_cost: Money::from(-1100 * NEGATIVE_IMBALANCE_COST)
                     }
                 )
@@ -279,7 +278,7 @@ mod tests {
 pub struct PlayerResult {
     pub player: PlayerId,
     pub rank: usize,
-    pub score: isize,
+    pub score: Money,
     pub tier: Option<RankTier>,
 }
 
@@ -292,9 +291,9 @@ pub enum RankTier {
 
 #[derive(Debug, Clone)]
 pub struct TierLimits {
-    pub gold: isize,
-    pub silver: isize,
-    pub bronze: isize,
+    pub gold: Money,
+    pub silver: Money,
+    pub bronze: Money,
 }
 
 #[derive(Debug, Clone)]
@@ -307,14 +306,14 @@ impl GameRankings {
         &self,
         players_scores: &HashMap<PlayerId, HashMap<DeliveryPeriodId, PlayerScore>>,
     ) -> Vec<PlayerResult> {
-        let mut scores: Vec<(PlayerId, isize)> = players_scores
+        let mut scores: Vec<(PlayerId, Money)> = players_scores
             .iter()
             .map(|(player, score)| {
                 (
                     player.clone(),
                     score
                         .iter()
-                        .fold(0, |acc, (_, s)| acc + s.pnl + isize::from(s.imbalance_cost)),
+                        .fold(Money::from(0), |acc, (_, s)| acc + s.pnl + s.imbalance_cost),
                 )
             })
             .collect();
@@ -366,7 +365,7 @@ mod test_pnl_ranking {
                         PlayerScore {
                             balance: Power::from(0),
                             imbalance_cost: Money::from(0),
-                            pnl: 1000,
+                            pnl: Money::from(1000),
                         },
                     ),
                     (
@@ -374,7 +373,7 @@ mod test_pnl_ranking {
                         PlayerScore {
                             balance: Power::from(10),
                             imbalance_cost: Money::from(-60),
-                            pnl: 1050,
+                            pnl: Money::from(1050),
                         },
                     ),
                 ]),
@@ -387,7 +386,7 @@ mod test_pnl_ranking {
                         PlayerScore {
                             balance: Power::from(0),
                             imbalance_cost: Money::from(0),
-                            pnl: 0,
+                            pnl: Money::from(0),
                         },
                     ),
                     (
@@ -395,7 +394,7 @@ mod test_pnl_ranking {
                         PlayerScore {
                             balance: Power::from(10),
                             imbalance_cost: Money::from(-60),
-                            pnl: 0,
+                            pnl: Money::from(0),
                         },
                     ),
                 ]),
@@ -409,13 +408,13 @@ mod test_pnl_ranking {
                 PlayerResult {
                     player: PlayerId::from("toto"),
                     rank: 1,
-                    score: 1990,
+                    score: Money::from(1990),
                     tier: None
                 },
                 PlayerResult {
                     player: PlayerId::from("other_player"),
                     rank: 2,
-                    score: -60,
+                    score: Money::from(-60),
                     tier: None
                 }
             ]
@@ -432,7 +431,7 @@ mod test_pnl_ranking {
                     PlayerScore {
                         balance: Power::from(0),
                         imbalance_cost: Money::from(0),
-                        pnl: 1000,
+                        pnl: Money::from(1000),
                     },
                 )]),
             ),
@@ -443,7 +442,7 @@ mod test_pnl_ranking {
                     PlayerScore {
                         balance: Power::from(0),
                         imbalance_cost: Money::from(0),
-                        pnl: 500,
+                        pnl: Money::from(500),
                     },
                 )]),
             ),
@@ -454,7 +453,7 @@ mod test_pnl_ranking {
                     PlayerScore {
                         balance: Power::from(0),
                         imbalance_cost: Money::from(0),
-                        pnl: 100,
+                        pnl: Money::from(100),
                     },
                 )]),
             ),
@@ -465,7 +464,7 @@ mod test_pnl_ranking {
                     PlayerScore {
                         balance: Power::from(0),
                         imbalance_cost: Money::from(0),
-                        pnl: -500,
+                        pnl: Money::from(-500),
                     },
                 )]),
             ),
@@ -473,9 +472,9 @@ mod test_pnl_ranking {
 
         let ranking = GameRankings {
             tier_limits: Some(TierLimits {
-                gold: 1000,
-                silver: 500,
-                bronze: 100,
+                gold: Money::from(1000),
+                silver: Money::from(500),
+                bronze: Money::from(100),
             }),
         };
         assert_eq!(
@@ -484,25 +483,25 @@ mod test_pnl_ranking {
                 PlayerResult {
                     player: PlayerId::from("gold"),
                     rank: 1,
-                    score: 1000,
+                    score: Money::from(1000),
                     tier: Some(RankTier::Gold)
                 },
                 PlayerResult {
                     player: PlayerId::from("silver"),
                     rank: 2,
-                    score: 500,
+                    score: Money::from(500),
                     tier: Some(RankTier::Silver)
                 },
                 PlayerResult {
                     player: PlayerId::from("bronze"),
                     rank: 3,
-                    score: 100,
+                    score: Money::from(100),
                     tier: Some(RankTier::Bronze)
                 },
                 PlayerResult {
                     player: PlayerId::from("none"),
                     rank: 4,
-                    score: -500,
+                    score: Money::from(-500),
                     tier: None
                 }
             ]

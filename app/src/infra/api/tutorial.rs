@@ -18,7 +18,7 @@ use crate::{
     market::{MarketActor, bots::start_bots_tutorial},
     plants::infra::actor::default_stack_plants_builder,
     player::{PlayerName, infra::PlayerConnectionsService},
-    utils::program_actors_termination,
+    utils::{program_actors_termination, units::Money},
 };
 
 use super::ApiState;
@@ -51,9 +51,9 @@ pub async fn create_tutorial_game(
         delivery_period_duration: None,
         ranking_calculator: GameRankings {
             tier_limits: Some(TierLimits {
-                gold: 80_000,
-                silver: 50_000,
-                bronze: 25_000,
+                gold: Money::from(80_000),
+                silver: Money::from(50_000),
+                bronze: Money::from(25_000),
             }),
         },
         build_stack: default_stack_plants_builder(),

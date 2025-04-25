@@ -6,7 +6,7 @@ edition = "2024"
 [dependencies]
 axum = { version = "0.8.3", features = ["macros", "ws"] }
 chrono = { version = "0.4.40", features = ["serde"] }
-derive_more = { version = "2.0.1", features = ["from", "display", "as_ref", "into", "add", "mul"] }
+derive_more = { version = "2.0.1", features = ["from", "display", "as_ref", "into", "add", "mul", "add_assign", "not"] }
 futures-util = "0.3.31"
 petname = "2.0.2"
 rand = "0.9.1"

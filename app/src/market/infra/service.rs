@@ -118,6 +118,7 @@ mod tests {
             order_book::OrderRequest,
         },
         player::PlayerId,
+        utils::units::{Energy, EnergyCost},
     };
 
     use super::MarketService;
@@ -213,8 +214,8 @@ mod tests {
         let request = OrderRequest {
             direction: Direction::Buy,
             owner: PlayerId::default(),
-            volume: 100,
-            price: 10_00,
+            volume: Energy::from(100),
+            price: EnergyCost::from(10_00),
         };
 
         let _ = service.new_order(request.clone()).await;

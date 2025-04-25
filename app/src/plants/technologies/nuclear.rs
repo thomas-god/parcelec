@@ -3,33 +3,33 @@ use serde::Serialize;
 use crate::{
     forecast::Forecast,
     plants::{PlantOutput, PowerPlant, PowerPlantPublicRepr},
-    utils::units::{NO_POWER, Power},
+    utils::units::{EnergyCost, Money, NO_POWER, Power, TIMESTEP},
 };
 
 #[derive(Debug, Serialize, Clone, Copy, PartialEq)]
 pub struct NuclearPublicRepr {
     pub output: PlantOutput,
-    pub max_setpoint: isize,
-    pub previous_setpoint: isize,
-    pub energy_cost: isize,
+    pub max_setpoint: Power,
+    pub previous_setpoint: Power,
+    pub energy_cost: EnergyCost,
     pub locked: bool,
     pub touched: bool,
 }
 
 pub struct NuclearPlant {
-    setpoint: isize,
-    previous_setpoint: isize,
-    max_setpoint: isize,
+    setpoint: Power,
+    previous_setpoint: Power,
+    max_setpoint: Power,
     touched: bool,
     locked: bool,
-    energy_cost: isize,
+    energy_cost: EnergyCost,
 }
 
 impl NuclearPlant {
-    pub fn new(max_setpoint: isize, energy_cost: isize) -> NuclearPlant {
+    pub fn new(max_setpoint: Power, energy_cost: EnergyCost) -> NuclearPlant {
         NuclearPlant {
-            setpoint: 0,
-            previous_setpoint: 0,
+            setpoint: Power::from(0),
+            previous_setpoint: Power::from(0),
             max_setpoint,
             energy_cost,
             touched: false,
@@ -37,8 +37,8 @@ impl NuclearPlant {
         }
     }
 
-    fn cost(&self) -> isize {
-        self.setpoint * self.energy_cost
+    fn cost(&self) -> Money {
+        self.setpoint * TIMESTEP * self.energy_cost
     }
 }
 
@@ -46,7 +46,7 @@ impl PowerPlant for NuclearPlant {
     fn current_state(&self) -> PowerPlantPublicRepr {
         PowerPlantPublicRepr::Nuclear(NuclearPublicRepr {
             output: PlantOutput {
-                setpoint: self.setpoint.into(),
+                setpoint: self.setpoint,
                 cost: self.cost(),
             },
             max_setpoint: self.max_setpoint,
@@ -59,11 +59,11 @@ impl PowerPlant for NuclearPlant {
 
     fn program_setpoint(&mut self, setpoint: Power) -> PlantOutput {
         if !self.locked {
-            self.setpoint = setpoint.min(self.max_setpoint.into()).max(NO_POWER).into();
-            self.touched = setpoint != self.previous_setpoint.into();
+            self.setpoint = setpoint.min(self.max_setpoint).max(NO_POWER);
+            self.touched = setpoint != self.previous_setpoint;
         }
         PlantOutput {
-            setpoint: self.setpoint.into(),
+            setpoint: self.setpoint,
             cost: self.cost(),
         }
     }
@@ -73,7 +73,7 @@ impl PowerPlant for NuclearPlant {
         self.touched = false;
         self.previous_setpoint = self.setpoint;
         PlantOutput {
-            setpoint: self.setpoint.into(),
+            setpoint: self.setpoint,
             cost: self.cost(),
         }
     }
@@ -86,8 +86,11 @@ impl PowerPlant for NuclearPlant {
 #[cfg(test)]
 mod test {
 
-    use crate::plants::{
-        PlantOutput, PowerPlant, PowerPlantPublicRepr, technologies::nuclear::NuclearPlant,
+    use crate::{
+        plants::{
+            PlantOutput, PowerPlant, PowerPlantPublicRepr, technologies::nuclear::NuclearPlant,
+        },
+        utils::units::{EnergyCost, Money, Power},
     };
 
     use super::NuclearPublicRepr;
@@ -101,14 +104,14 @@ mod test {
 
     #[test]
     fn nuclear_has_no_forecast() {
-        let plant = NuclearPlant::new(1200, 35);
+        let plant = NuclearPlant::new(Power::from(1200), EnergyCost::from(35));
 
         assert!(plant.get_forecast().is_none());
     }
 
     #[test]
     fn nuclear_cannot_be_programmed_2_periods_in_a_row() {
-        let mut plant = NuclearPlant::new(1200, 35);
+        let mut plant = NuclearPlant::new(Power::from(1200), EnergyCost::from(35));
 
         // First period, plant can be programmed
         let output_program = plant.program_setpoint(500.into());
@@ -135,7 +138,7 @@ mod test {
 
     #[test]
     fn nuclear_programming_the_same_setpoint_as_previous_period_does_not_lock_the_plant() {
-        let mut plant = NuclearPlant::new(1200, 35);
+        let mut plant = NuclearPlant::new(Power::from(1200), EnergyCost::from(35));
 
         // First period, program the plant and dispatch
         plant.program_setpoint(500.into());
@@ -159,7 +162,7 @@ mod test {
 
     #[test]
     fn nuclear_setpoint_limits() {
-        let mut plant = NuclearPlant::new(1200, 35);
+        let mut plant = NuclearPlant::new(Power::from(1200), EnergyCost::from(35));
 
         assert_eq!(plant.program_setpoint(0.into()).setpoint, 0.into());
         assert_eq!(plant.program_setpoint((-1).into()).setpoint, 0.into());
@@ -170,18 +173,18 @@ mod test {
 
     #[test]
     fn nuclear_public_repr() {
-        let mut plant = NuclearPlant::new(1200, 35);
+        let mut plant = NuclearPlant::new(Power::from(1200), EnergyCost::from(35));
 
         assert_eq!(
             extract_state(&plant),
             NuclearPublicRepr {
                 output: PlantOutput {
-                    cost: 0,
-                    setpoint: 0.into()
+                    cost: Money::from(0),
+                    setpoint: Power::from(0)
                 },
-                max_setpoint: 1200,
-                previous_setpoint: 0,
-                energy_cost: 35,
+                max_setpoint: Power::from(1200),
+                previous_setpoint: Power::from(0),
+                energy_cost: EnergyCost::from(35),
                 locked: false,
                 touched: false
             }
@@ -194,12 +197,12 @@ mod test {
             extract_state(&plant),
             NuclearPublicRepr {
                 output: PlantOutput {
-                    cost: 600 * 35,
-                    setpoint: 600.into()
+                    cost: Money::from(600 * 35),
+                    setpoint: Power::from(600)
                 },
-                max_setpoint: 1200,
-                previous_setpoint: 600,
-                energy_cost: 35,
+                max_setpoint: Power::from(1200),
+                previous_setpoint: Power::from(600),
+                energy_cost: EnergyCost::from(35),
                 locked: true,
                 touched: false
             }

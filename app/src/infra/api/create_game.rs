@@ -23,26 +23,29 @@ use crate::{
         },
     },
     player::infra::PlayerConnectionsService,
-    utils::program_actors_termination,
+    utils::{
+        program_actors_termination,
+        units::{EnergyCost, Money, Power},
+    },
 };
 
 use super::ApiState;
 
 #[derive(Debug, Deserialize, Clone, Copy)]
 struct GasPlantConfig {
-    max_power: isize,
-    cost: isize,
+    max_power: Power,
+    cost: EnergyCost,
 }
 
 #[derive(Debug, Deserialize, Clone, Copy)]
 struct NuclearPlantConfig {
-    max_power: isize,
-    cost: isize,
+    max_power: Power,
+    cost: EnergyCost,
 }
 
 #[derive(Debug, Deserialize, Clone)]
 struct ConsumersConfig {
-    revenues: isize,
+    revenues: EnergyCost,
     forecasts: Vec<Forecast>,
 }
 
@@ -120,9 +123,9 @@ pub async fn create_game(
         number_of_delivery_periods: request.number_of_periods,
         ranking_calculator: GameRankings {
             tier_limits: Some(TierLimits {
-                gold: 80_000,
-                silver: 50_000,
-                bronze: 25_000,
+                gold: Money::from(80_000),
+                silver: Money::from(50_000),
+                bronze: Money::from(25_000),
             }),
         },
         build_stack: stack_plants_builder(request.stack),

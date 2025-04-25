@@ -1179,6 +1179,7 @@ mod test_rankings_mapping {
     use crate::{
         game::{Player, infra::actor::map_rankings_to_player_name, scores::PlayerResult},
         player::{PlayerId, PlayerName, PlayerResultView},
+        utils::units::Money,
     };
 
     #[test]
@@ -1193,7 +1194,7 @@ mod test_rankings_mapping {
         let rankings = vec![PlayerResult {
             player: player_id.clone(),
             rank: 1,
-            score: 0,
+            score: Money::from(0),
             tier: None,
         }];
 
@@ -1202,7 +1203,7 @@ mod test_rankings_mapping {
             vec![PlayerResultView {
                 player: player_name.clone(),
                 rank: 1,
-                score: 0,
+                score: Money::from(0),
                 tier: None,
             }]
         );
@@ -1215,7 +1216,7 @@ mod test_rankings_mapping {
         let rankings = vec![PlayerResult {
             player: player_id.clone(),
             rank: 1,
-            score: 0,
+            score: Money::from(0),
             tier: None,
         }];
 
@@ -1224,7 +1225,7 @@ mod test_rankings_mapping {
             vec![PlayerResultView {
                 player: PlayerName::from(player_id.to_string()),
                 rank: 1,
-                score: 0,
+                score: Money::from(0),
                 tier: None,
             }]
         );

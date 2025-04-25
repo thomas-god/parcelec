@@ -296,6 +296,7 @@ mod tests {
         game::{GameId, delivery_period::DeliveryPeriodId},
         market::{Direction, MarketState, order_book::OrderRequest},
         player::{PlayerConnections, PlayerId},
+        utils::units::{Energy, EnergyCost},
     };
 
     use super::{MarketActor, MarketMessage, PlayerMessage};
@@ -374,8 +375,8 @@ mod tests {
         // Send order request to market actor
         tx.send(MarketMessage::OrderRequest(OrderRequest {
             direction: Direction::Buy,
-            price: 50_00,
-            volume: 10,
+            price: EnergyCost::from(50_00),
+            volume: Energy::from(10),
             owner: player_id.clone(),
         }))
         .await
@@ -403,8 +404,8 @@ mod tests {
         // Send order request to market actor
         tx.send(MarketMessage::OrderRequest(OrderRequest {
             direction: Direction::Buy,
-            price: 50_00,
-            volume: 10,
+            price: EnergyCost::from(50_00),
+            volume: Energy::from(10),
             owner: player_id.clone(),
         }))
         .await
@@ -443,8 +444,8 @@ mod tests {
         // Send BUY order
         tx.send(MarketMessage::OrderRequest(OrderRequest {
             direction: Direction::Buy,
-            volume: 10,
-            price: 50_00,
+            volume: Energy::from(10),
+            price: EnergyCost::from(50_00),
             owner: buyer_id.clone(),
         }))
         .await
@@ -456,8 +457,8 @@ mod tests {
         // Send SELL order
         tx.send(MarketMessage::OrderRequest(OrderRequest {
             direction: Direction::Sell,
-            volume: 10,
-            price: 50_00,
+            volume: Energy::from(10),
+            price: EnergyCost::from(50_00),
             owner: seller_id.clone(),
         }))
         .await
@@ -510,8 +511,8 @@ mod tests {
         let _ = tx
             .send(MarketMessage::OrderRequest(OrderRequest {
                 direction: Direction::Buy,
-                volume: 10,
-                price: 50_00,
+                volume: Energy::from(10),
+                price: EnergyCost::from(50_00),
                 owner: player_id.to_owned(),
             }))
             .await;
@@ -551,8 +552,8 @@ mod tests {
         let _ = tx
             .send(MarketMessage::OrderRequest(OrderRequest {
                 direction: Direction::Buy,
-                volume: 10,
-                price: 50_00,
+                volume: Energy::from(10),
+                price: EnergyCost::from(50_00),
                 owner: player_id.to_owned(),
             }))
             .await;
@@ -574,16 +575,16 @@ mod tests {
         let _ = tx
             .send(MarketMessage::OrderRequest(OrderRequest {
                 direction: Direction::Buy,
-                volume: 10,
-                price: 50_00,
+                volume: Energy::from(10),
+                price: EnergyCost::from(50_00),
                 owner: player_id.to_owned(),
             }))
             .await;
         let _ = tx
             .send(MarketMessage::OrderRequest(OrderRequest {
                 direction: Direction::Sell,
-                volume: 10,
-                price: 50_00,
+                volume: Energy::from(10),
+                price: EnergyCost::from(50_00),
                 owner: player_id.to_owned(),
             }))
             .await;
@@ -613,8 +614,8 @@ mod tests {
         let _ = tx
             .send(MarketMessage::OrderRequest(OrderRequest {
                 direction: Direction::Buy,
-                volume: 10,
-                price: 50_00,
+                volume: Energy::from(10),
+                price: EnergyCost::from(50_00),
                 owner: player_id.to_owned(),
             }))
             .await;
@@ -801,16 +802,16 @@ mod tests {
         let _ = tx
             .send(MarketMessage::OrderRequest(OrderRequest {
                 direction: Direction::Buy,
-                volume: 10,
-                price: 50_00,
+                volume: Energy::from(10),
+                price: EnergyCost::from(50_00),
                 owner: player_id.to_owned(),
             }))
             .await;
         let _ = tx
             .send(MarketMessage::OrderRequest(OrderRequest {
                 direction: Direction::Sell,
-                volume: 10,
-                price: 50_00,
+                volume: Energy::from(10),
+                price: EnergyCost::from(50_00),
                 owner: player_id.to_owned(),
             }))
             .await;
@@ -870,8 +871,8 @@ mod tests {
         let _ = tx
             .send(MarketMessage::OrderRequest(OrderRequest {
                 direction: Direction::Buy,
-                volume: 10,
-                price: 50_00,
+                volume: Energy::from(10),
+                price: EnergyCost::from(50_00),
                 owner: player_id.clone(),
             }))
             .await;
@@ -895,8 +896,8 @@ mod tests {
         let _ = tx
             .send(MarketMessage::OrderRequest(OrderRequest {
                 direction: Direction::Sell,
-                volume: 10,
-                price: 50_00,
+                volume: Energy::from(10),
+                price: EnergyCost::from(50_00),
                 owner: player_id.clone(),
             }))
             .await;

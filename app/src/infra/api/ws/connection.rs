@@ -32,6 +32,7 @@ use crate::{
         PlayerMessage,
         infra::{ConnectionRepositoryMessage, PlayerConnection},
     },
+    utils::units::{Energy, EnergyCost},
 };
 
 use super::{PlayerId, PlayerName};
@@ -39,8 +40,8 @@ use super::{PlayerId, PlayerName};
 #[derive(Deserialize, Debug)]
 pub struct OrderRequest {
     pub direction: Direction,
-    pub price: isize,
-    pub volume: usize,
+    pub price: EnergyCost,
+    pub volume: Energy,
 }
 
 #[derive(Deserialize, Debug)]

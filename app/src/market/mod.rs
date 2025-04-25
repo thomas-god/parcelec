@@ -6,7 +6,11 @@ use tokio::sync::watch;
 
 use order_book::{Bid, Offer, OrderRequest, Trade, TradeLeg};
 
-use crate::{game::delivery_period::DeliveryPeriodId, player::PlayerId};
+use crate::{
+    game::delivery_period::DeliveryPeriodId,
+    player::PlayerId,
+    utils::units::{Energy, EnergyCost},
+};
 
 pub mod bots;
 pub mod infra;
@@ -56,8 +60,8 @@ pub trait Market: Clone + Send + Sync + 'static {
 pub struct OrderRepr {
     pub order_id: String,
     pub direction: Direction,
-    pub volume: usize,
-    pub price: isize,
+    pub volume: Energy,
+    pub price: EnergyCost,
     pub created_at: DateTime<Utc>,
     pub owned: bool,
 }
@@ -129,6 +133,7 @@ mod test_order_repr {
     use crate::{
         market::{OrderRepr, order_book::Bid},
         player::PlayerId,
+        utils::units::{Energy, EnergyCost},
     };
 
     use super::{
@@ -142,9 +147,9 @@ mod test_order_repr {
             direction: Direction::Sell,
             id: Uuid::new_v4().to_string(),
             owner: PlayerId::from("toto"),
-            price: 10_00,
+            price: EnergyCost::from(10_00),
             timestamp: Utc::now(),
-            volume: 100,
+            volume: Energy::from(100),
         });
 
         assert!(!OrderRepr::from_offer(&offer, None).owned);
@@ -158,9 +163,9 @@ mod test_order_repr {
             direction: Direction::Buy,
             id: Uuid::new_v4().to_string(),
             owner: PlayerId::from("toto"),
-            price: 10_00,
+            price: EnergyCost::from(10_00),
             timestamp: Utc::now(),
-            volume: 100,
+            volume: Energy::from(100),
         });
 
         assert!(!OrderRepr::from_bid(&bid, None).owned);

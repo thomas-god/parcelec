@@ -3,33 +3,33 @@ use serde::Serialize;
 use crate::{
     forecast::Forecast,
     plants::{PlantOutput, PowerPlant, PowerPlantPublicRepr},
-    utils::units::{NO_POWER, Power},
+    utils::units::{EnergyCost, Money, NO_POWER, Power, TIMESTEP},
 };
 
 /// Plant with no dynamic constraints.
 pub struct GasPlant {
     settings: GasPlantSettings,
-    setpoint: isize,
+    setpoint: Power,
 }
 #[derive(Debug, Serialize, Clone, Copy)]
 pub struct GasPlantSettings {
-    energy_cost: isize,
-    max_setpoint: isize,
+    energy_cost: EnergyCost,
+    max_setpoint: Power,
 }
 
 impl GasPlant {
-    pub fn new(energy_cost: isize, max_setpoint: isize) -> GasPlant {
+    pub fn new(energy_cost: EnergyCost, max_setpoint: Power) -> GasPlant {
         GasPlant {
             settings: GasPlantSettings {
                 energy_cost,
                 max_setpoint,
             },
-            setpoint: 0,
+            setpoint: Power::from(0),
         }
     }
 
-    fn cost(&self) -> isize {
-        self.setpoint * self.settings.energy_cost
+    fn cost(&self) -> Money {
+        self.setpoint * TIMESTEP * self.settings.energy_cost
     }
 }
 
@@ -41,12 +41,9 @@ pub struct GasPlantPublicRepr {
 
 impl PowerPlant for GasPlant {
     fn program_setpoint(&mut self, setpoint: Power) -> PlantOutput {
-        self.setpoint = setpoint
-            .max(NO_POWER)
-            .min(self.settings.max_setpoint.into())
-            .into();
+        self.setpoint = setpoint.max(NO_POWER).min(self.settings.max_setpoint);
         PlantOutput {
-            setpoint: self.setpoint.into(),
+            setpoint: self.setpoint,
             cost: self.cost(),
         }
     }
@@ -55,7 +52,7 @@ impl PowerPlant for GasPlant {
         PowerPlantPublicRepr::GasPlant(GasPlantPublicRepr {
             settings: self.settings,
             output: PlantOutput {
-                setpoint: self.setpoint.into(),
+                setpoint: self.setpoint,
                 cost: self.cost(),
             },
         })
@@ -63,7 +60,7 @@ impl PowerPlant for GasPlant {
 
     fn dispatch(&mut self) -> PlantOutput {
         PlantOutput {
-            setpoint: self.setpoint.into(),
+            setpoint: self.setpoint,
             cost: self.cost(),
         }
     }
@@ -75,18 +72,21 @@ impl PowerPlant for GasPlant {
 
 #[cfg(test)]
 mod tests {
-    use crate::plants::{PlantOutput, PowerPlant, technologies::gas_plant::GasPlant};
+    use crate::{
+        plants::{PlantOutput, PowerPlant, technologies::gas_plant::GasPlant},
+        utils::units::{EnergyCost, Money, Power},
+    };
 
     #[test]
     fn test_gas_plant() {
-        let mut plant = GasPlant::new(47, 1000);
+        let mut plant = GasPlant::new(EnergyCost::from(47), Power::from(1000));
 
         // Program plant's setpoint
         assert_eq!(
-            plant.program_setpoint(100.into()),
+            plant.program_setpoint(Power::from(100)),
             PlantOutput {
-                setpoint: 100.into(),
-                cost: 100 * 47
+                setpoint: Power::from(100),
+                cost: Money::from(100 * 47)
             }
         );
 
@@ -94,44 +94,44 @@ mod tests {
         assert_eq!(
             plant.dispatch(),
             PlantOutput {
-                setpoint: 100.into(),
-                cost: 47 * 100
+                setpoint: Power::from(100),
+                cost: Money::from(47 * 100)
             }
         );
         // Setpoint should be kept after dispatching
-        assert_eq!(plant.setpoint, 100);
+        assert_eq!(plant.setpoint, Power::from(100));
 
         // No cost if no setpoint
         assert_eq!(
-            plant.program_setpoint(0.into()),
+            plant.program_setpoint(Power::from(0)),
             PlantOutput {
-                setpoint: 0.into(),
-                cost: 0
+                setpoint: Power::from(0),
+                cost: Money::from(0)
             }
         );
 
         // Setpoint cannot be negative
         assert_eq!(
-            plant.program_setpoint((-100).into()),
+            plant.program_setpoint(Power::from(-100)),
             PlantOutput {
-                setpoint: 0.into(),
-                cost: 0
+                setpoint: Power::from(0),
+                cost: Money::from(0)
             }
         );
 
         // Setpoint will be clipped if above P_max
         assert_eq!(
-            plant.program_setpoint(1100.into()),
+            plant.program_setpoint(Power::from(1100)),
             PlantOutput {
-                setpoint: 1000.into(),
-                cost: 1000 * 47
+                setpoint: Power::from(1000),
+                cost: Money::from(1000 * 47)
             }
         );
     }
 
     #[test]
     fn test_gas_plant_has_no_forecast() {
-        let plant = GasPlant::new(70, 1000);
+        let plant = GasPlant::new(EnergyCost::from(70), Power::from(1000));
         assert!(plant.get_forecast().is_none());
     }
 }

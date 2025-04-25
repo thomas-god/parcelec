@@ -4,7 +4,7 @@ use crate::{
     forecast::{Forecast, Forecasts},
     game::delivery_period::DeliveryPeriodId,
     plants::{PlantOutput, PowerPlant, PowerPlantPublicRepr},
-    utils::units::Power,
+    utils::units::{EnergyCost, Power, TIMESTEP},
 };
 
 use super::variable::VariablePlant;
@@ -14,18 +14,18 @@ pub struct ConsumersPublicRepr {
     pub output: PlantOutput,
 }
 pub struct Consumers {
-    price_per_mwh: isize,
+    price_per_mwh: EnergyCost,
     state: VariablePlant,
     period: DeliveryPeriodId,
-    current_setpoint: isize,
+    current_setpoint: Power,
     current_forecasts: Forecasts,
 }
 
 impl Consumers {
-    pub fn new(price_per_mwh: isize, forecasts: Vec<Forecast>) -> Consumers {
+    pub fn new(price_per_mwh: EnergyCost, forecasts: Vec<Forecast>) -> Consumers {
         let period = DeliveryPeriodId::from(1);
         let state = VariablePlant::new(forecasts);
-        let current_setpoint = state.get_setpoint(period).unwrap_or(0);
+        let current_setpoint = Power::from(state.get_setpoint(period).unwrap_or(0));
         let current_forecasts = state.get_forecasts(period);
 
         Consumers {
@@ -41,28 +41,28 @@ impl Consumers {
 impl PowerPlant for Consumers {
     fn program_setpoint(&mut self, _setpoint: Power) -> PlantOutput {
         PlantOutput {
-            cost: self.current_setpoint * self.price_per_mwh,
-            setpoint: self.current_setpoint.into(),
+            cost: self.current_setpoint * TIMESTEP * self.price_per_mwh,
+            setpoint: self.current_setpoint,
         }
     }
 
     fn dispatch(&mut self) -> PlantOutput {
         let previous_setpoint = self.current_setpoint;
-        let cost = previous_setpoint * self.price_per_mwh;
+        let cost = previous_setpoint * TIMESTEP * self.price_per_mwh;
         self.period = self.period.next();
         self.current_forecasts = self.state.get_forecasts(self.period);
-        self.current_setpoint = self.state.get_setpoint(self.period).unwrap_or(0);
+        self.current_setpoint = Power::from(self.state.get_setpoint(self.period).unwrap_or(0));
         PlantOutput {
             cost,
-            setpoint: previous_setpoint.into(),
+            setpoint: previous_setpoint,
         }
     }
 
     fn current_state(&self) -> PowerPlantPublicRepr {
         PowerPlantPublicRepr::Consumers(ConsumersPublicRepr {
             output: PlantOutput {
-                setpoint: self.current_setpoint.into(),
-                cost: (self.current_setpoint * self.price_per_mwh),
+                setpoint: self.current_setpoint,
+                cost: (self.current_setpoint * TIMESTEP * self.price_per_mwh),
             },
         })
     }
@@ -79,7 +79,7 @@ mod tests {
         forecast::{Forecast, ForecastValue},
         game::delivery_period::DeliveryPeriodId,
         plants::PowerPlant,
-        utils::units::Power,
+        utils::units::{EnergyCost, Power},
     };
 
     use super::Consumers;
@@ -112,7 +112,7 @@ mod tests {
 
     #[test]
     fn test_consumers() {
-        let energy_cost = 75;
+        let energy_cost = EnergyCost::from(75);
         let forecasts = get_forecasts();
         let mut consumers = Consumers::new(energy_cost, forecasts);
 
@@ -133,7 +133,7 @@ mod tests {
 
     #[test]
     fn test_consumers_forecasts_periods() {
-        let energy_cost = 75;
+        let energy_cost = EnergyCost::from(75);
         let forecsts = get_forecasts();
         let mut consumers = Consumers::new(energy_cost, forecsts);
 

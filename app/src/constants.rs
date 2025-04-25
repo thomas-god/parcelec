@@ -11,7 +11,7 @@ pub const MARKET_EXTREME_BUY_OFFER_PRICE: isize = 25_00;
 pub const MARKET_EXTREME_SELL_OFFER_PRICE: isize = 90_00;
 
 /// Volume of the buy/sell offer that will always be on the market (in MWh)
-pub const MARKET_EXTREME_OFFERS_VOLUME: usize = 250;
+pub const MARKET_EXTREME_OFFERS_VOLUME: isize = 250;
 
 /// Base deviation when forecasting a value (in MW)
 pub const FORECAST_BASE_DEVIATION: usize = 100;

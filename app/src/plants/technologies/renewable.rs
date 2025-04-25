@@ -4,7 +4,7 @@ use crate::{
     forecast::{Forecast, Forecasts},
     game::delivery_period::DeliveryPeriodId,
     plants::{PlantOutput, PowerPlant, PowerPlantPublicRepr},
-    utils::units::Power,
+    utils::units::{Money, Power},
 };
 
 use super::variable::VariablePlant;
@@ -16,7 +16,7 @@ pub struct RenewablePlantPublicRepr {
 pub struct RenewablePlant {
     state: VariablePlant,
     period: DeliveryPeriodId,
-    current_setpoint: isize,
+    current_setpoint: Power,
     current_forecasts: Forecasts,
 }
 
@@ -24,7 +24,7 @@ impl RenewablePlant {
     pub fn new(forecasts: Vec<Forecast>) -> RenewablePlant {
         let period = DeliveryPeriodId::from(1);
         let plant = VariablePlant::new(forecasts);
-        let current_setpoint = plant.get_setpoint(period).unwrap_or(0);
+        let current_setpoint = Power::from(plant.get_setpoint(period).unwrap_or(0));
         let current_forecasts = plant.get_forecasts(period);
 
         RenewablePlant {
@@ -39,26 +39,26 @@ impl RenewablePlant {
 impl PowerPlant for RenewablePlant {
     fn program_setpoint(&mut self, _setpoint: Power) -> PlantOutput {
         PlantOutput {
-            setpoint: self.current_setpoint.into(),
-            cost: 0,
+            setpoint: self.current_setpoint,
+            cost: Money::from(0),
         }
     }
     fn dispatch(&mut self) -> PlantOutput {
         let previous_setpoint = self.current_setpoint;
         self.period = self.period.next();
-        self.current_setpoint = self.state.get_setpoint(self.period).unwrap_or(0);
+        self.current_setpoint = Power::from(self.state.get_setpoint(self.period).unwrap_or(0));
         self.current_forecasts = self.state.get_forecasts(self.period);
 
         PlantOutput {
-            setpoint: previous_setpoint.into(),
-            cost: 0,
+            setpoint: previous_setpoint,
+            cost: Money::from(0),
         }
     }
     fn current_state(&self) -> PowerPlantPublicRepr {
         PowerPlantPublicRepr::RenewablePlant(RenewablePlantPublicRepr {
             output: PlantOutput {
-                setpoint: self.current_setpoint.into(),
-                cost: 0,
+                setpoint: self.current_setpoint,
+                cost: Money::from(0),
             },
         })
     }
@@ -73,7 +73,7 @@ mod tests {
         forecast::{Forecast, ForecastValue},
         game::delivery_period::DeliveryPeriodId,
         plants::{PlantOutput, PowerPlant},
-        utils::units::Power,
+        utils::units::{Money, Power},
     };
 
     use super::RenewablePlant;
@@ -110,7 +110,7 @@ mod tests {
 
         // Plant has no associated cost
         let PlantOutput { cost, .. } = plant.program_setpoint(100.into());
-        assert_eq!(cost, 0);
+        assert_eq!(cost, Money::from(0));
 
         // The plant cannot be programed
         let initial_setpoint: Power = plant.current_setpoint.into();

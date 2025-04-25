@@ -4,7 +4,10 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use crate::player::PlayerId;
+use crate::{
+    player::PlayerId,
+    utils::units::{Energy, EnergyCost},
+};
 
 use super::Direction;
 
@@ -12,8 +15,8 @@ use super::Direction;
 pub struct Trade {
     pub buyer: PlayerId,
     pub seller: PlayerId,
-    pub volume: usize,
-    pub price: isize,
+    pub volume: Energy,
+    pub price: EnergyCost,
     pub execution_time: DateTime<Utc>,
 }
 
@@ -48,8 +51,8 @@ impl Trade {
 #[derive(Debug, PartialEq, Clone, Serialize)]
 pub struct TradeLeg {
     pub direction: Direction,
-    pub volume: usize,
-    pub price: isize,
+    pub volume: Energy,
+    pub price: EnergyCost,
     pub owner: PlayerId,
     pub execution_time: DateTime<Utc>,
 }
@@ -57,8 +60,8 @@ pub struct TradeLeg {
 #[derive(Deserialize, Debug, Clone, PartialEq)]
 pub struct OrderRequest {
     pub direction: Direction,
-    pub price: isize,
-    pub volume: usize,
+    pub price: EnergyCost,
+    pub volume: Energy,
     pub owner: PlayerId,
 }
 
@@ -66,8 +69,8 @@ pub struct OrderRequest {
 pub struct Order {
     pub id: String,
     pub direction: Direction,
-    pub price: isize,
-    pub volume: usize,
+    pub price: EnergyCost,
+    pub volume: Energy,
     pub timestamp: DateTime<Utc>,
     pub owner: PlayerId,
 }
@@ -238,7 +241,7 @@ impl OrderBook {
                         volume: offer.0.volume,
                         execution_time: Utc::now(),
                     });
-                    bid.0.volume = 0;
+                    bid.0.volume = Energy::from(0);
                     break;
                 }
                 (Ordering::Equal, Ordering::Greater) | (Ordering::Greater, Ordering::Greater) => {
@@ -263,13 +266,13 @@ impl OrderBook {
                         execution_time: Utc::now(),
                     });
                     offer.0.volume -= bid.0.volume;
-                    bid.0.volume = 0;
+                    bid.0.volume = Energy::from(0);
                     self.offers.push(offer);
                     break;
                 }
             }
         }
-        if bid.0.volume > 0 {
+        if bid.0.volume > Energy::from(0) {
             self.bids.push(bid);
         }
         trades
@@ -296,7 +299,7 @@ impl OrderBook {
                         volume: bid.0.volume,
                         execution_time: Utc::now(),
                     });
-                    offer.0.volume = 0;
+                    offer.0.volume = Energy::from(0);
                     break;
                 }
                 (Ordering::Equal, Ordering::Greater) | (Ordering::Less, Ordering::Greater) => {
@@ -321,13 +324,13 @@ impl OrderBook {
                         execution_time: Utc::now(),
                     });
                     bid.0.volume -= offer.0.volume;
-                    offer.0.volume = 0;
+                    offer.0.volume = Energy::from(0);
                     self.bids.push(bid);
                     break;
                 }
             }
         }
-        if offer.0.volume > 0 {
+        if offer.0.volume > Energy::from(0) {
             self.offers.push(offer);
         }
         trades
@@ -344,13 +347,13 @@ impl Default for OrderBook {
 fn build_order_request(
     direction: Direction,
     price: isize,
-    volume: usize,
+    volume: isize,
     owner: PlayerId,
 ) -> OrderRequest {
     OrderRequest {
         direction,
-        price,
-        volume,
+        price: EnergyCost::from(price),
+        volume: Energy::from(volume),
         owner,
     }
 }
@@ -360,6 +363,7 @@ mod tests {
     use crate::{
         market::{Direction, order_book::build_order_request},
         player::PlayerId,
+        utils::units::{Energy, EnergyCost},
     };
 
     use super::OrderBook;
@@ -401,8 +405,8 @@ mod tests {
         assert_eq!(res.len(), 1);
         assert_eq!(res[0].buyer, PlayerId::from("toto"));
         assert_eq!(res[0].seller, PlayerId::from("tata"));
-        assert_eq!(res[0].volume, 10);
-        assert_eq!(res[0].price, 50_00);
+        assert_eq!(res[0].volume, Energy::from(10));
+        assert_eq!(res[0].price, EnergyCost::from(50_00));
     }
 
     #[test]
@@ -419,8 +423,8 @@ mod tests {
         assert_eq!(res.len(), 1);
         assert_eq!(res[0].buyer, PlayerId::from("toto"));
         assert_eq!(res[0].seller, PlayerId::from("tata"));
-        assert_eq!(res[0].volume, 5);
-        assert_eq!(res[0].price, 50_00);
+        assert_eq!(res[0].volume, Energy::from(5));
+        assert_eq!(res[0].price, EnergyCost::from(50_00));
     }
 
     #[test]
@@ -437,8 +441,8 @@ mod tests {
         assert_eq!(res.len(), 1);
         assert_eq!(res[0].buyer, PlayerId::from("toto"));
         assert_eq!(res[0].seller, PlayerId::from("tata"));
-        assert_eq!(res[0].volume, 10);
-        assert_eq!(res[0].price, 50_00);
+        assert_eq!(res[0].volume, Energy::from(10));
+        assert_eq!(res[0].price, EnergyCost::from(50_00));
     }
 
     #[test]
@@ -458,13 +462,13 @@ mod tests {
 
         assert_eq!(res[0].buyer, PlayerId::from("buyer_1"));
         assert_eq!(res[0].seller, PlayerId::from("seller"));
-        assert_eq!(res[0].volume, 10);
-        assert_eq!(res[0].price, 50_00);
+        assert_eq!(res[0].volume, Energy::from(10));
+        assert_eq!(res[0].price, EnergyCost::from(50_00));
 
         assert_eq!(res[1].buyer, PlayerId::from("buyer_2"));
         assert_eq!(res[1].seller, PlayerId::from("seller"));
-        assert_eq!(res[1].volume, 5);
-        assert_eq!(res[1].price, 49_00);
+        assert_eq!(res[1].volume, Energy::from(5));
+        assert_eq!(res[1].price, EnergyCost::from(49_00));
     }
 
     #[test]
@@ -485,13 +489,13 @@ mod tests {
 
         assert_eq!(res[0].buyer, PlayerId::from("buyer"));
         assert_eq!(res[0].seller, PlayerId::from("seller_1"));
-        assert_eq!(res[0].volume, 10);
-        assert_eq!(res[0].price, 50_00);
+        assert_eq!(res[0].volume, Energy::from(10));
+        assert_eq!(res[0].price, EnergyCost::from(50_00));
 
         assert_eq!(res[1].buyer, PlayerId::from("buyer"));
         assert_eq!(res[1].seller, PlayerId::from("seller_2"));
-        assert_eq!(res[1].volume, 5);
-        assert_eq!(res[1].price, 51_00);
+        assert_eq!(res[1].volume, Energy::from(5));
+        assert_eq!(res[1].price, EnergyCost::from(51_00));
 
         assert_eq!(order_book.offers.len(), 0);
         assert_eq!(order_book.bids.len(), 0);
@@ -520,7 +524,10 @@ mod tests {
 
 #[cfg(test)]
 mod test_remove_order {
-    use crate::player::PlayerId;
+    use crate::{
+        player::PlayerId,
+        utils::units::{Energy, EnergyCost},
+    };
 
     use super::{OrderBook, OrderRequest};
 
@@ -531,8 +538,8 @@ mod test_remove_order {
         // Insert an order
         let first_order = OrderRequest {
             direction: super::Direction::Buy,
-            volume: 10,
-            price: 50_00,
+            volume: Energy::from(10),
+            price: EnergyCost::from(50_00),
             owner: PlayerId::from("buyer"),
         };
         order_book.register_order_request(first_order);
@@ -544,8 +551,8 @@ mod test_remove_order {
         // Insert a matching offer, this shoudl not produce any trade
         let offer_that_would_have_matched = OrderRequest {
             direction: super::Direction::Sell,
-            volume: 10,
-            price: 50_00,
+            volume: Energy::from(10),
+            price: EnergyCost::from(50_00),
             owner: PlayerId::from("seller"),
         };
         let trades = order_book.register_order_request(offer_that_would_have_matched);
@@ -563,6 +570,7 @@ mod test_bid_and_offer {
     use crate::{
         market::{Direction, order_book::Offer},
         player::PlayerId,
+        utils::units::{Energy, EnergyCost},
     };
 
     use super::{Bid, Order};
@@ -572,9 +580,9 @@ mod test_bid_and_offer {
         fn build_bid(price: isize) -> Bid {
             Bid(Order {
                 direction: Direction::Buy,
-                price,
+                price: EnergyCost::from(price),
                 owner: PlayerId::default(),
-                volume: 10,
+                volume: Energy::from(10),
                 timestamp: Utc::now(),
                 id: Uuid::new_v4().to_string(),
             })
@@ -598,9 +606,9 @@ mod test_bid_and_offer {
         fn build_offer(price: isize) -> Offer {
             Offer(Order {
                 direction: Direction::Sell,
-                price,
+                price: EnergyCost::from(price),
                 owner: PlayerId::default(),
-                volume: 10,
+                volume: Energy::from(10),
                 timestamp: Utc::now(),
                 id: Uuid::new_v4().to_string(),
             })
@@ -627,6 +635,7 @@ mod test_trade_leg {
     use crate::{
         market::{Direction, order_book::TradeLeg},
         player::PlayerId,
+        utils::units::{Energy, EnergyCost},
     };
 
     use super::Trade;
@@ -636,8 +645,8 @@ mod test_trade_leg {
         let trade = Trade {
             buyer: PlayerId::from("buyer"),
             seller: PlayerId::from("seller"),
-            volume: 10,
-            price: 50_00,
+            volume: Energy::from(10),
+            price: EnergyCost::from(50_00),
             execution_time: Utc::now(),
         };
 
@@ -647,15 +656,15 @@ mod test_trade_leg {
                 TradeLeg {
                     direction: Direction::Buy,
                     owner: PlayerId::from("buyer"),
-                    volume: 10,
-                    price: 50_00,
+                    volume: Energy::from(10),
+                    price: EnergyCost::from(50_00),
                     execution_time: trade.execution_time
                 },
                 TradeLeg {
                     direction: Direction::Sell,
                     owner: PlayerId::from("seller"),
-                    volume: 10,
-                    price: 50_00,
+                    volume: Energy::from(10),
+                    price: EnergyCost::from(50_00),
                     execution_time: trade.execution_time
                 },
             ]
@@ -667,8 +676,8 @@ mod test_trade_leg {
         let trade = Trade {
             buyer: PlayerId::from("buyer"),
             seller: PlayerId::from("seller"),
-            volume: 10,
-            price: 50_00,
+            volume: Energy::from(10),
+            price: EnergyCost::from(50_00),
             execution_time: Utc::now(),
         };
 
@@ -677,8 +686,8 @@ mod test_trade_leg {
             vec![TradeLeg {
                 direction: Direction::Buy,
                 owner: PlayerId::from("buyer"),
-                volume: 10,
-                price: 50_00,
+                volume: Energy::from(10),
+                price: EnergyCost::from(50_00),
                 execution_time: trade.execution_time
             },]
         );
@@ -687,8 +696,8 @@ mod test_trade_leg {
             vec![TradeLeg {
                 direction: Direction::Sell,
                 owner: PlayerId::from("seller"),
-                volume: 10,
-                price: 50_00,
+                volume: Energy::from(10),
+                price: EnergyCost::from(50_00),
                 execution_time: trade.execution_time
             },]
         );
@@ -697,8 +706,8 @@ mod test_trade_leg {
         let trade = Trade {
             buyer: PlayerId::from("same_player"),
             seller: PlayerId::from("same_player"),
-            volume: 10,
-            price: 50_00,
+            volume: Energy::from(10),
+            price: EnergyCost::from(50_00),
             execution_time: Utc::now(),
         };
         assert_eq!(
@@ -707,15 +716,15 @@ mod test_trade_leg {
                 TradeLeg {
                     direction: Direction::Buy,
                     owner: PlayerId::from("same_player"),
-                    volume: 10,
-                    price: 50_00,
+                    volume: Energy::from(10),
+                    price: EnergyCost::from(50_00),
                     execution_time: trade.execution_time
                 },
                 TradeLeg {
                     direction: Direction::Sell,
                     owner: PlayerId::from("same_player"),
-                    volume: 10,
-                    price: 50_00,
+                    volume: Energy::from(10),
+                    price: EnergyCost::from(50_00),
                     execution_time: trade.execution_time
                 },
             ]

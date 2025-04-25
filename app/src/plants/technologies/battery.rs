@@ -3,7 +3,7 @@ use serde::Serialize;
 use crate::{
     forecast::Forecast,
     plants::{PlantOutput, PowerPlant, PowerPlantPublicRepr},
-    utils::units::Power,
+    utils::units::{Money, Power},
 };
 
 /// Store energy accros delivery periods
@@ -32,8 +32,8 @@ impl Battery {
         }
     }
 
-    fn cost(&self) -> isize {
-        0
+    fn cost(&self) -> Money {
+        Money::from(0)
     }
 
     fn max_positive_power(&self) -> isize {
@@ -66,7 +66,7 @@ impl PowerPlant for Battery {
             charge: self.charge,
             output: PlantOutput {
                 setpoint: self.setpoint.unwrap_or(0).into(),
-                cost: 0,
+                cost: self.cost(),
             },
         })
     }
@@ -95,7 +95,10 @@ impl PowerPlant for Battery {
 
 #[cfg(test)]
 mod tests {
-    use crate::plants::{PlantOutput, PowerPlant, technologies::battery::Battery};
+    use crate::{
+        plants::{PlantOutput, PowerPlant, technologies::battery::Battery},
+        utils::units::Money,
+    };
 
     #[test]
     fn test_battery() {
@@ -106,13 +109,13 @@ mod tests {
         assert_eq!(
             battery.program_setpoint((-100).into()),
             PlantOutput {
-                cost: 0,
+                cost: Money::from(0),
                 setpoint: (-100).into()
             }
         );
 
         let PlantOutput { cost, setpoint } = battery.dispatch();
-        assert_eq!(cost, 0);
+        assert_eq!(cost, Money::from(0));
         assert_eq!(setpoint, (-100).into());
         assert_eq!(battery.charge, 100);
 
@@ -126,7 +129,7 @@ mod tests {
         assert_eq!(
             battery.program_setpoint((-1000).into()),
             PlantOutput {
-                cost: 0,
+                cost: Money::from(0),
                 setpoint: (-950).into()
             }
         );
@@ -138,7 +141,7 @@ mod tests {
         assert_eq!(
             battery.program_setpoint(1100.into()),
             PlantOutput {
-                cost: 0,
+                cost: Money::from(0),
                 setpoint: 1000.into()
             }
         );

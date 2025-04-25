@@ -14,6 +14,7 @@ use crate::{
     },
     market::{OrderRepr, order_book::TradeLeg},
     plants::{PlantId, PowerPlantPublicRepr},
+    utils::units::Money,
 };
 
 pub mod infra;
@@ -51,7 +52,7 @@ impl PlayerName {
 pub struct PlayerResultView {
     pub player: PlayerName,
     pub rank: usize,
-    pub score: isize,
+    pub score: Money,
     pub tier: Option<RankTier>,
 }
 

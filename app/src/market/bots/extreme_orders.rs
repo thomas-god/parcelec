@@ -4,6 +4,7 @@ use crate::{
     constants,
     market::{Direction, Market, MarketContext, MarketState, order_book::OrderRequest},
     player::{PlayerId, PlayerMessage},
+    utils::units::{Energy, EnergyCost},
 };
 
 pub struct ExtremeOrdersBot<MS: Market> {
@@ -57,8 +58,8 @@ impl<MS: Market> ExtremeOrdersBot<MS> {
                 .service
                 .new_order(OrderRequest {
                     direction: Direction::Buy,
-                    price: constants::MARKET_EXTREME_BUY_OFFER_PRICE,
-                    volume: constants::MARKET_EXTREME_OFFERS_VOLUME,
+                    price: EnergyCost::from(constants::MARKET_EXTREME_BUY_OFFER_PRICE),
+                    volume: Energy::from(constants::MARKET_EXTREME_OFFERS_VOLUME),
                     owner: self.bot_id.clone(),
                 })
                 .await;
@@ -66,8 +67,8 @@ impl<MS: Market> ExtremeOrdersBot<MS> {
                 .service
                 .new_order(OrderRequest {
                     direction: Direction::Sell,
-                    price: constants::MARKET_EXTREME_SELL_OFFER_PRICE,
-                    volume: constants::MARKET_EXTREME_OFFERS_VOLUME,
+                    price: EnergyCost::from(constants::MARKET_EXTREME_SELL_OFFER_PRICE),
+                    volume: Energy::from(constants::MARKET_EXTREME_OFFERS_VOLUME),
                     owner: self.bot_id.clone(),
                 })
                 .await;

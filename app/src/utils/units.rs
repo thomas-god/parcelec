@@ -1,6 +1,6 @@
-use std::ops::Mul;
+use std::ops::{Div, Mul};
 
-use derive_more::{Add, From, Into, Mul};
+use derive_more::{Add, Display, Div, From, Into, Mul, Neg, Sub, SubAssign};
 use serde::{Deserialize, Serialize};
 
 /// Represent a arbitrary unit of Power (like watt).
@@ -35,13 +35,50 @@ pub const TIMESTEP: Time = Time(1);
 
 /// Represent a arbitrary unit of Energy (like joule).
 #[derive(
-    Debug, From, Into, PartialEq, PartialOrd, Ord, Eq, Mul, Add, Serialize, Deserialize, Clone, Copy,
+    Debug,
+    From,
+    Into,
+    PartialEq,
+    PartialOrd,
+    Ord,
+    Eq,
+    Mul,
+    Neg,
+    Add,
+    Sub,
+    SubAssign,
+    Serialize,
+    Deserialize,
+    Clone,
+    Copy,
 )]
 pub struct Energy(isize);
 
+impl Div<Time> for Energy {
+    type Output = Power;
+
+    fn div(self, rhs: Time) -> Self::Output {
+        Power(self.0 / rhs.0)
+    }
+}
+
 /// Represent an energy cost in arbitrary unit, i.e. how much cost a unit of energy (like €/joule).
 #[derive(
-    Debug, From, Into, PartialEq, PartialOrd, Ord, Eq, Mul, Add, Serialize, Deserialize, Clone, Copy,
+    Debug,
+    From,
+    Into,
+    PartialEq,
+    PartialOrd,
+    Ord,
+    Eq,
+    Mul,
+    Div,
+    Add,
+    Neg,
+    Serialize,
+    Deserialize,
+    Clone,
+    Copy,
 )]
 pub struct EnergyCost(isize);
 
@@ -53,9 +90,18 @@ impl Mul<EnergyCost> for Energy {
     }
 }
 
+impl Mul<Energy> for EnergyCost {
+    type Output = Money;
+
+    fn mul(self, rhs: Energy) -> Self::Output {
+        Money(self.0 * rhs.0)
+    }
+}
+
 /// Represent an arbitrary unit of money (like €).
 #[derive(
     Debug,
+    Display,
     From,
     Into,
     PartialEq,
@@ -63,7 +109,9 @@ impl Mul<EnergyCost> for Energy {
     Ord,
     Eq,
     Mul,
+    Div,
     Add,
+    Sub,
     Serialize,
     Deserialize,
     Clone,

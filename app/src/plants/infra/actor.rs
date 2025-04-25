@@ -18,7 +18,7 @@ use crate::{
         },
     },
     player::{PlayerConnections, PlayerId, PlayerMessage},
-    utils::units::Power,
+    utils::units::{EnergyCost, Power},
 };
 
 use super::StackService;
@@ -304,7 +304,10 @@ pub fn default_stack_plants_builder() -> impl Fn() -> StackPlants + Clone + Send
     move || {
         let mut map: HashMap<PlantId, Box<dyn PowerPlant + Send + Sync>> = HashMap::new();
         map.insert(PlantId::default(), Box::new(Battery::new(300, 0)));
-        map.insert(PlantId::default(), Box::new(GasPlant::new(80, 500)));
+        map.insert(
+            PlantId::default(),
+            Box::new(GasPlant::new(EnergyCost::from(80), Power::from(500))),
+        );
         map.insert(
             PlantId::default(),
             Box::new(RenewablePlant::new(vec![
@@ -341,7 +344,7 @@ pub fn default_stack_plants_builder() -> impl Fn() -> StackPlants + Clone + Send
         map.insert(
             PlantId::default(),
             Box::new(Consumers::new(
-                56,
+                EnergyCost::from(56),
                 vec![
                     Forecast {
                         period: DeliveryPeriodId::from(1),
@@ -374,7 +377,10 @@ pub fn default_stack_plants_builder() -> impl Fn() -> StackPlants + Clone + Send
                 ],
             )),
         );
-        map.insert(PlantId::default(), Box::new(NuclearPlant::new(1000, 35)));
+        map.insert(
+            PlantId::default(),
+            Box::new(NuclearPlant::new(Power::from(1000), EnergyCost::from(35))),
+        );
         map
     }
 }

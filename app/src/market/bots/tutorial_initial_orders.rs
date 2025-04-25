@@ -4,6 +4,7 @@ use crate::{
     game::delivery_period::DeliveryPeriodId,
     market::{Direction, Market, MarketContext, MarketState, order_book::OrderRequest},
     player::{PlayerId, PlayerMessage},
+    utils::units::{Energy, EnergyCost},
 };
 
 pub struct TutorialInitialOrdersBot<MS: Market> {
@@ -68,8 +69,8 @@ impl<MS: Market> TutorialInitialOrdersBot<MS> {
                 .service
                 .new_order(OrderRequest {
                     direction: Direction::Sell,
-                    price: 60_00,
-                    volume: 300,
+                    price: EnergyCost::from(60_00),
+                    volume: Energy::from(300),
                     owner: self.id.clone(),
                 })
                 .await;
@@ -77,8 +78,8 @@ impl<MS: Market> TutorialInitialOrdersBot<MS> {
                 .service
                 .new_order(OrderRequest {
                     direction: Direction::Buy,
-                    price: 50_00,
-                    volume: 300,
+                    price: EnergyCost::from(50_00),
+                    volume: Energy::from(300),
                     owner: self.id.clone(),
                 })
                 .await;

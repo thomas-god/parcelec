@@ -18,7 +18,7 @@ pub use infra::StackService;
 
 use crate::forecast::Forecast;
 use crate::game::delivery_period::DeliveryPeriodId;
-use crate::utils::units::Power;
+use crate::utils::units::{Money, Power};
 
 #[derive(Debug)]
 #[allow(dead_code)]
@@ -76,7 +76,7 @@ pub enum PowerPlantPublicRepr {
 #[derive(Debug, PartialEq, Serialize, Clone, Copy)]
 pub struct PlantOutput {
     pub setpoint: Power,
-    pub cost: isize,
+    pub cost: Money,
 }
 
 pub trait PowerPlant {
