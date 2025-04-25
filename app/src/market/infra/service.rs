@@ -215,7 +215,7 @@ mod tests {
             direction: Direction::Buy,
             owner: PlayerId::default(),
             volume: Energy::from(100),
-            price: EnergyCost::from(10_00),
+            price: EnergyCost::from(10),
         };
 
         let _ = service.new_order(request.clone()).await;

@@ -372,7 +372,7 @@ mod tests {
     fn test_register_order_empty_repository() {
         let mut repository = OrderBook::new();
 
-        let order = build_order_request(Direction::Buy, 50_00, 10, PlayerId::from("toto"));
+        let order = build_order_request(Direction::Buy, 50, 10, PlayerId::from("toto"));
 
         let res = repository.register_order_request(order);
         assert!(res.is_empty());
@@ -382,8 +382,8 @@ mod tests {
     fn test_register_two_orders_doesnt_match() {
         let mut repository = OrderBook::new();
 
-        let buy_order = build_order_request(Direction::Buy, 50_00, 10, PlayerId::from("toto"));
-        let sell_order = build_order_request(Direction::Sell, 50_01, 10, PlayerId::from("tata"));
+        let buy_order = build_order_request(Direction::Buy, 50, 10, PlayerId::from("toto"));
+        let sell_order = build_order_request(Direction::Sell, 51, 10, PlayerId::from("tata"));
 
         let res = repository.register_order_request(buy_order);
         assert!(res.is_empty());
@@ -395,8 +395,8 @@ mod tests {
     fn test_match_2_orders_same_price_same_volume() {
         let mut repository = OrderBook::new();
 
-        let buy_order = build_order_request(Direction::Buy, 50_00, 10, PlayerId::from("toto"));
-        let sell_order = build_order_request(Direction::Sell, 50_00, 10, PlayerId::from("tata"));
+        let buy_order = build_order_request(Direction::Buy, 50, 10, PlayerId::from("toto"));
+        let sell_order = build_order_request(Direction::Sell, 50, 10, PlayerId::from("tata"));
 
         let res = repository.register_order_request(buy_order);
         assert!(res.is_empty(),);
@@ -406,15 +406,15 @@ mod tests {
         assert_eq!(res[0].buyer, PlayerId::from("toto"));
         assert_eq!(res[0].seller, PlayerId::from("tata"));
         assert_eq!(res[0].volume, Energy::from(10));
-        assert_eq!(res[0].price, EnergyCost::from(50_00));
+        assert_eq!(res[0].price, EnergyCost::from(50));
     }
 
     #[test]
     fn test_match_2_orders_same_price_existing_order_lesser_volume() {
         let mut repository = OrderBook::new();
 
-        let buy_order = build_order_request(Direction::Buy, 50_00, 5, PlayerId::from("toto"));
-        let sell_order = build_order_request(Direction::Sell, 50_00, 10, PlayerId::from("tata"));
+        let buy_order = build_order_request(Direction::Buy, 50, 5, PlayerId::from("toto"));
+        let sell_order = build_order_request(Direction::Sell, 50, 10, PlayerId::from("tata"));
 
         let res = repository.register_order_request(buy_order);
         assert!(res.is_empty(),);
@@ -424,15 +424,15 @@ mod tests {
         assert_eq!(res[0].buyer, PlayerId::from("toto"));
         assert_eq!(res[0].seller, PlayerId::from("tata"));
         assert_eq!(res[0].volume, Energy::from(5));
-        assert_eq!(res[0].price, EnergyCost::from(50_00));
+        assert_eq!(res[0].price, EnergyCost::from(50));
     }
 
     #[test]
     fn test_match_2_orders_same_price_existing_order_greater_volume() {
         let mut repository = OrderBook::new();
 
-        let buy_order = build_order_request(Direction::Buy, 50_00, 15, PlayerId::from("toto"));
-        let sell_order = build_order_request(Direction::Sell, 50_00, 10, PlayerId::from("tata"));
+        let buy_order = build_order_request(Direction::Buy, 50, 15, PlayerId::from("toto"));
+        let sell_order = build_order_request(Direction::Sell, 50, 10, PlayerId::from("tata"));
 
         let res = repository.register_order_request(buy_order);
         assert!(res.is_empty(),);
@@ -442,60 +442,57 @@ mod tests {
         assert_eq!(res[0].buyer, PlayerId::from("toto"));
         assert_eq!(res[0].seller, PlayerId::from("tata"));
         assert_eq!(res[0].volume, Energy::from(10));
-        assert_eq!(res[0].price, EnergyCost::from(50_00));
+        assert_eq!(res[0].price, EnergyCost::from(50));
     }
 
     #[test]
     fn test_match_multiple_bids() {
         let mut order_book = OrderBook::new();
 
-        let first_bid = build_order_request(Direction::Buy, 50_00, 10, PlayerId::from("buyer_1"));
-        let second_bid = build_order_request(Direction::Buy, 49_00, 5, PlayerId::from("buyer_2"));
+        let first_bid = build_order_request(Direction::Buy, 50, 10, PlayerId::from("buyer_1"));
+        let second_bid = build_order_request(Direction::Buy, 49, 5, PlayerId::from("buyer_2"));
 
         order_book.register_order_request(first_bid);
         order_book.register_order_request(second_bid);
 
-        let matching_offer =
-            build_order_request(Direction::Sell, 49_00, 15, PlayerId::from("seller"));
+        let matching_offer = build_order_request(Direction::Sell, 49, 15, PlayerId::from("seller"));
         let res = order_book.register_order_request(matching_offer);
         assert_eq!(res.len(), 2);
 
         assert_eq!(res[0].buyer, PlayerId::from("buyer_1"));
         assert_eq!(res[0].seller, PlayerId::from("seller"));
         assert_eq!(res[0].volume, Energy::from(10));
-        assert_eq!(res[0].price, EnergyCost::from(50_00));
+        assert_eq!(res[0].price, EnergyCost::from(50));
 
         assert_eq!(res[1].buyer, PlayerId::from("buyer_2"));
         assert_eq!(res[1].seller, PlayerId::from("seller"));
         assert_eq!(res[1].volume, Energy::from(5));
-        assert_eq!(res[1].price, EnergyCost::from(49_00));
+        assert_eq!(res[1].price, EnergyCost::from(49));
     }
 
     #[test]
     fn test_match_multiple_offers() {
         let mut order_book = OrderBook::new();
 
-        let first_offer =
-            build_order_request(Direction::Sell, 50_00, 10, PlayerId::from("seller_1"));
-        let second_offer =
-            build_order_request(Direction::Sell, 51_00, 5, PlayerId::from("seller_2"));
+        let first_offer = build_order_request(Direction::Sell, 50, 10, PlayerId::from("seller_1"));
+        let second_offer = build_order_request(Direction::Sell, 51, 5, PlayerId::from("seller_2"));
 
         order_book.register_order_request(first_offer);
         order_book.register_order_request(second_offer);
 
-        let matching_bid = build_order_request(Direction::Buy, 51_00, 15, PlayerId::from("buyer"));
+        let matching_bid = build_order_request(Direction::Buy, 51, 15, PlayerId::from("buyer"));
         let res = order_book.register_order_request(matching_bid);
         assert_eq!(res.len(), 2);
 
         assert_eq!(res[0].buyer, PlayerId::from("buyer"));
         assert_eq!(res[0].seller, PlayerId::from("seller_1"));
         assert_eq!(res[0].volume, Energy::from(10));
-        assert_eq!(res[0].price, EnergyCost::from(50_00));
+        assert_eq!(res[0].price, EnergyCost::from(50));
 
         assert_eq!(res[1].buyer, PlayerId::from("buyer"));
         assert_eq!(res[1].seller, PlayerId::from("seller_2"));
         assert_eq!(res[1].volume, Energy::from(5));
-        assert_eq!(res[1].price, EnergyCost::from(51_00));
+        assert_eq!(res[1].price, EnergyCost::from(51));
 
         assert_eq!(order_book.offers.len(), 0);
         assert_eq!(order_book.bids.len(), 0);
@@ -505,8 +502,8 @@ mod tests {
     fn test_no_match_dont_touch_existing_orders() {
         let mut order_book = OrderBook::new();
 
-        let first_order = build_order_request(Direction::Sell, 51_00, 10, PlayerId::from("seller"));
-        let second_order = build_order_request(Direction::Buy, 50_00, 5, PlayerId::from("buyer"));
+        let first_order = build_order_request(Direction::Sell, 51, 10, PlayerId::from("seller"));
+        let second_order = build_order_request(Direction::Buy, 50, 5, PlayerId::from("buyer"));
 
         order_book.register_order_request(first_order);
         let trades = order_book.register_order_request(second_order);
@@ -514,7 +511,7 @@ mod tests {
         assert_eq!(order_book.bids.len(), 1);
         assert_eq!(order_book.offers.len(), 1);
 
-        let third_order = build_order_request(Direction::Sell, 52_00, 10, PlayerId::from("toto"));
+        let third_order = build_order_request(Direction::Sell, 52, 10, PlayerId::from("toto"));
         let trades = order_book.register_order_request(third_order);
         assert_eq!(trades.len(), 0);
         assert_eq!(order_book.bids.len(), 1);
@@ -539,7 +536,7 @@ mod test_remove_order {
         let first_order = OrderRequest {
             direction: super::Direction::Buy,
             volume: Energy::from(10),
-            price: EnergyCost::from(50_00),
+            price: EnergyCost::from(50),
             owner: PlayerId::from("buyer"),
         };
         order_book.register_order_request(first_order);
@@ -552,7 +549,7 @@ mod test_remove_order {
         let offer_that_would_have_matched = OrderRequest {
             direction: super::Direction::Sell,
             volume: Energy::from(10),
-            price: EnergyCost::from(50_00),
+            price: EnergyCost::from(50),
             owner: PlayerId::from("seller"),
         };
         let trades = order_book.register_order_request(offer_that_would_have_matched);
@@ -588,16 +585,16 @@ mod test_bid_and_offer {
             })
         }
 
-        let bid = build_bid(50_00);
+        let bid = build_bid(50);
         assert_eq!(bid.cmp(&bid), Ordering::Equal);
 
-        let more_expensive_bid = build_bid(50_01);
+        let more_expensive_bid = build_bid(51);
         assert_eq!(bid.cmp(&more_expensive_bid), Ordering::Less);
 
-        let less_expensive_bid = build_bid(49_99);
+        let less_expensive_bid = build_bid(49);
         assert_eq!(bid.cmp(&less_expensive_bid), Ordering::Greater);
 
-        let same_price_but_older_bid = build_bid(50_00);
+        let same_price_but_older_bid = build_bid(50);
         assert_eq!(bid.cmp(&same_price_but_older_bid), Ordering::Greater);
     }
 
@@ -614,16 +611,16 @@ mod test_bid_and_offer {
             })
         }
 
-        let offer = build_offer(50_00);
+        let offer = build_offer(50);
         assert_eq!(offer.cmp(&offer), Ordering::Equal);
 
-        let more_expensive_offer = build_offer(50_01);
+        let more_expensive_offer = build_offer(51);
         assert_eq!(offer.cmp(&more_expensive_offer), Ordering::Greater);
 
-        let less_expensive_offer = build_offer(49_99);
+        let less_expensive_offer = build_offer(49);
         assert_eq!(offer.cmp(&less_expensive_offer), Ordering::Less);
 
-        let same_price_but_older_offer = build_offer(50_00);
+        let same_price_but_older_offer = build_offer(50);
         assert_eq!(offer.cmp(&same_price_but_older_offer), Ordering::Greater);
     }
 }
@@ -646,7 +643,7 @@ mod test_trade_leg {
             buyer: PlayerId::from("buyer"),
             seller: PlayerId::from("seller"),
             volume: Energy::from(10),
-            price: EnergyCost::from(50_00),
+            price: EnergyCost::from(50),
             execution_time: Utc::now(),
         };
 
@@ -657,14 +654,14 @@ mod test_trade_leg {
                     direction: Direction::Buy,
                     owner: PlayerId::from("buyer"),
                     volume: Energy::from(10),
-                    price: EnergyCost::from(50_00),
+                    price: EnergyCost::from(50),
                     execution_time: trade.execution_time
                 },
                 TradeLeg {
                     direction: Direction::Sell,
                     owner: PlayerId::from("seller"),
                     volume: Energy::from(10),
-                    price: EnergyCost::from(50_00),
+                    price: EnergyCost::from(50),
                     execution_time: trade.execution_time
                 },
             ]
@@ -677,7 +674,7 @@ mod test_trade_leg {
             buyer: PlayerId::from("buyer"),
             seller: PlayerId::from("seller"),
             volume: Energy::from(10),
-            price: EnergyCost::from(50_00),
+            price: EnergyCost::from(50),
             execution_time: Utc::now(),
         };
 
@@ -687,7 +684,7 @@ mod test_trade_leg {
                 direction: Direction::Buy,
                 owner: PlayerId::from("buyer"),
                 volume: Energy::from(10),
-                price: EnergyCost::from(50_00),
+                price: EnergyCost::from(50),
                 execution_time: trade.execution_time
             },]
         );
@@ -697,7 +694,7 @@ mod test_trade_leg {
                 direction: Direction::Sell,
                 owner: PlayerId::from("seller"),
                 volume: Energy::from(10),
-                price: EnergyCost::from(50_00),
+                price: EnergyCost::from(50),
                 execution_time: trade.execution_time
             },]
         );
@@ -707,7 +704,7 @@ mod test_trade_leg {
             buyer: PlayerId::from("same_player"),
             seller: PlayerId::from("same_player"),
             volume: Energy::from(10),
-            price: EnergyCost::from(50_00),
+            price: EnergyCost::from(50),
             execution_time: Utc::now(),
         };
         assert_eq!(
@@ -717,14 +714,14 @@ mod test_trade_leg {
                     direction: Direction::Buy,
                     owner: PlayerId::from("same_player"),
                     volume: Energy::from(10),
-                    price: EnergyCost::from(50_00),
+                    price: EnergyCost::from(50),
                     execution_time: trade.execution_time
                 },
                 TradeLeg {
                     direction: Direction::Sell,
                     owner: PlayerId::from("same_player"),
                     volume: Energy::from(10),
-                    price: EnergyCost::from(50_00),
+                    price: EnergyCost::from(50),
                     execution_time: trade.execution_time
                 },
             ]
@@ -745,10 +742,9 @@ mod test_drain_order_book {
     fn test_draining_order_book() {
         let mut obs = OrderBook::new();
 
-        let buy_order = build_order_request(Direction::Buy, 50_00, 10, PlayerId::from("toto"));
-        let matching_order =
-            build_order_request(Direction::Sell, 50_00, 10, PlayerId::from("tata"));
-        let another_order = build_order_request(Direction::Sell, 50_00, 10, PlayerId::from("tutu"));
+        let buy_order = build_order_request(Direction::Buy, 50, 10, PlayerId::from("toto"));
+        let matching_order = build_order_request(Direction::Sell, 50, 10, PlayerId::from("tata"));
+        let another_order = build_order_request(Direction::Sell, 50, 10, PlayerId::from("tutu"));
 
         obs.register_order_request(buy_order);
         obs.register_order_request(matching_order);

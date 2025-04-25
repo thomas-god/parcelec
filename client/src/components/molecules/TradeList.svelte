@@ -17,7 +17,7 @@
         {legend[trade.direction].toUpperCase()}
       </div>
       <div class="list-col-grow">
-        {trade.volume} MWh à {trade.price / 100} €/MWh
+        {trade.volume} MWh à {trade.price} €/MWh
       </div>
     </li>
   {:else}

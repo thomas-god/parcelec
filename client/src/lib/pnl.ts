@@ -9,7 +9,7 @@ export const marketPnl = (trades: Trade[]): number => {
         : -(trade.volume * trade.price)),
     0,
   );
-  return pnl / 100; // Convert price from cents to euros
+  return pnl;
 };
 
 export const plantsPnl = (plants: StackSnapshot): number => {

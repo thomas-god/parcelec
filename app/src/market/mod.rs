@@ -147,7 +147,7 @@ mod test_order_repr {
             direction: Direction::Sell,
             id: Uuid::new_v4().to_string(),
             owner: PlayerId::from("toto"),
-            price: EnergyCost::from(10_00),
+            price: EnergyCost::from(10),
             timestamp: Utc::now(),
             volume: Energy::from(100),
         });
@@ -163,7 +163,7 @@ mod test_order_repr {
             direction: Direction::Buy,
             id: Uuid::new_v4().to_string(),
             owner: PlayerId::from("toto"),
-            price: EnergyCost::from(10_00),
+            price: EnergyCost::from(10),
             timestamp: Utc::now(),
             volume: Energy::from(100),
         });

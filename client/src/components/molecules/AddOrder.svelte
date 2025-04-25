@@ -11,7 +11,7 @@
 
   const send = (direction: OrderRequest["direction"]) => {
     const orderRequest = {
-      price: Number.parseInt(price) * 100,
+      price: Number.parseInt(price),
       volume: Number.parseInt(volume),
       direction,
     };

@@ -53,9 +53,9 @@ impl Add<TradeLeg> for PlayerScore {
             -rhs.volume
         };
         let trade_pnl = if rhs.direction == Direction::Buy {
-            -rhs.price * rhs.volume / 100 // Price in cts
+            -rhs.price * rhs.volume
         } else {
-            rhs.price * rhs.volume / 100 // Price in cts
+            rhs.price * rhs.volume
         };
         PlayerScore {
             balance: self.balance + trade_volume / TIMESTEP,
@@ -172,7 +172,7 @@ mod tests {
             buyer: PlayerId::from("player_1"),
             seller: PlayerId::from("another_player"),
             execution_time: Utc::now(),
-            price: EnergyCost::from(80_00),
+            price: EnergyCost::from(80),
             volume: Energy::from(100),
         }]);
         let plants_outputs = HashMap::from([(
@@ -214,7 +214,7 @@ mod tests {
             buyer: PlayerId::from("player_1"),
             seller: PlayerId::from("another_player"),
             execution_time: Utc::now(),
-            price: EnergyCost::from(80_00),
+            price: EnergyCost::from(80),
             volume: Energy::from(100),
         }]);
         let plants_outputs = HashMap::from([

@@ -375,7 +375,7 @@ mod tests {
         // Send order request to market actor
         tx.send(MarketMessage::OrderRequest(OrderRequest {
             direction: Direction::Buy,
-            price: EnergyCost::from(50_00),
+            price: EnergyCost::from(50),
             volume: Energy::from(10),
             owner: player_id.clone(),
         }))
@@ -404,7 +404,7 @@ mod tests {
         // Send order request to market actor
         tx.send(MarketMessage::OrderRequest(OrderRequest {
             direction: Direction::Buy,
-            price: EnergyCost::from(50_00),
+            price: EnergyCost::from(50),
             volume: Energy::from(10),
             owner: player_id.clone(),
         }))
@@ -445,7 +445,7 @@ mod tests {
         tx.send(MarketMessage::OrderRequest(OrderRequest {
             direction: Direction::Buy,
             volume: Energy::from(10),
-            price: EnergyCost::from(50_00),
+            price: EnergyCost::from(50),
             owner: buyer_id.clone(),
         }))
         .await
@@ -458,7 +458,7 @@ mod tests {
         tx.send(MarketMessage::OrderRequest(OrderRequest {
             direction: Direction::Sell,
             volume: Energy::from(10),
-            price: EnergyCost::from(50_00),
+            price: EnergyCost::from(50),
             owner: seller_id.clone(),
         }))
         .await
@@ -512,7 +512,7 @@ mod tests {
             .send(MarketMessage::OrderRequest(OrderRequest {
                 direction: Direction::Buy,
                 volume: Energy::from(10),
-                price: EnergyCost::from(50_00),
+                price: EnergyCost::from(50),
                 owner: player_id.to_owned(),
             }))
             .await;
@@ -553,7 +553,7 @@ mod tests {
             .send(MarketMessage::OrderRequest(OrderRequest {
                 direction: Direction::Buy,
                 volume: Energy::from(10),
-                price: EnergyCost::from(50_00),
+                price: EnergyCost::from(50),
                 owner: player_id.to_owned(),
             }))
             .await;
@@ -576,7 +576,7 @@ mod tests {
             .send(MarketMessage::OrderRequest(OrderRequest {
                 direction: Direction::Buy,
                 volume: Energy::from(10),
-                price: EnergyCost::from(50_00),
+                price: EnergyCost::from(50),
                 owner: player_id.to_owned(),
             }))
             .await;
@@ -584,7 +584,7 @@ mod tests {
             .send(MarketMessage::OrderRequest(OrderRequest {
                 direction: Direction::Sell,
                 volume: Energy::from(10),
-                price: EnergyCost::from(50_00),
+                price: EnergyCost::from(50),
                 owner: player_id.to_owned(),
             }))
             .await;
@@ -615,7 +615,7 @@ mod tests {
             .send(MarketMessage::OrderRequest(OrderRequest {
                 direction: Direction::Buy,
                 volume: Energy::from(10),
-                price: EnergyCost::from(50_00),
+                price: EnergyCost::from(50),
                 owner: player_id.to_owned(),
             }))
             .await;
@@ -803,7 +803,7 @@ mod tests {
             .send(MarketMessage::OrderRequest(OrderRequest {
                 direction: Direction::Buy,
                 volume: Energy::from(10),
-                price: EnergyCost::from(50_00),
+                price: EnergyCost::from(50),
                 owner: player_id.to_owned(),
             }))
             .await;
@@ -811,7 +811,7 @@ mod tests {
             .send(MarketMessage::OrderRequest(OrderRequest {
                 direction: Direction::Sell,
                 volume: Energy::from(10),
-                price: EnergyCost::from(50_00),
+                price: EnergyCost::from(50),
                 owner: player_id.to_owned(),
             }))
             .await;
@@ -872,7 +872,7 @@ mod tests {
             .send(MarketMessage::OrderRequest(OrderRequest {
                 direction: Direction::Buy,
                 volume: Energy::from(10),
-                price: EnergyCost::from(50_00),
+                price: EnergyCost::from(50),
                 owner: player_id.clone(),
             }))
             .await;
@@ -897,7 +897,7 @@ mod tests {
             .send(MarketMessage::OrderRequest(OrderRequest {
                 direction: Direction::Sell,
                 volume: Energy::from(10),
-                price: EnergyCost::from(50_00),
+                price: EnergyCost::from(50),
                 owner: player_id.clone(),
             }))
             .await;

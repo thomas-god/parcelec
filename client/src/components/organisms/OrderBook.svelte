@@ -72,7 +72,7 @@
                 {/if}
               </td>
               <td class="text-center">{bid.volume}</td>
-              <td class="text-right">{bid.price / 100}</td>
+              <td class="text-right">{bid.price}</td>
             </tr>
           {/each}
         </tbody>
@@ -94,7 +94,7 @@
         <tbody>
           {#each orderBook.offers as offer (offer.created_at)}
             <tr>
-              <td class="text-left">{offer.price / 100}</td>
+              <td class="text-left">{offer.price}</td>
               <td class="text-center">{offer.volume}</td>
               <td>
                 {#if offer.owned}

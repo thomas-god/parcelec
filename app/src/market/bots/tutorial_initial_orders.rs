@@ -69,7 +69,7 @@ impl<MS: Market> TutorialInitialOrdersBot<MS> {
                 .service
                 .new_order(OrderRequest {
                     direction: Direction::Sell,
-                    price: EnergyCost::from(60_00),
+                    price: EnergyCost::from(60),
                     volume: Energy::from(300),
                     owner: self.id.clone(),
                 })
@@ -78,7 +78,7 @@ impl<MS: Market> TutorialInitialOrdersBot<MS> {
                 .service
                 .new_order(OrderRequest {
                     direction: Direction::Buy,
-                    price: EnergyCost::from(50_00),
+                    price: EnergyCost::from(50),
                     volume: Energy::from(300),
                     owner: self.id.clone(),
                 })
