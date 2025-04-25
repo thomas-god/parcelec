@@ -25,7 +25,7 @@ use crate::{
     player::infra::PlayerConnectionsService,
     utils::{
         program_actors_termination,
-        units::{EnergyCost, Money, Power},
+        units::{Energy, EnergyCost, Money, Power},
     },
 };
 
@@ -51,7 +51,7 @@ struct ConsumersConfig {
 
 #[derive(Debug, Deserialize, Clone, Copy)]
 struct BatteryConfig {
-    max_charge: usize,
+    max_charge: Energy,
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -171,7 +171,7 @@ fn stack_plants_builder(
         let mut map: StackPlants = HashMap::new();
         map.insert(
             PlantId::default(),
-            Box::new(Battery::new(battery.max_charge, 0)),
+            Box::new(Battery::new(battery.max_charge, Energy::from(0))),
         );
         map.insert(
             PlantId::default(),

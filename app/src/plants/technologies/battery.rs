@@ -3,32 +3,32 @@ use serde::Serialize;
 use crate::{
     forecast::Forecast,
     plants::{PlantOutput, PowerPlant, PowerPlantPublicRepr},
-    utils::units::{Money, Power},
+    utils::units::{Energy, Money, Power, TIMESTEP},
 };
 
 /// Store energy accros delivery periods
 pub struct Battery {
     settings: BatterySettings,
-    charge: usize,
-    setpoint: Option<isize>,
+    charge: Energy,
+    setpoint: Power,
 }
 pub struct BatterySettings {
-    max_charge: usize,
+    max_charge: Energy,
 }
 
 #[derive(Debug, Serialize, Clone, Copy)]
 pub struct BatteryPublicRepr {
-    pub max_charge: usize,
-    pub charge: usize,
+    pub max_charge: Energy,
+    pub charge: Energy,
     pub output: PlantOutput,
 }
 
 impl Battery {
-    pub fn new(max_charge: usize, start_charge: usize) -> Battery {
+    pub fn new(max_charge: Energy, start_charge: Energy) -> Battery {
         Battery {
             settings: BatterySettings { max_charge },
             charge: start_charge,
-            setpoint: None,
+            setpoint: Power::from(0),
         }
     }
 
@@ -36,12 +36,12 @@ impl Battery {
         Money::from(0)
     }
 
-    fn max_positive_power(&self) -> isize {
-        isize::try_from(self.charge).unwrap_or(isize::MAX)
+    fn max_positive_power(&self) -> Power {
+        self.charge / TIMESTEP
     }
 
-    fn min_negative_power(&self) -> isize {
-        -isize::try_from(self.settings.max_charge.saturating_sub(self.charge)).unwrap_or(isize::MAX)
+    fn min_negative_power(&self) -> Power {
+        -(self.settings.max_charge - self.charge) / TIMESTEP
     }
 }
 
@@ -50,12 +50,11 @@ impl PowerPlant for Battery {
     /// - **positive** setpoint will **discharge** the battery (energy provided to the grid)
     /// - **negative** setpoint will **charge the** battery (energy taken from the grid)
     fn program_setpoint(&mut self, setpoint: Power) -> PlantOutput {
-        let clipped_setpoint = isize::from(setpoint)
+        self.setpoint = setpoint
             .min(self.max_positive_power())
             .max(self.min_negative_power());
-        self.setpoint = Some(clipped_setpoint);
         PlantOutput {
-            setpoint: self.setpoint.unwrap_or(0).into(),
+            setpoint: self.setpoint,
             cost: self.cost(),
         }
     }
@@ -65,27 +64,19 @@ impl PowerPlant for Battery {
             max_charge: self.settings.max_charge,
             charge: self.charge,
             output: PlantOutput {
-                setpoint: self.setpoint.unwrap_or(0).into(),
+                setpoint: self.setpoint,
                 cost: self.cost(),
             },
         })
     }
 
     fn dispatch(&mut self) -> PlantOutput {
-        let setpoint = self.setpoint.unwrap_or(0);
-        let next_charge = usize::try_from(
-            isize::try_from(self.charge)
-                .unwrap_or(isize::MAX)
-                .saturating_sub(self.setpoint.unwrap_or(0)),
-        )
-        .unwrap_or(0);
+        let setpoint = self.setpoint;
+        let next_charge = self.charge - self.setpoint * TIMESTEP;
         let cost = self.cost();
         self.charge = next_charge;
-        self.setpoint = None;
-        PlantOutput {
-            cost,
-            setpoint: setpoint.into(),
-        }
+        self.setpoint = Power::from(0);
+        PlantOutput { cost, setpoint }
     }
 
     fn get_forecast(&self) -> Option<Vec<Forecast>> {
@@ -97,61 +88,61 @@ impl PowerPlant for Battery {
 mod tests {
     use crate::{
         plants::{PlantOutput, PowerPlant, technologies::battery::Battery},
-        utils::units::Money,
+        utils::units::{Energy, Money, Power},
     };
 
     #[test]
     fn test_battery() {
-        let mut battery = Battery::new(1_000, 0);
+        let mut battery = Battery::new(Energy::from(1_000), Energy::from(0));
 
         // Basic charge of the battery (power is negative in generator convention)
-        assert_eq!(battery.charge, 0);
+        assert_eq!(battery.charge, Energy::from(0));
         assert_eq!(
-            battery.program_setpoint((-100).into()),
+            battery.program_setpoint(Power::from(-100)),
             PlantOutput {
                 cost: Money::from(0),
-                setpoint: (-100).into()
+                setpoint: Power::from(-100)
             }
         );
 
         let PlantOutput { cost, setpoint } = battery.dispatch();
         assert_eq!(cost, Money::from(0));
-        assert_eq!(setpoint, (-100).into());
-        assert_eq!(battery.charge, 100);
+        assert_eq!(setpoint, Power::from(-100));
+        assert_eq!(battery.charge, Energy::from(100));
 
         // Basic discharge of the battery (power is positive in generator convention)
-        battery.program_setpoint(50.into());
+        battery.program_setpoint(Power::from(50));
         battery.dispatch();
-        assert_eq!(battery.charge, 50);
+        assert_eq!(battery.charge, Energy::from(50));
 
         // Too much power is clipped in regard to max available discharge
         // Current charge is 50, and max is 1000 -> 50 should be clipped
         assert_eq!(
-            battery.program_setpoint((-1000).into()),
+            battery.program_setpoint(Power::from(-1000)),
             PlantOutput {
                 cost: Money::from(0),
-                setpoint: (-950).into()
+                setpoint: Power::from(-950)
             }
         );
         battery.dispatch();
-        assert_eq!(battery.charge, 1000);
+        assert_eq!(battery.charge, Energy::from(1000));
 
         // Too much power is clipped in regard to max available charge
         // Current charge is 1000, 100 should be clipped
         assert_eq!(
-            battery.program_setpoint(1100.into()),
+            battery.program_setpoint(Power::from(1100)),
             PlantOutput {
                 cost: Money::from(0),
-                setpoint: 1000.into()
+                setpoint: Power::from(1000)
             }
         );
         battery.dispatch();
-        assert_eq!(battery.charge, 0);
+        assert_eq!(battery.charge, Energy::from(0));
     }
 
     #[test]
     fn test_battery_has_no_forecast() {
-        let battery = Battery::new(1000, 0);
+        let battery = Battery::new(Energy::from(1000), Energy::from(0));
         assert!(battery.get_forecast().is_none());
     }
 }
