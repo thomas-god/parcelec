@@ -18,6 +18,7 @@ pub use infra::StackService;
 
 use crate::forecast::Forecast;
 use crate::game::delivery_period::DeliveryPeriodId;
+use crate::utils::units::Power;
 
 #[derive(Debug)]
 #[allow(dead_code)]
@@ -50,7 +51,7 @@ pub trait Stack: Clone + Send + Sync + 'static {
     /// Program a setpoint on a power plant of the stack. Each plant can be programmed any number of
     /// times a player wants. The last setpoint will be used when closing the stack for the delivery
     /// period.
-    fn program_setpoint(&self, plant: PlantId, setpoint: isize) -> impl Future<Output = ()> + Send;
+    fn program_setpoint(&self, plant: PlantId, setpoint: Power) -> impl Future<Output = ()> + Send;
 
     /// Get a snapshot of the stack's power plants current setpoint and cost.
     fn get_snapshot(
@@ -74,13 +75,13 @@ pub enum PowerPlantPublicRepr {
 
 #[derive(Debug, PartialEq, Serialize, Clone, Copy)]
 pub struct PlantOutput {
-    pub setpoint: isize,
+    pub setpoint: Power,
     pub cost: isize,
 }
 
 pub trait PowerPlant {
     /// Program the setpoint for the next delivery period.
-    fn program_setpoint(&mut self, setpoint: isize) -> PlantOutput;
+    fn program_setpoint(&mut self, setpoint: Power) -> PlantOutput;
 
     /// Apply the programmed setpoint, and update the state of the plant.
     fn dispatch(&mut self) -> PlantOutput;

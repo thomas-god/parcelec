@@ -3,6 +3,7 @@ use serde::Serialize;
 use crate::{
     forecast::Forecast,
     plants::{PlantOutput, PowerPlant, PowerPlantPublicRepr},
+    utils::units::Power,
 };
 
 /// Store energy accros delivery periods
@@ -48,13 +49,13 @@ impl PowerPlant for Battery {
     /// For a battery in generator convention:
     /// - **positive** setpoint will **discharge** the battery (energy provided to the grid)
     /// - **negative** setpoint will **charge the** battery (energy taken from the grid)
-    fn program_setpoint(&mut self, setpoint: isize) -> PlantOutput {
-        let clipped_setpoint = setpoint
+    fn program_setpoint(&mut self, setpoint: Power) -> PlantOutput {
+        let clipped_setpoint = isize::from(setpoint)
             .min(self.max_positive_power())
             .max(self.min_negative_power());
         self.setpoint = Some(clipped_setpoint);
         PlantOutput {
-            setpoint: self.setpoint.unwrap_or(0),
+            setpoint: self.setpoint.unwrap_or(0).into(),
             cost: self.cost(),
         }
     }
@@ -64,7 +65,7 @@ impl PowerPlant for Battery {
             max_charge: self.settings.max_charge,
             charge: self.charge,
             output: PlantOutput {
-                setpoint: self.setpoint.unwrap_or(0),
+                setpoint: self.setpoint.unwrap_or(0).into(),
                 cost: 0,
             },
         })
@@ -81,7 +82,10 @@ impl PowerPlant for Battery {
         let cost = self.cost();
         self.charge = next_charge;
         self.setpoint = None;
-        PlantOutput { cost, setpoint }
+        PlantOutput {
+            cost,
+            setpoint: setpoint.into(),
+        }
     }
 
     fn get_forecast(&self) -> Option<Vec<Forecast>> {
@@ -100,30 +104,30 @@ mod tests {
         // Basic charge of the battery (power is negative in generator convention)
         assert_eq!(battery.charge, 0);
         assert_eq!(
-            battery.program_setpoint(-100),
+            battery.program_setpoint((-100).into()),
             PlantOutput {
                 cost: 0,
-                setpoint: -100
+                setpoint: (-100).into()
             }
         );
 
         let PlantOutput { cost, setpoint } = battery.dispatch();
         assert_eq!(cost, 0);
-        assert_eq!(setpoint, -100);
+        assert_eq!(setpoint, (-100).into());
         assert_eq!(battery.charge, 100);
 
         // Basic discharge of the battery (power is positive in generator convention)
-        battery.program_setpoint(50);
+        battery.program_setpoint(50.into());
         battery.dispatch();
         assert_eq!(battery.charge, 50);
 
         // Too much power is clipped in regard to max available discharge
         // Current charge is 50, and max is 1000 -> 50 should be clipped
         assert_eq!(
-            battery.program_setpoint(-1000),
+            battery.program_setpoint((-1000).into()),
             PlantOutput {
                 cost: 0,
-                setpoint: -950
+                setpoint: (-950).into()
             }
         );
         battery.dispatch();
@@ -132,10 +136,10 @@ mod tests {
         // Too much power is clipped in regard to max available charge
         // Current charge is 1000, 100 should be clipped
         assert_eq!(
-            battery.program_setpoint(1100),
+            battery.program_setpoint(1100.into()),
             PlantOutput {
                 cost: 0,
-                setpoint: 1000
+                setpoint: 1000.into()
             }
         );
         battery.dispatch();

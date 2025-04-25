@@ -4,6 +4,7 @@ use crate::{
     forecast::{Forecast, Forecasts},
     game::delivery_period::DeliveryPeriodId,
     plants::{PlantOutput, PowerPlant, PowerPlantPublicRepr},
+    utils::units::Power,
 };
 
 use super::variable::VariablePlant;
@@ -36,9 +37,9 @@ impl RenewablePlant {
 }
 
 impl PowerPlant for RenewablePlant {
-    fn program_setpoint(&mut self, _setpoint: isize) -> PlantOutput {
+    fn program_setpoint(&mut self, _setpoint: Power) -> PlantOutput {
         PlantOutput {
-            setpoint: self.current_setpoint,
+            setpoint: self.current_setpoint.into(),
             cost: 0,
         }
     }
@@ -49,14 +50,14 @@ impl PowerPlant for RenewablePlant {
         self.current_forecasts = self.state.get_forecasts(self.period);
 
         PlantOutput {
-            setpoint: previous_setpoint,
+            setpoint: previous_setpoint.into(),
             cost: 0,
         }
     }
     fn current_state(&self) -> PowerPlantPublicRepr {
         PowerPlantPublicRepr::RenewablePlant(RenewablePlantPublicRepr {
             output: PlantOutput {
-                setpoint: self.current_setpoint,
+                setpoint: self.current_setpoint.into(),
                 cost: 0,
             },
         })
@@ -72,6 +73,7 @@ mod tests {
         forecast::{Forecast, ForecastValue},
         game::delivery_period::DeliveryPeriodId,
         plants::{PlantOutput, PowerPlant},
+        utils::units::Power,
     };
 
     use super::RenewablePlant;
@@ -107,18 +109,19 @@ mod tests {
         let mut plant = RenewablePlant::new(get_forecasts());
 
         // Plant has no associated cost
-        let PlantOutput { cost, .. } = plant.program_setpoint(100);
+        let PlantOutput { cost, .. } = plant.program_setpoint(100.into());
         assert_eq!(cost, 0);
 
         // The plant cannot be programed
-        let initial_setpoint = plant.current_setpoint as isize;
-        let PlantOutput { setpoint, .. } = plant.program_setpoint(initial_setpoint + 1);
+        let initial_setpoint: Power = plant.current_setpoint.into();
+        let PlantOutput { setpoint, .. } =
+            plant.program_setpoint((initial_setpoint + 1.into()).into());
         assert_eq!(setpoint, initial_setpoint);
 
         // Dispatching should return the previous setpoint
-        let previous_value = plant.current_setpoint;
+        let previous_value: Power = plant.current_setpoint.into();
         let returned_value = plant.dispatch();
-        assert_eq!(previous_value as isize, returned_value.setpoint);
+        assert_eq!(previous_value, returned_value.setpoint);
     }
 
     #[test]

@@ -10,6 +10,7 @@ use crate::{
     plants::{
         CloseStackError, GetSnapshotError, PlantId, PlantOutput, PowerPlantPublicRepr, Stack,
     },
+    utils::units::Power,
 };
 
 use super::{ProgramPlant, actor::StackMessage};
@@ -55,7 +56,7 @@ impl Stack for StackService {
         rx.await.map_err(|_| GetSnapshotError)
     }
 
-    async fn program_setpoint(&self, plant: PlantId, setpoint: isize) {
+    async fn program_setpoint(&self, plant: PlantId, setpoint: Power) {
         let _ = self
             .tx
             .send(StackMessage::ProgramSetpoint(ProgramPlant {
@@ -86,7 +87,7 @@ mockall::mock! {
             delivery_period: DeliveryPeriodId,
         ) -> impl Future<Output = Result<HashMap<PlantId, PlantOutput>, CloseStackError>> + Send;
 
-        fn program_setpoint(&self, plant: PlantId, setpoint: isize) -> impl Future<Output = ()> + Send;
+        fn program_setpoint(&self, plant: PlantId, setpoint: Power) -> impl Future<Output = ()> + Send;
 
         fn get_snapshot(
             &self,
@@ -229,6 +230,6 @@ mod tests {
         let (tx, _) = mpsc::channel(128);
         let service = StackService::new(tx);
 
-        let _ = service.program_setpoint(PlantId::default(), 0).await;
+        let _ = service.program_setpoint(PlantId::default(), 0.into()).await;
     }
 }

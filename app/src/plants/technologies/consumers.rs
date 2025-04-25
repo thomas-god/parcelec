@@ -4,6 +4,7 @@ use crate::{
     forecast::{Forecast, Forecasts},
     game::delivery_period::DeliveryPeriodId,
     plants::{PlantOutput, PowerPlant, PowerPlantPublicRepr},
+    utils::units::Power,
 };
 
 use super::variable::VariablePlant;
@@ -38,10 +39,10 @@ impl Consumers {
 }
 
 impl PowerPlant for Consumers {
-    fn program_setpoint(&mut self, _setpoint: isize) -> PlantOutput {
+    fn program_setpoint(&mut self, _setpoint: Power) -> PlantOutput {
         PlantOutput {
             cost: self.current_setpoint * self.price_per_mwh,
-            setpoint: self.current_setpoint,
+            setpoint: self.current_setpoint.into(),
         }
     }
 
@@ -53,14 +54,14 @@ impl PowerPlant for Consumers {
         self.current_setpoint = self.state.get_setpoint(self.period).unwrap_or(0);
         PlantOutput {
             cost,
-            setpoint: previous_setpoint,
+            setpoint: previous_setpoint.into(),
         }
     }
 
     fn current_state(&self) -> PowerPlantPublicRepr {
         PowerPlantPublicRepr::Consumers(ConsumersPublicRepr {
             output: PlantOutput {
-                setpoint: self.current_setpoint,
+                setpoint: self.current_setpoint.into(),
                 cost: (self.current_setpoint * self.price_per_mwh),
             },
         })
@@ -78,6 +79,7 @@ mod tests {
         forecast::{Forecast, ForecastValue},
         game::delivery_period::DeliveryPeriodId,
         plants::PowerPlant,
+        utils::units::Power,
     };
 
     use super::Consumers;
@@ -116,7 +118,7 @@ mod tests {
 
         // Consumers cannot be programed
         let initial_setpoint = consumers.current_setpoint;
-        consumers.program_setpoint(initial_setpoint);
+        consumers.program_setpoint(initial_setpoint.into());
         assert_eq!(consumers.current_setpoint, initial_setpoint);
 
         // Consumption value changes when dispatched
@@ -124,7 +126,7 @@ mod tests {
         assert_ne!(consumers.current_setpoint, initial_setpoint);
 
         // Dispatching should return the previous setpoint
-        let previous_value = consumers.current_setpoint;
+        let previous_value: Power = consumers.current_setpoint.into();
         let returned_value = consumers.dispatch();
         assert_eq!(previous_value, returned_value.setpoint);
     }

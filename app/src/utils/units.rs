@@ -1,10 +1,12 @@
 use std::ops::Mul;
 
-use derive_more::{Add, Mul};
+use derive_more::{Add, From, Into, Mul};
 use serde::{Deserialize, Serialize};
 
 /// Represent a arbitrary unit of Power (like watt).
-#[derive(Debug, PartialEq, PartialOrd, Ord, Eq, Mul, Add, Serialize, Deserialize)]
+#[derive(
+    Debug, From, Into, PartialEq, PartialOrd, Ord, Eq, Mul, Add, Serialize, Deserialize, Clone, Copy,
+)]
 pub struct Power(isize);
 
 impl Mul<Time> for Power {
@@ -15,16 +17,32 @@ impl Mul<Time> for Power {
     }
 }
 
+impl Default for Power {
+    fn default() -> Self {
+        NO_POWER
+    }
+}
+
+pub const NO_POWER: Power = Power(0);
+
 /// Represent a arbitrary unit of Time (like hour/second).
-#[derive(Debug, PartialEq, PartialOrd, Ord, Eq, Mul, Add, Serialize, Deserialize)]
+#[derive(
+    Debug, From, Into, PartialEq, PartialOrd, Ord, Eq, Mul, Add, Serialize, Deserialize, Clone, Copy,
+)]
 pub struct Time(isize);
 
+pub const TIMESTEP: Time = Time(1);
+
 /// Represent a arbitrary unit of Energy (like joule).
-#[derive(Debug, PartialEq, PartialOrd, Ord, Eq, Mul, Add, Serialize, Deserialize)]
+#[derive(
+    Debug, From, Into, PartialEq, PartialOrd, Ord, Eq, Mul, Add, Serialize, Deserialize, Clone, Copy,
+)]
 pub struct Energy(isize);
 
 /// Represent an energy cost in arbitrary unit, i.e. how much cost a unit of energy (like €/joule).
-#[derive(Debug, PartialEq, PartialOrd, Ord, Eq, Mul, Add, Serialize, Deserialize)]
+#[derive(
+    Debug, From, Into, PartialEq, PartialOrd, Ord, Eq, Mul, Add, Serialize, Deserialize, Clone, Copy,
+)]
 pub struct EnergyCost(isize);
 
 impl Mul<EnergyCost> for Energy {
@@ -36,7 +54,22 @@ impl Mul<EnergyCost> for Energy {
 }
 
 /// Represent an arbitrary unit of money (like €).
-#[derive(Debug, PartialEq, PartialOrd, Ord, Eq, Mul, Add, Serialize, Deserialize)]
+#[derive(
+    Debug,
+    From,
+    Into,
+    PartialEq,
+    PartialOrd,
+    Ord,
+    Eq,
+    Mul,
+    Add,
+    Serialize,
+    Deserialize,
+    Clone,
+    Copy,
+    Default,
+)]
 pub struct Money(isize);
 
 #[cfg(test)]

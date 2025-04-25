@@ -18,6 +18,7 @@ use crate::{
         },
     },
     player::{PlayerConnections, PlayerId, PlayerMessage},
+    utils::units::Power,
 };
 
 use super::StackService;
@@ -25,7 +26,7 @@ use super::StackService;
 #[derive(Debug, Deserialize)]
 pub struct ProgramPlant {
     pub plant_id: PlantId,
-    pub setpoint: isize,
+    pub setpoint: Power,
 }
 
 #[derive(Debug)]
@@ -290,10 +291,10 @@ impl<PC: PlayerConnections> StackActor<PC> {
         self.send_stack_forecasts().await;
     }
 
-    async fn program_plant_setpoint(&mut self, plant_id: PlantId, setpoint: isize) {
+    async fn program_plant_setpoint(&mut self, plant_id: PlantId, setpoint: Power) {
         if let Some(plant) = self.plants.get_mut(&plant_id) {
             let PlantOutput { cost, .. } = plant.program_setpoint(setpoint);
-            tracing::info!("Programmed setpoint {setpoint} for plant {plant_id} (cost: {cost}");
+            tracing::info!("Programmed setpoint {setpoint:?} for plant {plant_id} (cost: {cost}");
             self.send_stack_snapshot().await;
         };
     }
@@ -392,6 +393,7 @@ mod tests_stack {
         game::{GameId, delivery_period::DeliveryPeriodId},
         plants::{PlantId, PowerPlantPublicRepr, infra::ProgramPlant},
         player::{PlayerConnections, PlayerId, PlayerMessage},
+        utils::units::NO_POWER,
     };
 
     use super::{StackActor, StackMessage, StackState, default_stack_plants_builder};
@@ -491,7 +493,7 @@ mod tests_stack {
         let _ = tx
             .send(StackMessage::ProgramSetpoint(ProgramPlant {
                 plant_id: plant_id.to_owned(),
-                setpoint: 100,
+                setpoint: 100.into(),
             }))
             .await;
 
@@ -525,7 +527,7 @@ mod tests_stack {
         let _ = tx
             .send(StackMessage::ProgramSetpoint(ProgramPlant {
                 plant_id: plant_id.to_owned(),
-                setpoint: 100,
+                setpoint: 100.into(),
             }))
             .await;
 
@@ -542,7 +544,7 @@ mod tests_stack {
         let (_, tx, ..) = start_stack();
 
         let plants = get_stack_snashot(tx.clone()).await;
-        let plants_balance = plants.values().fold(0, |acc, plant| {
+        let plants_balance = plants.values().fold(NO_POWER, |acc, plant| {
             acc + match plant {
                 PowerPlantPublicRepr::Battery(batt) => batt.output.setpoint,
                 PowerPlantPublicRepr::Consumers(cons) => cons.output.setpoint,
@@ -567,7 +569,7 @@ mod tests_stack {
         assert!(!plant_outputs.is_empty());
         assert_eq!(
             plants_balance,
-            plants.values().fold(0, |acc, plant| {
+            plants.values().fold(NO_POWER, |acc, plant| {
                 acc + match plant {
                     PowerPlantPublicRepr::Battery(batt) => batt.output.setpoint,
                     PowerPlantPublicRepr::Consumers(cons) => cons.output.setpoint,
@@ -787,7 +789,7 @@ mod tests_stack {
         let _ = tx
             .send(StackMessage::ProgramSetpoint(ProgramPlant {
                 plant_id: plant_id.to_owned(),
-                setpoint: 100,
+                setpoint: 100.into(),
             }))
             .await;
 
