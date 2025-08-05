@@ -24,6 +24,8 @@ services:
     volumes:
       - letsencrypt:/letsencrypt
       - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - traefik-public
 
   parcelec:
     image: ghcr.io/thomas-god/parcelec-app:latest
@@ -48,3 +50,7 @@ services:
 
 volumes:
   letsencrypt:
+
+networks:
+  traefik-public:
+    external: true
