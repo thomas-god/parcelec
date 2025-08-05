@@ -35,11 +35,11 @@ services:
       - "traefik.http.routers.parcelec.rule=Host(`parcelec.org`) && PathPrefix(`/api`)"
       - "traefik.http.routers.parcelec.entrypoints=websecure"
       - "traefik.http.routers.parcelec.tls.certresolver=myresolver"
+    networks:
+      - traefik-public
     deploy:
       update_config:
         order: start-first
-    networks:
-      - traefik-public
 
   client:
     image: ghcr.io/thomas-god/parcelec-client:latest
