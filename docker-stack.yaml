@@ -38,6 +38,8 @@ services:
     deploy:
       update_config:
         order: start-first
+    networks:
+      - traefik-public
 
   client:
     image: ghcr.io/thomas-god/parcelec-client:latest
@@ -47,6 +49,8 @@ services:
       - "traefik.http.routers.client.rule=Host(`parcelec.org`)"
       - "traefik.http.routers.client.entrypoints=websecure"
       - "traefik.http.routers.client.tls.certresolver=myresolver"
+    networks:
+      - traefik-public
 
 volumes:
   letsencrypt:
