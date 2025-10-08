@@ -6,7 +6,7 @@ on:
       - main
 
 jobs:
-  build-app-docker-image:
+  build-app-docker-images:
     strategy:
       matrix:
         include:
@@ -77,10 +77,10 @@ jobs:
           retention-days: 1
 
   # Taken from https://docs.docker.com/build/ci/github-actions/multi-platform/#distribute-build-across-multiple-runners
-  merge:
+  merge-app-docker-images:
     runs-on: ubuntu-24.04
     needs:
-      - build-app-docker-image
+      - build-app-docker-images
 
     steps:
       - name: Download digests
@@ -104,7 +104,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ghcr.io/thomas-god/activities
+          images: ghcr.io/thomas-god/parcelec-app
           flavor: |
             latest=auto
           tags: |
@@ -115,11 +115,11 @@ jobs:
         working-directory: ${{ runner.temp }}/digests
         run: |
           docker buildx imagetools create $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
-            $(printf 'ghcr.io/thomas-god/activities@sha256:%s ' *)
+            $(printf 'ghcr.io/thomas-god/parcelec-app@sha256:%s ' *)
 
       - name: Inspect image
         run: |
-          docker buildx imagetools inspect ghcr.io/thomas-god/activities:${{ steps.meta.outputs.version }}
+          docker buildx imagetools inspect ghcr.io/thomas-god/parcelec-app:${{ steps.meta.outputs.version }}
 
 
   build-client-docker-image:
@@ -151,7 +151,7 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     needs:
-      - build-app-docker-image
+      - merge-app-docker-images
       - build-client-docker-image
     steps:
     - name: Checkout code
