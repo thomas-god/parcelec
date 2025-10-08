@@ -11,7 +11,7 @@
 <div class="alert alert-success self-center">
   <span
     >{trade.volume} MWh {trade.direction === "Buy" ? "achetés" : "vendus"}
-    à {0.01 * (trade.price as number)} €/MWh !
+    à {trade.price} €/MWh !
 
     <CloseButton onClick={() => removeTradeToDisplay(trade)} success={true} />
   </span>
