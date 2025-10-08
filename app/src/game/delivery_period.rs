@@ -126,6 +126,7 @@ pub async fn start_delivery_period<StkS, MS>(
                     None => {
                         // No more tasks to try
                         tracing::error!("All tasks failed or JoinSet was empty");
+                        return ;
                     }
                 }
             }

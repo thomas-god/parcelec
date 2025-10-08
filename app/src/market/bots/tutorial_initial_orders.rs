@@ -1,4 +1,5 @@
 use tokio::sync::mpsc::{Receiver, channel};
+use tokio_util::sync::CancellationToken;
 
 use crate::{
     game::delivery_period::DeliveryPeriodId,
@@ -10,23 +11,28 @@ use crate::{
 pub struct TutorialInitialOrdersBot<MS: Market> {
     id: PlayerId,
     market: MarketContext<MS>,
+    cancellation_token: CancellationToken,
     _rx: Receiver<PlayerMessage>,
 }
 
 impl<MS: Market> TutorialInitialOrdersBot<MS> {
-    fn new(market: MarketContext<MS>) -> TutorialInitialOrdersBot<MS> {
+    fn new(
+        market: MarketContext<MS>,
+        cancellation_token: CancellationToken,
+    ) -> TutorialInitialOrdersBot<MS> {
         let bot_id = PlayerId::default();
         let (_, rx) = channel(16);
 
         TutorialInitialOrdersBot {
             id: bot_id,
             market,
+            cancellation_token,
             _rx: rx,
         }
     }
 
-    pub fn start(market: MarketContext<MS>) {
-        let mut bot = TutorialInitialOrdersBot::new(market);
+    pub fn start(market: MarketContext<MS>, cancellation_token: CancellationToken) {
+        let mut bot = TutorialInitialOrdersBot::new(market, cancellation_token);
 
         tokio::spawn(async move {
             bot.run().await;
@@ -54,16 +60,23 @@ impl<MS: Market> TutorialInitialOrdersBot<MS> {
 
         let mut period = DeliveryPeriodId::default();
 
+        let cancellation_token = self.cancellation_token.clone();
         loop {
-            self.wait_for_market_to_open().await;
-            period = period.next();
-
-            self.post_orders(&period).await;
-            self.wait_for_market_to_close().await;
+            tokio::select! {
+                next_period = self.post_orders(&period) => {
+                    period = next_period;
+                }
+                _ = cancellation_token.cancelled() => {
+                    break;
+                }
+            }
         }
     }
 
-    async fn post_orders(&mut self, period: &DeliveryPeriodId) {
+    async fn post_orders(&mut self, period: &DeliveryPeriodId) -> DeliveryPeriodId {
+        self.wait_for_market_to_open().await;
+        let next_period = period.next();
+
         if *period == DeliveryPeriodId::from(1) {
             self.market
                 .service
@@ -84,5 +97,8 @@ impl<MS: Market> TutorialInitialOrdersBot<MS> {
                 })
                 .await;
         }
+
+        self.wait_for_market_to_close().await;
+        next_period
     }
 }

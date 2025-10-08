@@ -1,4 +1,5 @@
 use tokio::sync::mpsc::{Receiver, channel};
+use tokio_util::sync::CancellationToken;
 
 use crate::{
     constants,
@@ -10,23 +11,28 @@ use crate::{
 pub struct ExtremeOrdersBot<MS: Market> {
     bot_id: PlayerId,
     market: MarketContext<MS>,
+    cancellation_token: CancellationToken,
     _rx: Receiver<PlayerMessage>,
 }
 
 impl<MS: Market> ExtremeOrdersBot<MS> {
-    fn new(market: MarketContext<MS>) -> ExtremeOrdersBot<MS> {
+    fn new(
+        market: MarketContext<MS>,
+        cancellation_token: CancellationToken,
+    ) -> ExtremeOrdersBot<MS> {
         let bot_id = PlayerId::default();
         let (_, rx) = channel(16);
 
         ExtremeOrdersBot {
             bot_id,
             market,
+            cancellation_token,
             _rx: rx,
         }
     }
 
-    pub fn start(market: MarketContext<MS>) {
-        let mut bot = ExtremeOrdersBot::new(market);
+    pub fn start(market: MarketContext<MS>, cancellation_token: CancellationToken) {
+        let mut bot = ExtremeOrdersBot::new(market, cancellation_token);
 
         tokio::spawn(async move {
             bot.run().await;
@@ -52,27 +58,37 @@ impl<MS: Market> ExtremeOrdersBot<MS> {
             .get_market_snapshot(self.bot_id.clone())
             .await;
 
+        let cancellation_token = self.cancellation_token.clone();
         loop {
-            self.wait_for_market_to_open().await;
-            self.market
-                .service
-                .new_order(OrderRequest {
-                    direction: Direction::Buy,
-                    price: EnergyCost::from(constants::MARKET_EXTREME_BUY_OFFER_PRICE),
-                    volume: Energy::from(constants::MARKET_EXTREME_OFFERS_VOLUME),
-                    owner: self.bot_id.clone(),
-                })
-                .await;
-            self.market
-                .service
-                .new_order(OrderRequest {
-                    direction: Direction::Sell,
-                    price: EnergyCost::from(constants::MARKET_EXTREME_SELL_OFFER_PRICE),
-                    volume: Energy::from(constants::MARKET_EXTREME_OFFERS_VOLUME),
-                    owner: self.bot_id.clone(),
-                })
-                .await;
-            self.wait_for_market_to_close().await;
+            tokio::select! {
+                _ = self.add_orders() => {}
+                _ = cancellation_token.cancelled() => {
+                    break;
+                }
+            }
         }
+    }
+
+    async fn add_orders(&mut self) {
+        self.wait_for_market_to_open().await;
+        self.market
+            .service
+            .new_order(OrderRequest {
+                direction: Direction::Buy,
+                price: EnergyCost::from(constants::MARKET_EXTREME_BUY_OFFER_PRICE),
+                volume: Energy::from(constants::MARKET_EXTREME_OFFERS_VOLUME),
+                owner: self.bot_id.clone(),
+            })
+            .await;
+        self.market
+            .service
+            .new_order(OrderRequest {
+                direction: Direction::Sell,
+                price: EnergyCost::from(constants::MARKET_EXTREME_SELL_OFFER_PRICE),
+                volume: Energy::from(constants::MARKET_EXTREME_OFFERS_VOLUME),
+                owner: self.bot_id.clone(),
+            })
+            .await;
+        self.wait_for_market_to_close().await;
     }
 }

@@ -134,7 +134,7 @@ pub async fn create_game(
         game_config,
         connections_service.clone(),
         market_context.clone(),
-        cancellation_token,
+        cancellation_token.clone(),
     );
 
     state
@@ -146,8 +146,9 @@ pub async fn create_game(
 
     // Start the bots
     let cloned_market_context = market_context.clone();
+    let cloned_cancellation_token = cancellation_token.clone();
     tokio::spawn(async move {
-        start_bots(cloned_market_context).await;
+        start_bots(cloned_market_context, cloned_cancellation_token).await;
     });
 
     tracing::info!("Game {game_name:?} created");
