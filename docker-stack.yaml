@@ -1,6 +1,6 @@
 services:
   parcelec:
-    image: ghcr.io/thomas-god/parcelec-app:latest
+    image: ghcr.io/thomas-god/parcelec-app:main
     labels:
       - "traefik.enable=true"
       - "traefik.http.services.parcelec.loadbalancer.server.port=9002"
