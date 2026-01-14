@@ -6,7 +6,7 @@ mod common;
 
 #[cfg(all(test, feature = "e2e-tests"))]
 #[tokio::test]
-async fn test_run_totorial() {
+async fn test_run_tutorial() {
     let (addr, _) = init().await;
     let client = init_webdriver_client().await;
     let c = client.clone();

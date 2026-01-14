@@ -11,8 +11,10 @@ pub const DEFAULT_WAIT_TIMEOUT: Duration = Duration::from_secs(3);
 pub const WEBDRIVER_ADDRESS: &str = "http://localhost:4444";
 
 pub async fn init_webdriver_client() -> Client {
-    let mut firefox_args = Vec::new();
-    firefox_args.extend(["--headless", "--disable-gpu", "--disable-dev-shm-usage"]);
+    let mut firefox_args: Vec<&str> = Vec::new();
+    firefox_args.extend(["--headless", "--disable-dev-shm-usage"]);
+    // For debugging, use these options to show test browser window
+    // firefox_args.extend(["--disable-dev-shm-usage"]);
 
     let mut caps = serde_json::map::Map::new();
     caps.insert(
