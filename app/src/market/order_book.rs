@@ -206,7 +206,7 @@ impl OrderBook {
         self.offers.retain(|offer| offer.0.id != order_id);
     }
 
-    pub fn snapshot(&self) -> OrderBookSnapshot {
+    pub fn snapshot(&self) -> OrderBookSnapshot<'_> {
         OrderBookSnapshot {
             bids: self.bids.as_slice(),
             offers: self.offers.as_slice(),
