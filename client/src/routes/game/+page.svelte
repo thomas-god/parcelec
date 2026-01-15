@@ -166,11 +166,12 @@
   let pnl = $derived(plants_pnl + market_pnl);
 </script>
 
-<main class="h-dvh max-w-[600px] mx-auto @container">
+<main class="h-dvh max-w-300 mx-auto @container">
   {#if socketIsOpen}
     <div class="flex flex-col gap-6 items-stretch">
       <div
         class={`
+        max-w-150 w-full mx-auto
         sticky top-0 px-2 pt-5 pb-5 z-30
         text-success-content bg-success rounded-b-md
         @sm:p-6
@@ -189,7 +190,10 @@
       </div>
 
       {#if game_state === "Running"}
-        <div class="tabs tabs-lift tabs-md p-3 max-[400px]:p-1">
+        <!-- Mobile: Tabs layout -->
+        <div
+          class="tabs tabs-lift tabs-md p-3 max-[400px]:p-1 @[1200px]:hidden"
+        >
           <input
             type="radio"
             name="market_forecast_tabs"
@@ -216,6 +220,22 @@
             aria-label="Prévisions 🔮"
           />
           <div class="tab-content bg-base-100 border-base-300 p-2">
+            <Forecasts {plant_forecasts} plant_snapshots={plants} />
+          </div>
+        </div>
+
+        <!-- Desktop: Side-by-side layout -->
+        <div class="hidden @[1200px]:grid grid-cols-3 gap-4 px-4">
+          <div class="bg-base-100 border border-base-300 rounded-lg p-2">
+            <h3 class="text-base font-semibold mb-2">Centrales 🔌</h3>
+            <Stack {plants} send={sendMessage} />
+          </div>
+          <div class="bg-base-100 border border-base-300 rounded-lg p-4">
+            <h3 class="text-base font-semibold mb-2">Marché 💱</h3>
+            <OrderBookElement {orderBook} send={sendMessage} {trades} />
+          </div>
+          <div class="bg-base-100 border border-base-300 rounded-lg p-2">
+            <h3 class="text-base font-semibold mb-2">Prévisions 🔮</h3>
             <Forecasts {plant_forecasts} plant_snapshots={plants} />
           </div>
         </div>

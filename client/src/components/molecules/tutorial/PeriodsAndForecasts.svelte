@@ -23,8 +23,8 @@
 </p>
 <p class="px-4 pb-2">
   Pour vous aider dans vos décisions vous disposez d'un onglet <i>prévisions</i>
-  🔮 qui vous donnera une idée des consommations et production pour les périodes
-  suivantes. Mais attention ces prévisions peuvent se tromper !
+  🔮 qui vous donnera une idée des consommations et production pour les périodes suivantes.
+  Mais attention ces prévisions peuvent se tromper !
 </p>
 
 <div class="my-1 mx-3 bg-base-100 rounded-lg">
