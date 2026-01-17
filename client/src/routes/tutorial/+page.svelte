@@ -101,13 +101,14 @@
 </script>
 
 {#await startTutorial() then}
-  <div class="flex flex-col max-w-[500px] mx-auto text-justify">
+  <div class="flex flex-col max-w-300 mx-auto text-justify px-3">
     <div class="mt-6">
       <Intro />
-      <div class="divider mx-3"></div>
+
+      <div class="divider mx-auto max-w-150"></div>
 
       <div
-        class="mx-6 mb-4 p-4 text-success-content bg-success rounded-md sticky top-3 z-30"
+        class="mx-auto mb-4 p-4 text-success-content bg-success rounded-md sticky top-3 z-30 max-w-200"
       >
         <CurrentScore {position} {pnl} />
       </div>
@@ -115,10 +116,10 @@
       <PowerPlants {sendMessage} {plants} />
       <Market {orderBook} {trades} send={sendMessage} />
       <PeriodsAndForecasts forecasts={plant_forecasts} {plants} />
-      <div class="my-5 mx-auto sticky bottom-3 z-30">
+      <div class="my-8 mx-auto">
         <button
           onclick={() => goto("/game")}
-          class="btn btn-success text-lg max-w-64 mx-auto block"
+          class="btn btn-success text-lg max-w-150 w-full mx-auto block"
           >➡️ Commencer</button
         >
       </div>
