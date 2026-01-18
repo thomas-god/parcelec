@@ -15,7 +15,7 @@
 
   let sendOrderDebouncedInterval: ReturnType<typeof setTimeout>;
   const sendOrderRequest = (orderRequest: OrderRequest) => {
-    (document.getElementById("add_order") as any).close();
+    addOrderModal.close();
     clearTimeout(sendOrderDebouncedInterval);
     sendOrderDebouncedInterval = setTimeout(() => {
       send(JSON.stringify({ OrderRequest: orderRequest }));
@@ -25,30 +25,35 @@
   const deleteOrder = (order_id: String) => {
     send(JSON.stringify({ DeleteOrder: { order_id } }));
   };
+  let addOrderModal: HTMLDialogElement;
+  let tradeListModal: HTMLDialogElement;
 </script>
 
 <div class="flex flex-col">
   <!-- Add an offer -->
   <div class="flex flex-row justify-center gap-2">
-    <button
-      class="btn"
-      onclick={() => (document.getElementById("add_order") as any).showModal()}
+    <button class="btn btn-success" onclick={() => addOrderModal.showModal()}
       >Ajouter un ordre</button
     >
-    <dialog id="add_order" class="modal">
+    <dialog class="modal" bind:this={addOrderModal}>
       <div class="modal-box bg-base-200 border border-base-300 p-4 rounded-box">
         <AddOrder {sendOrderRequest} />
       </div>
+      <form method="dialog" class="modal-backdrop">
+        <button>close</button>
+      </form>
     </dialog>
-    <button
-      class="btn"
-      onclick={() => (document.getElementById("trade_list") as any).showModal()}
+
+    <button class="btn btn-success" onclick={() => tradeListModal.showModal()}
       >Transactions passées</button
     >
-    <dialog id="trade_list" class="modal">
+    <dialog class="modal" bind:this={tradeListModal}>
       <div class="modal-box bg-base-200 border border-base-300 p-4 rounded-box">
         <TradeList {trades} />
       </div>
+      <form method="dialog" class="modal-backdrop">
+        <button>close</button>
+      </form>
     </dialog>
   </div>
 

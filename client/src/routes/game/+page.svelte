@@ -210,7 +210,7 @@
             class="tab text-base font-semibold"
             aria-label="Marché 💱"
           />
-          <div class="tab-content bg-base-100 border-base-300 p-4">
+          <div class="tab-content bg-base-100 border-base-300 p-2 pt-4">
             <OrderBookElement {orderBook} send={sendMessage} {trades} />
           </div>
           <input
@@ -227,15 +227,19 @@
         <!-- Desktop: Side-by-side layout -->
         <div class="hidden @[1200px]:grid grid-cols-3 gap-4 px-4">
           <div class="bg-base-100 border border-base-300 rounded-lg p-2">
-            <h3 class="text-base font-semibold mb-2">Centrales 🔌</h3>
+            <h3 class="text-lg text-center font-semibold pt-2">Centrales 🔌</h3>
             <Stack {plants} send={sendMessage} />
           </div>
-          <div class="bg-base-100 border border-base-300 rounded-lg p-4">
-            <h3 class="text-base font-semibold mb-2">Marché 💱</h3>
+          <div class="bg-base-100 border border-base-300 rounded-lg p-2">
+            <h3 class="text-lg text-center font-semibold pt-2 pb-4">
+              Marché 💱
+            </h3>
             <OrderBookElement {orderBook} send={sendMessage} {trades} />
           </div>
           <div class="bg-base-100 border border-base-300 rounded-lg p-2">
-            <h3 class="text-base font-semibold mb-2">Prévisions 🔮</h3>
+            <h3 class="text-lg text-center font-semibold pt-2">
+              Prévisions 🔮
+            </h3>
             <Forecasts {plant_forecasts} plant_snapshots={plants} />
           </div>
         </div>

@@ -22,7 +22,7 @@
 <fieldset class="fieldset">
   <div class="flex flex-row justify-between content-center">
     <legend class="fieldset-legend text-xl">Ajouter un ordre</legend>
-    <div class="modal-action !my-auto">
+    <div class="modal-action">
       <form method="dialog">
         <CloseButton onClick={() => {}} success={false} />
       </form>
