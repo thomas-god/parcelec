@@ -1,4 +1,4 @@
-import type { Forecast } from "../components/molecules/PlantForecasts.svelte";
+import type { Forecast } from "../components/organisms/Forecasts.svelte";
 
 export const FORECAST_STEP = 25; // In MW
 

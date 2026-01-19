@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { StackForecasts, StackSnapshot } from "$lib/message";
-  import PlantForecasts from "../PlantForecasts.svelte";
+  import Forecasts from "../../organisms/Forecasts.svelte";
 
   let {
     forecasts,
@@ -32,7 +32,7 @@
     </p>
   </div>
   <div class="my-1 mx-auto bg-base-100 rounded-lg">
-    <PlantForecasts {forecasts} {plants} />
+    <Forecasts plant_forecasts={forecasts} plant_snapshots={plants} />
   </div>
 </div>
 
