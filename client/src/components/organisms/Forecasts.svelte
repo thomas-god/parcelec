@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { StackForecasts, StackSnapshot } from "$lib/message";
+  import ForecastsChart from "../molecules/ForecastsChart.svelte";
   import ForecastsTable from "../molecules/ForecastsTable.svelte";
 
   let {
@@ -9,6 +10,7 @@
     plant_forecasts: StackForecasts;
     plant_snapshots: StackSnapshot;
   } = $props();
+  let chartWidth: number = $state(300);
 
   export type Forecast = NonNullable<
     StackForecasts extends Map<any, infer I> ? I : never
@@ -89,10 +91,14 @@
   });
 </script>
 
-<div class="flex flex-col overflow-y-auto gap-3">
-  <ForecastsTable
+<div>
+  <div class="w-full" bind:clientWidth={chartWidth}>
+    <ForecastsChart {total_forecasts} width={chartWidth} height={300} />
+  </div>
+
+  <!-- <ForecastsTable
     {total_forecasts}
     {renewable_forecasts}
     {consumers_forecasts}
-  />
+  /> -->
 </div>

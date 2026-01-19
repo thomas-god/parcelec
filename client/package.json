@@ -43,6 +43,7 @@
     "@testing-library/svelte": "^5.3.1",
     "@testing-library/user-event": "^14.6.1",
     "@tsconfig/svelte": "^5.0.6",
+    "@types/d3": "^7.4.3",
     "daisyui": "^5.5.14",
     "jsdom": "^26.1.0",
     "prettier": "^3.7.4",
@@ -56,5 +57,8 @@
     "vite": "^6.4.1",
     "vitest": "^3.2.4",
     "zod": "^3.25.76"
+  },
+  "dependencies": {
+    "d3": "^7.9.0"
   }
 }
