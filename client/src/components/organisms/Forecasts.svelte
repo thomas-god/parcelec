@@ -1,14 +1,20 @@
 <script lang="ts">
-  import type { StackForecasts, StackSnapshot } from "$lib/message";
+  import type {
+    StackForecasts,
+    StackHistory,
+    StackSnapshot,
+  } from "$lib/message";
   import ForecastsChart from "../molecules/ForecastsChart.svelte";
   import ForecastsTable from "../molecules/ForecastsTable.svelte";
 
   let {
     plant_forecasts,
     plant_snapshots,
+    history,
   }: {
     plant_forecasts: StackForecasts;
     plant_snapshots: StackSnapshot;
+    history: StackHistory;
   } = $props();
   let chartWidth: number = $state(300);
 
@@ -21,6 +27,10 @@
   type PlantType = (StackSnapshot extends Map<any, infer I>
     ? I
     : never)["type"];
+  export type History = NonNullable<
+    StackHistory extends Map<any, infer I> ? I : never
+  >;
+  export type PlantOutput = History extends Array<infer I> ? I : never;
 
   export type Forecasts = Map<
     number,
@@ -37,6 +47,19 @@
         const plant = plant_snapshots.get(id);
         if (!!plant) {
           merged.push([id, plant.type, forecast]);
+        }
+      }
+    }
+    return merged;
+  });
+
+  let history_by_plant = $derived.by(() => {
+    let merged: [string, PlantType, PlantOutput[]][] = [];
+    for (const [id, values] of history.entries()) {
+      if (!!values) {
+        const plant = plant_snapshots.get(id);
+        if (!!plant) {
+          merged.push([id, plant.type, values]);
         }
       }
     }
@@ -89,11 +112,39 @@
 
     return forecasts;
   });
+
+  let total_history = $derived.by(() => {
+    const history: number[] = [];
+    // Get history
+    for (const [_, plant, values] of history_by_plant) {
+      if (plant === "Consumers" || plant === "RenewablePlant") {
+        for (const [idx, value] of values.entries()) {
+          const previous = history.at(idx) || 0;
+          history[idx] = previous + value.setpoint;
+        }
+      }
+    }
+
+    // Get current setpoint
+    let total = 0;
+    for (const [id, plant] of plant_snapshots) {
+      if (plant.type === "RenewablePlant" || plant.type === "Consumers") {
+        total += plant.output.setpoint;
+      }
+    }
+    history.push(total);
+    return history;
+  });
 </script>
 
 <div>
   <div class="w-full" bind:clientWidth={chartWidth}>
-    <ForecastsChart {total_forecasts} width={chartWidth} height={300} />
+    <ForecastsChart
+      {total_forecasts}
+      history={total_history}
+      width={chartWidth}
+      height={300}
+    />
   </div>
 
   <!-- <ForecastsTable

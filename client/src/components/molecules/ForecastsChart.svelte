@@ -7,10 +7,12 @@
     height,
     width,
     total_forecasts,
+    history,
   }: {
     width: number;
     height: number;
     total_forecasts: Forecasts;
+    history: number[];
   } = $props();
 
   let marginTop = 20;
@@ -27,6 +29,17 @@
 
   let data = $derived.by(() => {
     const points: { period: number; value: number; deviation: number }[] = [];
+
+    // Add history
+    for (const [idx, value] of history.entries()) {
+      points.push({
+        period: idx + 1,
+        value,
+        deviation: 0,
+      });
+    }
+
+    // Add forecasts
     for (const [key, value] of total_forecasts.entries()) {
       points.push({
         period: key,
@@ -35,6 +48,14 @@
       });
     }
     return points;
+  });
+
+  let next_forecast = $derived.by(() => {
+    for (const point of data) {
+      if (point.deviation > 0) {
+        return point;
+      }
+    }
   });
 
   let x = $derived(
@@ -58,6 +79,10 @@
   );
 
   const drawErrorBar = (context: d3.Path, point: (typeof data)[number]) => {
+    // Don't draw error bar if no deviation
+    if (point.deviation === 0) {
+      return context;
+    }
     const errorWidth = 15;
 
     const xMiddle = (x(point.period.toString()) as number) + x.bandwidth() / 2;
@@ -148,12 +173,12 @@
     <g bind:this={gy} transform="translate({marginLeft} 0)" />
   </svg>
 
-  {#if data.length > 0}
+  {#if next_forecast !== undefined}
     <div class="text-center italic pb-4">
-      Prévision pour la prochaine période ({data[0].period}) : <br />
+      Prévision pour la prochaine période : <br />
       <span class="font-semibold">
-        {Math.abs(data[0].value).toLocaleString("fr-FR")} ±
-        {data[0].deviation.toLocaleString("fr-FR")} MW
+        {Math.abs(next_forecast.value).toLocaleString("fr-FR")} ±
+        {next_forecast.deviation.toLocaleString("fr-FR")} MW
       </span>
     </div>
   {/if}

@@ -10,6 +10,7 @@
     type Trade,
     type ReadinessStatus,
     type GameState,
+    type StackHistory,
   } from "$lib/message";
   import { PUBLIC_APP_URL } from "$env/static/public";
   import OrderBookElement from "../../components/organisms/OrderBook.svelte";
@@ -48,6 +49,7 @@
   };
   let plants: StackSnapshot = $state(new Map());
   let plant_forecasts: StackForecasts = $state(new Map());
+  let plant_history: StackHistory = $state(new Map());
   let market_state: "Open" | "Closed" = $state("Open");
   let stack_state: "Open" | "Closed" = $state("Open");
   let game_state: GameState = $state("Open");
@@ -85,6 +87,9 @@
         })
         .with({ type: "StackForecasts" }, ({ forecasts }) => {
           plant_forecasts = forecasts;
+        })
+        .with({ type: "StackHistory" }, ({ history }) => {
+          plant_history = history;
         })
         .with({ type: "TradeList" }, (trade_list) => {
           trades = trade_list.trades;
@@ -220,7 +225,11 @@
             aria-label="Prévisions 🔮"
           />
           <div class="tab-content bg-base-100 border-base-300 p-2">
-            <Forecasts {plant_forecasts} plant_snapshots={plants} />
+            <Forecasts
+              {plant_forecasts}
+              plant_snapshots={plants}
+              history={plant_history}
+            />
           </div>
         </div>
 
@@ -240,7 +249,11 @@
             <h3 class="text-lg text-center font-semibold pt-2">
               Prévisions 🔮
             </h3>
-            <Forecasts {plant_forecasts} plant_snapshots={plants} />
+            <Forecasts
+              {plant_forecasts}
+              plant_snapshots={plants}
+              history={plant_history}
+            />
           </div>
         </div>
 

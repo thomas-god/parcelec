@@ -32,7 +32,11 @@
     </p>
   </div>
   <div class="my-1 mx-auto bg-base-100 rounded-lg">
-    <Forecasts plant_forecasts={forecasts} plant_snapshots={plants} />
+    <Forecasts
+      plant_forecasts={forecasts}
+      plant_snapshots={plants}
+      history={new Map()}
+    />
   </div>
 </div>
 
