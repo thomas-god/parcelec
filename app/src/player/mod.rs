@@ -13,7 +13,7 @@ use crate::{
         scores::{PlayerScore, RankTier},
     },
     market::{OrderRepr, order_book::TradeLeg},
-    plants::{PlantId, PowerPlantPublicRepr},
+    plants::{PlantId, PlantOutput, PowerPlantPublicRepr},
     utils::units::Money,
 };
 
@@ -72,6 +72,9 @@ pub enum PlayerMessage {
     },
     StackForecasts {
         forecasts: HashMap<PlantId, Option<Vec<Forecast>>>,
+    },
+    StackHistory {
+        history: HashMap<PlantId, Vec<PlantOutput>>,
     },
     DeliveryPeriodResults {
         delivery_period: DeliveryPeriodId,

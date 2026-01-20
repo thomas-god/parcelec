@@ -114,6 +114,7 @@ pub async fn start_player_connection<MS: Market, PS: Stack>(
     send_initial_stack_snapshot(&mut ws, &context).await?;
     send_initial_trades_and_obs(&mut ws, &context).await?;
     send_stack_forecasts(&mut ws, &context).await?;
+    send_stack_history(&mut ws, &context).await?;
     send_previous_scores(&mut ws, &context).await?;
     send_readiness_satus(&mut ws, &context).await?;
 
@@ -212,6 +213,20 @@ async fn send_stack_forecasts<MS: Market, PS: Stack>(
     ws.send(
         serde_json::to_string(&PlayerMessage::StackForecasts {
             forecasts: context.stack.service.get_forecasts().await,
+        })?
+        .into(),
+    )
+    .await?;
+    Ok(())
+}
+
+async fn send_stack_history<MS: Market, PS: Stack>(
+    ws: &mut WebSocket,
+    context: &PlayerConnectionContext<MS, PS>,
+) -> Result<(), PlayerConnectionError> {
+    ws.send(
+        serde_json::to_string(&PlayerMessage::StackHistory {
+            history: context.stack.service.get_history().await,
         })?
         .into(),
     )

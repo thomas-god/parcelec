@@ -73,6 +73,14 @@ impl Stack for StackService {
 
         rx.await.unwrap_or(HashMap::new())
     }
+
+    async fn get_history(&self) -> HashMap<PlantId, Vec<PlantOutput>> {
+        let (tx_back, rx) = oneshot::channel();
+
+        let _ = self.tx.send(StackMessage::GetHistory(tx_back)).await;
+
+        rx.await.unwrap_or(HashMap::new())
+    }
 }
 
 #[cfg(test)]
@@ -94,6 +102,8 @@ mockall::mock! {
         ) -> impl Future<Output = Result<HashMap<PlantId, PowerPlantPublicRepr>, GetSnapshotError>> + Send;
 
         fn get_forecasts(&self) -> impl Future<Output = HashMap<PlantId, Option<Vec<Forecast>>>> + Send;
+
+        fn get_history(&self) -> impl Future<Output = HashMap<PlantId, Vec<PlantOutput>>> + Send;
     }
 
     impl Clone for StackService {
@@ -110,7 +120,8 @@ mod tests {
     use crate::{
         forecast::{Forecast, ForecastValue},
         game::delivery_period::DeliveryPeriodId,
-        plants::{PlantId, Stack, StackService, infra::actor::StackMessage},
+        plants::{PlantId, PlantOutput, Stack, StackService, infra::actor::StackMessage},
+        utils::units::{Money, Power},
     };
 
     #[tokio::test]
@@ -231,5 +242,39 @@ mod tests {
         let service = StackService::new(tx);
 
         let _ = service.program_setpoint(PlantId::default(), 0.into()).await;
+    }
+
+    #[tokio::test]
+    async fn test_get_history_ok() {
+        let (tx, mut rx) = mpsc::channel(128);
+        let service = StackService::new(tx);
+
+        tokio::spawn(async move {
+            let Some(StackMessage::GetHistory(tx_back)) = rx.recv().await else {
+                unreachable!()
+            };
+            let _ = tx_back.send(HashMap::from([(
+                PlantId::default(),
+                vec![PlantOutput {
+                    cost: Money::from(12),
+                    setpoint: Power::from(100),
+                }],
+            )]));
+        });
+
+        let res = service.get_history().await;
+        assert_eq!(res.len(), 1);
+    }
+
+    #[tokio::test]
+    async fn test_get_history_err() {
+        let (tx, mut rx) = mpsc::channel(128);
+        let service = StackService::new(tx);
+
+        // Close receiving end to simulate err
+        rx.close();
+
+        let res = service.get_history().await;
+        assert_eq!(res, HashMap::new())
     }
 }

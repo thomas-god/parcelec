@@ -39,6 +39,7 @@ pub enum StackMessage {
     ProgramSetpoint(ProgramPlant),
     GetSnapshot(oneshot::Sender<HashMap<PlantId, PowerPlantPublicRepr>>),
     GetForecasts(oneshot::Sender<HashMap<PlantId, Option<Vec<Forecast>>>>),
+    GetHistory(oneshot::Sender<HashMap<PlantId, Vec<PlantOutput>>>),
 }
 
 #[derive(Debug, PartialEq, Clone, Copy)]
@@ -172,6 +173,9 @@ impl<PC: PlayerConnections> StackActor<PC> {
             (_, GetForecasts(tx_back)) => {
                 let _ = tx_back.send(self.stack_forecasts());
             }
+            (_, GetHistory(tx_back)) => {
+                let _ = tx_back.send(self.stack_history());
+            }
             (Open, ProgramSetpoint(ProgramPlant { plant_id, setpoint })) => {
                 self.program_plant_setpoint(plant_id, setpoint).await;
             }
@@ -235,6 +239,18 @@ impl<PC: PlayerConnections> StackActor<PC> {
             .await;
     }
 
+    async fn send_stack_history(&self) {
+        let history = self.stack_history();
+
+        self.players_connections
+            .send_to_player(
+                &self.game,
+                &self.player,
+                PlayerMessage::StackHistory { history },
+            )
+            .await;
+    }
+
     fn stack_snapshot(&self) -> HashMap<PlantId, PowerPlantPublicRepr> {
         self.plants
             .iter()
@@ -246,6 +262,13 @@ impl<PC: PlayerConnections> StackActor<PC> {
         self.plants
             .iter()
             .map(|(plant_id, plant)| (plant_id.to_owned(), plant.get_forecast()))
+            .collect()
+    }
+
+    fn stack_history(&self) -> HashMap<PlantId, Vec<PlantOutput>> {
+        self.plants
+            .iter()
+            .map(|(plant_id, plant)| (plant_id.to_owned(), plant.get_history()))
             .collect()
     }
 
@@ -289,6 +312,7 @@ impl<PC: PlayerConnections> StackActor<PC> {
         // Notify player about updated stack state
         self.send_stack_snapshot().await;
         self.send_stack_forecasts().await;
+        self.send_stack_history().await;
     }
 
     async fn program_plant_setpoint(&mut self, plant_id: PlantId, setpoint: Power) {
@@ -525,7 +549,8 @@ mod tests_stack {
                 period_id: DeliveryPeriodId::from(0),
             })
             .await;
-        // Consume the stack snapshot and forecasts messages sent on stack closing
+        // Consume the stack snapshot, forecasts and history messages sent on stack closing
+        let _ = conn_rx.recv().await;
         let _ = conn_rx.recv().await;
         let _ = conn_rx.recv().await;
 

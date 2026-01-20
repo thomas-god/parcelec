@@ -61,6 +61,9 @@ pub trait Stack: Clone + Send + Sync + 'static {
     /// Get a forecast, if available, for each plant of the stack, for the next delivery period.
     fn get_forecasts(&self)
     -> impl Future<Output = HashMap<PlantId, Option<Vec<Forecast>>>> + Send;
+
+    /// Get an output history for each plant of the stack.
+    fn get_history(&self) -> impl Future<Output = HashMap<PlantId, Vec<PlantOutput>>> + Send;
 }
 
 #[derive(Debug, Serialize, Clone, Copy)]

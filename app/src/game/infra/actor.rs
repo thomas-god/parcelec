@@ -836,7 +836,8 @@ mod tests {
             .tx
             .send(GameMessage::PlayerIsReady(player.clone()))
             .await;
-        // Flush stack snapshot sent at the end of the delivery
+        // Flush stack snapshot, forecasts and history sent at the end of the delivery
+        let _ = rx_send_to_player.recv().await;
         let _ = rx_send_to_player.recv().await;
         let _ = rx_send_to_player.recv().await;
 
