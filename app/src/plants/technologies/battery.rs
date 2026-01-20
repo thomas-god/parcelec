@@ -11,6 +11,7 @@ pub struct Battery {
     settings: BatterySettings,
     charge: Energy,
     setpoint: Power,
+    history: Vec<PlantOutput>,
 }
 pub struct BatterySettings {
     max_charge: Energy,
@@ -29,6 +30,7 @@ impl Battery {
             settings: BatterySettings { max_charge },
             charge: start_charge,
             setpoint: Power::from(0),
+            history: Vec::new(),
         }
     }
 
@@ -76,11 +78,19 @@ impl PowerPlant for Battery {
         let cost = self.cost();
         self.charge = next_charge;
         self.setpoint = Power::from(0);
-        PlantOutput { cost, setpoint }
+        let output = PlantOutput { cost, setpoint };
+
+        self.history.push(output.clone());
+
+        output
     }
 
     fn get_forecast(&self) -> Option<Vec<Forecast>> {
         None
+    }
+
+    fn get_history(&self) -> Vec<PlantOutput> {
+        self.history.clone()
     }
 }
 
@@ -94,6 +104,9 @@ mod tests {
     #[test]
     fn test_battery() {
         let mut battery = Battery::new(Energy::from(1_000), Energy::from(0));
+
+        // Initial history is empty
+        assert!(battery.get_history().is_empty());
 
         // Basic charge of the battery (power is negative in generator convention)
         assert_eq!(battery.charge, Energy::from(0));
@@ -109,11 +122,31 @@ mod tests {
         assert_eq!(cost, Money::from(0));
         assert_eq!(setpoint, Power::from(-100));
         assert_eq!(battery.charge, Energy::from(100));
+        assert_eq!(
+            battery.get_history(),
+            vec![PlantOutput {
+                cost: Money::from(0),
+                setpoint: Power::from(-100)
+            }]
+        );
 
         // Basic discharge of the battery (power is positive in generator convention)
         battery.program_setpoint(Power::from(50));
         battery.dispatch();
         assert_eq!(battery.charge, Energy::from(50));
+        assert_eq!(
+            battery.get_history(),
+            vec![
+                PlantOutput {
+                    cost: Money::from(0),
+                    setpoint: Power::from(-100)
+                },
+                PlantOutput {
+                    cost: Money::from(0),
+                    setpoint: Power::from(50)
+                }
+            ]
+        );
 
         // Too much power is clipped in regard to max available discharge
         // Current charge is 50, and max is 1000 -> 50 should be clipped
@@ -126,6 +159,23 @@ mod tests {
         );
         battery.dispatch();
         assert_eq!(battery.charge, Energy::from(1000));
+        assert_eq!(
+            battery.get_history(),
+            vec![
+                PlantOutput {
+                    cost: Money::from(0),
+                    setpoint: Power::from(-100)
+                },
+                PlantOutput {
+                    cost: Money::from(0),
+                    setpoint: Power::from(50)
+                },
+                PlantOutput {
+                    cost: Money::from(0),
+                    setpoint: Power::from(-950)
+                }
+            ]
+        );
 
         // Too much power is clipped in regard to max available charge
         // Current charge is 1000, 100 should be clipped
@@ -138,6 +188,27 @@ mod tests {
         );
         battery.dispatch();
         assert_eq!(battery.charge, Energy::from(0));
+        assert_eq!(
+            battery.get_history(),
+            vec![
+                PlantOutput {
+                    cost: Money::from(0),
+                    setpoint: Power::from(-100)
+                },
+                PlantOutput {
+                    cost: Money::from(0),
+                    setpoint: Power::from(50)
+                },
+                PlantOutput {
+                    cost: Money::from(0),
+                    setpoint: Power::from(-950)
+                },
+                PlantOutput {
+                    cost: Money::from(0),
+                    setpoint: Power::from(1000)
+                }
+            ]
+        );
     }
 
     #[test]

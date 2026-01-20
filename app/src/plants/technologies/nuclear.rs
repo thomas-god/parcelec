@@ -23,6 +23,7 @@ pub struct NuclearPlant {
     touched: bool,
     locked: bool,
     energy_cost: EnergyCost,
+    history: Vec<PlantOutput>,
 }
 
 impl NuclearPlant {
@@ -34,6 +35,7 @@ impl NuclearPlant {
             energy_cost,
             touched: false,
             locked: false,
+            history: Vec::new(),
         }
     }
 
@@ -72,14 +74,20 @@ impl PowerPlant for NuclearPlant {
         self.locked = self.touched;
         self.touched = false;
         self.previous_setpoint = self.setpoint;
-        PlantOutput {
+        let output = PlantOutput {
             setpoint: self.setpoint,
             cost: self.cost(),
-        }
+        };
+        self.history.push(output);
+        output
     }
 
     fn get_forecast(&self) -> Option<Vec<Forecast>> {
         None
+    }
+
+    fn get_history(&self) -> Vec<PlantOutput> {
+        self.history.clone()
     }
 }
 
@@ -113,12 +121,21 @@ mod test {
     fn nuclear_cannot_be_programmed_2_periods_in_a_row() {
         let mut plant = NuclearPlant::new(Power::from(1200), EnergyCost::from(35));
 
+        assert!(plant.get_history().is_empty());
+
         // First period, plant can be programmed
         let output_program = plant.program_setpoint(500.into());
         assert_eq!(output_program.setpoint, 500.into());
         assert!(extract_state(&plant).touched);
         let output_dispatch = plant.dispatch();
         assert_eq!(output_dispatch.setpoint, 500.into());
+        assert_eq!(
+            plant.get_history(),
+            vec![PlantOutput {
+                cost: Money::from(500 * 35),
+                setpoint: Power::from(500)
+            }]
+        );
 
         // Second period, plant is locked
         let second_output_program = plant.program_setpoint(700.into());
@@ -126,6 +143,19 @@ mod test {
         assert!(extract_state(&plant).locked);
         let output_dispatch = plant.dispatch();
         assert_eq!(output_dispatch.setpoint, 500.into());
+        assert_eq!(
+            plant.get_history(),
+            vec![
+                PlantOutput {
+                    cost: Money::from(500 * 35),
+                    setpoint: Power::from(500)
+                },
+                PlantOutput {
+                    cost: Money::from(500 * 35),
+                    setpoint: Power::from(500)
+                }
+            ]
+        );
 
         // Third period, plant can be programmed again
         assert!(!extract_state(&plant).locked);
@@ -134,6 +164,23 @@ mod test {
         assert_eq!(third_output_program.setpoint, 600.into());
         let output_dispatch = plant.dispatch();
         assert_eq!(output_dispatch.setpoint, 600.into());
+        assert_eq!(
+            plant.get_history(),
+            vec![
+                PlantOutput {
+                    cost: Money::from(500 * 35),
+                    setpoint: Power::from(500)
+                },
+                PlantOutput {
+                    cost: Money::from(500 * 35),
+                    setpoint: Power::from(500)
+                },
+                PlantOutput {
+                    cost: Money::from(600 * 35),
+                    setpoint: Power::from(600)
+                }
+            ]
+        );
     }
 
     #[test]

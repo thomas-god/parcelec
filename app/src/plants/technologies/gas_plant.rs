@@ -10,7 +10,9 @@ use crate::{
 pub struct GasPlant {
     settings: GasPlantSettings,
     setpoint: Power,
+    history: Vec<PlantOutput>,
 }
+
 #[derive(Debug, Serialize, Clone, Copy)]
 pub struct GasPlantSettings {
     energy_cost: EnergyCost,
@@ -25,6 +27,7 @@ impl GasPlant {
                 max_setpoint,
             },
             setpoint: Power::from(0),
+            history: Vec::new(),
         }
     }
 
@@ -59,14 +62,20 @@ impl PowerPlant for GasPlant {
     }
 
     fn dispatch(&mut self) -> PlantOutput {
-        PlantOutput {
+        let output = PlantOutput {
             setpoint: self.setpoint,
             cost: self.cost(),
-        }
+        };
+        self.history.push(output);
+        output
     }
 
     fn get_forecast(&self) -> Option<Vec<Forecast>> {
         None
+    }
+
+    fn get_history(&self) -> Vec<PlantOutput> {
+        self.history.clone()
     }
 }
 
@@ -80,6 +89,8 @@ mod tests {
     #[test]
     fn test_gas_plant() {
         let mut plant = GasPlant::new(EnergyCost::from(47), Power::from(1000));
+
+        assert!(plant.get_history().is_empty());
 
         // Program plant's setpoint
         assert_eq!(
@@ -98,6 +109,14 @@ mod tests {
                 cost: Money::from(47 * 100)
             }
         );
+        assert_eq!(
+            plant.get_history(),
+            vec![PlantOutput {
+                cost: Money::from(100 * 47),
+                setpoint: Power::from(100)
+            }]
+        );
+
         // Setpoint should be kept after dispatching
         assert_eq!(plant.setpoint, Power::from(100));
 

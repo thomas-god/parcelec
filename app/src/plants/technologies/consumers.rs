@@ -19,6 +19,7 @@ pub struct Consumers {
     period: DeliveryPeriodId,
     current_setpoint: Power,
     current_forecasts: Forecasts,
+    history: Vec<PlantOutput>,
 }
 
 impl Consumers {
@@ -34,6 +35,7 @@ impl Consumers {
             current_forecasts,
             period,
             state,
+            history: Vec::new(),
         }
     }
 }
@@ -52,10 +54,12 @@ impl PowerPlant for Consumers {
         self.period = self.period.next();
         self.current_forecasts = self.state.get_forecasts(self.period);
         self.current_setpoint = Power::from(self.state.get_setpoint(self.period).unwrap_or(0));
-        PlantOutput {
+        let output = PlantOutput {
             cost,
             setpoint: previous_setpoint,
-        }
+        };
+        self.history.push(output.clone());
+        output
     }
 
     fn current_state(&self) -> PowerPlantPublicRepr {
@@ -69,6 +73,10 @@ impl PowerPlant for Consumers {
 
     fn get_forecast(&self) -> Option<Vec<Forecast>> {
         Some(self.current_forecasts.clone())
+    }
+
+    fn get_history(&self) -> Vec<PlantOutput> {
+        self.history.clone()
     }
 }
 
@@ -121,14 +129,23 @@ mod tests {
         consumers.program_setpoint(initial_setpoint.into());
         assert_eq!(consumers.current_setpoint, initial_setpoint);
 
+        // Initial history is empty
+        assert!(consumers.get_history().is_empty());
+
         // Consumption value changes when dispatched
-        consumers.dispatch();
+        let mut history = Vec::new();
+        let output = consumers.dispatch();
+        history.push(output);
+
         assert_ne!(consumers.current_setpoint, initial_setpoint);
+        assert_eq!(consumers.get_history(), history);
 
         // Dispatching should return the previous setpoint
         let previous_value: Power = consumers.current_setpoint.into();
         let returned_value = consumers.dispatch();
         assert_eq!(previous_value, returned_value.setpoint);
+        history.push(returned_value);
+        assert_eq!(consumers.get_history(), history);
     }
 
     #[test]

@@ -18,6 +18,7 @@ pub struct RenewablePlant {
     period: DeliveryPeriodId,
     current_setpoint: Power,
     current_forecasts: Forecasts,
+    history: Vec<PlantOutput>,
 }
 
 impl RenewablePlant {
@@ -26,12 +27,14 @@ impl RenewablePlant {
         let plant = VariablePlant::new(forecasts);
         let current_setpoint = Power::from(plant.get_setpoint(period).unwrap_or(0));
         let current_forecasts = plant.get_forecasts(period);
+        let history = Vec::new();
 
         RenewablePlant {
             current_setpoint,
             state: plant,
             current_forecasts,
             period,
+            history,
         }
     }
 }
@@ -49,10 +52,12 @@ impl PowerPlant for RenewablePlant {
         self.current_setpoint = Power::from(self.state.get_setpoint(self.period).unwrap_or(0));
         self.current_forecasts = self.state.get_forecasts(self.period);
 
-        PlantOutput {
+        let output = PlantOutput {
             setpoint: previous_setpoint,
             cost: Money::from(0),
-        }
+        };
+        self.history.push(output);
+        output
     }
     fn current_state(&self) -> PowerPlantPublicRepr {
         PowerPlantPublicRepr::RenewablePlant(RenewablePlantPublicRepr {
@@ -64,6 +69,10 @@ impl PowerPlant for RenewablePlant {
     }
     fn get_forecast(&self) -> Option<Vec<Forecast>> {
         Some(self.current_forecasts.clone())
+    }
+
+    fn get_history(&self) -> Vec<PlantOutput> {
+        self.history.clone()
     }
 }
 
@@ -108,6 +117,9 @@ mod tests {
     fn test_renewable_plant() {
         let mut plant = RenewablePlant::new(get_forecasts());
 
+        // Initial history is empty
+        assert!(plant.get_history().is_empty());
+
         // Plant has no associated cost
         let PlantOutput { cost, .. } = plant.program_setpoint(100.into());
         assert_eq!(cost, Money::from(0));
@@ -122,6 +134,7 @@ mod tests {
         let previous_value: Power = plant.current_setpoint.into();
         let returned_value = plant.dispatch();
         assert_eq!(previous_value, returned_value.setpoint);
+        assert_eq!(plant.get_history(), vec![returned_value]);
     }
 
     #[test]
