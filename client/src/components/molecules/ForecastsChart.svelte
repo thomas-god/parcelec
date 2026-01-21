@@ -20,6 +20,8 @@
   let marginBottom = 20;
   let marginLeft = 50;
 
+  type PointType = "realized" | "active" | "forecast";
+
   let gx: SVGGElement;
   let gy: SVGGElement;
   let gyGrid: SVGGElement;
@@ -28,11 +30,17 @@
   let svgElement: SVGElement;
 
   let data = $derived.by(() => {
-    const points: { period: number; value: number; deviation: number }[] = [];
+    const points: {
+      type: PointType;
+      period: number;
+      value: number;
+      deviation: number;
+    }[] = [];
 
     // Add history
     for (const [idx, value] of history.entries()) {
       points.push({
+        type: idx + 1 < history.length ? "realized" : "active",
         period: idx + 1,
         value,
         deviation: 0,
@@ -42,6 +50,7 @@
     // Add forecasts
     for (const [key, value] of total_forecasts.entries()) {
       points.push({
+        type: "forecast",
         period: key,
         value: value.value,
         deviation: value.deviation,
@@ -83,7 +92,7 @@
     if (point.deviation === 0) {
       return context;
     }
-    const errorWidth = 15;
+    const errorWidth = x.bandwidth() / 4;
 
     const xMiddle = (x(point.period.toString()) as number) + x.bandwidth() / 2;
     const yBottom = y(Math.abs(point.value + point.deviation));
@@ -102,6 +111,40 @@
     context.lineTo(xMiddle + errorWidth, yTop);
 
     return context;
+  };
+
+  const barColor = (type: PointType): string => {
+    if (type === "forecast") {
+      return "steelblue";
+    }
+    if (type === "realized") {
+      return "seagreen";
+    }
+    return "green";
+  };
+
+  const barStroke = (type: PointType): string => {
+    if (type === "forecast") {
+      return "darkblue";
+    }
+    return "limegreen";
+  };
+
+  const barStrokeWidth = (type: PointType): number => {
+    if (type === "realized") {
+      return 0;
+    }
+    if (type === "active") {
+      return 1;
+    }
+    return 1;
+  };
+
+  const barOpacity = (type: PointType): number => {
+    if (type === "realized") {
+      return 1;
+    }
+    return 1;
   };
 
   $effect(() => {
@@ -134,7 +177,10 @@
         .attr("y", (point) => y(Math.abs(point.value)) as number)
         .attr("height", (point) => y(0) - y(Math.abs(point.value)))
         .attr("width", x.bandwidth())
-        .attr("fill", "steelblue"),
+        .attr("fill", (point) => barColor(point.type))
+        .attr("stroke", (point) => barStroke(point.type))
+        .attr("stroke-width", (point) => barStrokeWidth(point.type))
+        .attr("opacity", (point) => barOpacity(point.type)),
     );
 
     // Draw forecast error bars
