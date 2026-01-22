@@ -1,0 +1,213 @@
+<script lang="ts">
+  import * as d3 from "d3";
+
+  type Setpoint =
+    | "consumers"
+    | "renewable"
+    | "nuclear"
+    | "gas"
+    | "storage"
+    | "market";
+
+  export type Portfolio = {
+    consumers: number;
+    renewable: number;
+    nuclear: number;
+    gas: number;
+    storage: number;
+    marketSold: number;
+    marketBought: number;
+  };
+
+  interface Props {
+    height?: number;
+    volumes: Portfolio;
+  }
+
+  let { height = 300, volumes }: Props = $props();
+  let chartWidth: number = $state(300);
+  let svgElement: SVGElement;
+  let gBars: SVGGElement;
+
+  const margin = 20;
+
+  const icons: Record<Setpoint, string> = {
+    consumers: "🏙️",
+    gas: "🔥",
+    market: "💱",
+    nuclear: "☢️",
+    renewable: "☀️️",
+    storage: "🔋",
+  };
+
+  type Data = {
+    sign: "positive" | "negative";
+    type: Setpoint;
+    value: number;
+  }[];
+  let data: Data = $derived([
+    {
+      sign: "negative",
+      type: "consumers",
+      value: Math.abs(volumes.consumers),
+    },
+    { sign: "negative", type: "market", value: Math.abs(volumes.marketSold) },
+    {
+      sign: "positive",
+      type: "market",
+      value: Math.abs(volumes.marketBought),
+    },
+    {
+      sign: "negative",
+      type: "storage",
+      value: volumes.storage < 0 ? Math.abs(volumes.storage) : 0,
+    },
+    {
+      sign: "positive",
+      type: "storage",
+      value: volumes.storage > 0 ? Math.abs(volumes.storage) : 0,
+    },
+    { sign: "positive", type: "renewable", value: volumes.renewable },
+    { sign: "positive", type: "nuclear", value: volumes.nuclear },
+    { sign: "positive", type: "gas", value: volumes.gas },
+  ]);
+
+  let stackedData = $derived(
+    d3
+      .stack()
+      .keys(d3.union(data.map((point) => point.type)))
+      .value(([_sign, sign_values], type) => {
+        return sign_values.get(type) === undefined
+          ? 0
+          : sign_values.get(type).value;
+      })(
+      d3.index<Data, unknown>(
+        data,
+        (d) => d.sign,
+        (d) => d.type,
+      ),
+    ),
+  );
+
+  let x = $derived(
+    d3
+      .scaleLinear()
+      .domain([
+        0,
+        Math.max(
+          d3.max(stackedData, (d) => d3.max(d, (d) => d[1])),
+          Math.abs(volumes.consumers * 1.5),
+        ),
+      ])
+      .range([margin, chartWidth - margin]),
+  );
+
+  let y = $derived(
+    d3
+      .scaleBand()
+      .domain(
+        d3.groupSort(
+          data,
+          (a, b) => (a[0].sign === "positive" ? 1 : -1),
+          (d) => d.sign,
+        ),
+      )
+      .range([margin, height - margin])
+      .padding(0.08),
+  );
+
+  let color = $derived(
+    d3
+      .scaleOrdinal()
+      .domain(stackedData.map((d) => d.key))
+      .range(d3.schemeSpectral[stackedData.length])
+      .unknown("#ccc"),
+  );
+
+  $effect(() => {
+    d3.select(gBars).call((sel) => {
+      const groups = sel.selectAll("g").data(stackedData).join("g");
+
+      // Create/update rectangles
+      groups
+        .selectAll("rect")
+        .data((series) => {
+          // Each series is an array of elements, with a key = Setpoint
+          // series.key -> consumers | market | ...
+          // series[0] -> negative datapoints
+          // series[1] -> positive datapoints
+          // series[0].data[0] -> key "negative"
+          // series[0].data[1] -> Map avec les setpoint en keys (consumers, market, etc.)
+          // series[0].data[1].get("consumers") -> l'object inital des data
+
+          const values = series.map((point) => {
+            // Map extra information to individual points
+            const value =
+              point.data[1].get(series.key) === undefined
+                ? 0
+                : point.data[1].get(series.key).value;
+            point.key = series.key;
+            point.empty = value === 0;
+            return point;
+          });
+          // Skip empty datapoints
+          return values.filter((value) => !value.empty);
+        })
+        .join(
+          (enter) =>
+            enter
+              .append("rect")
+              .attr("fill", (d) => color(d.key))
+              .attr("x", (d) => x(d[0]))
+              .attr("y", (d) => y(d.data[0]))
+              .attr("height", y.bandwidth())
+              .attr("width", (d) => x(d[1]) - x(d[0])),
+          (update) =>
+            update
+              .transition(d3.transition().duration(200).ease(d3.easeLinear))
+              .attr("x", (d) => x(d[0]))
+              .attr("y", (d) => y(d.data[0]))
+              .attr("height", y.bandwidth())
+              .attr("width", (d) => x(d[1]) - x(d[0])),
+        );
+
+      // Create/update text labels (one per series)
+      groups
+        .selectAll("text")
+        .data((series) => {
+          const nonEmptyPoints = series.filter((point) => {
+            const value =
+              point.data[1].get(series.key) === undefined
+                ? 0
+                : point.data[1].get(series.key).value;
+            return value !== 0;
+          });
+          return nonEmptyPoints.map((point) => ({
+            key: series.key,
+            point: point,
+          }));
+        })
+        .join("text")
+        .attr("x", (d) => (x(d.point[1]) + x(d.point[0])) / 2)
+        .attr("y", (d) => y(d.point.data[0]) + y.bandwidth() / 2)
+        .attr("text-anchor", "middle")
+        .attr("dominant-baseline", "middle")
+        .attr("class", "text-xl text-black")
+        .attr("fill", "black")
+        .text((d) => icons[d.key]);
+    });
+  });
+</script>
+
+<div class="w-full" bind:clientWidth={chartWidth}>
+  <svg
+    width={chartWidth}
+    {height}
+    viewBox={`0 0 ${chartWidth} ${height}`}
+    role="img"
+    class="h-full w-full select-none"
+    bind:this={svgElement}
+  >
+    <g bind:this={gBars} />
+  </svg>
+</div>
