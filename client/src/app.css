@@ -3,6 +3,21 @@
   themes: retro;
 }
 
+@theme {
+  --consumers-background-color: #FF595E;
+  --consumers-accent-color: #ffffff;
+  --renewable-background-color: #FFCA3A;
+  --renewable-accent-color: #000000;
+  --gas-background-color: #FF924C;
+  --gas-accent-color: #000000;
+  --nuclear-background-color: #8AC926;
+  --nuclear-accent-color: #000000;
+  --storage-background-color: #1982C4;
+  --storage-accent-color: #ffffff;
+  --market-background-color: #6A4C93;
+  --market-accent-color: #ffffff;
+}
+
 html {
   background-color: var(--color-base-200);
 }

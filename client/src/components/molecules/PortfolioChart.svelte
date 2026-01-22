@@ -116,14 +116,6 @@
       .padding(0.08),
   );
 
-  let color = $derived(
-    d3
-      .scaleOrdinal()
-      .domain(stackedData.map((d) => d.key))
-      .range(d3.schemeSpectral[stackedData.length])
-      .unknown("#ccc"),
-  );
-
   $effect(() => {
     d3.select(gBars).call((sel) => {
       const groups = sel.selectAll("g").data(stackedData).join("g");
@@ -157,11 +149,12 @@
           (enter) =>
             enter
               .append("rect")
-              .attr("fill", (d) => color(d.key))
               .attr("x", (d) => x(d[0]))
               .attr("y", (d) => y(d.data[0]))
               .attr("height", y.bandwidth())
-              .attr("width", (d) => x(d[1]) - x(d[0])),
+              .attr("width", (d) => x(d[1]) - x(d[0]))
+              .attr("class", (d) => d.key),
+
           (update) =>
             update
               .transition(d3.transition().duration(200).ease(d3.easeLinear))
@@ -211,3 +204,24 @@
     <g bind:this={gBars} />
   </svg>
 </div>
+
+<style>
+  :global(.consumers) {
+    fill: var(--consumers-background-color);
+  }
+  :global(.renewable) {
+    fill: var(--renewable-background-color);
+  }
+  :global(.nuclear) {
+    fill: var(--nuclear-background-color);
+  }
+  :global(.gas) {
+    fill: var(--gas-background-color);
+  }
+  :global(.storage) {
+    fill: var(--storage-background-color);
+  }
+  :global(.market) {
+    fill: var(--market-background-color);
+  }
+</style>
