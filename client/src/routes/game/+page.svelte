@@ -236,7 +236,7 @@
         <!-- Desktop: Side-by-side layout -->
         <div class="hidden @[1200px]:grid grid-cols-3 gap-4 px-4">
           <div class="bg-base-100 border border-base-300 rounded-lg p-2">
-            <h3 class="text-lg text-center font-semibold pt-2">Centrales 🔌</h3>
+            <h3 class="text-lg text-center font-semibold pt-2">Contrôles 🔌</h3>
             <Stack {plants} send={sendMessage} />
           </div>
           <div class="bg-base-100 border border-base-300 rounded-lg p-2">

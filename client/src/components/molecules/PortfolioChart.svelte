@@ -3,7 +3,7 @@
 
   type PortfolioType =
     | "consumers"
-    | "renewable"
+    | "renewables"
     | "nuclear"
     | "gas"
     | "storage"
@@ -37,7 +37,7 @@
     gas: "/icons/gas.svg",
     market: "/icons/market.svg",
     nuclear: "/icons/nuclear.svg",
-    renewable: "/icons/renewable.svg",
+    renewables: "/icons/renewable.svg",
     storage: "/icons/storage.svg",
   };
 
@@ -53,7 +53,7 @@
       type: "consumers",
       value: Math.abs(volumes.consumers),
     },
-    { sign: "positive", type: "renewable", value: volumes.renewable },
+    { sign: "positive", type: "renewables", value: volumes.renewable },
     { sign: "positive", type: "nuclear", value: volumes.nuclear },
     { sign: "positive", type: "gas", value: volumes.gas },
     {
@@ -255,7 +255,7 @@
   :global(.consumers) {
     fill: var(--consumers-background-color);
   }
-  :global(.renewable) {
+  :global(.renewables) {
     fill: var(--renewable-background-color);
   }
   :global(.nuclear) {

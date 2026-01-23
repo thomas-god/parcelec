@@ -5,7 +5,7 @@
     StackSnapshot,
   } from "$lib/message";
   import ForecastsChart from "../molecules/ForecastsChart.svelte";
-  import ForecastsTable from "../molecules/ForecastsTable.svelte";
+  // import ForecastsTable from "../molecules/ForecastsTable.svelte";
 
   let {
     plant_forecasts,
@@ -82,7 +82,7 @@
     return forecasts;
   });
 
-  let renewable_forecasts = $derived.by(() => {
+  let renewables_forecasts = $derived.by(() => {
     const forecasts = new Map<number, ForecastValue>();
     for (const [_, plant, forecast] of forecasts_by_plant) {
       if (plant === "RenewablePlant") {
@@ -113,11 +113,11 @@
     return forecasts;
   });
 
-  let total_history = $derived.by(() => {
+  let consumers_history = $derived.by(() => {
     const history: number[] = [];
     // Get history
     for (const [_, plant, values] of history_by_plant) {
-      if (plant === "Consumers" || plant === "RenewablePlant") {
+      if (plant === "Consumers") {
         for (const [idx, value] of values.entries()) {
           const previous = history.at(idx) || 0;
           history[idx] = previous + value.setpoint;
@@ -128,7 +128,30 @@
     // Get current setpoint
     let total = 0;
     for (const [id, plant] of plant_snapshots) {
-      if (plant.type === "RenewablePlant" || plant.type === "Consumers") {
+      if (plant.type === "Consumers") {
+        total += plant.output.setpoint;
+      }
+    }
+    history.push(total);
+    return history;
+  });
+
+  let renewables_history = $derived.by(() => {
+    const history: number[] = [];
+    // Get history
+    for (const [_, plant, values] of history_by_plant) {
+      if (plant === "RenewablePlant") {
+        for (const [idx, value] of values.entries()) {
+          const previous = history.at(idx) || 0;
+          history[idx] = previous + value.setpoint;
+        }
+      }
+    }
+
+    // Get current setpoint
+    let total = 0;
+    for (const [id, plant] of plant_snapshots) {
+      if (plant.type === "RenewablePlant") {
         total += plant.output.setpoint;
       }
     }
@@ -140,8 +163,10 @@
 <div>
   <div class="w-full" bind:clientWidth={chartWidth}>
     <ForecastsChart
-      {total_forecasts}
-      history={total_history}
+      {consumers_forecasts}
+      {consumers_history}
+      {renewables_forecasts}
+      {renewables_history}
       width={chartWidth}
       height={300}
     />
@@ -149,7 +174,7 @@
 
   <!-- <ForecastsTable
     {total_forecasts}
-    {renewable_forecasts}
+    {renewables_forecasts}
     {consumers_forecasts}
   /> -->
 </div>

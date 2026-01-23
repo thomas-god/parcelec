@@ -18,26 +18,6 @@
     );
   };
 
-  let consumers = $derived.by(() => {
-    let setpoint = 0;
-    for (const [_, plant] of plants.entries()) {
-      if (plant.type === "Consumers") {
-        setpoint += plant.output.setpoint;
-      }
-    }
-    return setpoint;
-  });
-
-  let renewable = $derived.by(() => {
-    let setpoint = 0;
-    for (const [_, plant] of plants.entries()) {
-      if (plant.type === "RenewablePlant") {
-        setpoint += plant.output.setpoint;
-      }
-    }
-    return setpoint;
-  });
-
   let other_plants = $derived.by(() => {
     const other_plants = new Map<string, Plant>();
     /// Cannot use plants.entries().find(/.../) on WebKit...
@@ -61,36 +41,6 @@
 </script>
 
 <div class="flex flex-col gap-4 pt-4 items-start">
-  <div class="flex flex-row justify-between w-full pl-1 pr-2">
-    <div class="flex flex-row gap-2">
-      <img
-        src="/icons/consumers.svg"
-        alt="Consumers city icon"
-        class="w-8 h-8"
-      />
-      <span>
-        <span class="italic">Clients :</span>
-        {consumers.toLocaleString("fr-FR", {
-          signDisplay: "exceptZero",
-        })} MW
-      </span>
-    </div>
-    <div class="flex flex-row gap-2">
-      <img
-        src="/icons/renewable.svg"
-        alt="Renewable plant icon"
-        class="w-8 h-8"
-      />
-      <span>
-        <span class="italic">Solaire</span> : {renewable.toLocaleString(
-          "fr-FR",
-          {
-            signDisplay: "exceptZero",
-          },
-        )} MW
-      </span>
-    </div>
-  </div>
   {#each other_plants.entries() as [id, plant] (id)}
     {#if plant.type === "Battery"}
       <div class="pl-1 pr-2 mx-auto w-full">
