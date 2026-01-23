@@ -22,7 +22,7 @@
   let marginTop = 20;
   let marginRight = 20;
   let marginBottom = 20;
-  let marginLeft = 50;
+  let marginLeft = 55;
 
   type PointType = "realized" | "active" | "forecast";
   type Source = "consumers" | "renewables";
@@ -96,7 +96,6 @@
       .paddingInner(0.1)
       .paddingOuter(0.1),
   );
-  $inspect(width, fx("1"));
   let x = $derived(
     d3
       .scaleBand()
@@ -115,14 +114,6 @@
       .rangeRound([height - marginBottom, marginTop]),
   );
 
-  let next_forecast = $derived.by(() => {
-    for (const point of data) {
-      if (point.deviation > 0) {
-        return point;
-      }
-    }
-  });
-
   $effect(() => {
     // Draw x axis
     d3.select(gx).call((sel) =>
@@ -133,7 +124,9 @@
 
     // Draw y axis
     d3.select(gy).call((sel) =>
-      sel.call(d3.axisLeft(y)).attr("transform", `translate(${marginLeft},0)`),
+      sel
+        .call(d3.axisLeft(y).tickFormat((d) => `${d} MW`))
+        .attr("transform", `translate(${marginLeft},0)`),
     );
 
     // Draw y axis lines
@@ -149,54 +142,7 @@
         .attr("y2", (tickValue) => y(tickValue)),
     );
 
-    // Draw plain rectangle
-    d3.select(gBars).call((sel) =>
-      sel
-        .selectAll("g")
-        .data(d3.group(data, (elem) => elem.period))
-        .join(
-          (enter) =>
-            enter
-              .append("g")
-              .attr(
-                "transform",
-                ([period]) => `translate(${fx(period.toString())},0)`,
-              ),
-          (update) =>
-            update.attr(
-              "transform",
-              ([period]) => `translate(${fx(period.toString())},0)`,
-            ),
-          (exit) => exit.remove(),
-        )
-        .selectAll("rect")
-        .data(([_period, points]) => points)
-        .join("rect")
-        .join(
-          (enter) =>
-            enter
-              .append("rect")
-              .attr("x", (point) => x(point.source) as number)
-              .attr("y", (point) => y(point.value - point.deviation))
-              .attr("width", x.bandwidth())
-              .attr(
-                "height",
-                (point) => y(0) - y(point.value - point.deviation),
-              )
-              .attr("class", (point) => point.source),
-          (update) =>
-            update
-              .attr("x", (point) => x(point.source) as number)
-              .attr("y", (point) => y(point.value - point.deviation))
-              .attr("width", x.bandwidth())
-              .attr(
-                "height",
-                (point) => y(0) - y(point.value - point.deviation),
-              )
-              .attr("class", (point) => point.source),
-        ),
-    );
-
+    // Draw faded rectangle (high-value forecasts)
     d3.select(gErrorBars).call((sel) =>
       sel
         .selectAll("g")
@@ -213,8 +159,28 @@
         .attr("y", (point) => y(point.value + point.deviation))
         .attr("width", x.bandwidth())
         .attr("height", (point) => y(0) - y(point.value + point.deviation))
-        .attr("class", (point) => point.source)
-        .attr("opacity", 0.5),
+        .attr("class", (point) => `${point.source}-forecast`)
+        .attr("opacity", 1),
+    );
+
+    // Draw plain rectangles (low-value forecasts)
+    d3.select(gBars).call((sel) =>
+      sel
+        .selectAll("g")
+        .data(d3.group(data, (elem) => elem.period))
+        .join("g")
+        .attr(
+          "transform",
+          ([period]) => `translate(${fx(period.toString())},0)`,
+        )
+        .selectAll("rect")
+        .data(([_period, points]) => points)
+        .join("rect")
+        .attr("x", (point) => x(point.source) as number)
+        .attr("y", (point) => y(point.value - point.deviation))
+        .attr("width", x.bandwidth())
+        .attr("height", (point) => y(0) - y(point.value - point.deviation))
+        .attr("class", (point) => point.source),
     );
   });
 </script>
@@ -235,20 +201,41 @@
       opacity="0.3"
     />
 
-    <g bind:this={gBars} />
     <g bind:this={gErrorBars} />
+    <g bind:this={gBars} />
 
     <g bind:this={gx} transform="translate(0 {height - marginBottom})" />
     <g bind:this={gy} transform="translate({marginLeft} 0)" />
   </svg>
 
-  {#if next_forecast !== undefined}
-    <div class="text-center italic pb-4">
-      Prévision pour la prochaine période : <br />
-      <span class="font-semibold">
-        {Math.abs(next_forecast.value).toLocaleString("fr-FR")} ±
-        {next_forecast.deviation.toLocaleString("fr-FR")} MW
-      </span>
+  <div class="flex justify-center gap-6 pb-2">
+    <div class="flex items-center gap-2">
+      <div class="w-4 h-4 consumers rounded-sm"></div>
+      <span class="text-sm">Clients</span>
     </div>
-  {/if}
+    <div class="flex items-center gap-2">
+      <div class="w-4 h-4 renewables rounded-sm"></div>
+      <span class="text-sm">Renouvelables</span>
+    </div>
+  </div>
 </div>
+
+<style>
+  .consumers {
+    fill: var(--consumers-background-color);
+    background-color: var(--consumers-background-color);
+  }
+  .renewables {
+    fill: var(--renewable-background-color);
+    background-color: var(--renewable-background-color);
+  }
+
+  :global(.consumers-forecast) {
+    fill: var(--consumers-background-color-faded);
+    background-color: var(--consumers-background-color-faded);
+  }
+  :global(.renewables-forecast) {
+    fill: var(--renewable-background-color-faded);
+    background-color: var(--renewable-background-color-faded);
+  }
+</style>

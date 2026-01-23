@@ -4,9 +4,11 @@
 }
 
 @theme {
-  --consumers-background-color: #ff595e;
+  --consumers-background-color: #f36368;
+  --consumers-background-color-faded: #ff9fa2;
   --consumers-accent-color: #ffffff;
   --renewable-background-color: #ffca3a;
+  --renewable-background-color-faded: #ffe8aa;
   --renewable-accent-color: #000000;
   --gas-background-color: #ff924c;
   --gas-accent-color: #000000;
