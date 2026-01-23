@@ -157,6 +157,7 @@
               .attr("x", (d) => x(d[0]))
               .attr("y", (d) => y(d.data[0]))
               .attr("height", y.bandwidth())
+              .transition(d3.transition().duration(200).ease(d3.easeLinear))
               .attr("width", (d) => x(d[1]) - x(d[0]))
               .attr("class", (d) => d.key),
 
@@ -167,6 +168,11 @@
               .attr("y", (d) => y(d.data[0]))
               .attr("height", y.bandwidth())
               .attr("width", (d) => x(d[1]) - x(d[0])),
+          (exit) =>
+            exit
+              .transition(d3.transition().duration(200).ease(d3.easeLinear))
+              .attr("width", 0)
+              .remove(),
         );
 
       // Create/update text labels (one per series)
@@ -185,9 +191,25 @@
             point: point,
           }));
         })
-        .join("text")
-        .attr("x", (d) => (x(d.point[1]) + x(d.point[0])) / 2)
-        .attr("y", (d) => y(d.point.data[0]) + y.bandwidth() / 2)
+        .join(
+          (enter) =>
+            enter
+              .append("text")
+              .attr("y", (d) => y(d.point.data[0]) + y.bandwidth() / 2)
+              .attr("x", (d) => x(d.point[0]))
+              .transition(d3.transition().duration(200).ease(d3.easeLinear))
+              .attr("x", (d) => (x(d.point[1]) + x(d.point[0])) / 2),
+          (update) =>
+            update
+              .transition(d3.transition().duration(200).ease(d3.easeLinear))
+              .attr("x", (d) => (x(d.point[1]) + x(d.point[0])) / 2)
+              .attr("y", (d) => y(d.point.data[0]) + y.bandwidth() / 2),
+          (exit) =>
+            exit
+              .transition(d3.transition().duration(200).ease(d3.easeLinear))
+              .attr("fill", "none")
+              .remove(),
+        )
         .attr("text-anchor", "middle")
         .attr("dominant-baseline", "middle")
         .attr("class", "text-xl text-black")
