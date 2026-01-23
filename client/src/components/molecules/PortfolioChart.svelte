@@ -21,16 +21,16 @@
 
   interface Props {
     height?: number;
+    iconSize?: number;
     volumes: Portfolio;
   }
 
-  let { height = 300, volumes }: Props = $props();
+  let { height = 300, volumes, iconSize = 0.3 }: Props = $props();
   let chartWidth: number = $state(300);
   let svgElement: SVGElement;
   let gBars: SVGGElement;
 
   const margin = 20;
-  const iconWidth = 0.3;
 
   const icons: Record<PortfolioType, string> = {
     consumers: "/icons/consumers.svg",
@@ -102,7 +102,7 @@
         0,
         Math.max(
           d3.max(stackedData, (d) => d3.max(d, (d) => d[1])),
-          Math.abs(volumes.consumers * 1.5),
+          Math.abs(volumes.consumers * 1.3),
         ),
       ])
       .range([margin, chartWidth - margin]),
@@ -119,7 +119,7 @@
         ),
       )
       .range([margin, height - margin])
-      .padding(0.08),
+      .padding(0.2),
   );
 
   $effect(() => {
@@ -197,20 +197,20 @@
             enter
               .append("image")
               .attr("href", (d) => icons[d.key])
-              .attr("width", y.bandwidth() * iconWidth)
-              .attr("height", y.bandwidth() * iconWidth)
+              .attr("width", y.bandwidth() * iconSize)
+              .attr("height", y.bandwidth() * iconSize)
               .attr(
                 "y",
                 (d) =>
-                  y(d.point.data[0]) + (y.bandwidth() * (1 - iconWidth)) / 2,
+                  y(d.point.data[0]) + (y.bandwidth() * (1 - iconSize)) / 2,
               )
-              .attr("x", (d) => x(d.point[0]) - y.bandwidth() * iconWidth)
+              .attr("x", (d) => x(d.point[0]) - y.bandwidth() * iconSize)
               .transition(d3.transition().duration(200).ease(d3.easeLinear))
               .attr(
                 "x",
                 (d) =>
                   (x(d.point[1]) + x(d.point[0])) / 2 -
-                  (y.bandwidth() * iconWidth) / 2,
+                  (y.bandwidth() * iconSize) / 2,
               ),
           (update) =>
             update
@@ -219,15 +219,15 @@
                 "x",
                 (d) =>
                   (x(d.point[1]) + x(d.point[0])) / 2 -
-                  (y.bandwidth() * iconWidth) / 2,
+                  (y.bandwidth() * iconSize) / 2,
               )
               .attr(
                 "y",
                 (d) =>
-                  y(d.point.data[0]) + (y.bandwidth() * (1 - iconWidth)) / 2,
+                  y(d.point.data[0]) + (y.bandwidth() * (1 - iconSize)) / 2,
               )
-              .attr("width", y.bandwidth() * iconWidth)
-              .attr("height", y.bandwidth() * iconWidth),
+              .attr("width", y.bandwidth() * iconSize)
+              .attr("height", y.bandwidth() * iconSize),
           (exit) =>
             exit
               .transition(d3.transition().duration(200).ease(d3.easeLinear))

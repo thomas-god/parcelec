@@ -37,7 +37,7 @@
 
   let sliderClass = $derived.by(() => {
     let classNames =
-      "range block my-auto w-full rounded-lg appearance-none cursor-pointer";
+      "range block my-auto w-full rounded-lg appearance-none cursor-pointer [--range-bg:#e0d0b6]";
     if (!dispatchable) {
       classNames += " [--range-thumb:transparent] opacity-100!";
       if (setpoint === 0) {
@@ -57,7 +57,7 @@
     `}
   >
     <div class="col-start-1 row-start-1 row-span-2 self-center text-2xl">
-      ☢️
+      <img src="/icons/nuclear.svg" alt="Nuclear plant icon" class="w-8 h-8" />
     </div>
     <div
       class={`
@@ -109,3 +109,9 @@
     </div>
   </div>
 </div>
+
+<style>
+  .range {
+    color: var(--nuclear-background-color);
+  }
+</style>

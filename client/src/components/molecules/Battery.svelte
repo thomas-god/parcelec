@@ -63,7 +63,7 @@
     `}
   >
     <div class="col-start-1 row-start-1 row-span-2 self-center text-2xl">
-      🔋
+      <img src="/icons/storage.svg" alt="Battery icon" class="w-8 h-8" />
     </div>
     <div
       class={`
@@ -85,7 +85,7 @@
     </div>
     <div class="p-1.5 row-start-2 col-start-2 col-span-2">
       <input
-        class="range block my-auto w-full rounded-lg appearance-none cursor-pointer"
+        class="range block my-auto w-full rounded-lg appearance-none cursor-pointer [--range-bg:#e0d0b6]"
         type="range"
         bind:value={current_setpoint}
         min={0}
@@ -131,3 +131,9 @@
     </div>
   </div>
 </div>
+
+<style>
+  .range {
+    color: var(--storage-background-color);
+  }
+</style>

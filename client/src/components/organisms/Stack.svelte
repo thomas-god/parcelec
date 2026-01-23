@@ -62,17 +62,33 @@
 
 <div class="flex flex-col gap-4 pt-4 items-start">
   <div class="flex flex-row justify-between w-full pl-1 pr-2">
-    <div>
-      <span class="text-2xl">🏙️</span> <span class="italic">Clients :</span>
-      {consumers.toLocaleString("fr-FR", {
-        signDisplay: "exceptZero",
-      })} MW
+    <div class="flex flex-row gap-2">
+      <img
+        src="/icons/consumers.svg"
+        alt="Consumers city icon"
+        class="w-8 h-8"
+      />
+      <span>
+        <span class="italic">Clients :</span>
+        {consumers.toLocaleString("fr-FR", {
+          signDisplay: "exceptZero",
+        })} MW
+      </span>
     </div>
-    <div>
-      <span class="text-2xl">☀️️</span>
-      <span class="italic">Solaire</span> : {renewable.toLocaleString("fr-FR", {
-        signDisplay: "exceptZero",
-      })} MW
+    <div class="flex flex-row gap-2">
+      <img
+        src="/icons/renewable.svg"
+        alt="Renewable plant icon"
+        class="w-8 h-8"
+      />
+      <span>
+        <span class="italic">Solaire</span> : {renewable.toLocaleString(
+          "fr-FR",
+          {
+            signDisplay: "exceptZero",
+          },
+        )} MW
+      </span>
     </div>
   </div>
   {#each other_plants.entries() as [id, plant] (id)}
