@@ -45,18 +45,16 @@
     type: Setpoint;
     value: number;
   }[];
+
   let data: Data = $derived([
     {
       sign: "negative",
       type: "consumers",
       value: Math.abs(volumes.consumers),
     },
-    { sign: "negative", type: "market", value: Math.abs(volumes.marketSold) },
-    {
-      sign: "positive",
-      type: "market",
-      value: Math.abs(volumes.marketBought),
-    },
+    { sign: "positive", type: "renewable", value: volumes.renewable },
+    { sign: "positive", type: "nuclear", value: volumes.nuclear },
+    { sign: "positive", type: "gas", value: volumes.gas },
     {
       sign: "negative",
       type: "storage",
@@ -67,9 +65,16 @@
       type: "storage",
       value: volumes.storage > 0 ? Math.abs(volumes.storage) : 0,
     },
-    { sign: "positive", type: "renewable", value: volumes.renewable },
-    { sign: "positive", type: "nuclear", value: volumes.nuclear },
-    { sign: "positive", type: "gas", value: volumes.gas },
+    {
+      sign: "negative",
+      type: "market",
+      value: Math.abs(volumes.marketSold),
+    },
+    {
+      sign: "positive",
+      type: "market",
+      value: Math.abs(volumes.marketBought),
+    },
   ]);
 
   let stackedData = $derived(
