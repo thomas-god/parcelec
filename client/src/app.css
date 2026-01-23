@@ -4,17 +4,17 @@
 }
 
 @theme {
-  --consumers-background-color: #FF595E;
+  --consumers-background-color: #ff595e;
   --consumers-accent-color: #ffffff;
-  --renewable-background-color: #FFCA3A;
+  --renewable-background-color: #ffca3a;
   --renewable-accent-color: #000000;
-  --gas-background-color: #FF924C;
+  --gas-background-color: #ff924c;
   --gas-accent-color: #000000;
-  --nuclear-background-color: #8AC926;
+  --nuclear-background-color: #8ac926;
   --nuclear-accent-color: #000000;
-  --storage-background-color: #1982C4;
+  --storage-background-color: #1982c4;
   --storage-accent-color: #ffffff;
-  --market-background-color: #6A4C93;
+  --market-background-color: #6a4c93;
   --market-accent-color: #ffffff;
 }
 

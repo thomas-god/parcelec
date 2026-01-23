@@ -1,7 +1,7 @@
 <script lang="ts">
   import * as d3 from "d3";
 
-  type Setpoint =
+  type PortfolioType =
     | "consumers"
     | "renewable"
     | "nuclear"
@@ -30,19 +30,20 @@
   let gBars: SVGGElement;
 
   const margin = 20;
+  const iconWidth = 0.3;
 
-  const icons: Record<Setpoint, string> = {
-    consumers: "🏙️",
-    gas: "🔥",
-    market: "💱",
-    nuclear: "☢️",
-    renewable: "☀️️",
-    storage: "🔋",
+  const icons: Record<PortfolioType, string> = {
+    consumers: "/icons/consumers.svg",
+    gas: "/icons/gas.svg",
+    market: "/icons/market.svg",
+    nuclear: "/icons/nuclear.svg",
+    renewable: "/icons/renewable.svg",
+    storage: "/icons/storage.svg",
   };
 
   type Data = {
     sign: "positive" | "negative";
-    type: Setpoint;
+    type: PortfolioType;
     value: number;
   }[];
 
@@ -177,7 +178,7 @@
 
       // Create/update text labels (one per series)
       groups
-        .selectAll("text")
+        .selectAll("image")
         .data((series) => {
           const nonEmptyPoints = series.filter((point) => {
             const value =
@@ -194,27 +195,45 @@
         .join(
           (enter) =>
             enter
-              .append("text")
-              .attr("y", (d) => y(d.point.data[0]) + y.bandwidth() / 2)
-              .attr("x", (d) => x(d.point[0]))
+              .append("image")
+              .attr("href", (d) => icons[d.key])
+              .attr("width", y.bandwidth() * iconWidth)
+              .attr("height", y.bandwidth() * iconWidth)
+              .attr(
+                "y",
+                (d) =>
+                  y(d.point.data[0]) + (y.bandwidth() * (1 - iconWidth)) / 2,
+              )
+              .attr("x", (d) => x(d.point[0]) - y.bandwidth() * iconWidth)
               .transition(d3.transition().duration(200).ease(d3.easeLinear))
-              .attr("x", (d) => (x(d.point[1]) + x(d.point[0])) / 2),
+              .attr(
+                "x",
+                (d) =>
+                  (x(d.point[1]) + x(d.point[0])) / 2 -
+                  (y.bandwidth() * iconWidth) / 2,
+              ),
           (update) =>
             update
               .transition(d3.transition().duration(200).ease(d3.easeLinear))
-              .attr("x", (d) => (x(d.point[1]) + x(d.point[0])) / 2)
-              .attr("y", (d) => y(d.point.data[0]) + y.bandwidth() / 2),
+              .attr(
+                "x",
+                (d) =>
+                  (x(d.point[1]) + x(d.point[0])) / 2 -
+                  (y.bandwidth() * iconWidth) / 2,
+              )
+              .attr(
+                "y",
+                (d) =>
+                  y(d.point.data[0]) + (y.bandwidth() * (1 - iconWidth)) / 2,
+              )
+              .attr("width", y.bandwidth() * iconWidth)
+              .attr("height", y.bandwidth() * iconWidth),
           (exit) =>
             exit
               .transition(d3.transition().duration(200).ease(d3.easeLinear))
-              .attr("fill", "none")
+              .attr("opacity", 0)
               .remove(),
-        )
-        .attr("text-anchor", "middle")
-        .attr("dominant-baseline", "middle")
-        .attr("class", "text-xl text-black")
-        .attr("fill", "black")
-        .text((d) => icons[d.key]);
+        );
     });
   });
 </script>
