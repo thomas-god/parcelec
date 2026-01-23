@@ -18,6 +18,7 @@ COPY .npmrc ./
 COPY .env.production ./.env
 COPY src/ ./src
 COPY public/ ./public
+COPY static/ ./static
 
 # Build the application for production
 ENV NODE_ENV=production
