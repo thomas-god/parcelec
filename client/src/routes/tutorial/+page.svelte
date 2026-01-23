@@ -110,7 +110,7 @@
       <div
         class="mx-auto mb-4 p-4 text-success-content bg-success rounded-md sticky top-3 z-30 max-w-200"
       >
-        <CurrentScore {position} {pnl} />
+        <CurrentScore {position} costs={pnl} />
       </div>
 
       <PowerPlants {sendMessage} {plants} />

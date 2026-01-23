@@ -20,3 +20,14 @@ export const plantsPnl = (plants: StackSnapshot): number => {
   }
   return total;
 };
+
+export const plantsCosts = (plants: StackSnapshot): number => {
+  /// Cannot use plants.entries().reduce(/.../) on WebKit...
+  let total = 0;
+  for (const [_, plant] of plants.entries()) {
+    if (["GasPlant", "Nuclear"].includes(plant.type)) {
+      total += plant.output.cost;
+    }
+  }
+  return total;
+};

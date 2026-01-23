@@ -16,7 +16,11 @@
   import OrderBookElement from "../../components/organisms/OrderBook.svelte";
   import { goto } from "$app/navigation";
   import Stack from "../../components/organisms/Stack.svelte";
-  import { plantsPosition, marketPosition } from "$lib/position";
+  import {
+    plantsPosition,
+    marketPosition,
+    computePortfolio,
+  } from "$lib/position";
   import { marketPnl, plantsPnl } from "$lib/pnl";
   import { SvelteMap } from "svelte/reactivity";
   import Scores from "../../components/organisms/ScoresSummary.svelte";
@@ -28,6 +32,8 @@
   import Footer from "../../components/molecules/Footer.svelte";
   import { isSome, none, some, type Option } from "$lib/Options";
   import Countdown from "../../components/atoms/Countdown.svelte";
+  import PortfolioChart from "../../components/molecules/PortfolioChart.svelte";
+  import Portfolio from "../../components/organisms/Portfolio.svelte";
 
   let player_name: string = $state("");
   let player_is_ready = $derived.by(() => {
@@ -174,93 +180,88 @@
 <main class="h-dvh max-w-300 mx-auto @container">
   {#if socketIsOpen}
     <div class="flex flex-col gap-6 items-stretch">
-      <div
-        class={`
-        max-w-150 w-full mx-auto
-        sticky top-0 px-2 pt-5 pb-5 z-30
-        text-success-content bg-success rounded-b-md
-        @sm:p-6
-        @min-[600px]:mt-8 @min-[600px]:rounded-t-md
-        `}
-      >
-        <Header
-          {game_state}
-          {pnl}
-          {position}
-          periods={{
-            current: delivery_period_id,
-            last: last_delivery_period_id,
-          }}
-        />
-      </div>
+      <Header
+        {game_state}
+        periods={{
+          current: delivery_period_id,
+          last: last_delivery_period_id,
+        }}
+      />
 
       {#if game_state === "Running"}
-        <!-- Mobile: Tabs layout -->
-        <div
-          class="tabs tabs-lift tabs-md p-3 max-[400px]:p-1 @[1200px]:hidden"
-        >
-          <input
-            type="radio"
-            name="market_forecast_tabs"
-            class="tab text-base font-semibold"
-            aria-label="Centrales 🔌"
-            checked={true}
-          />
-          <div class="tab-content bg-base-100 border-base-300 p-1 pb-4">
-            <Stack {plants} send={sendMessage} />
+        <div class="flex flex-col gap-4 items-stretch pt-5">
+          <div class="mx-4 bg-base-100 border border-base-300 rounded-lg">
+            <Portfolio {plants} {trades} />
           </div>
-          <input
-            type="radio"
-            name="market_forecast_tabs"
-            class="tab text-base font-semibold"
-            aria-label="Marché 💱"
-          />
-          <div class="tab-content bg-base-100 border-base-300 p-2 pt-4">
-            <OrderBookElement {orderBook} send={sendMessage} {trades} />
-          </div>
-          <input
-            type="radio"
-            name="market_forecast_tabs"
-            class="tab text-base font-semibold"
-            aria-label="Prévisions 🔮"
-          />
-          <div class="tab-content bg-base-100 border-base-300 p-2">
-            <Forecasts
-              {plant_forecasts}
-              plant_snapshots={plants}
-              history={plant_history}
+          <!-- Mobile: Tabs layout -->
+          <div
+            class="tabs tabs-lift tabs-md p-3 max-[400px]:p-1 @[1200px]:hidden"
+          >
+            <input
+              type="radio"
+              name="market_forecast_tabs"
+              class="tab text-base font-semibold"
+              aria-label="Centrales 🔌"
+              checked={true}
             />
-          </div>
-        </div>
-
-        <!-- Desktop: Side-by-side layout -->
-        <div class="hidden @[1200px]:grid grid-cols-3 gap-4 px-4">
-          <div class="bg-base-100 border border-base-300 rounded-lg p-2">
-            <h3 class="text-lg text-center font-semibold pt-2">Contrôles 🔌</h3>
-            <Stack {plants} send={sendMessage} />
-          </div>
-          <div class="bg-base-100 border border-base-300 rounded-lg p-2">
-            <h3 class="text-lg text-center font-semibold pt-2 pb-4">
-              Marché 💱
-            </h3>
-            <OrderBookElement {orderBook} send={sendMessage} {trades} />
-          </div>
-          <div class="bg-base-100 border border-base-300 rounded-lg p-2">
-            <h3 class="text-lg text-center font-semibold pt-2">
-              Prévisions 🔮
-            </h3>
-            <Forecasts
-              {plant_forecasts}
-              plant_snapshots={plants}
-              history={plant_history}
+            <div class="tab-content bg-base-100 border-base-300 p-1 pb-4">
+              <Stack {plants} send={sendMessage} />
+            </div>
+            <input
+              type="radio"
+              name="market_forecast_tabs"
+              class="tab text-base font-semibold"
+              aria-label="Marché 💱"
             />
+            <div class="tab-content bg-base-100 border-base-300 p-2 pt-4">
+              <OrderBookElement {orderBook} send={sendMessage} {trades} />
+            </div>
+            <input
+              type="radio"
+              name="market_forecast_tabs"
+              class="tab text-base font-semibold"
+              aria-label="Prévisions 🔮"
+            />
+            <div class="tab-content bg-base-100 border-base-300 p-2">
+              <Forecasts
+                {plant_forecasts}
+                plant_snapshots={plants}
+                history={plant_history}
+              />
+            </div>
           </div>
-        </div>
 
-        <div class="toast mb-15 items-center content-center">
-          {#each trades_to_display as trade (`${trade.direction}-${trade.execution_time}`)}
-            <TradeNotification {trade} {removeTradeToDisplay} />
-          {/each}
+          <!-- Desktop: Side-by-side layout -->
+          <div class="hidden @[1200px]:grid grid-cols-3 gap-4 px-4">
+            <div class="bg-base-100 border border-base-300 rounded-lg p-2">
+              <h3 class="text-lg text-center font-semibold pt-2">
+                Contrôles 🔌
+              </h3>
+              <Stack {plants} send={sendMessage} />
+            </div>
+            <div class="bg-base-100 border border-base-300 rounded-lg p-2">
+              <h3 class="text-lg text-center font-semibold pt-2 pb-4">
+                Marché 💱
+              </h3>
+              <OrderBookElement {orderBook} send={sendMessage} {trades} />
+            </div>
+            <div class="bg-base-100 border border-base-300 rounded-lg p-2">
+              <h3 class="text-lg text-center font-semibold pt-2">
+                Prévisions 🔮
+              </h3>
+              <Forecasts
+                {plant_forecasts}
+                plant_snapshots={plants}
+                history={plant_history}
+              />
+            </div>
+          </div>
+
+          <div class="toast mb-15 items-center content-center">
+            {#each trades_to_display as trade (`${trade.direction}-${trade.execution_time}`)}
+              <TradeNotification {trade} {removeTradeToDisplay} />
+            {/each}
+          </div>
         </div>
       {:else if game_state === "Open"}
         <PlayersReadyList {player_name} {readiness_status} />

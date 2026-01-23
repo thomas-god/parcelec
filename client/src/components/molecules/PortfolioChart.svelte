@@ -9,7 +9,7 @@
     | "storage"
     | "market";
 
-  export type Portfolio = {
+  export type PortfolioVolumes = {
     consumers: number;
     renewable: number;
     nuclear: number;
@@ -22,7 +22,7 @@
   interface Props {
     height?: number;
     iconSize?: number;
-    volumes: Portfolio;
+    volumes: PortfolioVolumes;
   }
 
   let { height = 300, volumes, iconSize = 0.3 }: Props = $props();
@@ -30,7 +30,7 @@
   let svgElement: SVGElement;
   let gBars: SVGGElement;
 
-  const margin = 20;
+  const margin = 8;
 
   const icons: Record<PortfolioType, string> = {
     consumers: "/icons/consumers.svg",
