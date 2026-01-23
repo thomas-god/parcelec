@@ -21,3 +21,22 @@
 html {
   background-color: var(--color-base-200);
 }
+
+.consumers {
+  fill: var(--consumers-background-color);
+}
+.renewables {
+  fill: var(--renewable-background-color);
+}
+.nuclear {
+  fill: var(--nuclear-background-color);
+}
+.gas {
+  fill: var(--gas-background-color);
+}
+.storage {
+  fill: var(--storage-background-color);
+}
+.market {
+  fill: var(--market-background-color);
+}

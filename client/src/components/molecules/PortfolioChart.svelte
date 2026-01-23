@@ -250,24 +250,3 @@
     <g bind:this={gBars} />
   </svg>
 </div>
-
-<style>
-  :global(.consumers) {
-    fill: var(--consumers-background-color);
-  }
-  :global(.renewables) {
-    fill: var(--renewable-background-color);
-  }
-  :global(.nuclear) {
-    fill: var(--nuclear-background-color);
-  }
-  :global(.gas) {
-    fill: var(--gas-background-color);
-  }
-  :global(.storage) {
-    fill: var(--storage-background-color);
-  }
-  :global(.market) {
-    fill: var(--market-background-color);
-  }
-</style>
