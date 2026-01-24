@@ -79,6 +79,38 @@
     },
   ]);
 
+  let lastNegativeType: PortfolioType | undefined = $derived.by(() => {
+    if (Math.abs(volumes.marketSold) > 0) {
+      return "market";
+    }
+    if (volumes.storage < 0) {
+      return "storage";
+    }
+    if (Math.abs(volumes.consumers) > 0) {
+      return "consumers";
+    }
+    return undefined;
+  });
+  let lastPositiveType: PortfolioType | undefined = $derived.by(() => {
+    if (Math.abs(volumes.marketBought) > 0) {
+      return "market";
+    }
+    if (volumes.storage > 0) {
+      return "storage";
+    }
+    if (volumes.gas > 0) {
+      return "gas";
+    }
+    if (volumes.nuclear > 0) {
+      return "nuclear";
+    }
+    if (volumes.renewable > 0) {
+      return "renewables";
+    }
+    return undefined;
+  });
+  $inspect(lastNegativeType, lastPositiveType);
+
   let stackedData = $derived(
     d3
       .stack()
@@ -103,7 +135,7 @@
         0,
         Math.max(
           d3.max(stackedData, (d) => d3.max(d, (d) => d[1])),
-          Math.abs(volumes.consumers * 1.3),
+          Math.abs(volumes.consumers * 1.1),
         ),
       ])
       .range([0, chartWidth - margin]),
@@ -123,6 +155,30 @@
       .padding(0.2),
   );
 
+  const drawRectanglePath = (point: any, noWidth = false) => {
+    const x0 = x(point[0]);
+    const y0 = y(point.data[0]);
+    const width = noWidth ? 0 : x(point[1]) - x(point[0]);
+    const height = y.bandwidth();
+
+    let radius = 0;
+    if (
+      (point.sign === "positive" && point.key === lastPositiveType) ||
+      (point.sign === "negative" && point.key === lastNegativeType)
+    ) {
+      radius = height / 3;
+    }
+    return `
+    M${x0},${y0} h${width - radius}
+    q${radius},0 ${radius},${radius}
+    v${height - 2 * radius}
+    q0,${radius} ${-radius},${radius}
+    h-${width - radius} z`;
+  };
+
+  const drawRectanglePathNoWidth = (point: any) =>
+    drawRectanglePath(point, true);
+
   $effect(() => {
     d3.select(gYaxis)
       .call(d3.axisLeft(y))
@@ -134,7 +190,7 @@
 
       // Create/update rectangles
       groups
-        .selectAll("rect")
+        .selectAll("path")
         .data((series) => {
           // Each series is an array of elements, with a key = Setpoint
           // series.key -> consumers | market | ...
@@ -152,6 +208,7 @@
                 : point.data[1].get(series.key).value;
             point.key = series.key;
             point.empty = value === 0;
+            point.sign = point.data[0];
             return point;
           });
           // Skip empty datapoints
@@ -160,25 +217,20 @@
         .join(
           (enter) =>
             enter
-              .append("rect")
-              .attr("x", (d) => x(d[0]))
-              .attr("y", (d) => y(d.data[0]))
-              .attr("height", y.bandwidth())
+              .append("path")
+              .attr("d", (point) => drawRectanglePathNoWidth(point))
               .transition(d3.transition().duration(200).ease(d3.easeLinear))
-              .attr("width", (d) => x(d[1]) - x(d[0]))
+              .attr("d", (point) => drawRectanglePath(point))
               .attr("class", (d) => d.key),
 
           (update) =>
             update
               .transition(d3.transition().duration(200).ease(d3.easeLinear))
-              .attr("x", (d) => x(d[0]))
-              .attr("y", (d) => y(d.data[0]))
-              .attr("height", y.bandwidth())
-              .attr("width", (d) => x(d[1]) - x(d[0])),
+              .attr("d", (point) => drawRectanglePath(point)),
           (exit) =>
             exit
               .transition(d3.transition().duration(200).ease(d3.easeLinear))
-              .attr("width", 0)
+              .attr("d", (point) => drawRectanglePathNoWidth(point))
               .remove(),
         );
 
