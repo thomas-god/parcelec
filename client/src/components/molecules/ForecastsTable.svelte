@@ -17,13 +17,21 @@
   <thead class="text-base-content">
     <tr>
       <th class="text-end px-0">Période</th>
-      <th class="text-center"
-        >{PLANT_ICONS["Consumers"]} {PLANT_NAMES["Consumers"]}</th
-      >
+      <th class="text-center">
+        <span>
+          <img
+            src="/icons/consumers.svg"
+            alt="Nuclear plant icon"
+            class="w-4 h-4"
+          />
+          Clients
+        </span>
+        <!-- {PLANT_ICONS["Consumers"]} {PLANT_NAMES["Consumers"]} -->
+      </th>
       <th class="text-center px-3"
         >{PLANT_ICONS["RenewablePlant"]} {PLANT_NAMES["RenewablePlant"]}</th
       >
-      <th class="text-center">Total</th>
+      <!-- <th class="text-center">Total</th> -->
     </tr>
   </thead>
   <tbody>
@@ -60,7 +68,7 @@
             </span>
           </div>
         </td>
-        <th class="text-center px-2">
+        <!-- <th class="text-center px-2">
           <div class="flex flex-col">
             <span class="font-bold">
               {total_forecasts.get(period)!.value.toLocaleString("fr-FR", {
@@ -72,7 +80,7 @@
               MW
             </span>
           </div>
-        </th>
+        </th> -->
       </tr>
     {:else}
       <tr>

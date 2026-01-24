@@ -189,13 +189,17 @@
       />
 
       {#if game_state === "Running"}
-        <div class="flex flex-col gap-4 items-stretch pt-5">
-          <div class="mx-4 bg-base-100 border border-base-300 rounded-lg">
-            <Portfolio {plants} {trades} />
+        <div class="flex flex-col gap-3 items-stretch">
+          <div
+            class="max-[400px]:px-1 px-3 @[1200px]:px-4 max-[400px]:pt-1 pt-4"
+          >
+            <div class="bg-base-100 border border-base-300 rounded-lg">
+              <Portfolio {plants} {trades} />
+            </div>
           </div>
           <!-- Mobile: Tabs layout -->
           <div
-            class="tabs tabs-lift tabs-md p-3 max-[400px]:p-1 @[1200px]:hidden"
+            class="tabs tabs-lift tabs-md px-3 pb-3 max-[400px]:p-1 @[1200px]:hidden"
           >
             <input
               type="radio"

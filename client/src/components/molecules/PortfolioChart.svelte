@@ -28,6 +28,7 @@
   let { height = 300, volumes, iconSize = 0.3 }: Props = $props();
   let chartWidth: number = $state(300);
   let svgElement: SVGElement;
+  let gYaxis: SVGGElement;
   let gBars: SVGGElement;
 
   const margin = 8;
@@ -105,7 +106,7 @@
           Math.abs(volumes.consumers * 1.3),
         ),
       ])
-      .range([margin, chartWidth - margin]),
+      .range([0, chartWidth - margin]),
   );
 
   let y = $derived(
@@ -123,6 +124,11 @@
   );
 
   $effect(() => {
+    d3.select(gYaxis)
+      .call(d3.axisLeft(y))
+      .selectAll(".domain")
+      .attr("stroke-width", 2);
+
     d3.select(gBars).call((sel) => {
       const groups = sel.selectAll("g").data(stackedData).join("g");
 
@@ -248,5 +254,6 @@
     bind:this={svgElement}
   >
     <g bind:this={gBars} />
+    <g bind:this={gYaxis} />
   </svg>
 </div>
