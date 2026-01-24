@@ -6,6 +6,8 @@
     trade,
     removeTradeToDisplay,
   }: { trade: Trade; removeTradeToDisplay: (trade: Trade) => void } = $props();
+
+  setTimeout(() => removeTradeToDisplay(trade), 5000);
 </script>
 
 <div class="alert alert-success self-center">

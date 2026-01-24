@@ -109,7 +109,6 @@
     }
     return undefined;
   });
-  $inspect(lastNegativeType, lastPositiveType);
 
   let stackedData = $derived(
     d3
