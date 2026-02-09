@@ -32,7 +32,7 @@
 <div class="flex flex-col">
   <!-- Add an offer -->
   <div class="flex flex-row justify-center gap-2">
-    <button class="btn btn-success" onclick={() => addOrderModal.showModal()}
+    <button class="btn btn-secondary" onclick={() => addOrderModal.showModal()}
       >Ajouter un ordre</button
     >
     <dialog class="modal" bind:this={addOrderModal}>
@@ -44,7 +44,7 @@
       </form>
     </dialog>
 
-    <button class="btn btn-success" onclick={() => tradeListModal.showModal()}
+    <button class="btn btn-secondary" onclick={() => tradeListModal.showModal()}
       >Transactions passées</button
     >
     <dialog class="modal" bind:this={tradeListModal}>

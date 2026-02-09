@@ -205,7 +205,7 @@
               type="radio"
               name="market_forecast_tabs"
               class="tab text-base font-semibold"
-              aria-label="Centrales 🔌"
+              aria-label="Pilotage 🔌"
               checked={true}
             />
             <div class="tab-content bg-base-100 border-base-300 p-1 pb-4">
@@ -239,7 +239,7 @@
           <div class="hidden @[1200px]:grid grid-cols-3 gap-4 px-4">
             <div class="bg-base-100 border border-base-300 rounded-lg p-2">
               <h3 class="text-lg text-center font-semibold pt-2">
-                Contrôles 🔌
+                Pilotage 🔌
               </h3>
               <Stack {plants} send={sendMessage} />
             </div>

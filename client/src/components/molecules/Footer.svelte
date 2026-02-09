@@ -17,12 +17,12 @@
 
 <footer
   class={`
-  footer bg-success text-success-content rounded-t-md px-2 py-4 flex flex-col items-center text-xl
-  @max-[600px]:fixed @max-[600px]:bottom-0 @max-[600px]:w-full
-  @min-[600px]:rounded-b-md @min-[600px]:mx-auto @min-[600px]:max-w-[500px]
+  footer footer-center
+  @max-[600px]:fixed @max-[600px]:bottom-8 @max-[600px]:w-full
+  @min-[600px]:rounded-b-md @min-[600px]:mx-auto @min-[600px]:max-w-125
   `}
 >
-  <button onclick={startGame}>
+  <button onclick={startGame} class="btn btn-primary btn-lg">
     {#if game_state === "Running"}
       {#if player_is_ready}
         En attente des autres joueurs

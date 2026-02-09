@@ -29,7 +29,7 @@
   <div class="max-w-124 mx-auto w-full">
     <CurrentScore {costs} {position} />
   </div>
-  <div class="max-w-132 mx-auto w-full">
+  <div class="max-w-200 mx-auto w-full">
     <PortfolioChart {volumes} height={100} iconSize={0.8} />
   </div>
 </div>
