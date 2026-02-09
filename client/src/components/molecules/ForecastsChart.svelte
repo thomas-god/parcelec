@@ -30,8 +30,9 @@
   let gx: SVGGElement;
   let gy: SVGGElement;
   let gyGrid: SVGGElement;
-  let gBars: SVGGElement;
-  let gErrorBars: SVGGElement;
+  let gLowValues: SVGGElement;
+  let gHighValues: SVGGElement;
+  let gCurrentPeriod: SVGGElement;
   let svgElement: SVGElement;
 
   type Data = {
@@ -143,7 +144,7 @@
     );
 
     // Draw faded rectangle (high-value forecasts)
-    d3.select(gErrorBars).call((sel) =>
+    d3.select(gHighValues).call((sel) =>
       sel
         .selectAll("g")
         .data(d3.group(data, (elem) => elem.period))
@@ -164,7 +165,7 @@
     );
 
     // Draw plain rectangles (low-value forecasts)
-    d3.select(gBars).call((sel) =>
+    d3.select(gLowValues).call((sel) =>
       sel
         .selectAll("g")
         .data(d3.group(data, (elem) => elem.period))
@@ -180,7 +181,32 @@
         .attr("y", (point) => y(point.value - point.deviation))
         .attr("width", x.bandwidth())
         .attr("height", (point) => y(0) - y(point.value - point.deviation))
+        .attr("opacity", (point) => (point.type === "realized" ? 0.1 : 1))
         .attr("class", (point) => point.source),
+    );
+
+    // Draw an outline for the current period
+    d3.select(gCurrentPeriod).call((sel) =>
+      sel
+        .selectAll("g")
+        .data(d3.group(data, (elem) => elem.period))
+        .join("g")
+        .attr(
+          "transform",
+          ([period]) => `translate(${fx(period.toString())},0)`,
+        )
+        .selectAll("rect")
+        .data(([_period, points]) =>
+          points.filter((elem) => elem.type === "active"),
+        )
+        .join("rect")
+        .attr("x", (point) => x(point.source) as number)
+        .attr("y", (point) => y(point.value - point.deviation))
+        .attr("width", x.bandwidth())
+        .attr("height", (point) => y(0) - y(point.value - point.deviation))
+        .attr("stroke", "black")
+        .attr("stroke-width", 1)
+        .attr("fill", "none"),
     );
   });
 </script>
@@ -201,8 +227,9 @@
       opacity="0.3"
     />
 
-    <g bind:this={gErrorBars} />
-    <g bind:this={gBars} />
+    <g bind:this={gHighValues} />
+    <g bind:this={gLowValues} />
+    <g bind:this={gCurrentPeriod} />
 
     <g bind:this={gx} transform="translate(0 {height - marginBottom})" />
     <g bind:this={gy} transform="translate({marginLeft} 0)" />
@@ -228,6 +255,8 @@
   .renewables {
     fill: var(--renewable-background-color);
     background-color: var(--renewable-background-color);
+    border-top-width: 2;
+    border-top-color: black;
   }
 
   :global(.consumers-forecast) {
