@@ -193,7 +193,9 @@
           <div
             class="max-[400px]:px-1 px-3 @[1200px]:px-4 max-[400px]:pt-1 pt-4"
           >
-            <div class="bg-base-100 border border-base-300 rounded-lg">
+            <div
+              class="bg-base-100 border border-base-300 rounded-lg px-3 pb-1"
+            >
               <Portfolio {plants} {trades} />
             </div>
           </div>
@@ -296,3 +298,13 @@
     <p>Not connected</p>
   {/if}
 </main>
+
+<style>
+  /* bg-base-100 border border-base-300 rounded-lg p-2 */
+  .container-large {
+    background-color: var(--color-base-100);
+    border-color: var(--color-base-300);
+    border-radius: var(--radius-lg);
+    padding: calc(var(--spacing) * 2);
+  }
+</style>
