@@ -54,6 +54,7 @@
     display: flex;
     flex-direction: column;
     gap: calc(var(--spacing) * 2);
+    padding-top: calc(var(--spacing) * 2);
   }
 
   .score-container {

@@ -40,7 +40,7 @@
   });
 </script>
 
-<div class="flex flex-col gap-4 pt-4 items-start">
+<div class="flex flex-col gap-4 items-start">
   {#each other_plants.entries() as [id, plant] (id)}
     {#if plant.type === "Battery"}
       <div class="pl-1 pr-2 mx-auto w-full">

@@ -199,31 +199,53 @@
           </div>
           <!-- Mobile: Tabs layout -->
           <div class="mobile-tabs-layout tabs tabs-lift tabs-md">
-            <input
-              type="radio"
-              name="market_forecast_tabs"
-              class="tab text-base font-semibold"
-              aria-label="Pilotage 🔌"
-              checked={true}
-            />
+            <label class="tab text-base font-semibold">
+              <input
+                type="radio"
+                name="market_forecast_tabs"
+                class="tab text-base font-semibold"
+                checked={true}
+              />
+              Pilotage
+              <img
+                src="/icons/slider.svg"
+                alt="Slider icon"
+                class="ml-1 w-5 h-5 inline"
+              />
+            </label>
             <div class="tab-content bg-base-100 border-base-300 p-1 pb-4">
               <Stack {plants} send={sendMessage} />
             </div>
-            <input
-              type="radio"
-              name="market_forecast_tabs"
-              class="tab text-base font-semibold"
-              aria-label="Marché 💱"
-            />
+            <label class="tab text-base font-semibold">
+              <input
+                type="radio"
+                name="market_forecast_tabs"
+                class="tab text-base font-semibold"
+              />
+              Marché
+              <img
+                src="/icons/exchange.svg"
+                alt="Exchange icon"
+                class="ml-1 w-5 h-5 inline"
+              />
+            </label>
             <div class="tab-content bg-base-100 border-base-300 p-2 pt-4">
               <OrderBookElement {orderBook} send={sendMessage} {trades} />
             </div>
-            <input
-              type="radio"
-              name="market_forecast_tabs"
-              class="tab text-base font-semibold"
-              aria-label="Prévisions 🔮"
-            />
+            <label class="tab text-base font-semibold">
+              <input
+                type="radio"
+                name="market_forecast_tabs"
+                class="tab text-base font-semibold"
+                aria-label="Prévisions 🔮"
+              />
+              Prévisions
+              <img
+                src="/icons/crystal.svg"
+                alt="Crystal ball icon"
+                class="ml-1 w-5 h-5 inline"
+              />
+            </label>
             <div class="tab-content bg-base-100 border-base-300 p-2">
               <Forecasts
                 {plant_forecasts}
@@ -236,20 +258,39 @@
           <!-- Desktop: Side-by-side layout -->
           <div class="desktop-grid-layout">
             <div class="bg-base-100 border border-base-300 rounded-lg p-2">
-              <h3 class="text-lg text-center font-semibold pt-2">
-                Pilotage 🔌
+              <h3
+                class="text-lg text-center font-semibold pt-2 pb-4 flex flex-row items-center justify-center gap-1"
+              >
+                Pilotage <img
+                  src="/icons/slider.svg"
+                  alt="Slider icon"
+                  class="w-8 h-8 inline"
+                />
               </h3>
               <Stack {plants} send={sendMessage} />
             </div>
             <div class="bg-base-100 border border-base-300 rounded-lg p-2">
-              <h3 class="text-lg text-center font-semibold pt-2 pb-4">
-                Marché 💱
+              <h3
+                class="text-lg text-center font-semibold pt-2 pb-4 flex flex-row items-center justify-center gap-1"
+              >
+                Marché <img
+                  src="/icons/exchange.svg"
+                  alt="Currency exchange icon"
+                  class="w-8 h-8 inline"
+                />
               </h3>
               <OrderBookElement {orderBook} send={sendMessage} {trades} />
             </div>
             <div class="bg-base-100 border border-base-300 rounded-lg p-2">
-              <h3 class="text-lg text-center font-semibold pt-2">
-                Prévisions 🔮
+              <h3
+                class="text-lg text-center align-middle font-semibold pt-2 flex flex-row items-center justify-center gap-1"
+              >
+                Prévisions
+                <img
+                  src="/icons/crystal.svg"
+                  alt="Crystal ball icon"
+                  class="w-8 h-8 inline"
+                />
               </h3>
               <Forecasts
                 {plant_forecasts}

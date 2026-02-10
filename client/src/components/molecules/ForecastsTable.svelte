@@ -21,7 +21,7 @@
         <span>
           <img
             src="/icons/consumers.svg"
-            alt="Nuclear plant icon"
+            alt="Consumers home icon"
             class="w-4 h-4"
           />
           Clients
