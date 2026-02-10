@@ -190,9 +190,7 @@
 
       {#if game_state === "Running"}
         <div class="flex flex-col gap-3 items-stretch">
-          <div
-            class="max-[400px]:px-1 px-3 @[1200px]:px-4 max-[400px]:pt-1 pt-4"
-          >
+          <div class="portfolio-wrapper">
             <div
               class="bg-base-100 border border-base-300 rounded-lg px-3 pb-1"
             >
@@ -200,9 +198,7 @@
             </div>
           </div>
           <!-- Mobile: Tabs layout -->
-          <div
-            class="tabs tabs-lift tabs-md px-3 pb-3 max-[400px]:p-1 @[1200px]:hidden"
-          >
+          <div class="mobile-tabs-layout tabs tabs-lift tabs-md">
             <input
               type="radio"
               name="market_forecast_tabs"
@@ -238,7 +234,7 @@
           </div>
 
           <!-- Desktop: Side-by-side layout -->
-          <div class="hidden @[1200px]:grid grid-cols-3 gap-4 px-4">
+          <div class="desktop-grid-layout">
             <div class="bg-base-100 border border-base-300 rounded-lg p-2">
               <h3 class="text-lg text-center font-semibold pt-2">
                 Pilotage 🔌
@@ -300,11 +296,44 @@
 </main>
 
 <style>
-  /* bg-base-100 border border-base-300 rounded-lg p-2 */
-  .container-large {
-    background-color: var(--color-base-100);
-    border-color: var(--color-base-300);
-    border-radius: var(--radius-lg);
-    padding: calc(var(--spacing) * 2);
+  .portfolio-wrapper {
+    padding-left: 0.75rem;
+    padding-right: 0.75rem;
+    padding-top: 1rem;
+
+    @media (max-width: 400px) {
+      padding-left: calc(var(--spacing) * 1);
+      padding-right: calc(var(--spacing) * 1);
+      padding-top: calc(var(--spacing) * 1);
+    }
+    @container (min-width: 1200px) {
+      padding-left: 1rem;
+      padding-right: 1rem;
+    }
+  }
+
+  .mobile-tabs-layout {
+    padding-left: calc(var(--spacing) * 3);
+    padding-right: calc(var(--spacing) * 3);
+
+    @media (max-width: 400px) {
+      padding: calc(var(--spacing) * 1);
+    }
+
+    @container (min-width: 1200px) {
+      display: none;
+    }
+  }
+
+  .desktop-grid-layout {
+    display: none;
+
+    @container (min-width: 1200px) {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: calc(var(--spacing) * 4);
+      padding-left: calc(var(--spacing) * 4);
+      padding-right: calc(var(--spacing) * 4);
+    }
   }
 </style>
