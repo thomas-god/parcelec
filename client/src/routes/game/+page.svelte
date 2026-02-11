@@ -16,12 +16,6 @@
   import OrderBookElement from "../../components/organisms/OrderBook.svelte";
   import { goto } from "$app/navigation";
   import Stack from "../../components/organisms/Stack.svelte";
-  import {
-    plantsPosition,
-    marketPosition,
-    computePortfolio,
-  } from "$lib/position";
-  import { marketPnl, plantsPnl } from "$lib/pnl";
   import { SvelteMap } from "svelte/reactivity";
   import Scores from "../../components/organisms/ScoresSummary.svelte";
   import Forecasts from "../../components/organisms/Forecasts.svelte";
@@ -32,8 +26,12 @@
   import Footer from "../../components/molecules/Footer.svelte";
   import { isSome, none, some, type Option } from "$lib/Options";
   import Countdown from "../../components/atoms/Countdown.svelte";
-  import PortfolioChart from "../../components/molecules/PortfolioChart.svelte";
   import Portfolio from "../../components/organisms/Portfolio.svelte";
+  import { page } from "$app/state";
+  import Tutorial from "../../components/molecules/tutorial/Tutorial.svelte";
+
+  let isTutorial = page.url.searchParams.has("tutorial", "true");
+  $inspect(isTutorial);
 
   let player_name: string = $state("");
   let player_is_ready = $derived.by(() => {
@@ -167,14 +165,6 @@
     }
     sendMessage(JSON.stringify("PlayerIsReady"));
   };
-
-  let plants_position = $derived(plantsPosition(plants));
-  let trades_position = $derived(marketPosition(trades));
-  let position = $derived(plants_position + trades_position);
-
-  let plants_pnl = $derived(plantsPnl(plants));
-  let market_pnl = $derived(marketPnl(trades));
-  let pnl = $derived(plants_pnl + market_pnl);
 </script>
 
 <main class="h-dvh max-w-300 mx-auto @container">
@@ -197,6 +187,7 @@
               <Portfolio {plants} {trades} />
             </div>
           </div>
+
           <!-- Mobile: Tabs layout -->
           <div class="mobile-tabs-layout tabs tabs-lift tabs-md">
             <label class="tab text-base font-semibold">
@@ -305,6 +296,10 @@
               <TradeNotification {trade} {removeTradeToDisplay} />
             {/each}
           </div>
+
+          {#if isTutorial}
+            <Tutorial />
+          {/if}
         </div>
       {:else if game_state === "Open"}
         <PlayersReadyList {player_name} {readiness_status} />
