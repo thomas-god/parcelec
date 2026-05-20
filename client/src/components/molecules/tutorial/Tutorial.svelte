@@ -5,6 +5,9 @@
   import PopupMarket from "./PopupMarket.svelte";
   import PopupPlants from "./PopupPlants.svelte";
 
+  let introPopup = $state(
+    (sessionStorage.getItem(SHOW_TUTORIAL_INTRO_POPUP) || "true") === "true",
+  );
   let plantsPopup = $state(false);
   let marketPopup = $state(false);
   let forecastsPopup = $state(false);
@@ -12,9 +15,9 @@
 
 <PopupIntro
   bind:open={
-    () =>
-      (sessionStorage.getItem(SHOW_TUTORIAL_INTRO_POPUP) || "true") === "true",
+    () => introPopup,
     (v) => {
+      introPopup = v;
       sessionStorage.setItem(SHOW_TUTORIAL_INTRO_POPUP, v ? "true" : "false");
     }
   }
@@ -22,13 +25,25 @@
 <div class="fab z-100 flex-row-reverse sm:flex-col-reverse">
   <!-- a focusable div with tabindex is necessary to work on all browsers. role="button" is necessary for accessibility -->
   <div tabindex="0" role="button" class="btn btn-lg btn-circle btn-info">
-    <img src="/icons/books.svg" alt="Pile of books" class="h-8 w-8" />
+    <img src="/icons/question-mark.svg" alt="Pile of books" class="h-8 w-8" />
   </div>
 
   <!-- buttons that show up when FAB is open -->
   <button
     class="btn btn-lg btn-circle btn-secondary"
     onclick={() => {
+      introPopup = true;
+      plantsPopup = false;
+      marketPopup = false;
+      forecastsPopup = false;
+    }}
+  >
+    <img src="/icons/books.svg" alt="Slider icon" class="h-8 w-8" /></button
+  >
+  <button
+    class="btn btn-lg btn-circle btn-secondary"
+    onclick={() => {
+      introPopup = false;
       plantsPopup = true;
       marketPopup = false;
       forecastsPopup = false;
@@ -39,6 +54,7 @@
   <button
     class="btn btn-lg btn-circle btn-secondary"
     onclick={() => {
+      introPopup = false;
       plantsPopup = false;
       marketPopup = true;
       forecastsPopup = false;
@@ -53,6 +69,7 @@
   <button
     class="btn btn-lg btn-circle btn-secondary"
     onclick={() => {
+      introPopup = false;
       plantsPopup = false;
       marketPopup = false;
       forecastsPopup = true;
