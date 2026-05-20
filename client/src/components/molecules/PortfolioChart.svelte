@@ -134,7 +134,7 @@
         0,
         Math.max(
           d3.max(stackedData, (d) => d3.max(d, (d) => d[1])),
-          Math.abs(volumes.consumers * 1.1),
+          Math.abs(volumes.consumers * 1),
         ),
       ])
       .range([0, chartWidth - margin]),

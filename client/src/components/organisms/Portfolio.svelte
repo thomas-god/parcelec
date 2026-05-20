@@ -53,8 +53,13 @@
   .portfolio-container {
     display: flex;
     flex-direction: column;
-    gap: calc(var(--spacing) * 2);
+    gap: calc(var(--spacing) * 0);
     padding-top: calc(var(--spacing) * 2);
+
+    @media (width > 600px) {
+      gap: calc(var(--spacing) * 3);
+      flex-direction: row;
+    }
   }
 
   .score-container {
@@ -63,10 +68,11 @@
     gap: calc(var(--spacing) * 2);
     justify-content: space-between;
 
-    @media (width > 450px) {
-      align-items: center;
-      justify-content: start;
-      gap: calc(var(--spacing) * 6);
+    @media (width > 600px) {
+      flex-direction: column;
+      align-items: end;
+      justify-content: space-around;
+      flex-shrink: 0;
     }
   }
 
@@ -75,5 +81,9 @@
     flex-direction: row;
     align-items: center;
     gap: calc(var(--spacing) * 1);
+
+    @media (width > 600px) {
+      flex-direction: row-reverse;
+    }
   }
 </style>
