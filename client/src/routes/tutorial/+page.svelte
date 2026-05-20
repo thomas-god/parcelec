@@ -1,6 +1,7 @@
 <script lang="ts">
   import { goto } from "$app/navigation";
   import { PUBLIC_APP_URL } from "$env/static/public";
+  import { SHOW_TUTORIAL_INTRO_POPUP } from "$lib/storage/keys";
 
   const startTutorial = async () => {
     let response = await fetch(`${PUBLIC_APP_URL}/tutorial`, {
@@ -9,6 +10,7 @@
       credentials: "include",
     });
     if (response.status === 201) {
+      sessionStorage.setItem(SHOW_TUTORIAL_INTRO_POPUP, "true");
       const socket = new WebSocket(`${PUBLIC_APP_URL}/ws`);
 
       socket.onopen = () => {

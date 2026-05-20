@@ -31,7 +31,6 @@
   import Tutorial from "../../components/molecules/tutorial/Tutorial.svelte";
 
   let isTutorial = page.url.searchParams.has("tutorial", "true");
-  $inspect(isTutorial);
 
   let player_name: string = $state("");
   let player_is_ready = $derived.by(() => {
@@ -65,6 +64,7 @@
   let readiness_status: ReadinessStatus = $state(new SvelteMap());
 
   const connect = () => {
+    // Player and game IDs are stored as cookies and passed when creating the ws connection
     const socket = new WebSocket(`${PUBLIC_APP_URL}/ws`);
     socket.onmessage = (msg) => {
       const parseRes = parseMessage(msg.data);

@@ -1,8 +1,14 @@
-<dialog class="modal" open>
+<script lang="ts">
+  let { open = $bindable() }: { open: boolean } = $props();
+  $inspect(open);
+</script>
+
+<dialog class="modal" {open}>
   <div class="modal-box">
     <form method="dialog">
-      <button class="btn btn-sm btn-circle btn-ghost absolute right-2 top-2"
-        >✕</button
+      <button
+        class="btn btn-sm btn-circle btn-ghost absolute right-2 top-2"
+        onclick={() => (open = false)}>✕</button
       >
     </form>
     <div class="flex flex-col gap-3">
@@ -53,6 +59,6 @@
   </div>
 
   <form method="dialog" class="modal-backdrop">
-    <button>close</button>
+    <button onclick={() => (open = false)}>close</button>
   </form>
 </dialog>

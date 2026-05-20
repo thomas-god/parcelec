@@ -1,15 +1,24 @@
 <script lang="ts">
+  import { SHOW_TUTORIAL_INTRO_POPUP } from "$lib/storage/keys";
   import PopupForecasts from "./PopupForecasts.svelte";
   import PopupIntro from "./PopupIntro.svelte";
   import PopupMarket from "./PopupMarket.svelte";
   import PopupPlants from "./PopupPlants.svelte";
 
-  let plantsTutorialPopup = $state(false);
-  let marketTutorialPopup = $state(false);
-  let forecastsTutorialPopup = $state(false);
+  let plantsPopup = $state(false);
+  let marketPopup = $state(false);
+  let forecastsPopup = $state(false);
 </script>
 
-<PopupIntro />
+<PopupIntro
+  bind:open={
+    () =>
+      (sessionStorage.getItem(SHOW_TUTORIAL_INTRO_POPUP) || "true") === "true",
+    (v) => {
+      sessionStorage.setItem(SHOW_TUTORIAL_INTRO_POPUP, v ? "true" : "false");
+    }
+  }
+/>
 <div class="fab z-100 flex-row-reverse sm:flex-col-reverse">
   <!-- a focusable div with tabindex is necessary to work on all browsers. role="button" is necessary for accessibility -->
   <div tabindex="0" role="button" class="btn btn-lg btn-circle btn-info">
@@ -20,9 +29,9 @@
   <button
     class="btn btn-lg btn-circle btn-secondary"
     onclick={() => {
-      plantsTutorialPopup = true;
-      marketTutorialPopup = false;
-      forecastsTutorialPopup = false;
+      plantsPopup = true;
+      marketPopup = false;
+      forecastsPopup = false;
     }}
   >
     <img src="/icons/slider.svg" alt="Slider icon" class="h-8 w-8" /></button
@@ -30,9 +39,9 @@
   <button
     class="btn btn-lg btn-circle btn-secondary"
     onclick={() => {
-      plantsTutorialPopup = false;
-      marketTutorialPopup = true;
-      forecastsTutorialPopup = false;
+      plantsPopup = false;
+      marketPopup = true;
+      forecastsPopup = false;
     }}
   >
     <img
@@ -44,9 +53,9 @@
   <button
     class="btn btn-lg btn-circle btn-secondary"
     onclick={() => {
-      plantsTutorialPopup = false;
-      marketTutorialPopup = false;
-      forecastsTutorialPopup = true;
+      plantsPopup = false;
+      marketPopup = false;
+      forecastsPopup = true;
     }}
   >
     <img
@@ -56,6 +65,6 @@
     /></button
   >
 </div>
-<PopupPlants bind:open={plantsTutorialPopup} />
-<PopupMarket bind:open={marketTutorialPopup} />
-<PopupForecasts bind:open={forecastsTutorialPopup} />
+<PopupPlants bind:open={plantsPopup} />
+<PopupMarket bind:open={marketPopup} />
+<PopupForecasts bind:open={forecastsPopup} />
