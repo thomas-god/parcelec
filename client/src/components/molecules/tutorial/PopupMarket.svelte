@@ -4,6 +4,12 @@
 
 <dialog class="modal z-50" {open}>
   <div class="modal-box">
+    <form method="dialog">
+      <button
+        class="btn btn-sm btn-circle btn-ghost absolute right-2 top-2"
+        onclick={() => (open = false)}>✕</button
+      >
+    </form>
     <div class="flex flex-col gap-3">
       <h3 class="text-lg font-bold">
         Marché <img
