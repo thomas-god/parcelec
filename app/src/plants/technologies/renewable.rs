@@ -129,13 +129,12 @@ mod tests {
         assert_eq!(cost, Money::from(0));
 
         // The plant cannot be programed
-        let initial_setpoint: Power = plant.current_setpoint.into();
-        let PlantOutput { setpoint, .. } =
-            plant.program_setpoint((initial_setpoint + 1.into()).into());
+        let initial_setpoint: Power = plant.current_setpoint;
+        let PlantOutput { setpoint, .. } = plant.program_setpoint(initial_setpoint + 1.into());
         assert_eq!(setpoint, initial_setpoint);
 
         // Dispatching should return the previous setpoint
-        let previous_value: Power = plant.current_setpoint.into();
+        let previous_value: Power = plant.current_setpoint;
         let returned_value = plant.dispatch();
         assert_eq!(previous_value, returned_value.setpoint);
         assert_eq!(plant.get_history(), vec![returned_value]);

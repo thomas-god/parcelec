@@ -195,7 +195,7 @@ mod test_game_state {
         assert_eq!(
             serde_json::to_string(&GameState::Running {
                 period: DeliveryPeriodId::from(1),
-                end_at: Some(date.clone())
+                end_at: Some(date)
             })
             .unwrap(),
             format!(

@@ -80,7 +80,7 @@ impl PowerPlant for Battery {
         self.setpoint = Power::from(0);
         let output = PlantOutput { cost, setpoint };
 
-        self.history.push(output.clone());
+        self.history.push(output);
 
         output
     }

@@ -150,7 +150,7 @@ impl StackPlants {
     }
 
     pub fn program_setpoint(&mut self, plant_id: &PlantId, setpoint: Power) -> Option<PlantOutput> {
-        if let Some(plant) = self.0.get_mut(&plant_id) {
+        if let Some(plant) = self.0.get_mut(plant_id) {
             return Some(plant.program_setpoint(setpoint));
         };
         None
@@ -162,7 +162,7 @@ impl StackPlants {
 
         for (id, plant) in self.0.iter_mut() {
             let output = plant.dispatch();
-            outputs.insert(id.clone(), output.clone());
+            outputs.insert(id.clone(), output);
 
             match plant.category() {
                 PlantCategory::Consumers => {

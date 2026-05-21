@@ -349,7 +349,7 @@ mod tests {
 
             let forecasts = plant.get_forecasts(DeliveryPeriodId::from(1));
             assert_eq!(forecasts.len(), 2);
-            assert_eq!(forecasts.get(0).unwrap().period, DeliveryPeriodId::from(2));
+            assert_eq!(forecasts.first().unwrap().period, DeliveryPeriodId::from(2));
             assert_eq!(forecasts.get(1).unwrap().period, DeliveryPeriodId::from(3));
         }
     }
@@ -382,7 +382,7 @@ mod tests_generate_forecast {
             value: 500,
             deviation: 200,
         };
-        let test_cases = vec![
+        let test_cases = [
             // (current_period, expected_deviation)
             (DeliveryPeriodId::from(1), 100),
             (DeliveryPeriodId::from(2), 100),
@@ -434,7 +434,6 @@ mod tests_generate_forecast {
         // 525 +/- 75
 
         let values: Vec<isize> = (0..1000)
-            .into_iter()
             .map(|_| generate_forecast(current_period, target_period, forecast).value)
             .collect();
 

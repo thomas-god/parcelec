@@ -1168,9 +1168,11 @@ mod tests {
         });
 
         cancellation_token.cancel();
-        match tokio::time::timeout(Duration::from_millis(10), handle).await {
-            Err(_) => unreachable!("Should have ended game actor"),
-            Ok(_) => {}
+        if tokio::time::timeout(Duration::from_millis(10), handle)
+            .await
+            .is_err()
+        {
+            unreachable!("Should have ended game actor")
         }
     }
 }
@@ -1273,7 +1275,7 @@ mod test_readiness_status {
             unreachable!("Should have received a readiness status message")
         };
         assert!(readiness.contains_key(&name));
-        assert_eq!(*readiness.get(&name).unwrap(), false);
+        assert!(!(*readiness.get(&name).unwrap()));
     }
 
     #[tokio::test]
@@ -1295,7 +1297,7 @@ mod test_readiness_status {
             unreachable!("Should have received a readiness status message")
         };
         assert!(readiness.contains_key(&name));
-        assert_eq!(*readiness.get(&name).unwrap(), true);
+        assert!(*readiness.get(&name).unwrap());
     }
 
     #[tokio::test]
@@ -1321,6 +1323,6 @@ mod test_readiness_status {
             unreachable!("Should have received a readiness status message")
         };
         assert!(readiness.contains_key(&name));
-        assert_eq!(*readiness.get(&name).unwrap(), false);
+        assert!(!(*readiness.get(&name).unwrap()));
     }
 }

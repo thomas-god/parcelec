@@ -114,8 +114,8 @@ mod test_api_list_games {
             .unwrap()
             .to_bytes();
         let mut body: ListGamesResponse = serde_json::from_slice(&body).unwrap();
-        let games = body.games.sort();
-        let expected_games = vec![
+        body.games.sort();
+        let mut expected_games = vec![
             GameView {
                 id: 0.to_string(),
                 name: 0.to_string(),
@@ -124,9 +124,9 @@ mod test_api_list_games {
                 id: 1.to_string(),
                 name: 1.to_string(),
             },
-        ]
-        .sort();
-        assert_eq!(games, expected_games);
+        ];
+        expected_games.sort();
+        assert_eq!(body.games, expected_games);
     }
 
     #[tokio::test]

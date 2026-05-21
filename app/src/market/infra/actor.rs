@@ -932,9 +932,11 @@ mod tests {
         });
 
         token.cancel();
-        match tokio::time::timeout(Duration::from_millis(10), handle).await {
-            Err(_) => unreachable!("Should have ended market actor"),
-            Ok(_) => {}
+        if tokio::time::timeout(Duration::from_millis(10), handle)
+            .await
+            .is_err()
+        {
+            unreachable!("Should have ended market actor")
         }
     }
 }

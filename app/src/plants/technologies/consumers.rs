@@ -58,7 +58,7 @@ impl PowerPlant for Consumers {
             cost,
             setpoint: previous_setpoint,
         };
-        self.history.push(output.clone());
+        self.history.push(output);
         output
     }
 
@@ -130,7 +130,7 @@ mod tests {
 
         // Consumers cannot be programed
         let initial_setpoint = consumers.current_setpoint;
-        consumers.program_setpoint(initial_setpoint.into());
+        consumers.program_setpoint(initial_setpoint);
         assert_eq!(consumers.current_setpoint, initial_setpoint);
 
         // Initial history is empty
@@ -145,7 +145,7 @@ mod tests {
         assert_eq!(consumers.get_history(), history);
 
         // Dispatching should return the previous setpoint
-        let previous_value: Power = consumers.current_setpoint.into();
+        let previous_value: Power = consumers.current_setpoint;
         let returned_value = consumers.dispatch();
         assert_eq!(previous_value, returned_value.setpoint);
         history.push(returned_value);
