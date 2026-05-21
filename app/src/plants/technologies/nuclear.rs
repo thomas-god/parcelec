@@ -89,6 +89,10 @@ impl PowerPlant for NuclearPlant {
     fn get_history(&self) -> Vec<PlantOutput> {
         self.history.clone()
     }
+
+    fn category(&self) -> crate::plants::PlantCategory {
+        crate::plants::PlantCategory::Nuclear
+    }
 }
 
 #[cfg(test)]

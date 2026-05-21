@@ -92,6 +92,10 @@ impl PowerPlant for Battery {
     fn get_history(&self) -> Vec<PlantOutput> {
         self.history.clone()
     }
+
+    fn category(&self) -> crate::plants::PlantCategory {
+        crate::plants::PlantCategory::Battery
+    }
 }
 
 #[cfg(test)]

@@ -78,6 +78,10 @@ impl PowerPlant for Consumers {
     fn get_history(&self) -> Vec<PlantOutput> {
         self.history.clone()
     }
+
+    fn category(&self) -> crate::plants::PlantCategory {
+        crate::plants::PlantCategory::Consumers
+    }
 }
 
 #[cfg(test)]

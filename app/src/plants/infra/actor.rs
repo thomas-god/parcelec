@@ -258,13 +258,14 @@ impl<PC: PlayerConnections> StackActor<PC> {
         self.state = StackState::Closed;
 
         // Dispatch plants and collect their outputs
-        let plant_outputs = self.stack.dispatch_plants();
+        let dispatch_results = self.stack.dispatch_plants();
 
         // Store outputs for future reference
-        self.past_outputs.insert(period_id, plant_outputs.clone());
+        self.past_outputs
+            .insert(period_id, dispatch_results.plants_outputs().clone());
 
         // Send outputs back to caller
-        if let Err(err) = tx_back.send(plant_outputs) {
+        if let Err(err) = tx_back.send(dispatch_results.plants_outputs) {
             tracing::error!(
                 game_id = ?self.game,
                 player_id = ?self.player,

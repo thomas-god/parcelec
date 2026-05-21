@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::fmt::{self, Display};
 use std::future::Future;
+use std::ops::Add;
 
 use derive_more::{AsRef, Display, From};
 use serde::{Deserialize, Serialize};
@@ -18,7 +19,7 @@ pub use infra::StackService;
 
 use crate::forecast::Forecast;
 use crate::game::delivery_period::DeliveryPeriodId;
-use crate::utils::units::{Money, Power};
+use crate::utils::units::{Energy, Money, Power, TIMESTEP};
 
 #[derive(Debug)]
 #[allow(dead_code)]
@@ -97,6 +98,8 @@ pub trait PowerPlant {
 
     /// Get history of plant's setpoint
     fn get_history(&self) -> Vec<PlantOutput>;
+
+    fn category(&self) -> PlantCategory;
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, From, Display, AsRef)]
@@ -108,6 +111,14 @@ impl Default for PlantId {
     fn default() -> Self {
         PlantId(Uuid::new_v4().to_string())
     }
+}
+
+pub enum PlantCategory {
+    Battery,
+    GasPlant,
+    RenewablePlant,
+    Consumers,
+    Nuclear,
 }
 
 pub struct StackPlants(HashMap<PlantId, Box<dyn PowerPlant + Send + Sync>>);
@@ -145,11 +156,144 @@ impl StackPlants {
         None
     }
 
-    pub fn dispatch_plants(&mut self) -> HashMap<PlantId, PlantOutput> {
-        self.0
-            .iter_mut()
-            .map(|(plant_id, plant)| (plant_id.clone(), plant.dispatch()))
-            .collect()
+    pub fn dispatch_plants(&mut self) -> StackDispatchResults {
+        let mut outputs = HashMap::new();
+        let mut state = StackAggregatedState::empty();
+
+        for (id, plant) in self.0.iter_mut() {
+            let output = plant.dispatch();
+            outputs.insert(id.clone(), output.clone());
+
+            match plant.category() {
+                PlantCategory::Consumers => {
+                    state.consumers = state.consumers + output;
+                }
+                PlantCategory::GasPlant => {
+                    state.gas = state.gas + output;
+                }
+                PlantCategory::Nuclear => {
+                    state.nuclear = state.nuclear + output;
+                }
+                PlantCategory::RenewablePlant => {
+                    state.renewables = state.renewables + output;
+                }
+                PlantCategory::Battery if output.setpoint > Power::from(0) => {
+                    state.battery_discharge = state.battery_discharge + output;
+                }
+                PlantCategory::Battery if output.setpoint < Power::from(0) => {
+                    state.battery_charge = state.battery_charge + output;
+                }
+                _ => {}
+            }
+        }
+
+        StackDispatchResults::new(outputs, state)
+    }
+}
+
+pub struct Output {
+    volume: Energy,
+    money: Money,
+}
+
+impl Output {
+    pub fn new(volume: Energy, money: Money) -> Self {
+        Self { volume, money }
+    }
+    pub fn empty() -> Self {
+        Self {
+            volume: Energy::from(0),
+            money: Money::from(0),
+        }
+    }
+    pub fn volume(&self) -> &Energy {
+        &self.volume
+    }
+    pub fn money(&self) -> &Money {
+        &self.money
+    }
+}
+
+impl Add for Output {
+    type Output = Output;
+
+    fn add(self, rhs: Self) -> Self::Output {
+        Self::Output {
+            volume: self.volume + rhs.volume,
+            money: self.money + rhs.money,
+        }
+    }
+}
+
+impl Add<PlantOutput> for Output {
+    type Output = Output;
+
+    fn add(self, rhs: PlantOutput) -> Self::Output {
+        Self::Output {
+            volume: self.volume + rhs.setpoint * TIMESTEP,
+            money: self.money + rhs.cost,
+        }
+    }
+}
+
+pub struct StackAggregatedState {
+    consumers: Output,
+    renewables: Output,
+    gas: Output,
+    nuclear: Output,
+    battery_discharge: Output,
+    battery_charge: Output,
+}
+
+impl StackAggregatedState {
+    pub fn empty() -> Self {
+        Self {
+            consumers: Output::empty(),
+            renewables: Output::empty(),
+            gas: Output::empty(),
+            nuclear: Output::empty(),
+            battery_discharge: Output::empty(),
+            battery_charge: Output::empty(),
+        }
+    }
+
+    pub fn consumers(&self) -> &Output {
+        &self.consumers
+    }
+    pub fn renewables(&self) -> &Output {
+        &self.renewables
+    }
+    pub fn gas(&self) -> &Output {
+        &self.gas
+    }
+    pub fn nuclear(&self) -> &Output {
+        &self.nuclear
+    }
+    pub fn battery_discharge(&self) -> &Output {
+        &self.battery_discharge
+    }
+    pub fn battery_charge(&self) -> &Output {
+        &self.battery_charge
+    }
+}
+
+pub struct StackDispatchResults {
+    plants_outputs: HashMap<PlantId, PlantOutput>,
+    aggregated_state: StackAggregatedState,
+}
+
+impl StackDispatchResults {
+    pub fn new(plants_outputs: HashMap<PlantId, PlantOutput>, state: StackAggregatedState) -> Self {
+        Self {
+            plants_outputs,
+            aggregated_state: state,
+        }
+    }
+    pub fn plants_outputs(&self) -> &HashMap<PlantId, PlantOutput> {
+        &self.plants_outputs
+    }
+    pub fn aggregated_state(&self) -> &StackAggregatedState {
+        &self.aggregated_state
     }
 }
 
@@ -157,9 +301,15 @@ impl StackPlants {
 mod test {
     use std::collections::HashMap;
 
+    use crate::forecast::{Forecast, ForecastValue};
+    use crate::game::delivery_period::DeliveryPeriodId;
+    use crate::plants::technologies::battery::Battery;
+    use crate::plants::technologies::consumers::Consumers;
     use crate::plants::technologies::gas_plant::GasPlant;
-    use crate::plants::{PlantId, StackPlants};
-    use crate::utils::units::{EnergyCost, Power};
+    use crate::plants::technologies::nuclear::NuclearPlant;
+    use crate::plants::technologies::renewable::RenewablePlant;
+    use crate::plants::{PlantId, StackDispatchResults, StackPlants};
+    use crate::utils::units::{Energy, EnergyCost, Money, Power};
 
     fn make_stack() -> (StackPlants, PlantId) {
         let id = PlantId::from("plant-a");
@@ -228,9 +378,9 @@ mod test {
     fn test_dispatch_plants_returns_outputs_for_all_plants() {
         let (mut stack, id) = make_stack();
         stack.program_setpoint(&id, Power::from(60));
-        let outputs = stack.dispatch_plants();
-        assert_eq!(outputs.len(), 1);
-        assert_eq!(outputs[&id].setpoint, Power::from(60));
+        let StackDispatchResults { plants_outputs, .. } = stack.dispatch_plants();
+        assert_eq!(plants_outputs.len(), 1);
+        assert_eq!(plants_outputs[&id].setpoint, Power::from(60));
     }
 
     #[test]
@@ -244,5 +394,262 @@ mod test {
         assert_eq!(history[&id].len(), 2);
         assert_eq!(history[&id][0].setpoint, Power::from(40));
         assert_eq!(history[&id][1].setpoint, Power::from(80));
+    }
+
+    fn make_single_plant_stack(
+        plant: impl crate::plants::PowerPlant + Send + Sync + 'static,
+        id: &str,
+    ) -> (StackPlants, PlantId) {
+        let plant_id = PlantId::from(id);
+        let mut plants: HashMap<PlantId, Box<dyn crate::plants::PowerPlant + Send + Sync>> =
+            HashMap::new();
+        plants.insert(plant_id.clone(), Box::new(plant));
+        (StackPlants::new(plants), plant_id)
+    }
+
+    fn make_forecast(period: usize, value: isize) -> Forecast {
+        Forecast {
+            period: DeliveryPeriodId::from(period),
+            value: ForecastValue {
+                value,
+                deviation: 0,
+            },
+        }
+    }
+
+    #[test]
+    fn test_dispatch_aggregates_gas_plant_output() {
+        let (mut stack, id) = make_stack();
+        stack.program_setpoint(&id, Power::from(60));
+        let result = stack.dispatch_plants();
+        let state = result.aggregated_state();
+        assert_eq!(state.gas().volume(), &Energy::from(60));
+        assert_eq!(state.gas().money(), &Money::from(600));
+    }
+
+    #[test]
+    fn test_dispatch_aggregates_nuclear_plant_output() {
+        let plant = NuclearPlant::new(Power::from(100), EnergyCost::from(5));
+        let (mut stack, id) = make_single_plant_stack(plant, "nuclear-a");
+        stack.program_setpoint(&id, Power::from(80));
+        let result = stack.dispatch_plants();
+        let state = result.aggregated_state();
+        assert_eq!(state.nuclear().volume(), &Energy::from(80));
+        assert_eq!(state.nuclear().money(), &Money::from(400));
+    }
+
+    #[test]
+    fn test_dispatch_aggregates_consumers_output() {
+        let plant = Consumers::new(EnergyCost::from(50), vec![make_forecast(1, 100)]);
+        let (mut stack, _) = make_single_plant_stack(plant, "consumers-a");
+        let result = stack.dispatch_plants();
+        let state = result.aggregated_state();
+        assert_eq!(state.consumers().volume(), &Energy::from(100));
+        assert_eq!(state.consumers().money(), &Money::from(5000));
+    }
+
+    #[test]
+    fn test_dispatch_aggregates_renewable_plant_output() {
+        let plant = RenewablePlant::new(vec![make_forecast(1, 75)]);
+        let (mut stack, _) = make_single_plant_stack(plant, "renewable-a");
+        let result = stack.dispatch_plants();
+        let state = result.aggregated_state();
+        assert_eq!(state.renewables().volume(), &Energy::from(75));
+        assert_eq!(state.renewables().money(), &Money::from(0));
+    }
+
+    #[test]
+    fn test_dispatch_battery_positive_setpoint_goes_to_discharge() {
+        let plant = Battery::new(Energy::from(200), Energy::from(100));
+        let (mut stack, id) = make_single_plant_stack(plant, "battery-a");
+        stack.program_setpoint(&id, Power::from(50));
+        let result = stack.dispatch_plants();
+        let state = result.aggregated_state();
+        assert_eq!(state.battery_discharge().volume(), &Energy::from(50));
+        assert_eq!(state.battery_charge().volume(), &Energy::from(0));
+    }
+
+    #[test]
+    fn test_dispatch_battery_negative_setpoint_goes_to_charge() {
+        let plant = Battery::new(Energy::from(200), Energy::from(100));
+        let (mut stack, id) = make_single_plant_stack(plant, "battery-a");
+        stack.program_setpoint(&id, Power::from(-30));
+        let result = stack.dispatch_plants();
+        let state = result.aggregated_state();
+        assert_eq!(state.battery_charge().volume(), &Energy::from(-30));
+        assert_eq!(state.battery_discharge().volume(), &Energy::from(0));
+    }
+
+    #[test]
+    fn test_dispatch_battery_zero_setpoint_updates_neither() {
+        let plant = Battery::new(Energy::from(200), Energy::from(100));
+        let (mut stack, _) = make_single_plant_stack(plant, "battery-a");
+        let result = stack.dispatch_plants();
+        let state = result.aggregated_state();
+        assert_eq!(state.battery_discharge().volume(), &Energy::from(0));
+        assert_eq!(state.battery_charge().volume(), &Energy::from(0));
+    }
+
+    #[test]
+    fn test_dispatch_multiple_gas_plants_outputs_are_summed() {
+        let id_a = PlantId::from("gas-a");
+        let id_b = PlantId::from("gas-b");
+        let mut plants: HashMap<PlantId, Box<dyn crate::plants::PowerPlant + Send + Sync>> =
+            HashMap::new();
+        plants.insert(
+            id_a.clone(),
+            Box::new(GasPlant::new(EnergyCost::from(10), Power::from(100))),
+        );
+        plants.insert(
+            id_b.clone(),
+            Box::new(GasPlant::new(EnergyCost::from(20), Power::from(100))),
+        );
+        let mut stack = StackPlants::new(plants);
+        stack.program_setpoint(&id_a, Power::from(40));
+        stack.program_setpoint(&id_b, Power::from(60));
+        let result = stack.dispatch_plants();
+        let state = result.aggregated_state();
+        assert_eq!(state.gas().volume(), &Energy::from(100));
+        assert_eq!(state.gas().money(), &Money::from(40 * 10 + 60 * 20));
+    }
+
+    #[test]
+    fn test_dispatch_multiple_nuclear_plants_outputs_are_summed() {
+        let id_a = PlantId::from("nuclear-a");
+        let id_b = PlantId::from("nuclear-b");
+        let mut plants: HashMap<PlantId, Box<dyn crate::plants::PowerPlant + Send + Sync>> =
+            HashMap::new();
+        plants.insert(
+            id_a.clone(),
+            Box::new(NuclearPlant::new(Power::from(100), EnergyCost::from(5))),
+        );
+        plants.insert(
+            id_b.clone(),
+            Box::new(NuclearPlant::new(Power::from(100), EnergyCost::from(5))),
+        );
+        let mut stack = StackPlants::new(plants);
+        stack.program_setpoint(&id_a, Power::from(50));
+        stack.program_setpoint(&id_b, Power::from(70));
+        let result = stack.dispatch_plants();
+        let state = result.aggregated_state();
+        assert_eq!(state.nuclear().volume(), &Energy::from(120));
+        assert_eq!(state.nuclear().money(), &Money::from(120 * 5));
+    }
+
+    #[test]
+    fn test_dispatch_multiple_consumers_outputs_are_summed() {
+        let id_a = PlantId::from("consumers-a");
+        let id_b = PlantId::from("consumers-b");
+        let mut plants: HashMap<PlantId, Box<dyn crate::plants::PowerPlant + Send + Sync>> =
+            HashMap::new();
+        plants.insert(
+            id_a.clone(),
+            Box::new(Consumers::new(
+                EnergyCost::from(50),
+                vec![make_forecast(1, 100)],
+            )),
+        );
+        plants.insert(
+            id_b.clone(),
+            Box::new(Consumers::new(
+                EnergyCost::from(50),
+                vec![make_forecast(1, 75)],
+            )),
+        );
+        let mut stack = StackPlants::new(plants);
+        let result = stack.dispatch_plants();
+        let state = result.aggregated_state();
+        assert_eq!(state.consumers().volume(), &Energy::from(175));
+        assert_eq!(state.consumers().money(), &Money::from(175 * 50));
+    }
+
+    #[test]
+    fn test_dispatch_multiple_renewable_plants_outputs_are_summed() {
+        let id_a = PlantId::from("renewable-a");
+        let id_b = PlantId::from("renewable-b");
+        let mut plants: HashMap<PlantId, Box<dyn crate::plants::PowerPlant + Send + Sync>> =
+            HashMap::new();
+        plants.insert(
+            id_a.clone(),
+            Box::new(RenewablePlant::new(vec![make_forecast(1, 50)])),
+        );
+        plants.insert(
+            id_b.clone(),
+            Box::new(RenewablePlant::new(vec![make_forecast(1, 25)])),
+        );
+        let mut stack = StackPlants::new(plants);
+        let result = stack.dispatch_plants();
+        let state = result.aggregated_state();
+        assert_eq!(state.renewables().volume(), &Energy::from(75));
+        assert_eq!(state.renewables().money(), &Money::from(0));
+    }
+
+    #[test]
+    fn test_dispatch_multiple_batteries_discharging_are_summed() {
+        let id_a = PlantId::from("battery-a");
+        let id_b = PlantId::from("battery-b");
+        let mut plants: HashMap<PlantId, Box<dyn crate::plants::PowerPlant + Send + Sync>> =
+            HashMap::new();
+        plants.insert(
+            id_a.clone(),
+            Box::new(Battery::new(Energy::from(200), Energy::from(100))),
+        );
+        plants.insert(
+            id_b.clone(),
+            Box::new(Battery::new(Energy::from(200), Energy::from(100))),
+        );
+        let mut stack = StackPlants::new(plants);
+        stack.program_setpoint(&id_a, Power::from(30));
+        stack.program_setpoint(&id_b, Power::from(40));
+        let result = stack.dispatch_plants();
+        let state = result.aggregated_state();
+        assert_eq!(state.battery_discharge().volume(), &Energy::from(70));
+        assert_eq!(state.battery_charge().volume(), &Energy::from(0));
+    }
+
+    #[test]
+    fn test_dispatch_multiple_batteries_charging_are_summed() {
+        let id_a = PlantId::from("battery-a");
+        let id_b = PlantId::from("battery-b");
+        let mut plants: HashMap<PlantId, Box<dyn crate::plants::PowerPlant + Send + Sync>> =
+            HashMap::new();
+        plants.insert(
+            id_a.clone(),
+            Box::new(Battery::new(Energy::from(200), Energy::from(100))),
+        );
+        plants.insert(
+            id_b.clone(),
+            Box::new(Battery::new(Energy::from(200), Energy::from(100))),
+        );
+        let mut stack = StackPlants::new(plants);
+        stack.program_setpoint(&id_a, Power::from(-20));
+        stack.program_setpoint(&id_b, Power::from(-50));
+        let result = stack.dispatch_plants();
+        let state = result.aggregated_state();
+        assert_eq!(state.battery_charge().volume(), &Energy::from(-70));
+        assert_eq!(state.battery_discharge().volume(), &Energy::from(0));
+    }
+
+    #[test]
+    fn test_dispatch_batteries_with_opposite_signs_do_not_cancel_each_other() {
+        let id_a = PlantId::from("battery-a");
+        let id_b = PlantId::from("battery-b");
+        let mut plants: HashMap<PlantId, Box<dyn crate::plants::PowerPlant + Send + Sync>> =
+            HashMap::new();
+        plants.insert(
+            id_a.clone(),
+            Box::new(Battery::new(Energy::from(200), Energy::from(100))),
+        );
+        plants.insert(
+            id_b.clone(),
+            Box::new(Battery::new(Energy::from(200), Energy::from(100))),
+        );
+        let mut stack = StackPlants::new(plants);
+        stack.program_setpoint(&id_a, Power::from(40));
+        stack.program_setpoint(&id_b, Power::from(-30));
+        let result = stack.dispatch_plants();
+        let state = result.aggregated_state();
+        assert_eq!(state.battery_discharge().volume(), &Energy::from(40));
+        assert_eq!(state.battery_charge().volume(), &Energy::from(-30));
     }
 }
