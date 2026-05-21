@@ -11,7 +11,8 @@ use crate::{
     forecast::{Forecast, ForecastValue},
     game::{GameId, delivery_period::DeliveryPeriodId},
     plants::{
-        PlantId, PlantOutput, PowerPlant, PowerPlantPublicRepr, Stack, StackPlants,
+        PlantId, PlantOutput, PowerPlant, PowerPlantPublicRepr, Stack, StackDispatchResults,
+        StackPlants,
         technologies::{
             battery::Battery, consumers::Consumers, gas_plant::GasPlant, nuclear::NuclearPlant,
             renewable::RenewablePlant,
@@ -34,7 +35,7 @@ pub enum StackMessage {
     OpenStack(DeliveryPeriodId),
     CloseStack {
         period_id: DeliveryPeriodId,
-        tx_back: oneshot::Sender<HashMap<PlantId, PlantOutput>>,
+        tx_back: oneshot::Sender<StackDispatchResults>,
     },
     ProgramSetpoint(ProgramPlant),
     GetSnapshot(oneshot::Sender<HashMap<PlantId, PowerPlantPublicRepr>>),
@@ -83,7 +84,7 @@ pub struct StackActor<PC: PlayerConnections> {
     tx: Sender<StackMessage>,
     rx: Receiver<StackMessage>,
     players_connections: PC,
-    past_outputs: HashMap<DeliveryPeriodId, HashMap<PlantId, PlantOutput>>,
+    past_results: HashMap<DeliveryPeriodId, StackDispatchResults>,
     cancellation_token: CancellationToken,
 }
 
@@ -108,7 +109,7 @@ impl<PC: PlayerConnections> StackActor<PC> {
             player,
             stack,
             players_connections,
-            past_outputs: HashMap::new(),
+            past_results: HashMap::new(),
             tx,
             rx,
             cancellation_token,
@@ -204,7 +205,7 @@ impl<PC: PlayerConnections> StackActor<PC> {
                 }
             }
             (Closed, CloseStack { period_id, tx_back }) => {
-                if let Some(outputs) = self.past_outputs.get(&period_id) {
+                if let Some(outputs) = self.past_results.get(&period_id) {
                     let _ = tx_back.send(outputs.clone());
                 }
             }
@@ -252,7 +253,7 @@ impl<PC: PlayerConnections> StackActor<PC> {
     async fn close_stack(
         &mut self,
         period_id: DeliveryPeriodId,
-        tx_back: oneshot::Sender<HashMap<PlantId, PlantOutput>>,
+        tx_back: oneshot::Sender<StackDispatchResults>,
     ) {
         // Update state
         self.state = StackState::Closed;
@@ -260,12 +261,12 @@ impl<PC: PlayerConnections> StackActor<PC> {
         // Dispatch plants and collect their outputs
         let dispatch_results = self.stack.dispatch_plants();
 
-        // Store outputs for future reference
-        self.past_outputs
-            .insert(period_id, dispatch_results.plants_outputs().clone());
+        // Store results for future reference
+        self.past_results
+            .insert(period_id, dispatch_results.clone());
 
         // Send outputs back to caller
-        if let Err(err) = tx_back.send(dispatch_results.plants_outputs) {
+        if let Err(err) = tx_back.send(dispatch_results) {
             tracing::error!(
                 game_id = ?self.game,
                 player_id = ?self.player,
@@ -547,7 +548,7 @@ mod tests_stack {
         };
     }
     #[tokio::test]
-    async fn test_receive_plant_outputs_when_closing_stack() {
+    async fn test_receive_plants_outputs_when_closing_stack() {
         let (_, tx, ..) = start_stack();
 
         let plants = get_stack_snashot(tx.clone()).await;
@@ -570,10 +571,10 @@ mod tests_stack {
             })
             .await;
 
-        let plant_outputs = rx_back
+        let results = rx_back
             .await
             .expect("Should have received a map of plant outputs");
-        assert!(!plant_outputs.is_empty());
+        assert!(!results.plants_outputs().is_empty());
         assert_eq!(
             plants_balance,
             plants.values().fold(NO_POWER, |acc, plant| {
@@ -752,7 +753,7 @@ mod tests_stack {
     }
 
     #[tokio::test]
-    async fn test_closing_twice_should_return_the_same_plants_outputs() {
+    async fn test_closing_twice_should_return_the_same_dispatch_results() {
         let (_, tx, ..) = start_stack();
 
         // Close the stack
@@ -764,10 +765,10 @@ mod tests_stack {
             })
             .await;
 
-        let plant_outputs = rx_back
+        let results = rx_back
             .await
             .expect("Should have received a map of plant outputs");
-        assert!(!plant_outputs.is_empty());
+        assert!(!results.plants_outputs().is_empty());
 
         // Close the stack again
         let (tx_back, rx_back) = oneshot::channel();
@@ -778,10 +779,10 @@ mod tests_stack {
             })
             .await;
 
-        let same_plant_outputs = rx_back
+        let same_results = rx_back
             .await
             .expect("Should have received a map of plant outputs");
-        assert_eq!(same_plant_outputs, plant_outputs);
+        assert_eq!(same_results.plants_outputs(), results.plants_outputs());
     }
 
     #[tokio::test]

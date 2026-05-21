@@ -9,6 +9,7 @@ use crate::{
     game::delivery_period::DeliveryPeriodId,
     plants::{
         CloseStackError, GetSnapshotError, PlantId, PlantOutput, PowerPlantPublicRepr, Stack,
+        StackDispatchResults,
     },
     utils::units::Power,
 };
@@ -34,7 +35,7 @@ impl Stack for StackService {
     async fn close_stack(
         &self,
         delivery_period: DeliveryPeriodId,
-    ) -> Result<HashMap<PlantId, PlantOutput>, CloseStackError> {
+    ) -> Result<StackDispatchResults, CloseStackError> {
         let (tx_back, rx) = oneshot::channel();
         let _ = self
             .tx
@@ -93,7 +94,7 @@ mockall::mock! {
         fn close_stack(
             &self,
             delivery_period: DeliveryPeriodId,
-        ) -> impl Future<Output = Result<HashMap<PlantId, PlantOutput>, CloseStackError>> + Send;
+        ) -> impl Future<Output = Result<StackDispatchResults, CloseStackError>> + Send;
 
         fn program_setpoint(&self, plant: PlantId, setpoint: Power) -> impl Future<Output = ()> + Send;
 
@@ -120,7 +121,10 @@ mod tests {
     use crate::{
         forecast::{Forecast, ForecastValue},
         game::delivery_period::DeliveryPeriodId,
-        plants::{PlantId, PlantOutput, Stack, StackService, infra::actor::StackMessage},
+        plants::{
+            PlantId, PlantOutput, Stack, StackAggregatedState, StackDispatchResults, StackService,
+            infra::actor::StackMessage,
+        },
         utils::units::{Money, Power},
     };
 
@@ -150,12 +154,15 @@ mod tests {
             else {
                 unreachable!()
             };
-            let _ = tx_back.send(HashMap::new());
+            let _ = tx_back.send(StackDispatchResults::new(
+                HashMap::new(),
+                StackAggregatedState::empty(),
+            ));
         });
 
         let res = service.close_stack(DeliveryPeriodId::from(0)).await;
         assert!(res.is_ok());
-        assert_eq!(res.unwrap().len(), 0);
+        assert_eq!(res.unwrap().plants_outputs().len(), 0);
     }
 
     #[tokio::test]

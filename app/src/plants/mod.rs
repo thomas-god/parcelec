@@ -47,7 +47,7 @@ pub trait Stack: Clone + Send + Sync + 'static {
     fn close_stack(
         &self,
         delivery_period: DeliveryPeriodId,
-    ) -> impl Future<Output = Result<HashMap<PlantId, PlantOutput>, CloseStackError>> + Send;
+    ) -> impl Future<Output = Result<StackDispatchResults, CloseStackError>> + Send;
 
     /// Program a setpoint on a power plant of the stack. Each plant can be programmed any number of
     /// times a player wants. The last setpoint will be used when closing the stack for the delivery
@@ -191,6 +191,7 @@ impl StackPlants {
     }
 }
 
+#[derive(Debug, Clone)]
 pub struct Output {
     volume: Energy,
     money: Money,
@@ -236,6 +237,7 @@ impl Add<PlantOutput> for Output {
     }
 }
 
+#[derive(Debug, Clone)]
 pub struct StackAggregatedState {
     consumers: Output,
     renewables: Output,
@@ -277,6 +279,7 @@ impl StackAggregatedState {
     }
 }
 
+#[derive(Debug, Clone)]
 pub struct StackDispatchResults {
     plants_outputs: HashMap<PlantId, PlantOutput>,
     aggregated_state: StackAggregatedState,
@@ -294,6 +297,15 @@ impl StackDispatchResults {
     }
     pub fn aggregated_state(&self) -> &StackAggregatedState {
         &self.aggregated_state
+    }
+}
+
+impl Default for StackDispatchResults {
+    fn default() -> Self {
+        Self {
+            plants_outputs: HashMap::new(),
+            aggregated_state: StackAggregatedState::empty(),
+        }
     }
 }
 

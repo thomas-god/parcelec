@@ -8,7 +8,7 @@ use crate::{
         Direction,
         order_book::{Trade, TradeLeg},
     },
-    plants::{PlantId, PlantOutput},
+    plants::{PlantId, PlantOutput, StackDispatchResults},
     player::PlayerId,
     utils::units::{EnergyCost, Money, NO_POWER, Power, TIMESTEP},
 };
@@ -67,14 +67,14 @@ impl Add<TradeLeg> for PlayerScore {
 
 pub fn compute_players_scores(
     trades: Vec<Trade>,
-    plants_outputs: HashMap<PlayerId, HashMap<PlantId, PlantOutput>>,
+    stacks_results: HashMap<PlayerId, StackDispatchResults>,
 ) -> HashMap<PlayerId, PlayerScore> {
-    plants_outputs
+    stacks_results
         .iter()
-        .map(|(player_id, outputs)| {
+        .map(|(player_id, results)| {
             (
                 player_id.clone(),
-                compute_player_score(player_id, outputs, &trades),
+                compute_player_score(player_id, results.plants_outputs(), &trades),
             )
         })
         .collect()
@@ -117,7 +117,7 @@ mod tests {
             NEGATIVE_IMBALANCE_COST, POSITIVE_IMBALANCE_COST, PlayerScore, compute_players_scores,
         },
         market::order_book::Trade,
-        plants::{PlantId, PlantOutput},
+        plants::{PlantId, PlantOutput, StackAggregatedState, StackDispatchResults},
         player::PlayerId,
         utils::units::{Energy, EnergyCost, Money, Power},
     };
@@ -135,22 +135,25 @@ mod tests {
         let trades = Vec::new();
         let plants_outputs = HashMap::from([(
             PlayerId::from("player_1"),
-            HashMap::from([
-                (
-                    PlantId::from("plant_1"),
-                    PlantOutput {
-                        setpoint: Power::from(100),
-                        cost: Money::from(100),
-                    },
-                ),
-                (
-                    PlantId::from("plant_2"),
-                    PlantOutput {
-                        setpoint: Power::from(200),
-                        cost: Money::from(500),
-                    },
-                ),
-            ]),
+            StackDispatchResults::new(
+                HashMap::from([
+                    (
+                        PlantId::from("plant_1"),
+                        PlantOutput {
+                            setpoint: Power::from(100),
+                            cost: Money::from(100),
+                        },
+                    ),
+                    (
+                        PlantId::from("plant_2"),
+                        PlantOutput {
+                            setpoint: Power::from(200),
+                            cost: Money::from(500),
+                        },
+                    ),
+                ]),
+                StackAggregatedState::empty(),
+            ),
         )]);
 
         assert_eq!(
@@ -177,22 +180,25 @@ mod tests {
         }]);
         let plants_outputs = HashMap::from([(
             PlayerId::from("player_1"),
-            HashMap::from([
-                (
-                    PlantId::from("plant_1"),
-                    PlantOutput {
-                        setpoint: Power::from(100),
-                        cost: Money::from(100),
-                    },
-                ),
-                (
-                    PlantId::from("plant_2"),
-                    PlantOutput {
-                        setpoint: Power::from(200),
-                        cost: Money::from(500),
-                    },
-                ),
-            ]),
+            StackDispatchResults::new(
+                HashMap::from([
+                    (
+                        PlantId::from("plant_1"),
+                        PlantOutput {
+                            setpoint: Power::from(100),
+                            cost: Money::from(100),
+                        },
+                    ),
+                    (
+                        PlantId::from("plant_2"),
+                        PlantOutput {
+                            setpoint: Power::from(200),
+                            cost: Money::from(500),
+                        },
+                    ),
+                ]),
+                StackAggregatedState::empty(),
+            ),
         )]);
 
         assert_eq!(
@@ -220,32 +226,38 @@ mod tests {
         let plants_outputs = HashMap::from([
             (
                 PlayerId::from("player_1"),
-                HashMap::from([
-                    (
-                        PlantId::from("plant_1"),
-                        PlantOutput {
-                            setpoint: Power::from(100),
-                            cost: Money::from(100),
-                        },
-                    ),
-                    (
-                        PlantId::from("plant_2"),
-                        PlantOutput {
-                            setpoint: Power::from(200),
-                            cost: Money::from(500),
-                        },
-                    ),
-                ]),
+                StackDispatchResults::new(
+                    HashMap::from([
+                        (
+                            PlantId::from("plant_1"),
+                            PlantOutput {
+                                setpoint: Power::from(100),
+                                cost: Money::from(100),
+                            },
+                        ),
+                        (
+                            PlantId::from("plant_2"),
+                            PlantOutput {
+                                setpoint: Power::from(200),
+                                cost: Money::from(500),
+                            },
+                        ),
+                    ]),
+                    StackAggregatedState::empty(),
+                ),
             ),
             (
                 PlayerId::from("another_player"),
-                HashMap::from([(
-                    PlantId::from("another_plant"),
-                    PlantOutput {
-                        setpoint: Power::from(-1000),
-                        cost: Money::from(0),
-                    },
-                )]),
+                StackDispatchResults::new(
+                    HashMap::from([(
+                        PlantId::from("another_plant"),
+                        PlantOutput {
+                            setpoint: Power::from(-1000),
+                            cost: Money::from(0),
+                        },
+                    )]),
+                    StackAggregatedState::empty(),
+                ),
             ),
         ]);
 

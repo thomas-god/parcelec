@@ -13,7 +13,7 @@ use tokio_util::sync::CancellationToken;
 use crate::{
     game::scores::compute_players_scores,
     market::{Market, order_book::Trade},
-    plants::{PlantId, PlantOutput, Stack},
+    plants::{Stack, StackDispatchResults},
     player::PlayerId,
 };
 
@@ -109,7 +109,7 @@ pub async fn start_delivery_period<StkS, MS>(
         ))
     });
 
-    let (trades, plants_outputs) = loop {
+    let (trades, stacks_results) = loop {
         tokio::select! {
             res = set.join_next() => {
                 match res {
@@ -137,7 +137,7 @@ pub async fn start_delivery_period<StkS, MS>(
         }
     };
 
-    let scores = compute_players_scores(trades, plants_outputs);
+    let scores = compute_players_scores(trades, stacks_results);
     tracing::info!("Delivery period ended: {scores:?}");
     let _ = game_tx
         .send(GameMessage::DeliveryPeriodResults(DeliveryPeriodResults {
@@ -177,7 +177,7 @@ async fn close_stacks_future<StkS>(
     stacks: HashMap<PlayerId, StkS>,
     period_id: DeliveryPeriodId,
     duration: Duration,
-) -> HashMap<PlayerId, HashMap<PlantId, PlantOutput>>
+) -> HashMap<PlayerId, StackDispatchResults>
 where
     StkS: Stack,
 {
@@ -188,7 +188,7 @@ where
 async fn close_stacks<StkS>(
     stacks: HashMap<PlayerId, StkS>,
     period_id: DeliveryPeriodId,
-) -> HashMap<PlayerId, HashMap<PlantId, PlantOutput>>
+) -> HashMap<PlayerId, StackDispatchResults>
 where
     StkS: Stack,
 {
@@ -206,13 +206,16 @@ async fn close_stack<StkS>(
     player_id: &PlayerId,
     period_id: DeliveryPeriodId,
     stack: &StkS,
-) -> (PlayerId, HashMap<PlantId, PlantOutput>)
+) -> (PlayerId, StackDispatchResults)
 where
     StkS: Stack,
 {
-    let plant_outputs = stack.close_stack(period_id).await.unwrap_or(HashMap::new());
+    let results = stack
+        .close_stack(period_id)
+        .await
+        .unwrap_or(StackDispatchResults::default());
 
-    (player_id.clone(), plant_outputs)
+    (player_id.clone(), results)
 }
 
 #[cfg(test)]
@@ -230,7 +233,7 @@ mod tests {
             delivery_period::{DeliveryPeriodId, start_delivery_period},
         },
         market::infra::service::MockMarketService,
-        plants::infra::service::MockStackService,
+        plants::{StackAggregatedState, StackDispatchResults, infra::service::MockStackService},
         player::PlayerId,
     };
 
@@ -299,7 +302,12 @@ mod tests {
                     .expect_close_stack()
                     .with(eq(DeliveryPeriodId::from(1)))
                     .once()
-                    .returning(|_| Box::pin(future::ready(Ok(HashMap::new()))));
+                    .returning(|_| {
+                        Box::pin(future::ready(Ok(StackDispatchResults::new(
+                            HashMap::new(),
+                            StackAggregatedState::empty(),
+                        ))))
+                    });
                 mocked
             });
         stack_service.expect_close_stack().never();
@@ -382,7 +390,12 @@ mod tests {
             .expect_close_stack()
             .with(eq(DeliveryPeriodId::from(1)))
             .once()
-            .returning(|_| Box::pin(future::ready(Ok(HashMap::new()))));
+            .returning(|_| {
+                Box::pin(future::ready(Ok(StackDispatchResults::new(
+                    HashMap::new(),
+                    StackAggregatedState::empty(),
+                ))))
+            });
         let stacks_services = HashMap::from([(PlayerId::from("toto"), stack_service)]);
         let token = CancellationToken::new();
         let timers = None;

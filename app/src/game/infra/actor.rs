@@ -200,7 +200,7 @@ impl<MS: Market, PC: PlayerConnections, F: Fn() -> StackPlants + Clone + Send + 
             .iter()
             .map(|(id, context)| (id.clone(), context.service.clone()))
             .collect();
-        let (results_tx, results_rx) = oneshot::channel();
+        let (all_players_ready_tx, all_players_ready_rx) = oneshot::channel();
         let timers = self.delivery_period_duration;
         let token = self.cancellation_token.clone();
         tokio::spawn(async move {
@@ -209,13 +209,13 @@ impl<MS: Market, PC: PlayerConnections, F: Fn() -> StackPlants + Clone + Send + 
                 game_tx,
                 market_service,
                 stacks_tx,
-                results_rx,
+                all_players_ready_rx,
                 timers,
                 token,
             )
             .await;
         });
-        self.all_players_ready_tx = Some(results_tx);
+        self.all_players_ready_tx = Some(all_players_ready_tx);
         let _ = self.state_watch.send(self.state.clone());
     }
 
