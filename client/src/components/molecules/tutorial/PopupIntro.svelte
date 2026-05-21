@@ -50,7 +50,7 @@
       <p>
         Pour chaque module vous cliquez sur l'icone <img
           src="/icons/question-mark.svg"
-          alt="Stack of book icon"
+          alt="Question mark icon"
           class="w-6 h-6 inline"
         /> pour en apprendre plus.
       </p>

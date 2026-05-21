@@ -25,7 +25,11 @@
 <div class="fab z-100 flex-row-reverse sm:flex-col-reverse">
   <!-- a focusable div with tabindex is necessary to work on all browsers. role="button" is necessary for accessibility -->
   <div tabindex="0" role="button" class="btn btn-lg btn-circle btn-info">
-    <img src="/icons/question-mark.svg" alt="Pile of books" class="h-8 w-8" />
+    <img
+      src="/icons/question-mark.svg"
+      alt="Question mark icon"
+      class="h-8 w-8"
+    />
   </div>
 
   <!-- buttons that show up when FAB is open -->
