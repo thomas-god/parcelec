@@ -30,17 +30,16 @@
   };
 </script>
 
-<span class="countdown font-mono">
+<span class="countdown font-mono h-full">
   <span
-    style="--value:{remaining.minutes};"
+    style="--value:{remaining.minutes}; --digits:2;"
     aria-live="polite"
     aria-label="minutes">{remaining.minutes}</span
   >
-  m
+  :
   <span
-    style="--value:{remaining.seconds};"
+    style="--value:{remaining.seconds}; --digits:2;"
     aria-live="polite"
     aria-label="seconds">{remaining.seconds}</span
   >
-  s
 </span>

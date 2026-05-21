@@ -19,9 +19,7 @@
   import Header from "../../components/molecules/Header.svelte";
   import PlayersReadyList from "../../components/molecules/PlayersReadyList.svelte";
   import FinalScores from "../../components/molecules/FinalScores.svelte";
-  import Footer from "../../components/molecules/Footer.svelte";
-  import { isSome, none, some, type Option } from "$lib/Options";
-  import Countdown from "../../components/atoms/Countdown.svelte";
+  import { none, some, type Option } from "$lib/Options";
   import RunningGame from "../../components/pages/game/RunningGame.svelte";
 
   let player_name: string = $state("");
@@ -150,7 +148,7 @@
   const sendMessage = (msg: string) => {
     socket.send(msg);
   };
-  const startGame = () => {
+  const make_player_ready = () => {
     if (game_state === "Ended") {
       goto("/");
       return;
@@ -159,52 +157,42 @@
   };
 </script>
 
-<main class="h-dvh max-w-300 mx-auto @container">
+<main class="h-dvh @container">
   {#if socketIsOpen}
-    <div class="flex flex-col gap-6 items-stretch">
+    <div class="flex flex-col items-stretch">
       <Header
         {game_state}
+        {player_is_ready}
+        {make_player_ready}
+        {delivery_period_end}
         periods={{
           current: delivery_period_id,
           last: last_delivery_period_id,
         }}
       />
 
-      {#if game_state === "Running"}
-        <RunningGame
-          {orderBook}
-          {plant_forecasts}
-          {plant_history}
-          {plants}
-          {sendMessage}
-          {trades}
-          {trades_to_display}
-          {removeTradeToDisplay}
-        />
-      {:else if game_state === "Open"}
-        <PlayersReadyList {player_name} {readiness_status} />
-      {:else if game_state === "PostDelivery"}
-        <div class="flex flex-col">
-          <Scores {scores} current_period={delivery_period_id} />
-        </div>
-      {:else if game_state === "Ended"}
-        <FinalScores {player_name} {final_scores} />
-      {/if}
-      {#if isSome(delivery_period_end)}
-        <div class="self-center text-lg mb-18">
-          Termine dans :
-          <Countdown end_at={delivery_period_end.value} />
-        </div>
-      {/if}
-      <Footer
-        {player_is_ready}
-        {game_state}
-        {startGame}
-        periods={{
-          current: delivery_period_id,
-          last: last_delivery_period_id,
-        }}
-      />
+      <div class="max-w-300 mx-auto w-full pt-3">
+        {#if game_state === "Running"}
+          <RunningGame
+            {orderBook}
+            {plant_forecasts}
+            {plant_history}
+            {plants}
+            {sendMessage}
+            {trades}
+            {trades_to_display}
+            {removeTradeToDisplay}
+          />
+        {:else if game_state === "Open"}
+          <PlayersReadyList {player_name} {readiness_status} />
+        {:else if game_state === "PostDelivery"}
+          <div class="flex flex-col">
+            <Scores {scores} current_period={delivery_period_id} />
+          </div>
+        {:else if game_state === "Ended"}
+          <FinalScores {player_name} {final_scores} />
+        {/if}
+      </div>
     </div>
   {:else}
     <p>Not connected</p>

@@ -164,13 +164,12 @@
   .portfolio-wrapper {
     padding-left: 0.75rem;
     padding-right: 0.75rem;
-    padding-top: 1rem;
 
     @media (max-width: 400px) {
       padding-left: calc(var(--spacing) * 1);
       padding-right: calc(var(--spacing) * 1);
-      padding-top: calc(var(--spacing) * 1);
     }
+
     @container (min-width: 1200px) {
       padding-left: 1rem;
       padding-right: 1rem;
