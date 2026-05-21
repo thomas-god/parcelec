@@ -15,8 +15,7 @@ use crate::{
     infra::api::state::cleanup_state,
     market::{MarketActor, bots::start_bots},
     plants::{
-        PlantId,
-        infra::actor::StackPlants,
+        PlantId, PowerPlant, StackPlants,
         technologies::{
             battery::Battery, consumers::Consumers, gas_plant::GasPlant, nuclear::NuclearPlant,
             renewable::RenewablePlant,
@@ -169,7 +168,7 @@ fn stack_plants_builder(
             consumers,
             renewable_forecasts,
         } = &config;
-        let mut map: StackPlants = HashMap::new();
+        let mut map: HashMap<PlantId, Box<dyn PowerPlant + Send + Sync>> = HashMap::new();
         map.insert(
             PlantId::default(),
             Box::new(Battery::new(battery.max_charge, Energy::from(0))),
@@ -193,6 +192,6 @@ fn stack_plants_builder(
                 consumers.forecasts.clone(),
             )),
         );
-        map
+        StackPlants::new(map)
     }
 }

@@ -11,7 +11,7 @@ use crate::{
     forecast::{Forecast, ForecastValue},
     game::{GameId, delivery_period::DeliveryPeriodId},
     plants::{
-        PlantId, PlantOutput, PowerPlant, PowerPlantPublicRepr, Stack,
+        PlantId, PlantOutput, PowerPlant, PowerPlantPublicRepr, Stack, StackPlants,
         technologies::{
             battery::Battery, consumers::Consumers, gas_plant::GasPlant, nuclear::NuclearPlant,
             renewable::RenewablePlant,
@@ -72,8 +72,6 @@ pub struct StackContext<PS: Stack> {
     pub state_rx: watch::Receiver<StackState>,
 }
 
-pub type StackPlants = HashMap<PlantId, Box<dyn PowerPlant + Send + Sync>>;
-
 /// A stack is the collection of power plants owned by a given player
 pub struct StackActor<PC: PlayerConnections> {
     game: GameId,
@@ -81,7 +79,7 @@ pub struct StackActor<PC: PlayerConnections> {
     state_sender: watch::Sender<StackState>,
     delivery_period: DeliveryPeriodId,
     player: PlayerId,
-    plants: StackPlants,
+    stack: StackPlants,
     tx: Sender<StackMessage>,
     rx: Receiver<StackMessage>,
     players_connections: PC,
@@ -93,7 +91,7 @@ impl<PC: PlayerConnections> StackActor<PC> {
     pub fn new(
         game: GameId,
         player: PlayerId,
-        plants: StackPlants,
+        stack: StackPlants,
         initial_state: StackState,
         delivery_period: DeliveryPeriodId,
         players_connections: PC,
@@ -108,7 +106,7 @@ impl<PC: PlayerConnections> StackActor<PC> {
             state_sender: state_tx,
             delivery_period,
             player,
-            plants,
+            stack,
             players_connections,
             past_outputs: HashMap::new(),
             tx,
@@ -168,13 +166,13 @@ impl<PC: PlayerConnections> StackActor<PC> {
         use StackState::*;
         match (&self.state, message) {
             (_, GetSnapshot(tx_back)) => {
-                let _ = tx_back.send(self.stack_snapshot());
+                let _ = tx_back.send(self.stack.snapshot());
             }
             (_, GetForecasts(tx_back)) => {
-                let _ = tx_back.send(self.stack_forecasts());
+                let _ = tx_back.send(self.stack.forecasts());
             }
             (_, GetHistory(tx_back)) => {
-                let _ = tx_back.send(self.stack_history());
+                let _ = tx_back.send(self.stack.history());
             }
             (Open, ProgramSetpoint(ProgramPlant { plant_id, setpoint })) => {
                 self.program_plant_setpoint(plant_id, setpoint).await;
@@ -214,7 +212,7 @@ impl<PC: PlayerConnections> StackActor<PC> {
     }
 
     async fn send_stack_snapshot(&self) {
-        let stack_snapshot = self.stack_snapshot();
+        let stack_snapshot = self.stack.snapshot();
 
         self.players_connections
             .send_to_player(
@@ -228,7 +226,7 @@ impl<PC: PlayerConnections> StackActor<PC> {
     }
 
     async fn send_stack_forecasts(&self) {
-        let forecasts = self.stack_forecasts();
+        let forecasts = self.stack.forecasts();
 
         self.players_connections
             .send_to_player(
@@ -240,7 +238,7 @@ impl<PC: PlayerConnections> StackActor<PC> {
     }
 
     async fn send_stack_history(&self) {
-        let history = self.stack_history();
+        let history = self.stack.history();
 
         self.players_connections
             .send_to_player(
@@ -251,27 +249,6 @@ impl<PC: PlayerConnections> StackActor<PC> {
             .await;
     }
 
-    fn stack_snapshot(&self) -> HashMap<PlantId, PowerPlantPublicRepr> {
-        self.plants
-            .iter()
-            .map(|(plant_id, plant)| (plant_id.to_owned(), plant.current_state()))
-            .collect()
-    }
-
-    fn stack_forecasts(&self) -> HashMap<PlantId, Option<Vec<Forecast>>> {
-        self.plants
-            .iter()
-            .map(|(plant_id, plant)| (plant_id.to_owned(), plant.get_forecast()))
-            .collect()
-    }
-
-    fn stack_history(&self) -> HashMap<PlantId, Vec<PlantOutput>> {
-        self.plants
-            .iter()
-            .map(|(plant_id, plant)| (plant_id.to_owned(), plant.get_history()))
-            .collect()
-    }
-
     async fn close_stack(
         &mut self,
         period_id: DeliveryPeriodId,
@@ -280,12 +257,8 @@ impl<PC: PlayerConnections> StackActor<PC> {
         // Update state
         self.state = StackState::Closed;
 
-        // Collect outputs from plants
-        let plant_outputs: HashMap<PlantId, PlantOutput> = self
-            .plants
-            .iter_mut()
-            .map(|(plant_id, plant)| (plant_id.clone(), plant.dispatch()))
-            .collect();
+        // Dispatch plants and collect their outputs
+        let plant_outputs = self.stack.dispatch_plants();
 
         // Store outputs for future reference
         self.past_outputs.insert(period_id, plant_outputs.clone());
@@ -316,8 +289,7 @@ impl<PC: PlayerConnections> StackActor<PC> {
     }
 
     async fn program_plant_setpoint(&mut self, plant_id: PlantId, setpoint: Power) {
-        if let Some(plant) = self.plants.get_mut(&plant_id) {
-            let PlantOutput { cost, .. } = plant.program_setpoint(setpoint);
+        if let Some(PlantOutput { cost, .. }) = self.stack.program_setpoint(&plant_id, setpoint) {
             tracing::info!("Programmed setpoint {setpoint:?} for plant {plant_id} (cost: {cost}");
             self.send_stack_snapshot().await;
         };
@@ -408,7 +380,7 @@ pub fn default_stack_plants_builder() -> impl Fn() -> StackPlants + Clone + Send
             PlantId::default(),
             Box::new(NuclearPlant::new(Power::from(1000), EnergyCost::from(35))),
         );
-        map
+        StackPlants::new(map)
     }
 }
 

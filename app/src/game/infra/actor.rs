@@ -15,7 +15,7 @@ use crate::{
         delivery_period::{DeliveryPeriodId, DeliveryPeriodResults, start_delivery_period},
         scores::{GameRankings, PlayerResult, PlayerScore},
     },
-    plants::infra::actor::StackPlants,
+    plants::StackPlants,
 };
 use crate::{
     market::{Market, MarketContext},

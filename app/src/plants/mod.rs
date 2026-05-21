@@ -110,9 +110,65 @@ impl Default for PlantId {
     }
 }
 
+pub struct StackPlants(HashMap<PlantId, Box<dyn PowerPlant + Send + Sync>>);
+
+impl StackPlants {
+    pub fn new(plants: HashMap<PlantId, Box<dyn PowerPlant + Send + Sync>>) -> StackPlants {
+        Self(plants)
+    }
+
+    pub fn snapshot(&self) -> HashMap<PlantId, PowerPlantPublicRepr> {
+        self.0
+            .iter()
+            .map(|(plant_id, plant)| (plant_id.to_owned(), plant.current_state()))
+            .collect()
+    }
+
+    pub fn forecasts(&self) -> HashMap<PlantId, Option<Vec<Forecast>>> {
+        self.0
+            .iter()
+            .map(|(plant_id, plant)| (plant_id.to_owned(), plant.get_forecast()))
+            .collect()
+    }
+
+    pub fn history(&self) -> HashMap<PlantId, Vec<PlantOutput>> {
+        self.0
+            .iter()
+            .map(|(plant_id, plant)| (plant_id.to_owned(), plant.get_history()))
+            .collect()
+    }
+
+    pub fn program_setpoint(&mut self, plant_id: &PlantId, setpoint: Power) -> Option<PlantOutput> {
+        if let Some(plant) = self.0.get_mut(&plant_id) {
+            return Some(plant.program_setpoint(setpoint));
+        };
+        None
+    }
+
+    pub fn dispatch_plants(&mut self) -> HashMap<PlantId, PlantOutput> {
+        self.0
+            .iter_mut()
+            .map(|(plant_id, plant)| (plant_id.clone(), plant.dispatch()))
+            .collect()
+    }
+}
+
 #[cfg(test)]
 mod test {
-    use crate::plants::PlantId;
+    use std::collections::HashMap;
+
+    use crate::plants::technologies::gas_plant::GasPlant;
+    use crate::plants::{PlantId, StackPlants};
+    use crate::utils::units::{EnergyCost, Power};
+
+    fn make_stack() -> (StackPlants, PlantId) {
+        let id = PlantId::from("plant-a");
+        let plant = GasPlant::new(EnergyCost::from(10), Power::from(100));
+        let mut plants: HashMap<PlantId, Box<dyn crate::plants::PowerPlant + Send + Sync>> =
+            HashMap::new();
+        plants.insert(id.clone(), Box::new(plant));
+        (StackPlants::new(plants), id)
+    }
 
     #[test]
     fn test_plant_id_from_into_string() {
@@ -125,5 +181,68 @@ mod test {
     #[test]
     fn test_plant_id_as_ref() {
         assert_eq!(PlantId::from("toto").as_ref(), "toto");
+    }
+
+    #[test]
+    fn test_snapshot_contains_all_plants() {
+        let (stack, id) = make_stack();
+        let snapshot = stack.snapshot();
+        assert_eq!(snapshot.len(), 1);
+        assert!(snapshot.contains_key(&id));
+    }
+
+    #[test]
+    fn test_forecasts_returns_none_for_gas_plant() {
+        let (stack, id) = make_stack();
+        let forecasts = stack.forecasts();
+        assert_eq!(forecasts.len(), 1);
+        assert_eq!(forecasts[&id], None);
+    }
+
+    #[test]
+    fn test_history_is_empty_before_dispatch() {
+        let (stack, id) = make_stack();
+        let history = stack.history();
+        assert_eq!(history.len(), 1);
+        assert_eq!(history[&id], vec![]);
+    }
+
+    #[test]
+    fn test_program_setpoint_returns_output_for_known_plant() {
+        let (mut stack, id) = make_stack();
+        let result = stack.program_setpoint(&id, Power::from(50));
+        assert!(result.is_some());
+        let output = result.unwrap();
+        assert_eq!(output.setpoint, Power::from(50));
+    }
+
+    #[test]
+    fn test_program_setpoint_returns_none_for_unknown_plant() {
+        let (mut stack, _) = make_stack();
+        let unknown = PlantId::from("unknown");
+        let result = stack.program_setpoint(&unknown, Power::from(50));
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn test_dispatch_plants_returns_outputs_for_all_plants() {
+        let (mut stack, id) = make_stack();
+        stack.program_setpoint(&id, Power::from(60));
+        let outputs = stack.dispatch_plants();
+        assert_eq!(outputs.len(), 1);
+        assert_eq!(outputs[&id].setpoint, Power::from(60));
+    }
+
+    #[test]
+    fn test_history_tracks_dispatches() {
+        let (mut stack, id) = make_stack();
+        stack.program_setpoint(&id, Power::from(40));
+        stack.dispatch_plants();
+        stack.program_setpoint(&id, Power::from(80));
+        stack.dispatch_plants();
+        let history = stack.history();
+        assert_eq!(history[&id].len(), 2);
+        assert_eq!(history[&id][0].setpoint, Power::from(40));
+        assert_eq!(history[&id][1].setpoint, Power::from(80));
     }
 }
