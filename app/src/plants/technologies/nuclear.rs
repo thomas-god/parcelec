@@ -3,7 +3,7 @@ use serde::Serialize;
 use crate::{
     forecast::Forecast,
     plants::{PlantOutput, PowerPlant, PowerPlantPublicRepr},
-    utils::units::{EnergyCost, Money, NO_POWER, Power, TIMESTEP},
+    utils::units::{EnergyCost, GENERATOR_CONVENTION_TO_MONEY, Money, NO_POWER, Power, TIMESTEP},
 };
 
 #[derive(Debug, Serialize, Clone, Copy, PartialEq)]
@@ -40,7 +40,7 @@ impl NuclearPlant {
     }
 
     fn cost(&self) -> Money {
-        self.setpoint * TIMESTEP * self.energy_cost
+        self.setpoint * TIMESTEP * self.energy_cost * GENERATOR_CONVENTION_TO_MONEY
     }
 }
 
@@ -136,7 +136,7 @@ mod test {
         assert_eq!(
             plant.get_history(),
             vec![PlantOutput {
-                cost: Money::from(500 * 35),
+                cost: Money::from(-500 * 35),
                 setpoint: Power::from(500)
             }]
         );
@@ -151,11 +151,11 @@ mod test {
             plant.get_history(),
             vec![
                 PlantOutput {
-                    cost: Money::from(500 * 35),
+                    cost: Money::from(-500 * 35),
                     setpoint: Power::from(500)
                 },
                 PlantOutput {
-                    cost: Money::from(500 * 35),
+                    cost: Money::from(-500 * 35),
                     setpoint: Power::from(500)
                 }
             ]
@@ -172,15 +172,15 @@ mod test {
             plant.get_history(),
             vec![
                 PlantOutput {
-                    cost: Money::from(500 * 35),
+                    cost: Money::from(-500 * 35),
                     setpoint: Power::from(500)
                 },
                 PlantOutput {
-                    cost: Money::from(500 * 35),
+                    cost: Money::from(-500 * 35),
                     setpoint: Power::from(500)
                 },
                 PlantOutput {
-                    cost: Money::from(600 * 35),
+                    cost: Money::from(-600 * 35),
                     setpoint: Power::from(600)
                 }
             ]
@@ -248,7 +248,7 @@ mod test {
             extract_state(&plant),
             NuclearPublicRepr {
                 output: PlantOutput {
-                    cost: Money::from(600 * 35),
+                    cost: Money::from(-600 * 35),
                     setpoint: Power::from(600)
                 },
                 max_setpoint: Power::from(1200),

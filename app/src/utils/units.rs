@@ -3,7 +3,9 @@ use std::ops::{Div, Mul};
 use derive_more::{Add, Display, Div, From, Into, Mul, Neg, Sub, SubAssign};
 use serde::{Deserialize, Serialize};
 
-/// Represent a arbitrary unit of Power (like watt).
+/// Represent a arbitrary unit of Power (like watt) in generator convetion, i.e.
+/// power < 0 : means power is leaving the system (consumers, charge of storage)
+/// power > 0 : means power is entering the system (power plant output, discharge of storage)
 #[derive(
     Debug, From, Into, PartialEq, PartialOrd, Ord, Eq, Mul, Add, Serialize, Deserialize, Clone, Copy,
 )]
@@ -99,6 +101,12 @@ impl Mul<Energy> for EnergyCost {
         Money(self.0 * rhs.0)
     }
 }
+
+/// Constant used when converting [`Power`] or [`Energy`] in generator convention into cost from an
+/// utility perspective. Assuming a positive value of [`EnergyCost`] :
+/// energy > 0 : means energy is entering the system (produced), so we have to pay for it (money < 0)
+/// energy < 0 : means energy is leaving the system (consummed), so we are payed for it (money > 0)
+pub const GENERATOR_CONVENTION_TO_MONEY: isize = -1;
 
 /// Represent an arbitrary unit of money (like €).
 #[derive(

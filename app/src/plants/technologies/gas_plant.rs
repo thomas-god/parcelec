@@ -3,7 +3,7 @@ use serde::Serialize;
 use crate::{
     forecast::Forecast,
     plants::{PlantOutput, PowerPlant, PowerPlantPublicRepr},
-    utils::units::{EnergyCost, Money, NO_POWER, Power, TIMESTEP},
+    utils::units::{EnergyCost, GENERATOR_CONVENTION_TO_MONEY, Money, NO_POWER, Power, TIMESTEP},
 };
 
 /// Plant with no dynamic constraints.
@@ -32,7 +32,7 @@ impl GasPlant {
     }
 
     fn cost(&self) -> Money {
-        self.setpoint * TIMESTEP * self.settings.energy_cost
+        self.setpoint * TIMESTEP * self.settings.energy_cost * GENERATOR_CONVENTION_TO_MONEY
     }
 }
 
@@ -101,7 +101,7 @@ mod tests {
             plant.program_setpoint(Power::from(100)),
             PlantOutput {
                 setpoint: Power::from(100),
-                cost: Money::from(100 * 47)
+                cost: Money::from(-100 * 47)
             }
         );
 
@@ -110,13 +110,13 @@ mod tests {
             plant.dispatch(),
             PlantOutput {
                 setpoint: Power::from(100),
-                cost: Money::from(47 * 100)
+                cost: Money::from(-47 * 100)
             }
         );
         assert_eq!(
             plant.get_history(),
             vec![PlantOutput {
-                cost: Money::from(100 * 47),
+                cost: Money::from(-100 * 47),
                 setpoint: Power::from(100)
             }]
         );
@@ -147,7 +147,7 @@ mod tests {
             plant.program_setpoint(Power::from(1100)),
             PlantOutput {
                 setpoint: Power::from(1000),
-                cost: Money::from(1000 * 47)
+                cost: Money::from(-1000 * 47)
             }
         );
     }

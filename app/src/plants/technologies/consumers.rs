@@ -4,7 +4,7 @@ use crate::{
     forecast::{Forecast, Forecasts},
     game::delivery_period::DeliveryPeriodId,
     plants::{PlantOutput, PowerPlant, PowerPlantPublicRepr},
-    utils::units::{EnergyCost, Power, TIMESTEP},
+    utils::units::{EnergyCost, GENERATOR_CONVENTION_TO_MONEY, Power, TIMESTEP},
 };
 
 use super::variable::VariablePlant;
@@ -43,14 +43,18 @@ impl Consumers {
 impl PowerPlant for Consumers {
     fn program_setpoint(&mut self, _setpoint: Power) -> PlantOutput {
         PlantOutput {
-            cost: self.current_setpoint * TIMESTEP * self.price_per_mwh,
+            cost: self.current_setpoint
+                * TIMESTEP
+                * self.price_per_mwh
+                * GENERATOR_CONVENTION_TO_MONEY,
             setpoint: self.current_setpoint,
         }
     }
 
     fn dispatch(&mut self) -> PlantOutput {
         let previous_setpoint = self.current_setpoint;
-        let cost = previous_setpoint * TIMESTEP * self.price_per_mwh;
+        let cost =
+            previous_setpoint * TIMESTEP * self.price_per_mwh * GENERATOR_CONVENTION_TO_MONEY;
         self.period = self.period.next();
         self.current_forecasts = self.state.get_forecasts(self.period);
         self.current_setpoint = Power::from(self.state.get_setpoint(self.period).unwrap_or(0));
@@ -66,7 +70,10 @@ impl PowerPlant for Consumers {
         PowerPlantPublicRepr::Consumers(ConsumersPublicRepr {
             output: PlantOutput {
                 setpoint: self.current_setpoint,
-                cost: (self.current_setpoint * TIMESTEP * self.price_per_mwh),
+                cost: (self.current_setpoint
+                    * TIMESTEP
+                    * self.price_per_mwh
+                    * GENERATOR_CONVENTION_TO_MONEY),
             },
         })
     }

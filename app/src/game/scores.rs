@@ -218,10 +218,12 @@ fn process_player_trades(player_id: &PlayerId, trades: &[Trade]) -> MarketScore 
             match leg.direction {
                 Direction::Buy => {
                     volume_bought = volume_bought + leg.volume;
-                    pnl_bought = pnl_bought + leg.price * leg.volume;
+                    // BUY -> our pnl decreases
+                    pnl_bought = pnl_bought - leg.price * leg.volume;
                 }
                 Direction::Sell => {
-                    volume_sold = volume_sold + leg.volume;
+                    // SELL -> our position decreases
+                    volume_sold = volume_sold - leg.volume;
                     pnl_sold = pnl_sold + leg.price * leg.volume;
                 }
             }
@@ -577,7 +579,7 @@ mod tests {
         }];
         let scores = super::process_player_trades(&player, &trades);
         assert_eq!(scores.bought.volume, Energy::from(100));
-        assert_eq!(scores.bought.pnl, Money::from(80 * 100));
+        assert_eq!(scores.bought.pnl, Money::from(-80 * 100)); // BUY -> negative money
         assert_eq!(scores.sold.volume, Energy::from(0));
         assert_eq!(scores.sold.pnl, Money::from(0));
     }
@@ -593,7 +595,7 @@ mod tests {
             execution_time: Utc::now(),
         }];
         let scores = super::process_player_trades(&player, &trades);
-        assert_eq!(scores.sold.volume, Energy::from(50));
+        assert_eq!(scores.sold.volume, Energy::from(-50)); // BUY -> negative energy
         assert_eq!(scores.sold.pnl, Money::from(90 * 50));
         assert_eq!(scores.bought.volume, Energy::from(0));
         assert_eq!(scores.bought.pnl, Money::from(0));
@@ -620,7 +622,7 @@ mod tests {
         ];
         let scores = super::process_player_trades(&player, &trades);
         assert_eq!(scores.bought.volume, Energy::from(300));
-        assert_eq!(scores.bought.pnl, Money::from(80 * 100 + 70 * 200));
+        assert_eq!(scores.bought.pnl, Money::from(-(80 * 100 + 70 * 200))); // BUY -> negative money
         assert_eq!(scores.sold.volume, Energy::from(0));
     }
 
@@ -660,8 +662,8 @@ mod tests {
         ];
         let scores = super::process_player_trades(&player, &trades);
         assert_eq!(scores.bought.volume, Energy::from(100));
-        assert_eq!(scores.bought.pnl, Money::from(80 * 100));
-        assert_eq!(scores.sold.volume, Energy::from(60));
+        assert_eq!(scores.bought.pnl, Money::from(-80 * 100)); // BUY -> negative money
+        assert_eq!(scores.sold.volume, Energy::from(-60)); // SELL -> negative volume
         assert_eq!(scores.sold.pnl, Money::from(90 * 60));
     }
 

@@ -476,7 +476,7 @@ mod test {
         let result = stack.dispatch_plants();
         let state = result.aggregated_state();
         assert_eq!(state.gas().volume(), &Energy::from(60));
-        assert_eq!(state.gas().money(), &Money::from(600));
+        assert_eq!(state.gas().money(), &Money::from(-600));
     }
 
     #[test]
@@ -487,16 +487,16 @@ mod test {
         let result = stack.dispatch_plants();
         let state = result.aggregated_state();
         assert_eq!(state.nuclear().volume(), &Energy::from(80));
-        assert_eq!(state.nuclear().money(), &Money::from(400));
+        assert_eq!(state.nuclear().money(), &Money::from(-400));
     }
 
     #[test]
     fn test_dispatch_aggregates_consumers_output() {
-        let plant = Consumers::new(EnergyCost::from(50), vec![make_forecast(1, 100)]);
+        let plant = Consumers::new(EnergyCost::from(50), vec![make_forecast(1, -100)]);
         let (mut stack, _) = make_single_plant_stack(plant, "consumers-a");
         let result = stack.dispatch_plants();
         let state = result.aggregated_state();
-        assert_eq!(state.consumers().volume(), &Energy::from(100));
+        assert_eq!(state.consumers().volume(), &Energy::from(-100));
         assert_eq!(state.consumers().money(), &Money::from(5000));
     }
 
@@ -562,7 +562,7 @@ mod test {
         let result = stack.dispatch_plants();
         let state = result.aggregated_state();
         assert_eq!(state.gas().volume(), &Energy::from(100));
-        assert_eq!(state.gas().money(), &Money::from(40 * 10 + 60 * 20));
+        assert_eq!(state.gas().money(), &Money::from(-(40 * 10 + 60 * 20)));
     }
 
     #[test]
@@ -585,7 +585,7 @@ mod test {
         let result = stack.dispatch_plants();
         let state = result.aggregated_state();
         assert_eq!(state.nuclear().volume(), &Energy::from(120));
-        assert_eq!(state.nuclear().money(), &Money::from(120 * 5));
+        assert_eq!(state.nuclear().money(), &Money::from(-120 * 5));
     }
 
     #[test]
@@ -598,20 +598,20 @@ mod test {
             id_a.clone(),
             Box::new(Consumers::new(
                 EnergyCost::from(50),
-                vec![make_forecast(1, 100)],
+                vec![make_forecast(1, -100)],
             )),
         );
         plants.insert(
             id_b.clone(),
             Box::new(Consumers::new(
                 EnergyCost::from(50),
-                vec![make_forecast(1, 75)],
+                vec![make_forecast(1, -75)],
             )),
         );
         let mut stack = StackPlants::new(plants);
         let result = stack.dispatch_plants();
         let state = result.aggregated_state();
-        assert_eq!(state.consumers().volume(), &Energy::from(175));
+        assert_eq!(state.consumers().volume(), &Energy::from(-175));
         assert_eq!(state.consumers().money(), &Money::from(175 * 50));
     }
 
@@ -771,7 +771,7 @@ mod test {
         stack.program_setpoint(&id_gas, Power::from(60));
         stack.program_setpoint(&id_nuclear, Power::from(40));
         let result = stack.dispatch_plants();
-        assert_eq!(result.pnl(), Money::from(60 * 10 + 40 * 5));
+        assert_eq!(result.pnl(), Money::from(-(60 * 10 + 40 * 5)));
     }
 
     #[test]
@@ -797,6 +797,6 @@ mod test {
         stack.program_setpoint(&id_gas, Power::from(60));
         stack.program_setpoint(&id_battery, Power::from(30));
         let result = stack.dispatch_plants();
-        assert_eq!(result.pnl(), Money::from(60 * 10));
+        assert_eq!(result.pnl(), Money::from(-60 * 10));
     }
 }
