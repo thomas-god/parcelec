@@ -50,6 +50,22 @@ const PowerPlantRepr = z.discriminatedUnion("type", [
     touched: z.boolean(),
   }),
 ]);
+const PlayerScore = z.object({
+  balance: z.number(),
+  pnl: z.number(),
+  imbalance_cost: z.number(),
+});
+const PlayerDetailedScore = z.object({
+  consumers: z.object({ volume: z.number(), pnl: z.number() }),
+  renewables: z.object({ volume: z.number(), pnl: z.number() }),
+  gas: z.object({ volume: z.number(), pnl: z.number() }),
+  nuclear: z.object({ volume: z.number(), pnl: z.number() }),
+  battery_discharge: z.object({ volume: z.number(), pnl: z.number() }),
+  battery_charge: z.object({ volume: z.number(), pnl: z.number() }),
+  market_bought: z.object({ volume: z.number(), pnl: z.number() }),
+  market_sold: z.object({ volume: z.number(), pnl: z.number() }),
+  imbalance: z.object({ volume: z.number(), pnl: z.number() }),
+});
 
 const WSMessageSchema = z.discriminatedUnion("type", [
   z.object({
@@ -133,22 +149,21 @@ const WSMessageSchema = z.discriminatedUnion("type", [
   z.object({
     type: z.literal("DeliveryPeriodResults"),
     delivery_period: z.number(),
-    score: z.object({
-      balance: z.number(),
-      pnl: z.number(),
-      imbalance_cost: z.number(),
-    }),
+    score: PlayerScore,
+    detailed_score: PlayerDetailedScore,
   }),
   z.object({
     type: z.literal("PlayerScores"),
     scores: z
       .record(
         z.coerce.number(),
-        z.object({
-          balance: z.number(),
-          pnl: z.number(),
-          imbalance_cost: z.number(),
-        }),
+        PlayerScore,
+      )
+      .transform((rec) => new Map(Object.entries(rec))),
+    detailed_scores: z
+      .record(
+        z.coerce.number(),
+        PlayerDetailedScore,
       )
       .transform((rec) => new Map(Object.entries(rec))),
   }),
@@ -228,6 +243,10 @@ export type DeliveryPeriodScore = Pick<
   Extract<WSMessage, { type: "DeliveryPeriodResults" }>,
   "score"
 >["score"];
+export type DeliveryPeriodDetailedScore = Pick<
+  Extract<WSMessage, { type: "DeliveryPeriodResults" }>,
+  "detailed_score"
+>["detailed_score"];
 export type PlayerScores = Pick<
   Extract<WSMessage, { type: "PlayerScores" }>,
   "scores"

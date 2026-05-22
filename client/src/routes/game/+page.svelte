@@ -11,6 +11,7 @@
     type ReadinessStatus,
     type GameState,
     type StackHistory,
+    type DeliveryPeriodDetailedScore,
   } from "$lib/message";
   import { PUBLIC_APP_URL } from "$env/static/public";
   import { goto } from "$app/navigation";
@@ -50,6 +51,9 @@
   let delivery_period_end: Option<Date> = $state(none());
   let last_delivery_period_id = $state(0);
   let scores: SvelteMap<number, DeliveryPeriodScore> = $state(new SvelteMap());
+  let detailed_scores: SvelteMap<number, DeliveryPeriodDetailedScore> = $state(
+    new SvelteMap(),
+  );
   let final_scores: GameResults = $state(new Array());
   let readiness_status: ReadinessStatus = $state(new SvelteMap());
 
@@ -108,13 +112,17 @@
         })
         .with(
           { type: "DeliveryPeriodResults" },
-          ({ delivery_period, score }) => {
+          ({ delivery_period, score, detailed_score }) => {
             scores.set(delivery_period, score);
+            detailed_scores.set(delivery_period, detailed_score);
           },
         )
         .with({ type: "PlayerScores" }, (previous_scores) => {
           for (const [k, v] of previous_scores.scores.entries()) {
             scores.set(Number(k), v);
+          }
+          for (const [k, v] of previous_scores.detailed_scores.entries()) {
+            detailed_scores.set(Number(k), v);
           }
         })
         .with({ type: "GameResults" }, ({ rankings }) => {

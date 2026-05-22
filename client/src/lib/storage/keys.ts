@@ -1,1 +1,1 @@
-export const SHOW_TUTORIAL_INTRO_POPUP = "tutorial-show-intro-popup"
+export const SHOW_TUTORIAL_INTRO_POPUP = "tutorial-show-intro-popup";
