@@ -54,6 +54,8 @@ pub const TIMESTEP: Time = Time(1);
 )]
 pub struct Energy(isize);
 
+pub const ZERO_ENERGY: Energy = Energy(0);
+
 impl Div<Time> for Energy {
     type Output = Power;
 

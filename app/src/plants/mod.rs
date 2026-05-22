@@ -248,6 +248,24 @@ pub struct StackAggregatedState {
 }
 
 impl StackAggregatedState {
+    pub fn new(
+        consumers: Output,
+        renewables: Output,
+        gas: Output,
+        nuclear: Output,
+        battery_discharge: Output,
+        battery_charge: Output,
+    ) -> Self {
+        Self {
+            consumers,
+            renewables,
+            gas,
+            nuclear,
+            battery_discharge,
+            battery_charge,
+        }
+    }
+
     pub fn empty() -> Self {
         Self {
             consumers: Output::empty(),
@@ -277,6 +295,22 @@ impl StackAggregatedState {
     pub fn battery_charge(&self) -> &Output {
         &self.battery_charge
     }
+    pub fn position(&self) -> Energy {
+        self.consumers.volume
+            + self.renewables.volume
+            + self.gas.volume
+            + self.nuclear.volume
+            + self.battery_discharge.volume
+            + self.battery_charge.volume
+    }
+    pub fn pnl(&self) -> Money {
+        self.consumers.money
+            + self.renewables.money
+            + self.gas.money
+            + self.nuclear.money
+            + self.battery_discharge.money
+            + self.battery_charge.money
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -297,6 +331,12 @@ impl StackDispatchResults {
     }
     pub fn aggregated_state(&self) -> &StackAggregatedState {
         &self.aggregated_state
+    }
+    pub fn position(&self) -> Energy {
+        self.aggregated_state.position()
+    }
+    pub fn pnl(&self) -> Money {
+        self.aggregated_state.pnl()
     }
 }
 
@@ -663,5 +703,100 @@ mod test {
         let state = result.aggregated_state();
         assert_eq!(state.battery_discharge().volume(), &Energy::from(40));
         assert_eq!(state.battery_charge().volume(), &Energy::from(-30));
+    }
+
+    #[test]
+    fn test_position_sums_volumes_across_all_categories() {
+        let id_gas = PlantId::from("gas-a");
+        let id_nuclear = PlantId::from("nuclear-a");
+        let id_battery = PlantId::from("battery-a");
+        let mut plants: HashMap<PlantId, Box<dyn crate::plants::PowerPlant + Send + Sync>> =
+            HashMap::new();
+        plants.insert(
+            id_gas.clone(),
+            Box::new(GasPlant::new(EnergyCost::from(10), Power::from(100))),
+        );
+        plants.insert(
+            id_nuclear.clone(),
+            Box::new(NuclearPlant::new(Power::from(100), EnergyCost::from(5))),
+        );
+        plants.insert(
+            id_battery.clone(),
+            Box::new(Battery::new(Energy::from(200), Energy::from(100))),
+        );
+        let mut stack = StackPlants::new(plants);
+        stack.program_setpoint(&id_gas, Power::from(60));
+        stack.program_setpoint(&id_nuclear, Power::from(40));
+        stack.program_setpoint(&id_battery, Power::from(-20));
+        let result = stack.dispatch_plants();
+        assert_eq!(result.position(), Energy::from(60 + 40 - 20));
+    }
+
+    #[test]
+    fn test_position_is_zero_when_generation_and_charge_balance() {
+        let id_gas = PlantId::from("gas-a");
+        let id_battery = PlantId::from("battery-a");
+        let mut plants: HashMap<PlantId, Box<dyn crate::plants::PowerPlant + Send + Sync>> =
+            HashMap::new();
+        plants.insert(
+            id_gas.clone(),
+            Box::new(GasPlant::new(EnergyCost::from(10), Power::from(100))),
+        );
+        plants.insert(
+            id_battery.clone(),
+            Box::new(Battery::new(Energy::from(200), Energy::from(100))),
+        );
+        let mut stack = StackPlants::new(plants);
+        stack.program_setpoint(&id_gas, Power::from(50));
+        stack.program_setpoint(&id_battery, Power::from(-50));
+        let result = stack.dispatch_plants();
+        assert_eq!(result.position(), Energy::from(0));
+    }
+
+    #[test]
+    fn test_pnl_sums_costs_across_all_categories() {
+        let id_gas = PlantId::from("gas-a");
+        let id_nuclear = PlantId::from("nuclear-a");
+        let mut plants: HashMap<PlantId, Box<dyn crate::plants::PowerPlant + Send + Sync>> =
+            HashMap::new();
+        plants.insert(
+            id_gas.clone(),
+            Box::new(GasPlant::new(EnergyCost::from(10), Power::from(100))),
+        );
+        plants.insert(
+            id_nuclear.clone(),
+            Box::new(NuclearPlant::new(Power::from(100), EnergyCost::from(5))),
+        );
+        let mut stack = StackPlants::new(plants);
+        stack.program_setpoint(&id_gas, Power::from(60));
+        stack.program_setpoint(&id_nuclear, Power::from(40));
+        let result = stack.dispatch_plants();
+        assert_eq!(result.pnl(), Money::from(60 * 10 + 40 * 5));
+    }
+
+    #[test]
+    fn test_pnl_excludes_zero_cost_plants() {
+        let id_gas = PlantId::from("gas-a");
+        let id_renewable = PlantId::from("renewable-a");
+        let id_battery = PlantId::from("battery-a");
+        let mut plants: HashMap<PlantId, Box<dyn crate::plants::PowerPlant + Send + Sync>> =
+            HashMap::new();
+        plants.insert(
+            id_gas.clone(),
+            Box::new(GasPlant::new(EnergyCost::from(10), Power::from(100))),
+        );
+        plants.insert(
+            id_renewable.clone(),
+            Box::new(RenewablePlant::new(vec![make_forecast(1, 50)])),
+        );
+        plants.insert(
+            id_battery.clone(),
+            Box::new(Battery::new(Energy::from(200), Energy::from(100))),
+        );
+        let mut stack = StackPlants::new(plants);
+        stack.program_setpoint(&id_gas, Power::from(60));
+        stack.program_setpoint(&id_battery, Power::from(30));
+        let result = stack.dispatch_plants();
+        assert_eq!(result.pnl(), Money::from(60 * 10));
     }
 }
