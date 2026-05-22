@@ -68,7 +68,7 @@
         @max-[450px]:row-start-3 @max-[450px]:col-start-2 @max-[450px]:text-start
       `}
     >
-      {(-cost).toLocaleString("fr-FR", { signDisplay: "exceptZero" })} €
+      {cost.toLocaleString("fr-FR", { signDisplay: "exceptZero" })} €
       <span class="font-light italic">
         ({energy_cost.toLocaleString("fr-FR")} €/MWh)
       </span>

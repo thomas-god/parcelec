@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { marketPnl, plantsCosts, plantsPnl } from "./pnl";
+import { marketPnl, plantsCosts } from "./pnl";
 import type { Trade } from "./message";
 
 describe("Market Pnl", () => {
@@ -36,46 +36,6 @@ describe("Market Pnl", () => {
   });
 });
 
-describe("Plants PnL", () => {
-  it("Should return zero if no plants", () => {
-    expect(plantsPnl(new Map())).toEqual(0);
-  });
-
-  it("Should sum each plant -cost (if cost is 0, then we lose money)", () => {
-    expect(
-      plantsPnl(
-        new Map([
-          [
-            "2",
-            {
-              type: "GasPlant",
-              output: {
-                cost: 1000,
-                setpoint: 100,
-              },
-              settings: {
-                energy_cost: 100,
-                max_setpoint: 1000,
-              },
-            },
-          ],
-          [
-            "3",
-            {
-              type: "Consumers",
-              output: {
-                cost: -150,
-                setpoint: -170,
-              },
-              max_power: 1000,
-            },
-          ],
-        ]),
-      ),
-    ).toEqual(-850);
-  });
-});
-
 describe("Plants Costs", () => {
   it("Should return zero if no plants", () => {
     expect(plantsCosts(new Map())).toEqual(0);
@@ -90,7 +50,7 @@ describe("Plants Costs", () => {
             {
               type: "GasPlant",
               output: {
-                cost: 1000,
+                cost: -1000,
                 setpoint: 100,
               },
               settings: {
@@ -104,7 +64,7 @@ describe("Plants Costs", () => {
             {
               type: "Consumers",
               output: {
-                cost: -150,
+                cost: 150,
                 setpoint: -170,
               },
               max_power: 1000,
@@ -115,7 +75,7 @@ describe("Plants Costs", () => {
             {
               type: "Nuclear",
               output: {
-                cost: 500,
+                cost: -500,
                 setpoint: 300,
               },
               max_setpoint: 1000,
@@ -127,6 +87,6 @@ describe("Plants Costs", () => {
           ],
         ]),
       ),
-    ).toEqual(1500);
+    ).toEqual(-1500);
   });
 });

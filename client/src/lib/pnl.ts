@@ -12,15 +12,6 @@ export const marketPnl = (trades: Trade[]): number => {
   return pnl;
 };
 
-export const plantsPnl = (plants: StackSnapshot): number => {
-  /// Cannot use plants.entries().reduce(/.../) on WebKit...
-  let total = 0;
-  for (const [_, plant] of plants.entries()) {
-    total -= plant.output.cost;
-  }
-  return total;
-};
-
 export const plantsCosts = (plants: StackSnapshot): number => {
   /// Cannot use plants.entries().reduce(/.../) on WebKit...
   let total = 0;
