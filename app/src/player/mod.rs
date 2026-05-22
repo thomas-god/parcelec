@@ -10,7 +10,7 @@ use crate::{
     game::{
         GameId,
         delivery_period::DeliveryPeriodId,
-        scores::{PlayerScore, RankTier},
+        scores::{PlayerDetailedScore, PlayerScore, RankTier},
     },
     market::{OrderRepr, order_book::TradeLeg},
     plants::{PlantId, PlantOutput, PowerPlantPublicRepr},
@@ -79,6 +79,7 @@ pub enum PlayerMessage {
     DeliveryPeriodResults {
         delivery_period: DeliveryPeriodId,
         score: PlayerScore,
+        detailed_score: Option<PlayerDetailedScore>,
     },
     GameResults {
         rankings: Vec<PlayerResultView>,

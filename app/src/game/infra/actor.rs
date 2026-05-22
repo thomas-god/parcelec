@@ -13,7 +13,7 @@ use crate::{
         GameContext, GameId, GameMessage, GameName, GameState, GetPreviousScoresResult, Player,
         RegisterPlayerResponse,
         delivery_period::{DeliveryPeriodId, DeliveryPeriodResults, start_delivery_period},
-        scores::{GameRankings, PlayerResult, PlayerScore},
+        scores::{GameRankings, PlayerDetailedScore, PlayerResult, PlayerScore},
     },
     plants::StackPlants,
 };
@@ -38,6 +38,7 @@ pub struct GameActor<
     state_watch: watch::Sender<GameState>,
     players: Vec<Player>,
     players_scores: HashMap<PlayerId, HashMap<DeliveryPeriodId, PlayerScore>>,
+    players_detailed_scores: HashMap<PlayerId, HashMap<DeliveryPeriodId, PlayerDetailedScore>>,
     players_connections: PC,
     market_context: MarketContext<MS>,
     stacks_contexts: HashMap<PlayerId, StackContext<StackService>>,
@@ -85,6 +86,7 @@ impl<MS: Market, PC: PlayerConnections, F: Fn() -> StackPlants + Clone + Send + 
             players: Vec::new(),
             players_connections,
             players_scores: HashMap::new(),
+            players_detailed_scores: HashMap::new(),
             stacks_contexts: HashMap::new(),
             build_stack: config.build_stack,
             rx,
@@ -335,6 +337,11 @@ impl<MS: Market, PC: PlayerConnections, F: Fn() -> StackPlants + Clone + Send + 
                     .get(&player)
                     .cloned()
                     .unwrap_or_else(HashMap::new),
+                detailed_scores: self
+                    .players_detailed_scores
+                    .get(&player)
+                    .cloned()
+                    .unwrap_or_else(HashMap::new),
             },
         };
         let _ = tx_back.send(scores);
@@ -376,12 +383,14 @@ impl<MS: Market, PC: PlayerConnections, F: Fn() -> StackPlants + Clone + Send + 
             .state_watch
             .send(GameState::PostDelivery(self.current_delivery_period));
         join_all(results.players_scores.iter().map(|(player, score)| {
+            let detailed_score = results.players_detailed_scores.get(player);
             self.players_connections.send_to_player(
                 &self.game_id,
                 player,
                 PlayerMessage::DeliveryPeriodResults {
-                    score: score.clone(),
                     delivery_period: self.current_delivery_period,
+                    score: score.clone(),
+                    detailed_score: detailed_score.cloned(),
                 },
             )
         }))
@@ -394,6 +403,17 @@ impl<MS: Market, PC: PlayerConnections, F: Fn() -> StackPlants + Clone + Send + 
                 scores.insert(results.period_id, score.clone());
             } else {
                 self.players_scores.insert(
+                    player.clone(),
+                    HashMap::from([(results.period_id, score.clone())]),
+                );
+            }
+        }
+
+        for (player, score) in results.players_detailed_scores.iter() {
+            if let Some(scores) = self.players_detailed_scores.get_mut(player) {
+                scores.insert(results.period_id, score.clone());
+            } else {
+                self.players_detailed_scores.insert(
                     player.clone(),
                     HashMap::from([(results.period_id, score.clone())]),
                 );
@@ -844,8 +864,9 @@ mod tests {
         let Some((
             target_player,
             PlayerMessage::DeliveryPeriodResults {
-                score: _,
                 delivery_period,
+                score: _,
+                detailed_score: _,
             },
         )) = rx_send_to_player.recv().await
         else {
@@ -880,10 +901,15 @@ mod tests {
                 tx_back,
             })
             .await;
-        let Ok(GetPreviousScoresResult::PlayerScores { scores }) = rx.await else {
+        let Ok(GetPreviousScoresResult::PlayerScores {
+            scores,
+            detailed_scores,
+        }) = rx.await
+        else {
             unreachable!()
         };
         assert!(scores.is_empty());
+        assert!(detailed_scores.is_empty());
 
         // End delivery period
         let _ = game
@@ -906,10 +932,15 @@ mod tests {
                 tx_back,
             })
             .await;
-        let Ok(GetPreviousScoresResult::PlayerScores { scores }) = rx.await else {
+        let Ok(GetPreviousScoresResult::PlayerScores {
+            scores,
+            detailed_scores,
+        }) = rx.await
+        else {
             unreachable!()
         };
         assert_eq!(scores.len(), 1);
+        assert_eq!(detailed_scores.len(), 1);
     }
 
     #[tokio::test]
@@ -1102,7 +1133,11 @@ mod tests {
                 tx_back,
             })
             .await;
-        let Ok(GetPreviousScoresResult::PlayerScores { scores: _ }) = rx_back.await else {
+        let Ok(GetPreviousScoresResult::PlayerScores {
+            scores: _,
+            detailed_scores: _,
+        }) = rx_back.await
+        else {
             unreachable!("Should have received scores for the player");
         };
 
@@ -1150,6 +1185,7 @@ mod tests {
             state_watch: state_tx,
             players: Vec::new(),
             players_scores: HashMap::new(),
+            players_detailed_scores: HashMap::new(),
             players_connections: connections,
             market_context,
             stacks_contexts: HashMap::new(),

@@ -18,7 +18,8 @@ use uuid::Uuid;
 use crate::{
     game::{
         GameContext, GameId, GameMessage, GameState, GetPreviousScoresResult,
-        delivery_period::DeliveryPeriodId, scores::PlayerScore,
+        delivery_period::DeliveryPeriodId,
+        scores::{PlayerDetailedScore, PlayerScore},
     },
     market::{
         Direction, Market, MarketContext, MarketState,
@@ -57,6 +58,7 @@ enum WebSocketIncomingMessage {
 #[serde(tag = "type")]
 struct PlayerScores {
     scores: HashMap<DeliveryPeriodId, PlayerScore>,
+    detailed_scores: HashMap<DeliveryPeriodId, PlayerDetailedScore>,
 }
 
 #[derive(Debug, Clone)]
@@ -252,9 +254,18 @@ async fn send_previous_scores<MS: Market, PS: Stack>(
         .await
         .map_err(|_| PlayerConnectionError::InternalConnectionError)?;
     match scores {
-        GetPreviousScoresResult::PlayerScores { scores } => {
-            ws.send(serde_json::to_string(&PlayerScores { scores })?.into())
-                .await?;
+        GetPreviousScoresResult::PlayerScores {
+            scores,
+            detailed_scores,
+        } => {
+            ws.send(
+                serde_json::to_string(&PlayerScores {
+                    scores,
+                    detailed_scores,
+                })?
+                .into(),
+            )
+            .await?;
         }
         GetPreviousScoresResult::PlayersRanking { scores } => {
             ws.send(

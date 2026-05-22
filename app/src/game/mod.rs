@@ -12,6 +12,7 @@ use tokio::sync::{
 };
 
 use crate::{
+    game::scores::PlayerDetailedScore,
     plants::infra::{StackContext, StackService},
     player::{PlayerId, PlayerName, PlayerResultView},
 };
@@ -33,6 +34,7 @@ struct Player {
 pub enum GetPreviousScoresResult {
     PlayerScores {
         scores: HashMap<DeliveryPeriodId, PlayerScore>,
+        detailed_scores: HashMap<DeliveryPeriodId, PlayerDetailedScore>,
     },
     PlayersRanking {
         scores: Vec<PlayerResultView>,

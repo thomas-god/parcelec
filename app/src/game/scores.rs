@@ -65,7 +65,7 @@ impl Add<TradeLeg> for PlayerScore {
     }
 }
 
-#[derive(Debug, Serialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, PartialEq)]
 pub struct ScoreDetails {
     pub volume: Energy,
     pub pnl: Money,
@@ -80,7 +80,7 @@ impl From<&Output> for ScoreDetails {
     }
 }
 
-#[derive(Debug, Serialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, PartialEq)]
 pub struct PlayerDetailedScore {
     pub consumers: ScoreDetails,
     pub renewables: ScoreDetails,
@@ -119,15 +119,15 @@ impl PlayerDetailedScore {
 }
 
 pub fn compute_players_scores(
-    trades: Vec<Trade>,
-    stacks_results: HashMap<PlayerId, StackDispatchResults>,
+    trades: &[Trade],
+    stacks_results: &HashMap<PlayerId, StackDispatchResults>,
 ) -> HashMap<PlayerId, PlayerScore> {
     stacks_results
         .iter()
         .map(|(player_id, results)| {
             (
                 player_id.clone(),
-                compute_player_score(player_id, results.plants_outputs(), &trades),
+                compute_player_score(player_id, results.plants_outputs(), trades),
             )
         })
         .collect()
@@ -160,15 +160,15 @@ fn compute_player_score(
 }
 
 pub fn compute_players_detailed_scores(
-    trades: Vec<Trade>,
-    stacks_results: HashMap<PlayerId, StackDispatchResults>,
+    trades: &[Trade],
+    stacks_results: &HashMap<PlayerId, StackDispatchResults>,
 ) -> HashMap<PlayerId, PlayerDetailedScore> {
     stacks_results
         .iter()
         .map(|(player_id, results)| {
             (
                 player_id.clone(),
-                compute_player_detailed_score(player_id, results, &trades),
+                compute_player_detailed_score(player_id, results, trades),
             )
         })
         .collect()
@@ -395,7 +395,7 @@ mod tests {
     #[test]
     fn test_scores_no_players() {
         assert_eq!(
-            compute_players_scores(Vec::new(), HashMap::new()),
+            compute_players_scores(&Vec::new(), &HashMap::new()),
             HashMap::new()
         );
     }
@@ -427,7 +427,7 @@ mod tests {
         )]);
 
         assert_eq!(
-            compute_players_scores(trades, plants_outputs),
+            compute_players_scores(&trades, &plants_outputs),
             HashMap::from([(
                 PlayerId::from("player_1"),
                 PlayerScore {
@@ -472,7 +472,7 @@ mod tests {
         )]);
 
         assert_eq!(
-            compute_players_scores(trades, plants_outputs),
+            compute_players_scores(&trades, &plants_outputs),
             HashMap::from([(
                 PlayerId::from("player_1"),
                 PlayerScore {
@@ -532,7 +532,7 @@ mod tests {
         ]);
 
         assert_eq!(
-            compute_players_scores(trades, plants_outputs),
+            compute_players_scores(&trades, &plants_outputs),
             HashMap::from([
                 (
                     PlayerId::from("player_1"),

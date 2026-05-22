@@ -11,7 +11,7 @@ use tokio::{
 use tokio_util::sync::CancellationToken;
 
 use crate::{
-    game::scores::compute_players_scores,
+    game::scores::{PlayerDetailedScore, compute_players_detailed_scores, compute_players_scores},
     market::{Market, order_book::Trade},
     plants::{Stack, StackDispatchResults},
     player::PlayerId,
@@ -53,6 +53,7 @@ impl DeliveryPeriodId {
 pub struct DeliveryPeriodResults {
     pub period_id: DeliveryPeriodId,
     pub players_scores: HashMap<PlayerId, PlayerScore>,
+    pub players_detailed_scores: HashMap<PlayerId, PlayerDetailedScore>,
 }
 
 pub async fn start_delivery_period<StkS, MS>(
@@ -137,12 +138,14 @@ pub async fn start_delivery_period<StkS, MS>(
         }
     };
 
-    let scores = compute_players_scores(trades, stacks_results);
+    let scores = compute_players_scores(&trades, &stacks_results);
+    let detailed_scores = compute_players_detailed_scores(&trades, &stacks_results);
     tracing::info!("Delivery period ended: {scores:?}");
     let _ = game_tx
         .send(GameMessage::DeliveryPeriodResults(DeliveryPeriodResults {
             period_id,
             players_scores: scores,
+            players_detailed_scores: detailed_scores,
         }))
         .await;
 }
