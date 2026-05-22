@@ -155,16 +155,10 @@ const WSMessageSchema = z.discriminatedUnion("type", [
   z.object({
     type: z.literal("PlayerScores"),
     scores: z
-      .record(
-        z.coerce.number(),
-        PlayerScore,
-      )
+      .record(z.coerce.number(), PlayerScore)
       .transform((rec) => new Map(Object.entries(rec))),
     detailed_scores: z
-      .record(
-        z.coerce.number(),
-        PlayerDetailedScore,
-      )
+      .record(z.coerce.number(), PlayerDetailedScore)
       .transform((rec) => new Map(Object.entries(rec))),
   }),
   z.object({

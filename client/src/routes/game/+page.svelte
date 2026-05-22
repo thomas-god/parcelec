@@ -195,7 +195,7 @@
           <PlayersReadyList {player_name} {readiness_status} />
         {:else if game_state === "PostDelivery"}
           <div class="flex flex-col">
-            <Scores {scores} current_period={delivery_period_id} />
+            <Scores {detailed_scores} current_period={delivery_period_id} />
           </div>
         {:else if game_state === "Ended"}
           <FinalScores {player_name} {final_scores} />
