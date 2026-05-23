@@ -8,7 +8,7 @@
   }: { player_name: string; final_scores: GameResults } = $props();
 </script>
 
-<div class="flex flex-col gap-5 items-center w-full">
+<div class="flex flex-col gap-5 items-center w-full px-2 pt-5">
   <ol class="list bg-base-100 rounded-box shadow-md w-full">
     {#each final_scores as score (score.player)}
       <li class="list-row items-center">

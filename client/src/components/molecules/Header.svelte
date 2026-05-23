@@ -58,7 +58,7 @@
   bind:clientWidth={width}
 >
   <div
-    class="max-w-300 w-full mx-auto h-full flex flex-row items-center justify-between @sm:text-base text-xs text-center align-middle"
+    class="max-w-300 w-full mx-auto h-full flex flex-row items-center justify-between @sm:text-base text-sm text-center align-middle"
   >
     <div>
       {title}
@@ -76,7 +76,7 @@
     {#if game_state !== "Ended"}
       {#if !player_is_ready}
         <button
-          class="btn btn-ghost @sm:btn-md btn-sm"
+          class="btn btn-ghost @sm:btn-md btn-md"
           onclick={make_player_ready}
         >
           {ctaBtnName}

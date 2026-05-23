@@ -40,7 +40,7 @@
       current_detailed_score.nuclear.pnl +
       current_detailed_score.battery_discharge.pnl +
       current_detailed_score.market_bought.pnl}
-    <table class="table-xs min-[440px]:table-sm">
+    <table class="table table-sm">
       <tbody>
         <!-- Consumption -->
         <tr>
@@ -52,7 +52,7 @@
               src="/icons/consumers.svg"
               alt="house icon"
               class="icon"
-            />Consommateurs</td
+            />Clients</td
           >
           <td class="value"
             >{fmt(current_detailed_score.consumers.volume)} MW</td
@@ -116,7 +116,7 @@
               src="/icons/gas.svg"
               alt="flamme gas plant icon"
               class="icon"
-            />Gas plants</td
+            />Centrales gaz</td
           >
           <td class="value">{fmt(current_detailed_score.gas.volume)} MW</td>
           <td class="value">{fmt(current_detailed_score.gas.pnl)} €</td>
@@ -127,7 +127,7 @@
               src="/icons/nuclear.svg"
               alt="nuclear power plant icon"
               class="icon"
-            />Nuclear plants</td
+            />Centrales nucléaires</td
           >
           <td class="value">{fmt(current_detailed_score.nuclear.volume)} MW</td>
           <td class="value">{fmt(current_detailed_score.nuclear.pnl)} €</td>
@@ -198,7 +198,7 @@
   .icon {
     width: calc(var(--spacing) * 7);
     height: calc(var(--spacing) * 7);
-    margin-right: calc(var(--spacing) * 1);
+    margin-right: calc(var(--spacing) * 2);
     display: inline;
   }
 

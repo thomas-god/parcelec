@@ -102,7 +102,7 @@
       .scaleBand()
       .domain(new Set(data.map((elem) => elem.source)))
       .rangeRound([0, fx.bandwidth()])
-      .paddingInner(0.05),
+      .paddingInner(0.1),
   );
   let y = $derived(
     d3

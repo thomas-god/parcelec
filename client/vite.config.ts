@@ -8,7 +8,7 @@ import { svelteTesting } from "@testing-library/svelte/vite";
 export default defineConfig({
   plugins: [sveltekit(), tailwindcss(), svelteTesting()],
   server: {
-    host: "127.0.0.1",
+    host: true,
     port: 5173,
   },
   test: {
