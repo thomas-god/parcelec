@@ -1,4 +1,31 @@
 <script lang="ts">
+  import { goto } from "$app/navigation";
+  import { PUBLIC_APP_URL } from "$env/static/public";
+  import { isSome, none, some, type Option } from "$lib/Options";
+  import { z } from "zod";
+
+  const ActiveGameSchema = z.object({
+    name: z.string(),
+    state: z.string(),
+  });
+
+  type ActiveGame = z.infer<typeof ActiveGameSchema>;
+
+  let activeGame: Option<ActiveGame> = $state(none());
+  $inspect(activeGame);
+
+  const getActiveGame = async () => {
+    let rest = await fetch(`${PUBLIC_APP_URL}/game`, {
+      method: "GET",
+      credentials: "include",
+    });
+    console.log(rest.status);
+    if (rest.status === 200) {
+      activeGame = some(ActiveGameSchema.parse(await rest.json()));
+    } else {
+      activeGame = none();
+    }
+  };
 </script>
 
 <div class="navbar bg-base-200">
@@ -34,16 +61,38 @@
         but ? Satisfaire la consommation de vos clients en utilisant
         astucieusement vos centrales et les marchés de l'électricité.
       </p>
-      <a href="/tutorial">
-        <button class="btn btn-primary"> 📖 Tutoriel </button>
-      </a>
-      <div class="divider font-semibold">Partie</div>
-      <a href="/game/new">
-        <button class="btn btn-primary"> ➕ Créer </button>
-      </a>
-      <a href="/games">
-        <button class="btn btn-primary"> ▶️ Rejoindre </button>
-      </a>
+      {#await getActiveGame() then}
+        {#if isSome(activeGame)}
+          <div class="divider font-semibold">Partie en cours</div>
+          <div class="flex flex-row justify-center items-center gap-2">
+            <div>
+              {activeGame.value.name.includes("tutorial")
+                ? "tutorial"
+                : activeGame.value.name}
+              <span class="italic">
+                ({activeGame.value.state})
+              </span>
+            </div>
+            <div>
+              <button class="btn btn-primary" onclick={() => goto("/game")}
+                >Rejoindre</button
+              >
+            </div>
+          </div>
+        {/if}
+      {/await}
+      <div class="divider font-semibold">Nouvelle partie</div>
+      <div class="flex flex-row gap-2 justify-center">
+        <a href="/tutorial">
+          <button class="btn btn-primary"> 📖 Tutoriel </button>
+        </a>
+        <a href="/game/new">
+          <button class="btn btn-primary"> ➕ Créer </button>
+        </a>
+        <a href="/games">
+          <button class="btn btn-primary"> ▶️ Rejoindre </button>
+        </a>
+      </div>
     </div>
   </div>
 </div>
