@@ -108,6 +108,7 @@ dist
 /resources
 
 .env.development
+config.toml
 
 target/
 .vscode

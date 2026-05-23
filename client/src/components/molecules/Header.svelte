@@ -46,7 +46,6 @@
   });
 
   let width = $state(0);
-  $inspect(width);
 </script>
 
 <div
