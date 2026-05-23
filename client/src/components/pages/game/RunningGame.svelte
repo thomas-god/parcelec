@@ -4,7 +4,6 @@
   import Forecasts from "../../organisms/Forecasts.svelte";
   import TradeNotification from "../../molecules/TradeNotification.svelte";
   import Portfolio from "../../organisms/Portfolio.svelte";
-  import { page } from "$app/state";
   import Tutorial from "../../molecules/tutorial/Tutorial.svelte";
   import type {
     OrderBook,
@@ -35,8 +34,6 @@
     plant_forecasts,
     plant_history,
   }: Props = $props();
-
-  let isTutorial = page.url.searchParams.has("tutorial", "true");
 </script>
 
 <div class="flex flex-col gap-3 items-stretch">
@@ -155,9 +152,7 @@
     {/each}
   </div>
 
-  {#if isTutorial}
-    <Tutorial />
-  {/if}
+  <Tutorial />
 </div>
 
 <style>

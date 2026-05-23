@@ -20,7 +20,7 @@
       throw new Error("An error occurred while starting the tutorial");
     }
 
-    goto("/game?tutorial=true");
+    goto("/game");
   };
 </script>
 
