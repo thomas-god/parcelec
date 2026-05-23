@@ -3,13 +3,11 @@ use std::collections::HashMap;
 use axum::{Json, extract::State, http::StatusCode, response::IntoResponse};
 use serde::{Deserialize, Serialize};
 use tokio::sync::oneshot;
-use tower_cookies::{
-    Cookie, Cookies,
-    cookie::{SameSite, time::Duration},
-};
+use tower_cookies::Cookies;
 
 use crate::{
     game::{GameId, GameMessage, GameState, RegisterPlayerResponse},
+    infra::api::cookies::add_game_cookies,
     player::PlayerName,
 };
 
@@ -83,28 +81,7 @@ pub async fn join_game(
         }
     }
 
-    let domain = state.config.domain.clone();
-    let player_id_cookie = Cookie::build(("player_id", player_id.to_string()))
-        .max_age(Duration::days(1))
-        .same_site(SameSite::Strict)
-        .domain(domain.clone())
-        .path("/")
-        .build();
-    cookies.add(player_id_cookie);
-    let game_id_cookie = Cookie::build(("game_id", game_id.to_string()))
-        .max_age(Duration::days(1))
-        .same_site(SameSite::Strict)
-        .domain(domain.clone())
-        .path("/")
-        .build();
-    cookies.add(game_id_cookie);
-    let player_name_cookie = Cookie::build(("player_name", player_name.to_string()))
-        .max_age(Duration::days(1))
-        .same_site(SameSite::Strict)
-        .domain(domain)
-        .path("/")
-        .build();
-    cookies.add(player_name_cookie);
+    add_game_cookies(&cookies, &player_id, &player_name, &game_id);
     tracing::info!("Registered player {} with id {player_id}", player_name);
     StatusCode::CREATED
 }

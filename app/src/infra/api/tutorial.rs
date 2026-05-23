@@ -3,10 +3,7 @@ use std::{collections::HashMap, time::Duration as StdDuration};
 use axum::{extract::State, http::StatusCode, response::IntoResponse};
 use tokio::sync::oneshot;
 
-use tower_cookies::{
-    Cookie, Cookies,
-    cookie::{SameSite, time::Duration},
-};
+use tower_cookies::Cookies;
 
 use crate::{
     game::{
@@ -14,7 +11,7 @@ use crate::{
         infra::actor::GameActorConfig,
         scores::{GameRankings, TierLimits},
     },
-    infra::api::state::cleanup_state,
+    infra::api::{cookies::add_game_cookies, state::cleanup_state},
     market::{MarketActor, bots::start_bots_tutorial},
     plants::infra::actor::default_stack_plants_builder,
     player::{PlayerName, infra::PlayerConnectionsService},
@@ -118,28 +115,8 @@ pub async fn create_tutorial_game(
         .send(GameMessage::PlayerIsReady(player_id.clone()))
         .await;
 
-    let domain = state.config.domain.clone();
-    let player_id_cookie = Cookie::build(("player_id", player_id.to_string()))
-        .max_age(Duration::days(1))
-        .same_site(SameSite::Strict)
-        .domain(domain.clone())
-        .path("/")
-        .build();
-    cookies.add(player_id_cookie);
-    let game_id_cookie = Cookie::build(("game_id", game_id.to_string()))
-        .max_age(Duration::days(1))
-        .same_site(SameSite::Strict)
-        .domain(domain.clone())
-        .path("/")
-        .build();
-    cookies.add(game_id_cookie);
-    let name_cookie = Cookie::build(("player_name", player_name.to_string()))
-        .max_age(Duration::days(1))
-        .same_site(SameSite::Strict)
-        .domain(domain)
-        .path("/")
-        .build();
-    cookies.add(name_cookie);
+    add_game_cookies(&cookies, &player_id, &player_name, &game_id);
+
     tracing::info!("Tutorial game created");
     StatusCode::CREATED
 }

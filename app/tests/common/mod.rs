@@ -40,7 +40,6 @@ pub async fn init() -> (String, ServerTaskHandle) {
         let config = AppConfig {
             port: addr.port(),
             allow_origin: addr.to_string(),
-            domain: String::from("localhost"),
         };
         let state = new_api_state(&config);
         let app = parcelec_app::build_router(state, config);

@@ -4,13 +4,10 @@ use axum::{
     response::IntoResponse,
 };
 use connection::{PlayerConnectionContext, start_player_connection};
-use tower_cookies::{
-    Cookie, Cookies,
-    cookie::{SameSite, time::Duration},
-};
+use tower_cookies::Cookies;
 
 use crate::{
-    game::GameId,
+    infra::api::cookies::{extract_game_cookies, invalidate_game_cookies},
     market::Market,
     plants::Stack,
     player::{PlayerId, PlayerName},
@@ -25,17 +22,17 @@ pub async fn handle_ws_connection(
     State(state): State<ApiState>,
     cookies: Cookies,
 ) -> impl IntoResponse {
-    let Some((player_id, player_name, game_id)) = extract_cookies(&cookies) else {
-        invalidate_cookies(cookies);
+    let Some((player_id, player_name, game_id)) = extract_game_cookies(&cookies) else {
+        invalidate_game_cookies(&cookies);
         return StatusCode::UNAUTHORIZED.into_response();
     };
     let state = state.read().await;
     let Some(game_context) = state.game_services.get(&game_id) else {
-        invalidate_cookies(cookies);
+        invalidate_game_cookies(&cookies);
         return StatusCode::UNAUTHORIZED.into_response();
     };
     let Some(market_context) = state.market_services.get(&game_id) else {
-        invalidate_cookies(cookies);
+        invalidate_game_cookies(&cookies);
         return StatusCode::UNAUTHORIZED.into_response();
     };
     let Some(stack_context) = state
@@ -43,7 +40,7 @@ pub async fn handle_ws_connection(
         .get(&game_id)
         .and_then(|game_stacks| game_stacks.get(&player_id))
     else {
-        invalidate_cookies(cookies);
+        invalidate_game_cookies(&cookies);
         return StatusCode::UNAUTHORIZED.into_response();
     };
     let player_context = PlayerConnectionContext {
@@ -57,40 +54,6 @@ pub async fn handle_ws_connection(
     };
 
     ws.on_upgrade(move |socket| handle_socket(socket, player_context))
-}
-
-fn invalidate_cookies(cookies: Cookies) {
-    let game_id_cookie = Cookie::build(("game_id", "".to_string()))
-        .max_age(Duration::seconds(0))
-        .same_site(SameSite::Strict)
-        .path("/")
-        .build();
-    cookies.add(game_id_cookie);
-    let player_id_cookie = Cookie::build(("player_id", "".to_string()))
-        .max_age(Duration::seconds(0))
-        .same_site(SameSite::Strict)
-        .path("/")
-        .build();
-    cookies.add(player_id_cookie);
-    let name_cookie = Cookie::build(("player_name", "".to_string()))
-        .max_age(Duration::seconds(0))
-        .same_site(SameSite::Strict)
-        .path("/")
-        .build();
-    cookies.add(name_cookie);
-}
-
-fn extract_cookies(cookies: &Cookies) -> Option<(PlayerId, PlayerName, GameId)> {
-    let id = cookies
-        .get("player_id")
-        .map(|c| PlayerId::from(c.value_trimmed()))?;
-    let name = cookies
-        .get("player_name")
-        .map(|c| PlayerName::from(c.value_trimmed()))?;
-    let game_id = cookies
-        .get("game_id")
-        .map(|c| GameId::from(c.value_trimmed()))?;
-    Some((id, name, game_id))
 }
 
 async fn handle_socket<MS: Market, PS: Stack>(

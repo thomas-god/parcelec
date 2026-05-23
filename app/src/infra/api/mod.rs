@@ -17,6 +17,7 @@ use ws::handle_ws_connection;
 
 use crate::AppConfig;
 
+mod cookies;
 mod create_game;
 mod join_game;
 mod list_games;
@@ -37,7 +38,10 @@ pub fn build_router(state: ApiState, config: AppConfig) -> Router {
         .layer(
             CorsLayer::new()
                 .allow_headers([CONTENT_TYPE, COOKIE])
-                .allow_origin([config.allow_origin.parse::<HeaderValue>().unwrap()])
+                .allow_origin(config.allow_origin.parse::<HeaderValue>().expect(&format!(
+                    "Could not parse allow_config ({}) into a HeaderValue",
+                    config.allow_origin
+                )))
                 .allow_methods([Method::GET, Method::POST, Method::OPTIONS])
                 .allow_credentials(true),
         )

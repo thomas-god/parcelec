@@ -24,7 +24,6 @@ RUN cargo build --release
 # Prod layer
 FROM gcr.io/distroless/cc
 COPY --from=builder /app/target/release/parcelec-app /
-ENV DOMAIN=".parcelec.org"
 ENV ALLOW_ORIGIN="https://parcelec.org"
 
 CMD ["./parcelec-app"]
