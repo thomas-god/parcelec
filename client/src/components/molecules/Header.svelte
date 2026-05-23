@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { goto } from "$app/navigation";
   import type { GameState } from "$lib/message";
   import { isSome, type Option } from "$lib/Options";
   import type { Periods } from "$lib/types";
@@ -59,7 +60,14 @@
   <div
     class="max-w-300 w-full mx-auto h-full flex flex-row items-center justify-between @sm:text-base text-sm text-center align-middle"
   >
-    <div>
+    <div class="flex flex-row items-center justify-center gap-1.5">
+      <button onclick={() => goto("/")}
+        ><img
+          src="/icons/home.svg"
+          alt="homepage icon"
+          class="inline h-6 w-6"
+        /></button
+      >
       {title}
     </div>
     {#if isSome(delivery_period_end)}
