@@ -7,6 +7,7 @@ use axum::{
     routing::{get, post},
 };
 use create_game::create_game;
+use current_game::current_game;
 use join_game::join_game;
 use list_games::list_games;
 use state::ApiState;
@@ -19,6 +20,7 @@ use crate::AppConfig;
 
 mod cookies;
 mod create_game;
+mod current_game;
 mod join_game;
 mod list_games;
 pub mod state;
@@ -27,7 +29,7 @@ pub mod ws;
 
 pub fn build_router(state: ApiState, config: AppConfig) -> Router {
     Router::new()
-        .route("/api/game", post(create_game))
+        .route("/api/game", post(create_game).get(current_game))
         .route("/api/games", get(list_games))
         .route("/api/game/join", post(join_game))
         .route("/api/tutorial", post(create_tutorial_game))
