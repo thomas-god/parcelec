@@ -36,7 +36,12 @@
   <!-- Add an offer -->
   <div class="flex flex-row justify-center gap-2">
     <button class="btn btn-secondary" onclick={() => addOrderModal.showModal()}
-      >Ajouter un ordre</button
+      >Ajouter un ordre
+      <img
+        src="/icons/plus.svg"
+        alt="plus icon"
+        class="inline h-5 w-5"
+      /></button
     >
     <dialog class="modal" bind:this={addOrderModal}>
       <div class="modal-box bg-base-200 border border-base-300 p-4 rounded-box">
@@ -47,9 +52,10 @@
       </form>
     </dialog>
 
-    <button class="btn btn-secondary" onclick={() => tradeListModal.showModal()}
-      >Transactions passées</button
-    >
+    <button class="btn btn-outline" onclick={() => tradeListModal.showModal()}
+      >Historique
+      <img src="/icons/pile.svg" alt="folder icon" class="inline h-5 w-5" />
+    </button>
     <dialog class="modal" bind:this={tradeListModal}>
       <div class="modal-box bg-base-200 border border-base-300 p-4 rounded-box">
         <TradeList {trades} />
