@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { OrderBook, OrderRequest, Trade } from "$lib/message";
+  import { extract_bbo } from "$lib/trades";
   import AddOrder from "../molecules/AddOrder.svelte";
   import TradeList from "../molecules/TradeList.svelte";
 
@@ -12,6 +13,8 @@
     send: (msg: string) => void;
     trades: Trade[];
   } = $props();
+
+  let bbo = $derived(extract_bbo(orderBook));
 
   let sendOrderDebouncedInterval: ReturnType<typeof setTimeout>;
   const sendOrderRequest = (orderRequest: OrderRequest) => {
@@ -37,7 +40,7 @@
     >
     <dialog class="modal" bind:this={addOrderModal}>
       <div class="modal-box bg-base-200 border border-base-300 p-4 rounded-box">
-        <AddOrder {sendOrderRequest} />
+        <AddOrder {sendOrderRequest} {bbo} />
       </div>
       <form method="dialog" class="modal-backdrop">
         <button>close</button>

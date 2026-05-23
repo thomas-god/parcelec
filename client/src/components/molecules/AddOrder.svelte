@@ -1,10 +1,13 @@
 <script lang="ts">
-  import type { OrderRequest } from "$lib/message";
+  import type { OrderBookEntry, OrderRequest } from "$lib/message";
+  import { isSome, type Some } from "$lib/Options";
+  import type { BBO } from "$lib/trades";
   import CloseButton from "../atoms/CloseButton.svelte";
 
   let {
     sendOrderRequest,
-  }: { sendOrderRequest: (request: OrderRequest) => void } = $props();
+    bbo,
+  }: { sendOrderRequest: (request: OrderRequest) => void; bbo: BBO } = $props();
 
   let price = $state("50");
   let volume = $state("100");
@@ -40,7 +43,7 @@
     />
   </label>
   <label class="fieldset-label">
-    Prix (€)
+    Prix (€/MWh)
     <input
       type="text"
       inputmode="numeric"
@@ -49,6 +52,53 @@
       bind:value={price}
     />
   </label>
+  <div class="italic opacity-80 flex flex-col gap-1">
+    <div class="flex flex-row items-center gap-2">
+      <div class="shrink-0">Meilleur acheteur :</div>
+      {#if isSome(bbo.bestBid)}
+        <div class="flex flex-row flex-wrap gap-1">
+          <span class="font-semibold">{bbo.bestBid.value.price} €/MWh</span>
+          <span>
+            ({bbo.bestBid.value.volume} MWh)
+          </span>
+        </div>
+        <div>
+          <button
+            class="btn btn-xs btn-outline btn-warning"
+            onclick={() =>
+              (price = (
+                bbo.bestBid as Some<OrderBookEntry>
+              ).value.price.toString())}
+            >s'aligner
+          </button>
+        </div>
+      {:else}
+        <div>-</div>
+      {/if}
+    </div>
+    <div class="flex flex-row items-center gap-2">
+      <div class="shrink-0">Meilleur vendeur :</div>
+      {#if isSome(bbo.bestOffer)}
+        <div class="flex flex-row flex-wrap gap-1">
+          <span class="font-semibold">{bbo.bestOffer.value.price} €/MWh</span>
+          <span>
+            ({bbo.bestOffer.value.volume} MWh)
+          </span>
+        </div>
+        <div>
+          <button
+            class="btn btn-xs btn-outline btn-success"
+            onclick={() =>
+              (price = (
+                bbo.bestOffer as Some<OrderBookEntry>
+              ).value.price.toString())}>s'aligner</button
+          >
+        </div>
+      {:else}
+        <div>-</div>
+      {/if}
+    </div>
+  </div>
   <div class="flex flex-row justify-around mt-2">
     <button
       class="px-4 py-2 bg-success text-white rounded"
