@@ -38,7 +38,7 @@ impl Add<&PlantOutput> for PlayerScore {
     fn add(self, rhs: &PlantOutput) -> PlayerScore {
         PlayerScore {
             balance: self.balance + rhs.setpoint,
-            pnl: self.pnl - rhs.cost,
+            pnl: self.pnl + rhs.cost,
             imbalance_cost: self.imbalance_cost,
         }
     }
@@ -413,14 +413,14 @@ mod tests {
                         PlantId::from("plant_1"),
                         PlantOutput {
                             setpoint: Power::from(100),
-                            cost: Money::from(100),
+                            cost: Money::from(-100),
                         },
                     ),
                     (
                         PlantId::from("plant_2"),
                         PlantOutput {
                             setpoint: Power::from(200),
-                            cost: Money::from(500),
+                            cost: Money::from(-500),
                         },
                     ),
                 ]),
@@ -458,14 +458,14 @@ mod tests {
                         PlantId::from("plant_1"),
                         PlantOutput {
                             setpoint: Power::from(100),
-                            cost: Money::from(100),
+                            cost: Money::from(-100),
                         },
                     ),
                     (
                         PlantId::from("plant_2"),
                         PlantOutput {
                             setpoint: Power::from(200),
-                            cost: Money::from(500),
+                            cost: Money::from(-500),
                         },
                     ),
                 ]),
@@ -504,14 +504,14 @@ mod tests {
                             PlantId::from("plant_1"),
                             PlantOutput {
                                 setpoint: Power::from(100),
-                                cost: Money::from(100),
+                                cost: Money::from(-100),
                             },
                         ),
                         (
                             PlantId::from("plant_2"),
                             PlantOutput {
                                 setpoint: Power::from(200),
-                                cost: Money::from(500),
+                                cost: Money::from(-500),
                             },
                         ),
                     ]),
