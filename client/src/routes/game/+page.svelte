@@ -71,10 +71,11 @@
 
       match(parseRes.data)
         .with({ type: "OrderBookSnapshot" }, (snapshot) => {
-          orderBook.bids = snapshot.bids.toSorted((a, b) => b.price - a.price);
-          orderBook.offers = snapshot.offers.toSorted(
-            (a, b) => a.price - b.price,
-          );
+          const sortedOrderBook = {
+            bids: snapshot.bids.toSorted((a, b) => b.price - a.price),
+            offers: snapshot.offers.toSorted((a, b) => a.price - b.price),
+          };
+          orderBook = sortedOrderBook;
         })
         .with({ type: "NewTrade" }, (new_trade) => {
           trades.push(new_trade);

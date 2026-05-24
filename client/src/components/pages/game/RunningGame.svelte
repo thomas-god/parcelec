@@ -34,6 +34,23 @@
     plant_forecasts,
     plant_history,
   }: Props = $props();
+
+  let orderBookFlash = $state(false);
+  let orderBookFirstRun = true;
+
+  $effect(() => {
+    orderBook;
+
+    if (orderBookFirstRun) {
+      orderBookFirstRun = false;
+      return;
+    }
+    orderBookFlash = true;
+    const timer = setTimeout(() => {
+      orderBookFlash = false;
+    }, 2000);
+    return () => clearTimeout(timer);
+  });
 </script>
 
 <div class="flex flex-col gap-3 items-stretch">
@@ -62,11 +79,13 @@
     <div class="tab-content bg-base-100 border-base-300 p-1 pb-4">
       <Stack {plants} send={sendMessage} />
     </div>
-    <label class="tab text-base font-semibold">
+    <label
+      class={`tab text-base font-semibold ${orderBookFlash ? "tab-flash" : ""}`}
+    >
       <input
         type="radio"
         name="market_forecast_tabs"
-        class="tab text-base font-semibold"
+        class={`tab text-base font-semibol `}
       />
       Marché
       <img
@@ -179,15 +198,36 @@
       padding: calc(var(--spacing) * 1);
     }
 
-    @container (min-width: 1200px) {
+    @container (min-width: 1030px) {
       display: none;
     }
+  }
+
+  @keyframes tab-flash-anim {
+    0% {
+      background-color: transparent;
+      color: inherit;
+    }
+    30%,
+    80% {
+      background-color: var(--color-info);
+      opacity: 60%;
+      color: var(--color-info-content);
+    }
+    100% {
+      background-color: transparent;
+      color: inherit;
+    }
+  }
+
+  .tab-flash {
+    animation: tab-flash-anim 1.8s linear;
   }
 
   .desktop-grid-layout {
     display: none;
 
-    @container (min-width: 1200px) {
+    @container (min-width: 1030px) {
       display: grid;
       grid-template-columns: repeat(3, minmax(0, 1fr));
       gap: calc(var(--spacing) * 4);

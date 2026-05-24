@@ -117,7 +117,9 @@ impl<PC: PlayerConnections> MarketActor<PC> {
     async fn process_message(&mut self, message: MarketMessage) {
         match (&self.state, message) {
             (_, MarketMessage::GetMarketSnapshot { player_id, tx_back }) => {
-                self.players.push(player_id.clone());
+                if !self.players.contains(&player_id) {
+                    self.players.push(player_id.clone());
+                }
                 let _ = tx_back.send((self.player_trades(&player_id), self.player_obs(&player_id)));
             }
             (MarketState::Open, MarketMessage::OrderRequest(request)) => {
