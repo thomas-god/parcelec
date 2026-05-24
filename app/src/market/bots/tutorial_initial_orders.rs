@@ -1,8 +1,14 @@
-use tokio::sync::mpsc::{Receiver, channel};
+use std::time::Duration;
+
+use rand::random_range;
+use tokio::{
+    sync::mpsc::{Receiver, channel},
+    time::sleep,
+};
 use tokio_util::sync::CancellationToken;
 
 use crate::{
-    game::delivery_period::DeliveryPeriodId,
+    game::{GameContext, GameState, delivery_period::DeliveryPeriodId},
     market::{Direction, Market, MarketContext, MarketState, order_book::OrderRequest},
     player::{PlayerId, PlayerMessage},
     utils::units::{Energy, EnergyCost},
@@ -11,12 +17,14 @@ use crate::{
 pub struct TutorialInitialOrdersBot<MS: Market> {
     id: PlayerId,
     market: MarketContext<MS>,
+    game: GameContext,
     cancellation_token: CancellationToken,
     _rx: Receiver<PlayerMessage>,
 }
 
 impl<MS: Market> TutorialInitialOrdersBot<MS> {
     fn new(
+        game: GameContext,
         market: MarketContext<MS>,
         cancellation_token: CancellationToken,
     ) -> TutorialInitialOrdersBot<MS> {
@@ -25,14 +33,19 @@ impl<MS: Market> TutorialInitialOrdersBot<MS> {
 
         TutorialInitialOrdersBot {
             id: bot_id,
+            game,
             market,
             cancellation_token,
             _rx: rx,
         }
     }
 
-    pub fn start(market: MarketContext<MS>, cancellation_token: CancellationToken) {
-        let mut bot = TutorialInitialOrdersBot::new(market, cancellation_token);
+    pub fn start(
+        game: GameContext,
+        market: MarketContext<MS>,
+        cancellation_token: CancellationToken,
+    ) {
+        let mut bot = TutorialInitialOrdersBot::new(game, market, cancellation_token);
 
         tokio::spawn(async move {
             bot.run().await;
@@ -58,14 +71,10 @@ impl<MS: Market> TutorialInitialOrdersBot<MS> {
             .get_market_snapshot(self.id.clone())
             .await;
 
-        let mut period = DeliveryPeriodId::default();
-
         let cancellation_token = self.cancellation_token.clone();
         loop {
             tokio::select! {
-                next_period = self.post_orders(&period) => {
-                    period = next_period;
-                }
+                _ = self.post_orders() => {}
                 _ = cancellation_token.cancelled() => {
                     break;
                 }
@@ -73,11 +82,16 @@ impl<MS: Market> TutorialInitialOrdersBot<MS> {
         }
     }
 
-    async fn post_orders(&mut self, period: &DeliveryPeriodId) -> DeliveryPeriodId {
+    async fn post_orders(&mut self) {
         self.wait_for_market_to_open().await;
-        let next_period = period.next();
+        let state = self.game.state_rx.borrow().clone();
+        let GameState::Running { period, .. } = state else {
+            return;
+        };
 
-        if *period == DeliveryPeriodId::from(1) {
+        sleep(Duration::from_secs_f32(random_range(2.0..10.0))).await;
+
+        if period == DeliveryPeriodId::from(1) {
             self.market
                 .service
                 .new_order(OrderRequest {
@@ -99,6 +113,5 @@ impl<MS: Market> TutorialInitialOrdersBot<MS> {
         }
 
         self.wait_for_market_to_close().await;
-        next_period
     }
 }

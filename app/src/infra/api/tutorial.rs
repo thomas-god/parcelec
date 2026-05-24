@@ -70,10 +70,16 @@ pub async fn create_tutorial_game(
         .insert(game_id.clone(), game_context.clone());
 
     // Start the bots
+    let cloned_game_context = game_context.clone();
     let cloned_market_context = market_context.clone();
     let cloned_cancellation_token = cancellation_token.clone();
     tokio::spawn(async move {
-        start_bots_tutorial(cloned_market_context, cloned_cancellation_token).await;
+        start_bots_tutorial(
+            cloned_game_context,
+            cloned_market_context,
+            cloned_cancellation_token,
+        )
+        .await;
     });
 
     // Register a player for this game

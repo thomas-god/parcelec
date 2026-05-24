@@ -1,4 +1,10 @@
-use tokio::sync::mpsc::{Receiver, channel};
+use std::time::Duration;
+
+use rand::random_range;
+use tokio::{
+    sync::mpsc::{Receiver, channel},
+    time::sleep,
+};
 use tokio_util::sync::CancellationToken;
 
 use crate::{
@@ -71,6 +77,8 @@ impl<MS: Market> ExtremeOrdersBot<MS> {
 
     async fn add_orders(&mut self) {
         self.wait_for_market_to_open().await;
+        sleep(Duration::from_secs_f32(random_range(2.0..10.0))).await;
+
         self.market
             .service
             .new_order(OrderRequest {
