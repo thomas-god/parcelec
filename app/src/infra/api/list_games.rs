@@ -140,7 +140,10 @@ mod test_api_list_games {
                 period: DeliveryPeriodId::from(0),
                 end_at: None,
             },
-            GameState::PostDelivery(DeliveryPeriodId::from(0)),
+            GameState::PostDelivery {
+                period: DeliveryPeriodId::from(0),
+                end_at: None,
+            },
             GameState::Ended(DeliveryPeriodId::from(0)),
         ] {
             let game_id = GameId::from(game_state.to_string());

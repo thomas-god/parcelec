@@ -49,6 +49,7 @@ pub enum GameMessage {
     },
     PlayerIsReady(PlayerId),
     DeliveryPeriodResults(DeliveryPeriodResults),
+    PostDeliveryPeriodEnded(DeliveryPeriodId),
     GetScores {
         player_id: PlayerId,
         tx_back: oneshot::Sender<GetPreviousScoresResult>,
@@ -79,7 +80,11 @@ pub enum GameState {
         end_at: Option<chrono::DateTime<Utc>>,
     },
     /// [DeliveryPeriodId] is closed.
-    PostDelivery(DeliveryPeriodId),
+    #[display("PostDelivery")]
+    PostDelivery {
+        period: DeliveryPeriodId,
+        end_at: Option<chrono::DateTime<Utc>>,
+    },
     /// Game has ended.
     Ended(DeliveryPeriodId),
 }
@@ -96,26 +101,34 @@ impl Serialize for GameState {
             match self {
                 Self::Running { .. } => "Running",
                 Self::Open => "Open",
-                Self::PostDelivery(_) => "PostDelivery",
+                Self::PostDelivery { .. } => "PostDelivery",
                 Self::Ended(_) => "Ended",
             },
         )?;
         let period = match self {
-            Self::Running { period, .. } | Self::PostDelivery(period) | Self::Ended(period) => {
-                *period
-            }
+            Self::Running { period, .. }
+            | Self::PostDelivery { period, .. }
+            | Self::Ended(period) => *period,
             Self::Open => DeliveryPeriodId::from(0),
         };
         state.serialize_field("delivery_period", &period)?;
-        if let Self::Running {
-            end_at: Some(end_at),
-            ..
-        } = self
-        {
-            state.serialize_field("end_at", &end_at.to_rfc3339())?;
-        } else {
-            state.serialize_field("end_at", "None")?;
-        };
+
+        match self {
+            Self::Running {
+                end_at: Some(end_at),
+                ..
+            }
+            | Self::PostDelivery {
+                end_at: Some(end_at),
+                ..
+            } => {
+                state.serialize_field("end_at", &end_at.to_rfc3339())?;
+            }
+            _ => {
+                state.serialize_field("end_at", "None")?;
+            }
+        }
+
         state.end()
     }
 }
@@ -206,8 +219,15 @@ mod test_game_state {
             )
         );
         assert_eq!(
-            serde_json::to_string(&GameState::PostDelivery(DeliveryPeriodId::from(2))).unwrap(),
-            "{\"type\":\"GameState\",\"state\":\"PostDelivery\",\"delivery_period\":2,\"end_at\":\"None\"}".to_string()
+            serde_json::to_string(&GameState::PostDelivery {
+                period: DeliveryPeriodId::from(2),
+                end_at: Some(date)
+            })
+            .unwrap(),
+            format!(
+                "{{\"type\":\"GameState\",\"state\":\"PostDelivery\",\"delivery_period\":2,\"end_at\":\"{}\"}}",
+                date.to_rfc3339()
+            )
         );
         assert_eq!(
             serde_json::to_string(&GameState::Ended(DeliveryPeriodId::from(3))).unwrap(),

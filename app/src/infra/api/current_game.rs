@@ -20,11 +20,8 @@ pub struct ActiveGame {
 fn state_name(state: &GameState) -> String {
     match state {
         GameState::Open => "Open".to_string(),
-        GameState::Running {
-            end_at: _,
-            period: _,
-        } => "Running".to_string(),
-        GameState::PostDelivery(_) => "Running".to_string(),
+        GameState::Running { .. } => "Running".to_string(),
+        GameState::PostDelivery { .. } => "Running".to_string(),
         GameState::Ended(_) => "Ended".to_string(),
     }
 }

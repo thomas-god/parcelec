@@ -2,9 +2,12 @@ use std::{collections::HashMap, time::Duration};
 
 use chrono::Utc;
 use futures_util::future::join_all;
-use tokio::sync::{
-    mpsc::{Receiver, Sender, channel},
-    oneshot, watch,
+use tokio::{
+    sync::{
+        mpsc::{Receiver, Sender, channel},
+        oneshot, watch,
+    },
+    time::sleep,
 };
 use tokio_util::sync::CancellationToken;
 
@@ -141,6 +144,17 @@ impl<MS: Market, PC: PlayerConnections, F: Fn() -> StackPlants + Clone + Send + 
             GameMessage::DeliveryPeriodResults(results) => {
                 let _ = self.process_delivery_period_results(results).await;
             }
+            GameMessage::PostDeliveryPeriodEnded(period) => {
+                if period != self.current_delivery_period {
+                    tracing::warn!(
+                        "Received GameMessage::PostDeliveryPeriodEnded for delivery period {:?} but current delivery period is {:?}",
+                        period,
+                        self.current_delivery_period
+                    );
+                    return;
+                }
+                self.start_next_delivery_period();
+            }
         }
     }
 
@@ -169,7 +183,7 @@ impl<MS: Market, PC: PlayerConnections, F: Fn() -> StackPlants + Clone + Send + 
                     self.reset_players_ready();
                 }
             }
-            (true, PostDelivery(_)) => {
+            (true, PostDelivery { .. }) => {
                 if self.game_should_end() {
                     let _ = self.end_game().await;
                 } else {
@@ -378,10 +392,14 @@ impl<MS: Market, PC: PlayerConnections, F: Fn() -> StackPlants + Clone + Send + 
         }
 
         self.store_scores(&results);
-        self.state = GameState::PostDelivery(self.current_delivery_period);
-        let _ = self
-            .state_watch
-            .send(GameState::PostDelivery(self.current_delivery_period));
+        let state = GameState::PostDelivery {
+            period: self.current_delivery_period,
+            end_at: self
+                .delivery_period_duration
+                .map(|period| Utc::now() + period),
+        };
+        self.state = state.clone();
+        let _ = self.state_watch.send(state.clone());
         join_all(results.players_scores.iter().map(|(player, score)| {
             let detailed_score = results.players_detailed_scores.get(player);
             self.players_connections.send_to_player(
@@ -395,6 +413,13 @@ impl<MS: Market, PC: PlayerConnections, F: Fn() -> StackPlants + Clone + Send + 
             )
         }))
         .await;
+
+        let period = self.current_delivery_period;
+        let timer = self.delivery_period_duration;
+        let game_tx = self.tx.clone();
+        tokio::spawn(async move {
+            wait_for_post_delivery_period_end(period, timer, game_tx).await;
+        });
     }
 
     fn store_scores(&mut self, results: &DeliveryPeriodResults) {
@@ -419,6 +444,19 @@ impl<MS: Market, PC: PlayerConnections, F: Fn() -> StackPlants + Clone + Send + 
                 );
             }
         }
+    }
+}
+
+async fn wait_for_post_delivery_period_end(
+    period: DeliveryPeriodId,
+    timer: Option<Duration>,
+    game_tx: Sender<GameMessage>,
+) {
+    if let Some(duration) = timer {
+        sleep(duration).await;
+        let _ = game_tx
+            .send(GameMessage::PostDeliveryPeriodEnded(period))
+            .await;
     }
 }
 
@@ -529,7 +567,27 @@ mod test_utils {
         }
     }
 
+    pub fn game_config_with_duration(
+        duration: Option<Duration>,
+    ) -> GameActorConfig<impl Fn() -> StackPlants + Clone + Send + Sync> {
+        GameActorConfig {
+            delivery_period_duration: duration,
+            id: GameId::default(),
+            name: Some(GameName::default()),
+            number_of_delivery_periods: 4,
+            ranking_calculator: GameRankings { tier_limits: None },
+            build_stack: default_stack_plants_builder(),
+        }
+    }
+
     pub fn open_game() -> (GameContext, MarketContext<MockMarket>) {
+        let game_config = default_game_config();
+        open_game_with_config(game_config)
+    }
+
+    pub fn open_game_with_config(
+        config: GameActorConfig<impl Fn() -> StackPlants + Clone + Send + Sync>,
+    ) -> (GameContext, MarketContext<MockMarket>) {
         let (tx_1, _) = mpsc::channel(16);
         let (tx_2, _) = mpsc::channel(16);
         let connections = MockPlayerConnections {
@@ -544,9 +602,9 @@ mod test_utils {
             service: market,
             state_rx: rx,
         };
-        let game_config = default_game_config();
+
         (
-            GameActor::start(game_config, connections, market_context.clone(), token),
+            GameActor::start(config, connections, market_context.clone(), token),
             market_context,
         )
     }
@@ -599,8 +657,9 @@ mod tests {
             infra::actor::{
                 GameActorConfig,
                 test_utils::{
-                    MockMarket, MockPlayerConnections, default_game_config, open_game,
-                    register_player, start_game,
+                    MockMarket, MockPlayerConnections, default_game_config,
+                    game_config_with_duration, open_game, open_game_with_config, register_player,
+                    start_game,
                 },
             },
             scores::GameRankings,
@@ -833,7 +892,80 @@ mod tests {
         assert!(game.state_rx.changed().await.is_ok());
         assert_eq!(
             *game.state_rx.borrow_and_update(),
-            GameState::PostDelivery(DeliveryPeriodId::from(1))
+            GameState::PostDelivery {
+                period: DeliveryPeriodId::from(1),
+                end_at: None
+            }
+        );
+    }
+
+    #[tokio::test]
+    async fn test_post_elivery_period_should_end_when_timer_elapsed() {
+        let (mut game, _) =
+            open_game_with_config(game_config_with_duration(Some(Duration::from_micros(1))));
+        let (player, _) = start_game(game.tx.clone()).await;
+        assert!(game.state_rx.changed().await.is_ok());
+        let GameState::Running { period, .. } = *game.state_rx.borrow_and_update() else {
+            unreachable!("Game should be running")
+        };
+        assert_eq!(period, DeliveryPeriodId::from(1));
+
+        let _ = game
+            .tx
+            .send(GameMessage::PlayerIsReady(player.clone()))
+            .await;
+
+        assert!(game.state_rx.changed().await.is_ok());
+        let GameState::PostDelivery { period, end_at } = *game.state_rx.borrow_and_update() else {
+            unreachable!("Should be in PostDelivery state")
+        };
+        assert_eq!(period, DeliveryPeriodId::from(1));
+        assert!(end_at.is_some());
+
+        // State changes even even if players are not ready
+        assert!(game.state_rx.changed().await.is_ok());
+        let GameState::Running { period, end_at } = *game.state_rx.borrow_and_update() else {
+            unreachable!("Should be in Running state")
+        };
+        assert_eq!(period, DeliveryPeriodId::from(2));
+        assert!(end_at.is_some());
+    }
+
+    #[tokio::test]
+    async fn test_post_elivery_period_should_end_when_all_players_ready() {
+        let (mut game, _) = open_game();
+        let (player, _) = start_game(game.tx.clone()).await;
+        assert!(game.state_rx.changed().await.is_ok());
+        let GameState::Running { period, .. } = *game.state_rx.borrow_and_update() else {
+            unreachable!("Game should be running")
+        };
+        assert_eq!(period, DeliveryPeriodId::from(1));
+
+        let _ = game
+            .tx
+            .send(GameMessage::PlayerIsReady(player.clone()))
+            .await;
+
+        assert!(game.state_rx.changed().await.is_ok());
+        assert_eq!(
+            *game.state_rx.borrow_and_update(),
+            GameState::PostDelivery {
+                period: DeliveryPeriodId::from(1),
+                end_at: None
+            }
+        );
+
+        let _ = game
+            .tx
+            .send(GameMessage::PlayerIsReady(player.clone()))
+            .await;
+        assert!(game.state_rx.changed().await.is_ok());
+        assert_eq!(
+            *game.state_rx.borrow_and_update(),
+            GameState::Running {
+                period: DeliveryPeriodId::from(2),
+                end_at: None
+            }
         );
     }
 
@@ -878,7 +1010,6 @@ mod tests {
 
     #[tokio::test]
     async fn test_get_previous_scores() {
-        // FIXME
         let (connections, ..) = MockPlayerConnections::new();
         let (state_tx, rx) = watch::channel(MarketState::Closed);
         let market = MarketContext {
@@ -918,7 +1049,10 @@ mod tests {
             .await;
         // Wait for game state to update
         while *game.state_rx.borrow_and_update()
-            != GameState::PostDelivery(DeliveryPeriodId::from(1))
+            != (GameState::PostDelivery {
+                period: DeliveryPeriodId::from(1),
+                end_at: None,
+            })
         {
             let _ = game.state_rx.changed().await;
         }
@@ -986,7 +1120,10 @@ mod tests {
         assert!(game.state_rx.changed().await.is_ok());
         assert_eq!(
             *game.state_rx.borrow_and_update(),
-            GameState::PostDelivery(DeliveryPeriodId::from(1))
+            GameState::PostDelivery {
+                period: DeliveryPeriodId::from(1),
+                end_at: None
+            }
         );
 
         // Player is ready for the second time - starts period 2
@@ -1008,7 +1145,10 @@ mod tests {
         assert!(game.state_rx.changed().await.is_ok());
         assert_eq!(
             *game.state_rx.borrow_and_update(),
-            GameState::PostDelivery(DeliveryPeriodId::from(2))
+            GameState::PostDelivery {
+                period: DeliveryPeriodId::from(2),
+                end_at: None
+            }
         );
 
         // Player is ready again - this should end the game instead of starting period 3
@@ -1073,7 +1213,10 @@ mod tests {
         assert!(game.state_rx.changed().await.is_ok());
         assert_eq!(
             *game.state_rx.borrow_and_update(),
-            GameState::PostDelivery(DeliveryPeriodId::from(1))
+            GameState::PostDelivery {
+                period: DeliveryPeriodId::from(1),
+                end_at: None
+            }
         );
 
         // End game - both players ready
