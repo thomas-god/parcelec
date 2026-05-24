@@ -12,14 +12,12 @@
   type ActiveGame = z.infer<typeof ActiveGameSchema>;
 
   let activeGame: Option<ActiveGame> = $state(none());
-  $inspect(activeGame);
 
   const getActiveGame = async () => {
     let rest = await fetch(`${PUBLIC_APP_URL}/game`, {
       method: "GET",
       credentials: "include",
     });
-    console.log(rest.status);
     if (rest.status === 200) {
       activeGame = some(ActiveGameSchema.parse(await rest.json()));
     } else {

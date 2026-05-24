@@ -1,7 +1,6 @@
 <script lang="ts">
   import type { OrderBook, OrderRequest, Trade } from "$lib/message";
   import { extract_bbo } from "$lib/trades";
-  import { fade, slide } from "svelte/transition";
   import AddOrder from "../molecules/AddOrder.svelte";
   import TradeList from "../molecules/TradeList.svelte";
 
@@ -16,6 +15,13 @@
   } = $props();
 
   let bbo = $derived(extract_bbo(orderBook));
+
+  // We explicitely want the initial state
+  // svelte-ignore state_referenced_locally
+  const initialOrderIds = new Set([
+    ...orderBook.bids.map((b) => b.order_id),
+    ...orderBook.offers.map((o) => o.order_id),
+  ]);
 
   let sendOrderDebouncedInterval: ReturnType<typeof setTimeout>;
   const sendOrderRequest = (orderRequest: OrderRequest) => {
@@ -84,7 +90,7 @@
         </thead>
         <tbody>
           {#each orderBook.bids as bid (bid.created_at)}
-            <tr transition:fade>
+            <tr class={initialOrderIds.has(bid.order_id) ? "" : "order-entry"}>
               <td class="p-0">
                 {#if bid.owned}
                   <button
@@ -121,7 +127,9 @@
         </thead>
         <tbody>
           {#each orderBook.offers as offer (offer.created_at)}
-            <tr>
+            <tr
+              class={initialOrderIds.has(offer.order_id) ? "" : "order-entry"}
+            >
               <td class="text-left">{offer.price}</td>
               <td class="text-center">{offer.volume}</td>
               <td class="p-0">
@@ -145,3 +153,30 @@
     </div>
   </div>
 </div>
+
+<style>
+  @keyframes order-entry-animation {
+    0% {
+      background-color: inherit;
+      color: inherit;
+      opacity: inherit;
+    }
+
+    25%,
+    75% {
+      background-color: var(--color-info);
+      color: var(--color-info-content);
+      opacity: 40%;
+    }
+
+    100% {
+      background-color: inherit;
+      color: inherit;
+      opacity: inherit;
+    }
+  }
+
+  .order-entry {
+    animation: order-entry-animation 2s linear;
+  }
+</style>
