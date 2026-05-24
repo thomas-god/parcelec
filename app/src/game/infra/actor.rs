@@ -153,7 +153,11 @@ impl<MS: Market, PC: PlayerConnections, F: Fn() -> StackPlants + Clone + Send + 
                     );
                     return;
                 }
-                self.start_next_delivery_period();
+                if self.game_should_end() {
+                    let _ = self.end_game().await;
+                } else {
+                    self.start_next_delivery_period();
+                }
             }
         }
     }
@@ -900,7 +904,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_post_elivery_period_should_end_when_timer_elapsed() {
+    async fn test_post_delivery_period_should_end_when_timer_elapsed() {
         let (mut game, _) =
             open_game_with_config(game_config_with_duration(Some(Duration::from_micros(1))));
         let (player, _) = start_game(game.tx.clone()).await;
@@ -932,7 +936,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_post_elivery_period_should_end_when_all_players_ready() {
+    async fn test_post_delivery_period_should_end_when_all_players_ready() {
         let (mut game, _) = open_game();
         let (player, _) = start_game(game.tx.clone()).await;
         assert!(game.state_rx.changed().await.is_ok());
@@ -967,6 +971,38 @@ mod tests {
                 end_at: None
             }
         );
+    }
+
+    #[tokio::test]
+    async fn test_post_delivery_period_timer_should_end_the_game_when_final_period() {
+        let mut config = default_game_config();
+        config.delivery_period_duration = Some(Duration::from_micros(1));
+        config.number_of_delivery_periods = 1;
+        let (mut game, _) = open_game_with_config(config);
+        let (player, _) = start_game(game.tx.clone()).await;
+        assert!(game.state_rx.changed().await.is_ok());
+        let GameState::Running { period, .. } = *game.state_rx.borrow_and_update() else {
+            unreachable!("Game should be running")
+        };
+        assert_eq!(period, DeliveryPeriodId::from(1));
+
+        let _ = game
+            .tx
+            .send(GameMessage::PlayerIsReady(player.clone()))
+            .await;
+
+        assert!(game.state_rx.changed().await.is_ok());
+        let GameState::PostDelivery { period, end_at } = *game.state_rx.borrow_and_update() else {
+            unreachable!("Should be in PostDelivery state")
+        };
+        assert_eq!(period, DeliveryPeriodId::from(1));
+        assert!(end_at.is_some());
+
+        assert!(game.state_rx.changed().await.is_ok());
+        let GameState::Ended(period) = *game.state_rx.borrow_and_update() else {
+            unreachable!("Should be in Ended state")
+        };
+        assert_eq!(period, DeliveryPeriodId::from(1));
     }
 
     #[tokio::test]
