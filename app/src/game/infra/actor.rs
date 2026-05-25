@@ -37,22 +37,17 @@ pub struct GameActor<
     PC: PlayerConnections,
     F: Fn() -> StackPlants + Clone + Send + Sync + 'static,
 > {
-    game_id: GameId,
-    name: GameName,
+    game: Game,
+    cache: GameCache,
+    config: GameActorConfig<F>,
     state_watch: watch::Sender<GameState>,
     players_connections: PC,
     market_context: MarketContext<MS>,
     stacks_contexts: HashMap<PlayerId, StackContext<StackService>>,
-    build_stack: F,
     rx: Receiver<GameMessage>,
     tx: Sender<GameMessage>,
-    last_delivery_period: DeliveryPeriodId,
-    delivery_period_duration: Option<Duration>,
     delivery_period_all_players_ready_tx: Option<oneshot::Sender<()>>,
-    ranking_calculator: GameRankings,
     cancellation_token: CancellationToken,
-    cache: GameCache,
-    game: Game,
 }
 
 struct GameCache {
@@ -80,7 +75,7 @@ where
     F: Fn() -> StackPlants + Clone + Send + Sync + 'static,
 {
     pub id: GameId,
-    pub name: Option<GameName>,
+    pub name: GameName,
     pub number_of_delivery_periods: usize,
     pub ranking_calculator: GameRankings,
     pub delivery_period_duration: Option<Duration>,
@@ -103,22 +98,17 @@ impl<MS: Market, PC: PlayerConnections, F: Fn() -> StackPlants + Clone + Send + 
         let (tx, rx) = channel::<GameMessage>(32);
         let (state_tx, _) = watch::channel(game.state.clone());
         let mut game = GameActor {
-            game_id: config.id.clone(),
-            name: config.name.unwrap_or_default(),
+            cache: GameCache::default(),
+            game,
+            config,
             state_watch: state_tx,
             market_context,
             players_connections,
             stacks_contexts: HashMap::new(),
-            build_stack: config.build_stack,
             rx,
             tx,
-            delivery_period_duration: config.delivery_period_duration,
-            last_delivery_period: DeliveryPeriodId::from(config.number_of_delivery_periods),
             delivery_period_all_players_ready_tx: None,
-            ranking_calculator: config.ranking_calculator,
             cancellation_token: cancelation_token,
-            cache: GameCache::default(),
-            game,
         };
         let context = game.get_context();
 
@@ -134,7 +124,7 @@ impl<MS: Market, PC: PlayerConnections, F: Fn() -> StackPlants + Clone + Send + 
                     self.process_message(msg).await;
                 }
                 _ = self.cancellation_token.cancelled() => {
-                    tracing::info!("Game actor {:?} terminated", self.game_id);
+                    tracing::info!("Game actor {:?} terminated", self.config.id);
                     break;
                 }
             }
@@ -210,7 +200,7 @@ impl<MS: Market, PC: PlayerConnections, F: Fn() -> StackPlants + Clone + Send + 
                     let _ = self
                         .players_connections
                         .send_to_all_players(
-                            &self.game_id,
+                            &self.config.id,
                             PlayerMessage::ReadinessStatus {
                                 readiness: self.cache.players_readiness.clone(),
                             },
@@ -224,7 +214,7 @@ impl<MS: Market, PC: PlayerConnections, F: Fn() -> StackPlants + Clone + Send + 
                     if let Some(tx) = self.delivery_period_all_players_ready_tx.take() {
                         let _ = tx.send(());
                     }
-                    let timer = self.delivery_period_duration;
+                    let timer = self.config.delivery_period_duration;
                     let game_tx = self.tx.clone();
                     tokio::spawn(async move {
                         wait_for_post_delivery_period_end(id, timer, game_tx).await;
@@ -243,7 +233,7 @@ impl<MS: Market, PC: PlayerConnections, F: Fn() -> StackPlants + Clone + Send + 
             .map(|(id, context)| (id.clone(), context.service.clone()))
             .collect();
         let (all_players_ready_tx, all_players_ready_rx) = oneshot::channel();
-        let timers = self.delivery_period_duration;
+        let timers = self.config.delivery_period_duration;
         let token = self.cancellation_token.clone();
         tokio::spawn(async move {
             start_delivery_period(
@@ -295,7 +285,8 @@ impl<MS: Market, PC: PlayerConnections, F: Fn() -> StackPlants + Clone + Send + 
         let scores = match self.cache.state {
             GameState::Ended(_) => PlayersRanking {
                 scores: map_rankings_to_player_name(
-                    self.ranking_calculator
+                    self.config
+                        .ranking_calculator
                         .compute_scores(&self.cache.players_scores.clone()),
                     &self.cache.players_id_to_name,
                 ),
@@ -332,7 +323,7 @@ impl<MS: Market, PC: PlayerConnections, F: Fn() -> StackPlants + Clone + Send + 
                 .and_then(|scores| scores.get(period));
 
             tasks.push(self.players_connections.send_to_player(
-                &self.game_id,
+                &self.config.id,
                 player,
                 PlayerMessage::DeliveryPeriodResults {
                     delivery_period: *period,
@@ -349,10 +340,11 @@ impl<MS: Market, PC: PlayerConnections, F: Fn() -> StackPlants + Clone + Send + 
         let _ = self
             .players_connections
             .send_to_all_players(
-                &self.game_id,
+                &self.config.id,
                 PlayerMessage::GameResults {
                     rankings: map_rankings_to_player_name(
-                        self.ranking_calculator
+                        self.config
+                            .ranking_calculator
                             .compute_scores(&self.cache.players_scores),
                         &self.cache.players_id_to_name,
                     ),
@@ -363,9 +355,9 @@ impl<MS: Market, PC: PlayerConnections, F: Fn() -> StackPlants + Clone + Send + 
 
     fn get_context(&self) -> GameContext {
         GameContext {
-            id: self.game_id.clone(),
-            name: self.name.clone(),
-            last_delivery_period: self.last_delivery_period,
+            id: self.config.id.clone(),
+            name: self.config.name.clone(),
+            last_delivery_period: DeliveryPeriodId::from(self.config.number_of_delivery_periods),
             tx: self.tx.clone(),
             state_rx: self.state_watch.subscribe(),
         }
@@ -378,9 +370,9 @@ impl<MS: Market, PC: PlayerConnections, F: Fn() -> StackPlants + Clone + Send + 
     ) {
         // Create a new stack for the player
         let mut player_stack = StackActor::new(
-            self.game_id.clone(),
+            self.config.id.clone(),
             player_id.clone(),
-            (self.build_stack)(),
+            (self.config.build_stack)(),
             StackState::Closed,
             self.game.current_delivery_period(),
             self.players_connections.clone(),
@@ -514,7 +506,7 @@ mod test_utils {
         GameActorConfig {
             delivery_period_duration: None,
             id: GameId::default(),
-            name: Some(GameName::default()),
+            name: GameName::default(),
             number_of_delivery_periods: 4,
             ranking_calculator: GameRankings { tier_limits: None },
             build_stack: default_stack_plants_builder(),
@@ -552,19 +544,14 @@ mod test_utils {
         };
 
         let actor = GameActor {
-            game_id: config.id.clone(),
-            name: config.name.unwrap_or_default(),
+            config,
             state_watch,
             market_context,
             players_connections,
             stacks_contexts: HashMap::new(),
-            build_stack: config.build_stack,
             rx,
             tx,
-            delivery_period_duration: config.delivery_period_duration,
-            last_delivery_period: DeliveryPeriodId::from(config.number_of_delivery_periods),
             delivery_period_all_players_ready_tx: None,
-            ranking_calculator: config.ranking_calculator,
             cancellation_token,
             cache: GameCache::default(),
             game,
@@ -590,9 +577,12 @@ mod tests {
         game::{
             Game, GameId, GameName,
             delivery_period::DeliveryPeriodId,
-            infra::actor::{
-                GameCache,
-                test_utils::{MockMarket, MockPlayerConnections},
+            infra::{
+                GameActorConfig,
+                actor::{
+                    GameCache,
+                    test_utils::{MockMarket, MockPlayerConnections},
+                },
             },
             scores::GameRankings,
         },
@@ -614,20 +604,23 @@ mod tests {
         let (state_tx, _) = watch::channel(game.state.clone());
         let cancellation_token = CancellationToken::new();
         let (tx, rx) = mpsc::channel(128);
-        let mut game = GameActor {
-            game_id: GameId::default(),
+        let config = GameActorConfig {
+            id: GameId::default(),
             name: GameName::default(),
+            build_stack: default_stack_plants_builder(),
+            number_of_delivery_periods: 3,
+            delivery_period_duration: None,
+            ranking_calculator: GameRankings { tier_limits: None },
+        };
+        let mut game = GameActor {
+            config,
             state_watch: state_tx,
             players_connections: connections,
             market_context,
             stacks_contexts: HashMap::new(),
-            build_stack: default_stack_plants_builder(),
             tx,
             rx,
-            last_delivery_period: DeliveryPeriodId::from(3),
-            delivery_period_duration: None,
             delivery_period_all_players_ready_tx: None,
-            ranking_calculator: GameRankings { tier_limits: None },
             cancellation_token: cancellation_token.clone(),
             cache: GameCache::default(),
             game,

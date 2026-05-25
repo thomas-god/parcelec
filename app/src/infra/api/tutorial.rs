@@ -43,7 +43,7 @@ pub async fn create_tutorial_game(
     );
     let game_config = GameActorConfig {
         id: game_id.clone(),
-        name: Some(game_name),
+        name: game_name,
         number_of_delivery_periods: 4,
         delivery_period_duration: None,
         ranking_calculator: GameRankings {
