@@ -1,6 +1,5 @@
 use std::{collections::HashMap, time::Duration};
 
-use chrono::Utc;
 use futures_util::future::join_all;
 use tokio::{
     sync::{
@@ -13,16 +12,19 @@ use tokio_util::sync::CancellationToken;
 
 use crate::{
     game::{
-        GameContext, GameId, GameMessage, GameName, GameState, GetPreviousScoresResult, Player,
-        RegisterPlayerResponse,
+        Game, GameContext, GameEvent, GameId, GameMessage, GameName, GameState,
+        GetPreviousScoresResult, RegisterPlayerResponse,
         delivery_period::{DeliveryPeriodId, DeliveryPeriodResults, start_delivery_period},
         scores::{GameRankings, PlayerDetailedScore, PlayerResult, PlayerScore},
     },
-    plants::StackPlants,
+    plants::{
+        StackPlants,
+        infra::{StackActor, StackState},
+    },
 };
 use crate::{
     market::{Market, MarketContext},
-    plants::infra::{StackActor, StackContext, StackService, StackState},
+    plants::infra::{StackContext, StackService},
     player::{PlayerConnections, PlayerId, PlayerMessage, PlayerName, PlayerResultView},
 };
 
@@ -37,23 +39,40 @@ pub struct GameActor<
 > {
     game_id: GameId,
     name: GameName,
-    state: GameState,
     state_watch: watch::Sender<GameState>,
-    players: Vec<Player>,
-    players_scores: HashMap<PlayerId, HashMap<DeliveryPeriodId, PlayerScore>>,
-    players_detailed_scores: HashMap<PlayerId, HashMap<DeliveryPeriodId, PlayerDetailedScore>>,
     players_connections: PC,
     market_context: MarketContext<MS>,
     stacks_contexts: HashMap<PlayerId, StackContext<StackService>>,
     build_stack: F,
     rx: Receiver<GameMessage>,
     tx: Sender<GameMessage>,
-    current_delivery_period: DeliveryPeriodId,
     last_delivery_period: DeliveryPeriodId,
     delivery_period_duration: Option<Duration>,
-    all_players_ready_tx: Option<oneshot::Sender<()>>,
+    delivery_period_all_players_ready_tx: Option<oneshot::Sender<()>>,
     ranking_calculator: GameRankings,
     cancellation_token: CancellationToken,
+    cache: GameCache,
+    game: Game,
+}
+
+struct GameCache {
+    state: GameState,
+    players_readiness: HashMap<PlayerName, bool>,
+    players_scores: HashMap<PlayerId, HashMap<DeliveryPeriodId, PlayerScore>>,
+    players_detailed_scores: HashMap<PlayerId, HashMap<DeliveryPeriodId, PlayerDetailedScore>>,
+    players_id_to_name: HashMap<PlayerId, PlayerName>,
+}
+
+impl Default for GameCache {
+    fn default() -> Self {
+        Self {
+            state: GameState::Open,
+            players_readiness: HashMap::new(),
+            players_scores: HashMap::new(),
+            players_detailed_scores: HashMap::new(),
+            players_id_to_name: HashMap::new(),
+        }
+    }
 }
 
 pub struct GameActorConfig<F>
@@ -77,29 +96,29 @@ impl<MS: Market, PC: PlayerConnections, F: Fn() -> StackPlants + Clone + Send + 
         market_context: MarketContext<MS>,
         cancelation_token: CancellationToken,
     ) -> GameContext {
-        let initial_state = GameState::Open;
+        let game = Game::init(
+            DeliveryPeriodId::from(config.number_of_delivery_periods),
+            config.delivery_period_duration,
+        );
         let (tx, rx) = channel::<GameMessage>(32);
-        let (state_tx, _) = watch::channel(initial_state.clone());
+        let (state_tx, _) = watch::channel(game.state.clone());
         let mut game = GameActor {
             game_id: config.id.clone(),
             name: config.name.unwrap_or_default(),
-            state: initial_state,
             state_watch: state_tx,
             market_context,
-            players: Vec::new(),
             players_connections,
-            players_scores: HashMap::new(),
-            players_detailed_scores: HashMap::new(),
             stacks_contexts: HashMap::new(),
             build_stack: config.build_stack,
             rx,
             tx,
-            current_delivery_period: DeliveryPeriodId::default(),
             delivery_period_duration: config.delivery_period_duration,
             last_delivery_period: DeliveryPeriodId::from(config.number_of_delivery_periods),
-            all_players_ready_tx: None,
+            delivery_period_all_players_ready_tx: None,
             ranking_calculator: config.ranking_calculator,
             cancellation_token: cancelation_token,
+            cache: GameCache::default(),
+            game,
         };
         let context = game.get_context();
 
@@ -121,98 +140,101 @@ impl<MS: Market, PC: PlayerConnections, F: Fn() -> StackPlants + Clone + Send + 
             }
         }
     }
+
     #[tracing::instrument(name = "GameActor::process_message", skip(self))]
     async fn process_message(&mut self, message: GameMessage) {
-        match message {
+        let events = match message {
             GameMessage::RegisterPlayer { name, tx_back } => {
-                let _ = self.register_player(name, tx_back).await;
+                match self.game.try_register_player(name) {
+                    Ok(events) => {
+                        if let Some(id) = events.iter().find_map(|e| match e {
+                            GameEvent::PlayerJoined { id, .. } => Some(id.clone()),
+                            _ => None,
+                        }) {
+                            self.create_player_stack(&id, tx_back).await;
+                        }
+                        events
+                    }
+                    Err(err) => {
+                        let _ = tx_back.send(match err {
+                            crate::game::RegisterPlayerError::GameStarted => {
+                                RegisterPlayerResponse::GameStarted
+                            }
+                            crate::game::RegisterPlayerError::NameAlreadyExists => {
+                                RegisterPlayerResponse::PlayerAlreadyExist
+                            }
+                        });
+                        vec![]
+                    }
+                }
             }
             GameMessage::GetScores { player_id, tx_back } => {
                 self.send_scores(player_id, tx_back);
+                vec![]
             }
             GameMessage::GetReadiness { tx_back } => {
-                let _ = tx_back.send(
-                    self.players
-                        .iter()
-                        .map(|player| (player.name.clone(), player.ready))
-                        .collect(),
-                );
+                let _ = tx_back.send(self.cache.players_readiness.clone());
+                vec![]
             }
-            GameMessage::PlayerIsReady(player_id) => {
-                let _ = self.register_player_ready(player_id).await;
-            }
+            GameMessage::PlayerIsReady(player_id) => self.game.register_player_ready(&player_id),
             GameMessage::DeliveryPeriodResults(results) => {
-                let _ = self.process_delivery_period_results(results).await;
+                self.update_cached_scores(&results);
+                let events = self.game.process_delivery_period_results(&results);
+                self.send_scores_to_all_players(&results.period_id).await;
+                events
             }
             GameMessage::PostDeliveryPeriodEnded(period) => {
-                if period != self.current_delivery_period {
-                    tracing::warn!(
-                        "Received GameMessage::PostDeliveryPeriodEnded for delivery period {:?} but current delivery period is {:?}",
-                        period,
-                        self.current_delivery_period
-                    );
-                    return;
+                self.game.process_post_delivery_period_ends(&period)
+            }
+        };
+
+        self.process_game_events(events).await;
+    }
+
+    async fn process_game_events(&mut self, events: Vec<GameEvent>) {
+        for event in events {
+            match event {
+                GameEvent::PlayerJoined { id, name } => {
+                    self.cache.players_id_to_name.insert(id, name);
                 }
-                if self.game_should_end() {
-                    let _ = self.end_game().await;
-                } else {
-                    self.start_next_delivery_period();
+                GameEvent::StateUpdated(state) => {
+                    self.cache.state = state;
+                    let _ = self.state_watch.send(self.cache.state.clone());
+
+                    if let GameState::Ended(_) = self.cache.state {
+                        self.send_final_scores().await;
+                    }
+                }
+                GameEvent::PlayerReadinessChanged { readiness } => {
+                    self.cache.players_readiness = readiness;
+                    let _ = self
+                        .players_connections
+                        .send_to_all_players(
+                            &self.game_id,
+                            PlayerMessage::ReadinessStatus {
+                                readiness: self.cache.players_readiness.clone(),
+                            },
+                        )
+                        .await;
+                }
+                GameEvent::DeliveryPeriodStarted { id } => {
+                    self.start_delivery_period_tasks(id);
+                }
+                GameEvent::DeliveryPeriodEnded { id } => {
+                    if let Some(tx) = self.delivery_period_all_players_ready_tx.take() {
+                        let _ = tx.send(());
+                    }
+                    let timer = self.delivery_period_duration;
+                    let game_tx = self.tx.clone();
+                    tokio::spawn(async move {
+                        wait_for_post_delivery_period_end(id, timer, game_tx).await;
+                    });
                 }
             }
         }
     }
 
-    async fn register_player_ready(&mut self, player_id: PlayerId) {
-        if let Some(player) = self
-            .players
-            .iter_mut()
-            .find(|player| player.id == player_id)
-        {
-            player.ready = true;
-        }
-
-        let all_players_ready = self.players.iter().all(|player| player.ready);
-
-        use GameState::*;
-        match (all_players_ready, &self.state) {
-            (false, _) => { /* Do nothing */ }
-            (true, Ended(_)) => { /* Game already ended */ }
-            (true, Open) => {
-                self.start_next_delivery_period();
-            }
-            (true, Running { .. }) => {
-                tracing::info!("All players ready, ending delivery period");
-                if let Some(tx) = self.all_players_ready_tx.take() {
-                    let _ = tx.send(());
-                    self.reset_players_ready();
-                }
-            }
-            (true, PostDelivery { .. }) => {
-                if self.game_should_end() {
-                    let _ = self.end_game().await;
-                } else {
-                    self.start_next_delivery_period();
-                }
-            }
-        };
-        let _ = self.send_readiness_status().await;
-    }
-
-    fn start_next_delivery_period(&mut self) {
-        tracing::info!(
-            "All players ready, starting delivery period {}",
-            self.current_delivery_period.next()
-        );
-        self.current_delivery_period = self.current_delivery_period.next();
-        self.state = GameState::Running {
-            period: self.current_delivery_period,
-            end_at: self
-                .delivery_period_duration
-                .map(|period| Utc::now() + period),
-        };
-        self.reset_players_ready();
-
-        let delivery_period = self.current_delivery_period;
+    fn start_delivery_period_tasks(&mut self, id: DeliveryPeriodId) {
         let game_tx = self.tx.clone();
         let market_service = self.market_context.service.clone();
         let stacks_tx = self
@@ -225,7 +247,7 @@ impl<MS: Market, PC: PlayerConnections, F: Fn() -> StackPlants + Clone + Send + 
         let token = self.cancellation_token.clone();
         tokio::spawn(async move {
             start_delivery_period(
-                delivery_period,
+                id,
                 game_tx,
                 market_service,
                 stacks_tx,
@@ -235,127 +257,58 @@ impl<MS: Market, PC: PlayerConnections, F: Fn() -> StackPlants + Clone + Send + 
             )
             .await;
         });
-        self.all_players_ready_tx = Some(all_players_ready_tx);
-        let _ = self.state_watch.send(self.state.clone());
+        self.delivery_period_all_players_ready_tx = Some(all_players_ready_tx);
     }
 
-    fn reset_players_ready(&mut self) {
-        for player in self.players.iter_mut() {
-            player.ready = false;
+    fn update_cached_scores(&mut self, results: &DeliveryPeriodResults) {
+        for (player, scores) in results.players_scores.iter() {
+            match self.cache.players_scores.get_mut(player) {
+                Some(cached_scores) => {
+                    cached_scores.insert(results.period_id, scores.clone());
+                }
+                None => {
+                    self.cache.players_scores.insert(
+                        player.clone(),
+                        HashMap::from_iter([(results.period_id, scores.clone())]),
+                    );
+                }
+            }
         }
-    }
 
-    fn game_should_end(&self) -> bool {
-        self.current_delivery_period >= self.last_delivery_period
-    }
-
-    async fn end_game(&mut self) {
-        tracing::info!(
-            "Maximum delivery periods reached ({}), ending game",
-            self.current_delivery_period
-        );
-        // Update state to Ended
-        self.state = GameState::Ended(self.current_delivery_period);
-        let _ = self
-            .state_watch
-            .send(GameState::Ended(self.current_delivery_period));
-
-        // Send final scores and rankings
-        let _ = self
-            .players_connections
-            .send_to_all_players(
-                &self.game_id,
-                PlayerMessage::GameResults {
-                    rankings: map_rankings_to_player_name(
-                        self.ranking_calculator.compute_scores(&self.players_scores),
-                        &self.players,
-                    ),
-                },
-            )
-            .await;
-    }
-
-    async fn register_player(
-        &mut self,
-        name: PlayerName,
-        tx_back: oneshot::Sender<RegisterPlayerResponse>,
-    ) {
-        if self.state != GameState::Open {
-            let _ = tx_back.send(RegisterPlayerResponse::GameStarted);
-            return;
+        for (player, scores) in results.players_detailed_scores.iter() {
+            match self.cache.players_detailed_scores.get_mut(player) {
+                Some(cached_scores) => {
+                    cached_scores.insert(results.period_id, scores.clone());
+                }
+                None => {
+                    self.cache.players_detailed_scores.insert(
+                        player.clone(),
+                        HashMap::from_iter([(results.period_id, scores.clone())]),
+                    );
+                }
+            }
         }
-        if self.players.iter().any(|player| player.name == name) {
-            let _ = tx_back.send(RegisterPlayerResponse::PlayerAlreadyExist);
-            return;
-        }
-        // Generate player ID
-        let player_id = PlayerId::default();
-        let player = Player {
-            id: player_id.clone(),
-            name,
-            ready: false,
-        };
-        self.players.push(player);
-
-        // Create a new stack for the player
-        let mut player_stack = StackActor::new(
-            self.game_id.clone(),
-            player_id.clone(),
-            (self.build_stack)(),
-            StackState::Closed,
-            self.current_delivery_period,
-            self.players_connections.clone(),
-            self.cancellation_token.clone(),
-        );
-        let stack_context = player_stack.get_context();
-        self.stacks_contexts
-            .insert(player_id.clone(), stack_context.clone());
-        tokio::spawn(async move {
-            player_stack.run().await;
-        });
-        tracing::info!("Stack created for player {player_id}");
-
-        let _ = tx_back.send(RegisterPlayerResponse::Success {
-            id: player_id,
-            stack: stack_context,
-        });
-
-        let _ = self.send_readiness_status().await;
-    }
-
-    async fn send_readiness_status(&self) {
-        let _ = self
-            .players_connections
-            .send_to_all_players(
-                &self.game_id,
-                PlayerMessage::ReadinessStatus {
-                    readiness: self
-                        .players
-                        .iter()
-                        .map(|player| (player.name.clone(), player.ready))
-                        .collect(),
-                },
-            )
-            .await;
     }
 
     fn send_scores(&self, player: PlayerId, tx_back: oneshot::Sender<GetPreviousScoresResult>) {
         use GetPreviousScoresResult::*;
-        let scores = match self.state {
+        let scores = match self.cache.state {
             GameState::Ended(_) => PlayersRanking {
                 scores: map_rankings_to_player_name(
                     self.ranking_calculator
-                        .compute_scores(&self.players_scores.clone()),
-                    &self.players,
+                        .compute_scores(&self.cache.players_scores.clone()),
+                    &self.cache.players_id_to_name,
                 ),
             },
             _ => PlayerScores {
                 scores: self
+                    .cache
                     .players_scores
                     .get(&player)
                     .cloned()
                     .unwrap_or_else(HashMap::new),
                 detailed_scores: self
+                    .cache
                     .players_detailed_scores
                     .get(&player)
                     .cloned()
@@ -363,6 +316,49 @@ impl<MS: Market, PC: PlayerConnections, F: Fn() -> StackPlants + Clone + Send + 
             },
         };
         let _ = tx_back.send(scores);
+    }
+
+    async fn send_scores_to_all_players(&self, period: &DeliveryPeriodId) {
+        let mut tasks = vec![];
+
+        for (player, scores) in self.cache.players_scores.iter() {
+            let Some(score) = scores.get(period) else {
+                continue;
+            };
+            let detailed_score = self
+                .cache
+                .players_detailed_scores
+                .get(player)
+                .and_then(|scores| scores.get(period));
+
+            tasks.push(self.players_connections.send_to_player(
+                &self.game_id,
+                player,
+                PlayerMessage::DeliveryPeriodResults {
+                    delivery_period: *period,
+                    score: score.clone(),
+                    detailed_score: detailed_score.cloned(),
+                },
+            ))
+        }
+
+        join_all(tasks).await;
+    }
+
+    async fn send_final_scores(&self) {
+        let _ = self
+            .players_connections
+            .send_to_all_players(
+                &self.game_id,
+                PlayerMessage::GameResults {
+                    rankings: map_rankings_to_player_name(
+                        self.ranking_calculator
+                            .compute_scores(&self.cache.players_scores),
+                        &self.cache.players_id_to_name,
+                    ),
+                },
+            )
+            .await;
     }
 
     fn get_context(&self) -> GameContext {
@@ -375,79 +371,33 @@ impl<MS: Market, PC: PlayerConnections, F: Fn() -> StackPlants + Clone + Send + 
         }
     }
 
-    async fn process_delivery_period_results(&mut self, results: DeliveryPeriodResults) {
-        let GameState::Running {
-            period: current_period,
-            ..
-        } = self.state
-        else {
-            tracing::warn!(
-                "Received results for delivery period {:?} while game is not running",
-                results.period_id
-            );
-            return;
-        };
-        if results.period_id != current_period {
-            tracing::warn!(
-                "Received results for delivery period {:?} while game is not running for this period",
-                results.period_id
-            );
-            return;
-        }
-
-        self.store_scores(&results);
-        let state = GameState::PostDelivery {
-            period: self.current_delivery_period,
-            end_at: self
-                .delivery_period_duration
-                .map(|period| Utc::now() + period),
-        };
-        self.state = state.clone();
-        let _ = self.state_watch.send(state.clone());
-        join_all(results.players_scores.iter().map(|(player, score)| {
-            let detailed_score = results.players_detailed_scores.get(player);
-            self.players_connections.send_to_player(
-                &self.game_id,
-                player,
-                PlayerMessage::DeliveryPeriodResults {
-                    delivery_period: self.current_delivery_period,
-                    score: score.clone(),
-                    detailed_score: detailed_score.cloned(),
-                },
-            )
-        }))
-        .await;
-
-        let period = self.current_delivery_period;
-        let timer = self.delivery_period_duration;
-        let game_tx = self.tx.clone();
+    async fn create_player_stack(
+        &mut self,
+        player_id: &PlayerId,
+        tx_back: tokio::sync::oneshot::Sender<RegisterPlayerResponse>,
+    ) {
+        // Create a new stack for the player
+        let mut player_stack = StackActor::new(
+            self.game_id.clone(),
+            player_id.clone(),
+            (self.build_stack)(),
+            StackState::Closed,
+            self.game.current_delivery_period(),
+            self.players_connections.clone(),
+            self.cancellation_token.clone(),
+        );
+        let stack_context = player_stack.get_context();
+        self.stacks_contexts
+            .insert(player_id.clone(), stack_context.clone());
         tokio::spawn(async move {
-            wait_for_post_delivery_period_end(period, timer, game_tx).await;
+            player_stack.run().await;
         });
-    }
+        tracing::info!("Stack created for player {player_id}");
 
-    fn store_scores(&mut self, results: &DeliveryPeriodResults) {
-        for (player, score) in results.players_scores.iter() {
-            if let Some(scores) = self.players_scores.get_mut(player) {
-                scores.insert(results.period_id, score.clone());
-            } else {
-                self.players_scores.insert(
-                    player.clone(),
-                    HashMap::from([(results.period_id, score.clone())]),
-                );
-            }
-        }
-
-        for (player, score) in results.players_detailed_scores.iter() {
-            if let Some(scores) = self.players_detailed_scores.get_mut(player) {
-                scores.insert(results.period_id, score.clone());
-            } else {
-                self.players_detailed_scores.insert(
-                    player.clone(),
-                    HashMap::from([(results.period_id, score.clone())]),
-                );
-            }
-        }
+        let _ = tx_back.send(RegisterPlayerResponse::Success {
+            id: player_id.clone(),
+            stack: stack_context,
+        });
     }
 }
 
@@ -466,19 +416,19 @@ async fn wait_for_post_delivery_period_end(
 
 fn map_rankings_to_player_name(
     rankings: Vec<PlayerResult>,
-    players: &[Player],
+    players_mapping: &HashMap<PlayerId, PlayerName>,
 ) -> Vec<PlayerResultView> {
     rankings
         .iter()
-        .map(|rank| PlayerResultView {
-            player: players
-                .iter()
-                .find(|player| player.id == rank.player)
-                .map(|player| player.name.clone())
-                .unwrap_or_else(|| PlayerName::from(rank.player.to_string())),
-            rank: rank.rank,
-            score: rank.score,
-            tier: rank.tier.clone(),
+        .filter_map(|rank| {
+            let name = players_mapping.get(&rank.player)?;
+
+            Some(PlayerResultView {
+                player: name.clone(),
+                rank: rank.rank,
+                score: rank.score,
+                tier: rank.tier.clone(),
+            })
         })
         .collect()
 }
@@ -571,71 +521,61 @@ mod test_utils {
         }
     }
 
-    pub fn game_config_with_duration(
-        duration: Option<Duration>,
-    ) -> GameActorConfig<impl Fn() -> StackPlants + Clone + Send + Sync> {
-        GameActorConfig {
-            delivery_period_duration: duration,
-            id: GameId::default(),
-            name: Some(GameName::default()),
-            number_of_delivery_periods: 4,
-            ranking_calculator: GameRankings { tier_limits: None },
-            build_stack: default_stack_plants_builder(),
-        }
+    pub struct TestComms {
+        pub state_watch_rx: tokio::sync::watch::Receiver<GameState>,
+        pub rx_player: Receiver<(PlayerId, PlayerMessage)>,
+        #[allow(dead_code)]
+        pub rx_all_players: Receiver<PlayerMessage>,
     }
 
-    pub fn open_game() -> (GameContext, MarketContext<MockMarket>) {
-        let game_config = default_game_config();
-        open_game_with_config(game_config)
-    }
-
-    pub fn open_game_with_config(
-        config: GameActorConfig<impl Fn() -> StackPlants + Clone + Send + Sync>,
-    ) -> (GameContext, MarketContext<MockMarket>) {
-        let (tx_1, _) = mpsc::channel(16);
-        let (tx_2, _) = mpsc::channel(16);
-        let connections = MockPlayerConnections {
-            tx_send_to_all_players: tx_1,
-            tx_send_to_player: tx_2,
-        };
-        let (state_tx, rx) = watch::channel(MarketState::Closed);
-        let market = MockMarket { state_tx };
-        let token = CancellationToken::new();
-
+    pub fn build_game_actor() -> (
+        GameActor<
+            MockMarket,
+            test_utils::MockPlayerConnections,
+            impl (Fn() -> StackPlants) + Clone + std::marker::Send + Sync,
+        >,
+        TestComms,
+    ) {
+        let config = default_game_config();
+        let game = Game::init(
+            DeliveryPeriodId::from(config.number_of_delivery_periods),
+            config.delivery_period_duration,
+        );
+        let (tx, rx) = channel::<GameMessage>(32);
+        let (state_watch, state_watch_rx) = watch::channel(game.state.clone());
+        let cancellation_token = CancellationToken::new();
+        let (players_connections, rx_player, rx_all_players) = MockPlayerConnections::new();
+        let (state_tx, state_rx) = watch::channel(MarketState::Closed);
         let market_context = MarketContext {
-            service: market,
-            state_rx: rx,
+            service: MockMarket { state_tx },
+            state_rx,
         };
 
-        (
-            GameActor::start(config, connections, market_context.clone(), token),
+        let actor = GameActor {
+            game_id: config.id.clone(),
+            name: config.name.unwrap_or_default(),
+            state_watch,
             market_context,
-        )
-    }
+            players_connections,
+            stacks_contexts: HashMap::new(),
+            build_stack: config.build_stack,
+            rx,
+            tx,
+            delivery_period_duration: config.delivery_period_duration,
+            last_delivery_period: DeliveryPeriodId::from(config.number_of_delivery_periods),
+            delivery_period_all_players_ready_tx: None,
+            ranking_calculator: config.ranking_calculator,
+            cancellation_token,
+            cache: GameCache::default(),
+            game,
+        };
+        let comms = TestComms {
+            state_watch_rx,
+            rx_player,
+            rx_all_players,
+        };
 
-    pub async fn register_player(
-        game: mpsc::Sender<GameMessage>,
-    ) -> (PlayerId, PlayerName, StackContext<StackService>) {
-        let player = PlayerName::random();
-        let (tx, rx) = oneshot::channel::<RegisterPlayerResponse>();
-        let _ = game
-            .send(GameMessage::RegisterPlayer {
-                name: player.clone(),
-                tx_back: tx,
-            })
-            .await;
-        match rx.await {
-            Ok(RegisterPlayerResponse::Success { id, stack }) => (id, player, stack),
-            _ => unreachable!("Should have register the player"),
-        }
-    }
-
-    pub async fn start_game(
-        game: mpsc::Sender<GameMessage>,
-    ) -> (PlayerId, StackContext<StackService>) {
-        let (player, _, stack) = register_player(game.clone()).await;
-        let _ = game.send(GameMessage::PlayerIsReady(player.clone())).await;
-        (player, stack)
+        (actor, comms)
     }
 }
 
@@ -643,708 +583,24 @@ mod test_utils {
 mod tests {
     use std::{collections::HashMap, time::Duration};
 
-    use tokio::{
-        sync::{
-            mpsc,
-            oneshot::{self, channel},
-            watch,
-        },
-        time::timeout,
-    };
+    use tokio::sync::{mpsc, watch};
     use tokio_util::sync::CancellationToken;
 
     use crate::{
         game::{
-            GameId, GameMessage, GameName, GameState, GetPreviousScoresResult,
-            RegisterPlayerResponse,
+            Game, GameId, GameName,
             delivery_period::DeliveryPeriodId,
             infra::actor::{
-                GameActorConfig,
-                test_utils::{
-                    MockMarket, MockPlayerConnections, default_game_config,
-                    game_config_with_duration, open_game, open_game_with_config, register_player,
-                    start_game,
-                },
+                GameCache,
+                test_utils::{MockMarket, MockPlayerConnections},
             },
             scores::GameRankings,
         },
         market::{MarketContext, MarketState},
-        plants::infra::{StackState, actor::default_stack_plants_builder},
-        player::{PlayerId, PlayerMessage, PlayerName},
+        plants::infra::actor::default_stack_plants_builder,
     };
 
     use super::GameActor;
-
-    #[tokio::test]
-    async fn test_register_players() {
-        let (game, _) = open_game();
-
-        // Register a player
-        let (tx, rx) = channel::<RegisterPlayerResponse>();
-        game.tx
-            .send(GameMessage::RegisterPlayer {
-                name: PlayerName::from("toto"),
-                tx_back: tx,
-            })
-            .await
-            .unwrap();
-        let first_id = match rx.await {
-            Ok(RegisterPlayerResponse::Success { id, .. }) => id,
-            _ => unreachable!("Should have register the player"),
-        };
-
-        // Register another player
-        let (tx, rx) = channel::<RegisterPlayerResponse>();
-        game.tx
-            .send(GameMessage::RegisterPlayer {
-                name: PlayerName::from("tutu"),
-                tx_back: tx,
-            })
-            .await
-            .unwrap();
-        let second_id = match rx.await {
-            Ok(RegisterPlayerResponse::Success { id, .. }) => id,
-            _ => unreachable!("Should have register the player"),
-        };
-
-        // Should have different IDs
-        assert_ne!(first_id, second_id);
-    }
-
-    #[tokio::test]
-    async fn test_fails_register_player_with_existing_name() {
-        let (game, _) = open_game();
-
-        // Register a player
-        let (tx, rx) = channel::<RegisterPlayerResponse>();
-        game.tx
-            .send(GameMessage::RegisterPlayer {
-                name: PlayerName::from("toto"),
-                tx_back: tx,
-            })
-            .await
-            .unwrap();
-        match rx.await {
-            Ok(RegisterPlayerResponse::Success { id, .. }) => id,
-            _ => unreachable!("Should have register the player"),
-        };
-
-        // Register a player with the same name
-        let (tx, rx) = channel::<RegisterPlayerResponse>();
-        game.tx
-            .send(GameMessage::RegisterPlayer {
-                name: PlayerName::from("toto"),
-                tx_back: tx,
-            })
-            .await
-            .unwrap();
-        match rx.await {
-            Ok(RegisterPlayerResponse::PlayerAlreadyExist) => {}
-            _ => unreachable!("Should have refused the registration"),
-        };
-        // Register another player with a different name
-        let (tx, rx) = channel::<RegisterPlayerResponse>();
-        game.tx
-            .send(GameMessage::RegisterPlayer {
-                name: PlayerName::from("tata"),
-                tx_back: tx,
-            })
-            .await
-            .unwrap();
-        match rx.await {
-            Ok(RegisterPlayerResponse::Success { id, .. }) => id,
-            _ => unreachable!("Should have register the player"),
-        };
-    }
-
-    #[tokio::test]
-    async fn test_fails_register_player_game_is_running() {
-        let (game, _) = open_game();
-
-        // Start the game
-        start_game(game.tx.clone()).await;
-
-        // Try to register a new player
-        let (tx, rx) = channel::<RegisterPlayerResponse>();
-        let _ = game
-            .tx
-            .send(GameMessage::RegisterPlayer {
-                name: PlayerName::from("toto"),
-                tx_back: tx,
-            })
-            .await;
-
-        match rx.await {
-            Ok(RegisterPlayerResponse::GameStarted) => {}
-            _ => unreachable!("Should have rejected the request"),
-        };
-    }
-
-    #[tokio::test]
-    async fn test_fails_register_player_game_is_in_post_delivery() {
-        let (game, _) = open_game();
-
-        // Start the game
-        let (player, _) = start_game(game.tx.clone()).await;
-        // End delivery period
-        let _ = game
-            .tx
-            .send(GameMessage::PlayerIsReady(player.clone()))
-            .await;
-
-        // Try to register a new player
-        let (tx, rx) = channel::<RegisterPlayerResponse>();
-        let _ = game
-            .tx
-            .send(GameMessage::RegisterPlayer {
-                name: PlayerName::from("toto"),
-                tx_back: tx,
-            })
-            .await;
-
-        match rx.await {
-            Ok(RegisterPlayerResponse::GameStarted) => {}
-            _ => unreachable!("Should have rejected the request"),
-        };
-    }
-
-    #[tokio::test(start_paused = true)]
-    async fn test_starting_the_game_should_open_market_and_stacks() {
-        let (game, mut market) = open_game();
-
-        assert_eq!(*market.state_rx.borrow_and_update(), MarketState::Closed);
-
-        let (player, _, mut stack) = register_player(game.tx.clone()).await;
-
-        // Start the game
-        let _ = game
-            .tx
-            .send(GameMessage::PlayerIsReady(player.clone()))
-            .await;
-
-        // Market should be open
-        assert!(market.state_rx.changed().await.is_ok());
-        assert_eq!(*market.state_rx.borrow_and_update(), MarketState::Open);
-
-        // // Player's stack should be open
-        assert!(stack.state_rx.changed().await.is_ok());
-        assert_eq!(*stack.state_rx.borrow_and_update(), StackState::Open);
-    }
-
-    #[tokio::test]
-    async fn test_starting_the_game_should_publish_game_state_running() {
-        let (mut game, _) = open_game();
-        assert_eq!(*game.state_rx.borrow_and_update(), GameState::Open);
-        // Start the game
-        start_game(game.tx).await;
-
-        // Market should be open
-        assert!(game.state_rx.changed().await.is_ok());
-        let GameState::Running { period, .. } = *game.state_rx.borrow_and_update() else {
-            unreachable!("Game should be running")
-        };
-        assert_eq!(period, DeliveryPeriodId::from(1));
-    }
-
-    #[tokio::test]
-    async fn test_game_should_start_when_all_players_ready() {
-        let (mut game, _) = open_game();
-
-        assert_eq!(*game.state_rx.borrow_and_update(), GameState::Open);
-
-        // Register 2 players
-        let (first_player, _, _) = register_player(game.tx.clone()).await;
-        let (second_player, _, _) = register_player(game.tx.clone()).await;
-        assert_eq!(*game.state_rx.borrow_and_update(), GameState::Open);
-
-        // First player is ready
-        let _ = game
-            .tx
-            .send(GameMessage::PlayerIsReady(first_player.clone()))
-            .await;
-        assert_eq!(*game.state_rx.borrow_and_update(), GameState::Open);
-
-        // Second player is ready
-        let _ = game
-            .tx
-            .send(GameMessage::PlayerIsReady(second_player.clone()))
-            .await;
-
-        // Game should be running
-        assert!(game.state_rx.changed().await.is_ok());
-        let GameState::Running { period, .. } = *game.state_rx.borrow_and_update() else {
-            unreachable!("Game should be running")
-        };
-        assert_eq!(period, DeliveryPeriodId::from(1));
-    }
-
-    #[tokio::test]
-    async fn test_delivery_period_should_end_when_all_players_ready() {
-        let (mut game, _) = open_game();
-        let (player, _) = start_game(game.tx.clone()).await;
-        assert!(game.state_rx.changed().await.is_ok());
-        let GameState::Running { period, .. } = *game.state_rx.borrow_and_update() else {
-            unreachable!("Game should be running")
-        };
-        assert_eq!(period, DeliveryPeriodId::from(1));
-
-        let _ = game
-            .tx
-            .send(GameMessage::PlayerIsReady(player.clone()))
-            .await;
-
-        assert!(game.state_rx.changed().await.is_ok());
-        assert_eq!(
-            *game.state_rx.borrow_and_update(),
-            GameState::PostDelivery {
-                period: DeliveryPeriodId::from(1),
-                end_at: None
-            }
-        );
-    }
-
-    #[tokio::test]
-    async fn test_post_delivery_period_should_end_when_timer_elapsed() {
-        let (mut game, _) =
-            open_game_with_config(game_config_with_duration(Some(Duration::from_micros(1))));
-        let (player, _) = start_game(game.tx.clone()).await;
-        assert!(game.state_rx.changed().await.is_ok());
-        let GameState::Running { period, .. } = *game.state_rx.borrow_and_update() else {
-            unreachable!("Game should be running")
-        };
-        assert_eq!(period, DeliveryPeriodId::from(1));
-
-        let _ = game
-            .tx
-            .send(GameMessage::PlayerIsReady(player.clone()))
-            .await;
-
-        assert!(game.state_rx.changed().await.is_ok());
-        let GameState::PostDelivery { period, end_at } = *game.state_rx.borrow_and_update() else {
-            unreachable!("Should be in PostDelivery state")
-        };
-        assert_eq!(period, DeliveryPeriodId::from(1));
-        assert!(end_at.is_some());
-
-        // State changes even even if players are not ready
-        assert!(game.state_rx.changed().await.is_ok());
-        let GameState::Running { period, end_at } = *game.state_rx.borrow_and_update() else {
-            unreachable!("Should be in Running state")
-        };
-        assert_eq!(period, DeliveryPeriodId::from(2));
-        assert!(end_at.is_some());
-    }
-
-    #[tokio::test]
-    async fn test_post_delivery_period_should_end_when_all_players_ready() {
-        let (mut game, _) = open_game();
-        let (player, _) = start_game(game.tx.clone()).await;
-        assert!(game.state_rx.changed().await.is_ok());
-        let GameState::Running { period, .. } = *game.state_rx.borrow_and_update() else {
-            unreachable!("Game should be running")
-        };
-        assert_eq!(period, DeliveryPeriodId::from(1));
-
-        let _ = game
-            .tx
-            .send(GameMessage::PlayerIsReady(player.clone()))
-            .await;
-
-        assert!(game.state_rx.changed().await.is_ok());
-        assert_eq!(
-            *game.state_rx.borrow_and_update(),
-            GameState::PostDelivery {
-                period: DeliveryPeriodId::from(1),
-                end_at: None
-            }
-        );
-
-        let _ = game
-            .tx
-            .send(GameMessage::PlayerIsReady(player.clone()))
-            .await;
-        assert!(game.state_rx.changed().await.is_ok());
-        assert_eq!(
-            *game.state_rx.borrow_and_update(),
-            GameState::Running {
-                period: DeliveryPeriodId::from(2),
-                end_at: None
-            }
-        );
-    }
-
-    #[tokio::test]
-    async fn test_post_delivery_period_timer_should_end_the_game_when_final_period() {
-        let mut config = default_game_config();
-        config.delivery_period_duration = Some(Duration::from_micros(1));
-        config.number_of_delivery_periods = 1;
-        let (mut game, _) = open_game_with_config(config);
-        let (player, _) = start_game(game.tx.clone()).await;
-        assert!(game.state_rx.changed().await.is_ok());
-        let GameState::Running { period, .. } = *game.state_rx.borrow_and_update() else {
-            unreachable!("Game should be running")
-        };
-        assert_eq!(period, DeliveryPeriodId::from(1));
-
-        let _ = game
-            .tx
-            .send(GameMessage::PlayerIsReady(player.clone()))
-            .await;
-
-        assert!(game.state_rx.changed().await.is_ok());
-        let GameState::PostDelivery { period, end_at } = *game.state_rx.borrow_and_update() else {
-            unreachable!("Should be in PostDelivery state")
-        };
-        assert_eq!(period, DeliveryPeriodId::from(1));
-        assert!(end_at.is_some());
-
-        assert!(game.state_rx.changed().await.is_ok());
-        let GameState::Ended(period) = *game.state_rx.borrow_and_update() else {
-            unreachable!("Should be in Ended state")
-        };
-        assert_eq!(period, DeliveryPeriodId::from(1));
-    }
-
-    #[tokio::test]
-    async fn test_send_results_to_player_at_the_end_of_delivery_period() {
-        let (connections, mut rx_send_to_player, ..) = MockPlayerConnections::new();
-        let (state_tx, rx) = watch::channel(MarketState::Closed);
-        let market = MarketContext {
-            service: MockMarket { state_tx },
-            state_rx: rx,
-        };
-        let token = CancellationToken::new();
-        let game = GameActor::start(default_game_config(), connections, market, token);
-
-        // Start game
-        let (player, _) = start_game(game.tx.clone()).await;
-
-        // End delivery period
-        let _ = game
-            .tx
-            .send(GameMessage::PlayerIsReady(player.clone()))
-            .await;
-        // Flush stack snapshot, forecasts and history sent at the end of the delivery
-        let _ = rx_send_to_player.recv().await;
-        let _ = rx_send_to_player.recv().await;
-        let _ = rx_send_to_player.recv().await;
-
-        let Some((
-            target_player,
-            PlayerMessage::DeliveryPeriodResults {
-                delivery_period,
-                score: _,
-                detailed_score: _,
-            },
-        )) = rx_send_to_player.recv().await
-        else {
-            unreachable!("Should have received player's results");
-        };
-        assert_eq!(delivery_period, DeliveryPeriodId::from(1));
-        assert_eq!(target_player, player);
-    }
-
-    #[tokio::test]
-    async fn test_get_previous_scores() {
-        let (connections, ..) = MockPlayerConnections::new();
-        let (state_tx, rx) = watch::channel(MarketState::Closed);
-        let market = MarketContext {
-            service: MockMarket { state_tx },
-            state_rx: rx,
-        };
-        let token = CancellationToken::new();
-        let mut game = GameActor::start(default_game_config(), connections, market, token);
-        game.state_rx.borrow_and_update();
-
-        // Start the game
-        let (player, _) = start_game(game.tx.clone()).await;
-
-        // Scores should be empty at this stage
-        let (tx_back, rx) = oneshot::channel();
-        let _ = game
-            .tx
-            .send(GameMessage::GetScores {
-                player_id: player.clone(),
-                tx_back,
-            })
-            .await;
-        let Ok(GetPreviousScoresResult::PlayerScores {
-            scores,
-            detailed_scores,
-        }) = rx.await
-        else {
-            unreachable!()
-        };
-        assert!(scores.is_empty());
-        assert!(detailed_scores.is_empty());
-
-        // End delivery period
-        let _ = game
-            .tx
-            .send(GameMessage::PlayerIsReady(player.clone()))
-            .await;
-        // Wait for game state to update
-        while *game.state_rx.borrow_and_update()
-            != (GameState::PostDelivery {
-                period: DeliveryPeriodId::from(1),
-                end_at: None,
-            })
-        {
-            let _ = game.state_rx.changed().await;
-        }
-
-        // Request player's scores
-        let (tx_back, rx) = oneshot::channel();
-        let _ = game
-            .tx
-            .send(GameMessage::GetScores {
-                player_id: player.clone(),
-                tx_back,
-            })
-            .await;
-        let Ok(GetPreviousScoresResult::PlayerScores {
-            scores,
-            detailed_scores,
-        }) = rx.await
-        else {
-            unreachable!()
-        };
-        assert_eq!(scores.len(), 1);
-        assert_eq!(detailed_scores.len(), 1);
-    }
-
-    #[tokio::test]
-    async fn test_game_ends_after_max_delivery_periods() {
-        let (connections, ..) = MockPlayerConnections::new();
-        let (state_tx, rx) = watch::channel(MarketState::Closed);
-        let market = MarketContext {
-            service: MockMarket { state_tx },
-            state_rx: rx,
-        };
-
-        let token = CancellationToken::new();
-        // Create a game with 2 max delivery periods
-        let mut game = GameActor::start(
-            GameActorConfig {
-                number_of_delivery_periods: 2,
-                ..default_game_config()
-            },
-            connections,
-            market,
-            token,
-        );
-
-        // Register and start the game with one player
-        let (player, _, _) = register_player(game.tx.clone()).await;
-
-        // Player is ready for the first time - starts period 1
-        let _ = game
-            .tx
-            .send(GameMessage::PlayerIsReady(player.clone()))
-            .await;
-        assert!(game.state_rx.changed().await.is_ok());
-        let GameState::Running { period, .. } = *game.state_rx.borrow_and_update() else {
-            unreachable!("Game should be running")
-        };
-        assert_eq!(period, DeliveryPeriodId::from(1));
-
-        // End delivery period 1
-        let _ = game
-            .tx
-            .send(GameMessage::PlayerIsReady(player.clone()))
-            .await;
-        assert!(game.state_rx.changed().await.is_ok());
-        assert_eq!(
-            *game.state_rx.borrow_and_update(),
-            GameState::PostDelivery {
-                period: DeliveryPeriodId::from(1),
-                end_at: None
-            }
-        );
-
-        // Player is ready for the second time - starts period 2
-        let _ = game
-            .tx
-            .send(GameMessage::PlayerIsReady(player.clone()))
-            .await;
-        assert!(game.state_rx.changed().await.is_ok());
-        let GameState::Running { period, .. } = *game.state_rx.borrow_and_update() else {
-            unreachable!("Game should be running")
-        };
-        assert_eq!(period, DeliveryPeriodId::from(2));
-
-        // End delivery period 2
-        let _ = game
-            .tx
-            .send(GameMessage::PlayerIsReady(player.clone()))
-            .await;
-        assert!(game.state_rx.changed().await.is_ok());
-        assert_eq!(
-            *game.state_rx.borrow_and_update(),
-            GameState::PostDelivery {
-                period: DeliveryPeriodId::from(2),
-                end_at: None
-            }
-        );
-
-        // Player is ready again - this should end the game instead of starting period 3
-        let _ = game
-            .tx
-            .send(GameMessage::PlayerIsReady(player.clone()))
-            .await;
-        assert!(game.state_rx.changed().await.is_ok());
-        assert_eq!(
-            *game.state_rx.borrow_and_update(),
-            GameState::Ended(DeliveryPeriodId::from(2))
-        );
-    }
-
-    #[tokio::test]
-    async fn test_send_all_scores_when_game_ends() {
-        async fn mark_players_ready(
-            game_tx: &mpsc::Sender<GameMessage>,
-            player1: &PlayerId,
-            player2: &PlayerId,
-        ) {
-            let _ = game_tx
-                .send(GameMessage::PlayerIsReady(player1.clone()))
-                .await;
-            let _ = game_tx
-                .send(GameMessage::PlayerIsReady(player2.clone()))
-                .await;
-        }
-
-        // Create a game with 1 delivery period
-        let (connections, _, mut rx_send_to_all_players) = MockPlayerConnections::new();
-        let (state_tx, rx) = watch::channel(MarketState::Closed);
-        let market = MarketContext {
-            service: MockMarket { state_tx },
-            state_rx: rx,
-        };
-        let token = CancellationToken::new();
-        let mut game = GameActor::start(
-            GameActorConfig {
-                number_of_delivery_periods: 1,
-                ..default_game_config()
-            },
-            connections,
-            market,
-            token,
-        );
-
-        // Register two players
-        let (player1, _, _) = register_player(game.tx.clone()).await;
-        let (player2, _, _) = register_player(game.tx.clone()).await;
-
-        // All players ready, starts period 1
-        mark_players_ready(&game.tx, &player1, &player2).await;
-        assert!(game.state_rx.changed().await.is_ok());
-        let GameState::Running { period, .. } = *game.state_rx.borrow_and_update() else {
-            unreachable!("Game should be running")
-        };
-        assert_eq!(period, DeliveryPeriodId::from(1));
-
-        // End delivery period 1
-        mark_players_ready(&game.tx, &player1, &player2).await;
-        assert!(game.state_rx.changed().await.is_ok());
-        assert_eq!(
-            *game.state_rx.borrow_and_update(),
-            GameState::PostDelivery {
-                period: DeliveryPeriodId::from(1),
-                end_at: None
-            }
-        );
-
-        // End game - both players ready
-        mark_players_ready(&game.tx, &player1, &player2).await;
-        assert!(game.state_rx.changed().await.is_ok());
-        assert_eq!(
-            *game.state_rx.borrow_and_update(),
-            GameState::Ended(DeliveryPeriodId::from(1))
-        );
-
-        // Game should send all players scores to every player
-        let mut message_found = false;
-        while let Ok(Some(msg)) =
-            timeout(Duration::from_micros(10), rx_send_to_all_players.recv()).await
-        {
-            if let PlayerMessage::GameResults { rankings: _ } = msg {
-                message_found = true;
-                break;
-            }
-        }
-        assert!(message_found)
-    }
-
-    #[tokio::test]
-    async fn test_get_final_scores_as_previous_scores_when_game_ended() {
-        // Create a game with 1 delivery period and register 1 player
-        let (connections, ..) = MockPlayerConnections::new();
-        let (state_tx, rx) = watch::channel(MarketState::Closed);
-        let market = MarketContext {
-            service: MockMarket { state_tx },
-            state_rx: rx,
-        };
-        let token = CancellationToken::new();
-        let mut game = GameActor::start(
-            GameActorConfig {
-                number_of_delivery_periods: 1,
-                ..default_game_config()
-            },
-            connections,
-            market,
-            token,
-        );
-        let (player, _, _) = register_player(game.tx.clone()).await;
-
-        // Start the game
-        let _ = game
-            .tx
-            .send(GameMessage::PlayerIsReady(player.clone()))
-            .await;
-        assert!(game.state_rx.changed().await.is_ok());
-
-        let (tx_back, rx_back) = oneshot::channel();
-        let _ = game
-            .tx
-            .send(GameMessage::GetScores {
-                player_id: player.clone(),
-                tx_back,
-            })
-            .await;
-        let Ok(GetPreviousScoresResult::PlayerScores {
-            scores: _,
-            detailed_scores: _,
-        }) = rx_back.await
-        else {
-            unreachable!("Should have received scores for the player");
-        };
-
-        // End the game, previous scores should include scores for all players
-        for _ in 0..2 {
-            let _ = game
-                .tx
-                .send(GameMessage::PlayerIsReady(player.clone()))
-                .await;
-            assert!(game.state_rx.changed().await.is_ok());
-        }
-        assert_eq!(
-            *game.state_rx.borrow_and_update(),
-            GameState::Ended(DeliveryPeriodId::from(1))
-        );
-
-        let (tx_back, rx_back) = oneshot::channel();
-        let _ = game
-            .tx
-            .send(GameMessage::GetScores {
-                player_id: player.clone(),
-                tx_back,
-            })
-            .await;
-        let Ok(GetPreviousScoresResult::PlayersRanking { scores: _ }) = rx_back.await else {
-            unreachable!("Should have received scores for all players");
-        };
-    }
 
     #[tokio::test]
     async fn test_terminate_actor() {
@@ -1354,29 +610,27 @@ mod tests {
             service: MockMarket { state_tx },
             state_rx: rx,
         };
-        let (state_tx, _) = watch::channel(GameState::Open);
+        let game = Game::init(DeliveryPeriodId::from(3), None);
+        let (state_tx, _) = watch::channel(game.state.clone());
         let cancellation_token = CancellationToken::new();
         let (tx, rx) = mpsc::channel(128);
         let mut game = GameActor {
             game_id: GameId::default(),
             name: GameName::default(),
-            state: GameState::Open,
             state_watch: state_tx,
-            players: Vec::new(),
-            players_scores: HashMap::new(),
-            players_detailed_scores: HashMap::new(),
             players_connections: connections,
             market_context,
             stacks_contexts: HashMap::new(),
             build_stack: default_stack_plants_builder(),
             tx,
             rx,
-            current_delivery_period: DeliveryPeriodId::default(),
             last_delivery_period: DeliveryPeriodId::from(3),
             delivery_period_duration: None,
-            all_players_ready_tx: None,
+            delivery_period_all_players_ready_tx: None,
             ranking_calculator: GameRankings { tier_limits: None },
             cancellation_token: cancellation_token.clone(),
+            cache: GameCache::default(),
+            game,
         };
         let handle = tokio::spawn(async move {
             game.run().await;
@@ -1393,9 +647,177 @@ mod tests {
 }
 
 #[cfg(test)]
+mod test_game_actor_process_game_messages {
+    use crate::game::infra::actor::test_utils::build_game_actor;
+
+    use super::*;
+
+    #[tokio::test]
+    async fn test_register_player_success_create_stack() {
+        let (mut game, _) = build_game_actor();
+        let (tx_back, rx) = oneshot::channel();
+        let msg = GameMessage::RegisterPlayer {
+            name: PlayerName::from("p1"),
+            tx_back,
+        };
+
+        assert!(game.stacks_contexts.is_empty());
+        game.process_message(msg).await;
+
+        let Ok(_) = rx.await else {
+            unreachable!("Should have return success message")
+        };
+        assert!(!game.stacks_contexts.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_get_scores() {
+        let (mut game, _) = build_game_actor();
+        let (tx_back, rx) = oneshot::channel();
+        game.cache
+            .players_scores
+            .insert(PlayerId::from("p1"), HashMap::new());
+        let msg = GameMessage::GetScores {
+            player_id: PlayerId::from("p1"),
+            tx_back,
+        };
+
+        game.process_message(msg).await;
+
+        let Ok(_) = rx.await else {
+            unreachable!("Should have return success message")
+        };
+    }
+
+    #[tokio::test]
+    async fn test_get_readiness() {
+        let (mut game, _) = build_game_actor();
+        let (tx_back, rx) = oneshot::channel();
+        let msg = GameMessage::GetReadiness { tx_back };
+
+        game.process_message(msg).await;
+
+        let Ok(_) = rx.await else {
+            unreachable!("Should have return success message")
+        };
+    }
+
+    #[tokio::test]
+    async fn test_delivery_period_results() {
+        let (mut game, mut comms) = build_game_actor();
+        game.cache.players_scores.insert(
+            PlayerId::from("p1"),
+            HashMap::from_iter([(DeliveryPeriodId::from(1), PlayerScore::default())]),
+        );
+
+        let results = DeliveryPeriodResults {
+            period_id: DeliveryPeriodId::from(1),
+            players_scores: HashMap::new(),
+            players_detailed_scores: HashMap::new(),
+        };
+        let msg = GameMessage::DeliveryPeriodResults(results);
+
+        game.process_message(msg).await;
+
+        let Some((
+            _id,
+            PlayerMessage::DeliveryPeriodResults {
+                delivery_period,
+                score,
+                detailed_score,
+            },
+        )) = comms.rx_player.recv().await
+        else {
+            unreachable!("Should have received a PlayerMessage::DeliveryPeriodResults")
+        };
+        assert_eq!(delivery_period, DeliveryPeriodId::from(1));
+        assert_eq!(score, PlayerScore::default());
+        assert!(detailed_score.is_none());
+    }
+}
+
+#[cfg(test)]
+mod test_game_actor_process_game_events {
+    use crate::game::infra::actor::test_utils::build_game_actor;
+
+    use super::*;
+
+    #[tokio::test]
+    async fn test_process_player_joined_mapping_updated() {
+        let (mut game, _) = build_game_actor();
+
+        assert!(game.cache.players_id_to_name.is_empty());
+
+        let events = vec![GameEvent::PlayerJoined {
+            id: PlayerId::from("p1"),
+            name: PlayerName::from("p1"),
+        }];
+
+        game.process_game_events(events).await;
+        assert_eq!(
+            game.cache.players_id_to_name.get(&PlayerId::from("p1")),
+            Some(&PlayerName::from("p1"))
+        );
+    }
+
+    #[tokio::test]
+    async fn test_process_game_state_updated() {
+        let (mut game, comms) = build_game_actor();
+
+        assert_eq!(game.cache.state, GameState::Open);
+
+        let state = GameState::Running {
+            period: DeliveryPeriodId::from(1),
+            end_at: None,
+        };
+        let events = vec![GameEvent::StateUpdated(state.clone())];
+
+        game.process_game_events(events).await;
+        assert_eq!(game.cache.state, state);
+
+        assert_eq!(*comms.state_watch_rx.borrow(), state);
+    }
+
+    #[tokio::test]
+    async fn test_process_delivery_period_start() {
+        let (mut game, _) = build_game_actor();
+
+        let events = vec![GameEvent::DeliveryPeriodStarted {
+            id: DeliveryPeriodId::from(1),
+        }];
+        assert!(game.delivery_period_all_players_ready_tx.is_none());
+
+        game.process_game_events(events).await;
+
+        // It's the best proxy we have to check the delivery period tasks are spwaned
+        assert!(game.delivery_period_all_players_ready_tx.is_some());
+    }
+
+    #[tokio::test]
+    async fn test_process_delivery_period_end() {
+        let (mut game, _) = build_game_actor();
+        let (all_players_ready_tx, all_players_ready_rx) = oneshot::channel();
+        game.delivery_period_all_players_ready_tx = Some(all_players_ready_tx);
+
+        let events = vec![GameEvent::DeliveryPeriodEnded {
+            id: DeliveryPeriodId::from(1),
+        }];
+
+        game.process_game_events(events).await;
+
+        let Ok(_) = all_players_ready_rx.await else {
+            unreachable!("Should have trigger the all players ready channel")
+        };
+        // TODO: can we test the creation/end of the post delivery timer ?
+    }
+}
+
+#[cfg(test)]
 mod test_rankings_mapping {
+    use std::collections::HashMap;
+
     use crate::{
-        game::{Player, infra::actor::map_rankings_to_player_name, scores::PlayerResult},
+        game::{infra::actor::map_rankings_to_player_name, scores::PlayerResult},
         player::{PlayerId, PlayerName, PlayerResultView},
         utils::units::Money,
     };
@@ -1404,11 +826,7 @@ mod test_rankings_mapping {
     fn test_map_to_players_name() {
         let player_id = PlayerId::default();
         let player_name = PlayerName::random();
-        let players = vec![Player {
-            id: player_id.clone(),
-            name: player_name.clone(),
-            ready: false,
-        }];
+        let players_mapping = HashMap::from_iter([(player_id.clone(), player_name.clone())]);
         let rankings = vec![PlayerResult {
             player: player_id.clone(),
             rank: 1,
@@ -1417,7 +835,7 @@ mod test_rankings_mapping {
         }];
 
         assert_eq!(
-            map_rankings_to_player_name(rankings, &players),
+            map_rankings_to_player_name(rankings, &players_mapping),
             vec![PlayerResultView {
                 player: player_name.clone(),
                 rank: 1,
@@ -1428,9 +846,9 @@ mod test_rankings_mapping {
     }
 
     #[test]
-    fn test_mapping_no_player_name_found_keeps_its_id() {
+    fn test_mapping_no_player_name_is_dropped() {
         let player_id = PlayerId::default();
-        let players = vec![];
+        let players_mapping = HashMap::new();
         let rankings = vec![PlayerResult {
             player: player_id.clone(),
             rank: 1,
@@ -1438,106 +856,6 @@ mod test_rankings_mapping {
             tier: None,
         }];
 
-        assert_eq!(
-            map_rankings_to_player_name(rankings, &players),
-            vec![PlayerResultView {
-                player: PlayerName::from(player_id.to_string()),
-                rank: 1,
-                score: Money::from(0),
-                tier: None,
-            }]
-        );
-    }
-}
-
-#[cfg(test)]
-mod test_readiness_status {
-
-    use crate::{game::infra::actor::test_utils::register_player, market::MarketState};
-
-    use super::{
-        test_utils::{MockMarket, MockPlayerConnections, default_game_config},
-        *,
-    };
-    use tokio::sync::mpsc;
-
-    fn start_game() -> (mpsc::Receiver<PlayerMessage>, GameContext) {
-        let (connections, _, rx_send_to_all_players) = MockPlayerConnections::new();
-        let (state_tx, rx) = watch::channel(MarketState::Closed);
-        let market = MarketContext {
-            service: MockMarket { state_tx },
-            state_rx: rx,
-        };
-        let token = CancellationToken::new();
-        let game = GameActor::start(
-            GameActorConfig {
-                number_of_delivery_periods: 1,
-                ..default_game_config()
-            },
-            connections,
-            market,
-            token,
-        );
-        (rx_send_to_all_players, game)
-    }
-
-    #[tokio::test]
-    async fn test_send_readiness_status_when_player_registers() {
-        let (mut conn_rx, game) = start_game();
-        let (_, name, _) = register_player(game.tx.clone()).await;
-
-        let Some(PlayerMessage::ReadinessStatus { readiness }) = conn_rx.recv().await else {
-            unreachable!("Should have received a readiness status message")
-        };
-        assert!(readiness.contains_key(&name));
-        assert!(!(*readiness.get(&name).unwrap()));
-    }
-
-    #[tokio::test]
-    async fn test_send_readiness_status_when_player_is_ready() {
-        let (mut conn_rx, game) = start_game();
-        let (player_id, name, _) = register_player(game.tx.clone()).await;
-        // Consume first readiness status
-        let _ = conn_rx.recv().await;
-
-        let (_, _, _) = register_player(game.tx.clone()).await;
-        // Consume second readiness status
-        let _ = conn_rx.recv().await;
-
-        // Player is ready
-        let _ = game.tx.send(GameMessage::PlayerIsReady(player_id)).await;
-
-        // Receive updated readiness status
-        let Some(PlayerMessage::ReadinessStatus { readiness }) = conn_rx.recv().await else {
-            unreachable!("Should have received a readiness status message")
-        };
-        assert!(readiness.contains_key(&name));
-        assert!(*readiness.get(&name).unwrap());
-    }
-
-    #[tokio::test]
-    async fn test_readiness_status_is_reset_to_false_when_all_players_ready() {
-        let (mut conn_rx, game) = start_game();
-        let (player_id, name, _) = register_player(game.tx.clone()).await;
-        // Consume first readiness status
-        let _ = conn_rx.recv().await;
-
-        let (player2, _, _) = register_player(game.tx.clone()).await;
-        // Consume second readiness status
-        let _ = conn_rx.recv().await;
-
-        // Player is ready, consume readiness message
-        let _ = game.tx.send(GameMessage::PlayerIsReady(player_id)).await;
-        let _ = conn_rx.recv().await;
-
-        // All players are ready
-        let _ = game.tx.send(GameMessage::PlayerIsReady(player2)).await;
-
-        // Receive updated readiness status
-        let Some(PlayerMessage::ReadinessStatus { readiness }) = conn_rx.recv().await else {
-            unreachable!("Should have received a readiness status message")
-        };
-        assert!(readiness.contains_key(&name));
-        assert!(!(*readiness.get(&name).unwrap()));
+        assert!(map_rankings_to_player_name(rankings, &players_mapping).is_empty());
     }
 }

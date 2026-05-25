@@ -1,6 +1,6 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, time::Duration};
 
-use chrono::{DateTime, Duration, Utc};
+use chrono::{DateTime, Utc};
 use delivery_period::{DeliveryPeriodId, DeliveryPeriodResults};
 use derive_more::{AsRef, Display, From};
 use petname::petname;
@@ -182,6 +182,7 @@ impl Default for GameName {
     }
 }
 
+#[derive(Debug)]
 pub enum GameEvent {
     PlayerJoined {
         id: PlayerId,
@@ -207,6 +208,18 @@ pub struct Game {
 }
 
 impl Game {
+    pub fn init(
+        last_delivery_period: DeliveryPeriodId,
+        delivery_period_duration: Option<Duration>,
+    ) -> Self {
+        Self {
+            state: GameState::Open,
+            players: Vec::new(),
+            last_delivery_period,
+            delivery_period_duration,
+        }
+    }
+
     pub fn new(
         state: GameState,
         players: Vec<Player>,
@@ -242,7 +255,12 @@ impl Game {
 
         self.players.push(player);
 
-        Ok(vec![GameEvent::PlayerJoined { id, name }])
+        Ok(vec![
+            GameEvent::PlayerJoined { id, name },
+            GameEvent::PlayerReadinessChanged {
+                readiness: self.players_readines(),
+            },
+        ])
     }
 
     pub fn register_player_ready(&mut self, id: &PlayerId) -> Vec<GameEvent> {
@@ -296,7 +314,7 @@ impl Game {
         events
     }
 
-    fn current_delivery_period(&self) -> DeliveryPeriodId {
+    pub fn current_delivery_period(&self) -> DeliveryPeriodId {
         match &self.state {
             GameState::Open => DeliveryPeriodId::from(0),
             GameState::Ended(period) => *period,
@@ -532,11 +550,27 @@ mod test_game {
             unreachable!("Should have register the player")
         };
 
-        assert_eq!(events.len(), 1);
         let Some(GameEvent::PlayerJoined { name, .. }) = events.first() else {
             unreachable!("Should be GameEvent::PlayerJoined")
         };
         assert_eq!(*name, player);
+    }
+
+    #[test]
+    fn test_register_player_send_readiness() {
+        let mut game = build_empty_game();
+        assert_eq!(game.state, GameState::Open);
+
+        let player = PlayerName::from("test-player");
+
+        let Ok(events) = game.try_register_player(player.clone()) else {
+            unreachable!("Should have register the player")
+        };
+
+        let Some(readiness) = get_readiness(&events) else {
+            unreachable!("Should be GameEvent::PlayerReadinessChanged")
+        };
+        assert!(readiness.contains_key(&player));
     }
 
     #[test]
