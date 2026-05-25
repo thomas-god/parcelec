@@ -80,7 +80,16 @@ impl From<&Output> for ScoreDetails {
     }
 }
 
-#[derive(Debug, Clone, Serialize, PartialEq)]
+impl Default for ScoreDetails {
+    fn default() -> Self {
+        Self {
+            volume: Energy::from(0),
+            pnl: Money::from(0),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, PartialEq, Default)]
 pub struct PlayerDetailedScore {
     pub consumers: ScoreDetails,
     pub renewables: ScoreDetails,
