@@ -5,7 +5,6 @@
     StackSnapshot,
   } from "$lib/message";
   import ForecastsChart from "../molecules/ForecastsChart.svelte";
-  // import ForecastsTable from "../molecules/ForecastsTable.svelte";
 
   let {
     plant_forecasts,
@@ -171,10 +170,4 @@
       height={300}
     />
   </div>
-
-  <!-- <ForecastsTable
-    {total_forecasts}
-    {renewables_forecasts}
-    {consumers_forecasts}
-  /> -->
 </div>
