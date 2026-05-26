@@ -47,7 +47,6 @@ pub enum GameMessage {
         name: PlayerName,
         tx_back: oneshot::Sender<RegisterPlayerResponse>,
     },
-    // Connect this message to WS
     RegisterPlayerStackConfig {
         player: PlayerId,
         config: GameStackCapacitiesConfig,

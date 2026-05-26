@@ -26,42 +26,43 @@ pub async fn handle_ws_connection(
         invalidate_game_cookies(&cookies);
         return StatusCode::UNAUTHORIZED.into_response();
     };
+    let state_ref = state.clone();
     let state = state.read().await;
     let Some(game_context) = state.game_services.get(&game_id) else {
         invalidate_game_cookies(&cookies);
         return StatusCode::UNAUTHORIZED.into_response();
     };
+    // Not necessarly created yet ?
     let Some(market_context) = state.market_services.get(&game_id) else {
         invalidate_game_cookies(&cookies);
         return StatusCode::UNAUTHORIZED.into_response();
     };
-    let Some(stack_context) = state
+    let stack_context = state
         .stack_services
         .get(&game_id)
         .and_then(|game_stacks| game_stacks.get(&player_id))
-    else {
-        invalidate_game_cookies(&cookies);
-        return StatusCode::UNAUTHORIZED.into_response();
-    };
+        .cloned();
+
     let player_context = PlayerConnectionContext {
         game_id: game_id.clone(),
         player_id: player_id.clone(),
         player_name,
         game: game_context.clone(),
         market: market_context.clone(),
-        stack: stack_context.clone(),
+        stack: stack_context,
         connections_repository: state.player_connections_repository.clone(),
     };
 
-    ws.on_upgrade(move |socket| handle_socket(socket, player_context))
+    ws.on_upgrade(move |socket| handle_socket(socket, player_context, state_ref))
 }
 
 async fn handle_socket<MS: Market, PS: Stack>(
     socket: WebSocket,
     context: PlayerConnectionContext<MS, PS>,
+    state: ApiState,
 ) {
     tokio::spawn(async move {
-        if let Err(err) = start_player_connection(socket, context).await {
+        if let Err(err) = start_player_connection(socket, context, state).await {
             tracing::error!("Player connection ended: {err:?}");
         };
     });

@@ -16,24 +16,24 @@ use tokio::{
 use uuid::Uuid;
 
 use crate::{
+    forecast::Forecast,
     game::{
         GameContext, GameId, GameMessage, GameState, GetPreviousScoresResult,
         delivery_period::DeliveryPeriodId,
+        infra::stack_config::GameStackCapacitiesConfig,
         scores::{PlayerDetailedScore, PlayerScore},
     },
-    market::{
-        Direction, Market, MarketContext, MarketState,
-        order_book::OrderRequest as MarketOrderRequest,
-    },
+    infra::api::state::ApiState,
+    market::{Direction, Market, MarketContext, order_book::OrderRequest as MarketOrderRequest},
     plants::{
         GetSnapshotError, Stack,
-        infra::{ProgramPlant, StackContext, StackState},
+        infra::{ProgramPlant, StackContext},
     },
     player::{
         PlayerMessage,
         infra::{ConnectionRepositoryMessage, PlayerConnection},
     },
-    utils::units::{Energy, EnergyCost},
+    utils::units::{Energy, EnergyCost, Power},
 };
 
 use super::{PlayerId, PlayerName};
@@ -46,9 +46,32 @@ pub struct OrderRequest {
 }
 
 #[derive(Deserialize, Debug)]
+pub struct PlayerStackConfigRequest {
+    pub gas_capacity: Power,
+    pub nuclear_capcity: Power,
+    pub battery_capacity: Energy,
+    // TODO: might want a pmax and generate the forecast server-side instead
+    pub consumers_forecasts: Vec<Forecast>,
+    pub renewable_forecasts: Vec<Forecast>,
+}
+
+impl From<PlayerStackConfigRequest> for GameStackCapacitiesConfig {
+    fn from(value: PlayerStackConfigRequest) -> Self {
+        Self {
+            gas_capacity: value.gas_capacity,
+            nuclear_capcity: value.nuclear_capcity,
+            battery_capacity: value.battery_capacity,
+            consumers_forecasts: value.consumers_forecasts,
+            renewable_forecasts: value.renewable_forecasts,
+        }
+    }
+}
+
+#[derive(Deserialize, Debug)]
 enum WebSocketIncomingMessage {
     ConnectionReady,
     PlayerIsReady,
+    RegisterPlayerStackConfig(PlayerStackConfigRequest),
     OrderRequest(OrderRequest),
     DeleteOrder { order_id: String },
     ProgramPlant(ProgramPlant),
@@ -69,7 +92,7 @@ pub struct PlayerConnectionContext<MS: Market, PS: Stack> {
     pub connections_repository: mpsc::Sender<ConnectionRepositoryMessage>,
     pub game: GameContext,
     pub market: MarketContext<MS>,
-    pub stack: StackContext<PS>,
+    pub stack: Option<StackContext<PS>>,
 }
 
 #[derive(thiserror::Error, Debug)]
@@ -91,6 +114,7 @@ pub enum PlayerConnectionError {
 pub async fn start_player_connection<MS: Market, PS: Stack>(
     mut ws: WebSocket,
     context: PlayerConnectionContext<MS, PS>,
+    state: ApiState,
 ) -> Result<(), PlayerConnectionError> {
     let connection_id = Uuid::new_v4().to_string();
     let (tx, rx) = channel::<PlayerMessage>(16);
@@ -121,19 +145,15 @@ pub async fn start_player_connection<MS: Market, PS: Stack>(
     send_readiness_satus(&mut ws, &context).await?;
 
     let (sink, stream) = ws.split();
-    let sink_handle = tokio::spawn(process_internal_messages(
-        sink,
-        rx,
-        context.game.state_rx,
-        context.market.state_rx,
-        context.stack.state_rx,
-    ));
+    let sink_handle = tokio::spawn(process_internal_messages(sink, rx, context.game.state_rx));
     let stream_handle = tokio::spawn(process_ws_messages(
         stream,
         context.game.tx.clone(),
         context.market.service.clone(),
-        context.stack.service.clone(),
+        context.stack.map(|s| s.service.clone()),
+        context.game_id.clone(),
         context.player_id.clone(),
+        state,
     ));
     tokio::select! {
         _ = sink_handle => {},
@@ -198,13 +218,15 @@ async fn send_initial_stack_snapshot<MS: Market, PS: Stack>(
     ws: &mut WebSocket,
     context: &PlayerConnectionContext<MS, PS>,
 ) -> Result<(), PlayerConnectionError> {
-    ws.send(
-        serde_json::to_string(&PlayerMessage::StackSnapshot {
-            plants: context.stack.service.get_snapshot().await?,
-        })?
-        .into(),
-    )
-    .await?;
+    if let Some(stack) = &context.stack {
+        ws.send(
+            serde_json::to_string(&PlayerMessage::StackSnapshot {
+                plants: stack.service.get_snapshot().await?,
+            })?
+            .into(),
+        )
+        .await?;
+    }
     Ok(())
 }
 
@@ -212,13 +234,15 @@ async fn send_stack_forecasts<MS: Market, PS: Stack>(
     ws: &mut WebSocket,
     context: &PlayerConnectionContext<MS, PS>,
 ) -> Result<(), PlayerConnectionError> {
-    ws.send(
-        serde_json::to_string(&PlayerMessage::StackForecasts {
-            forecasts: context.stack.service.get_forecasts().await,
-        })?
-        .into(),
-    )
-    .await?;
+    if let Some(stack) = &context.stack {
+        ws.send(
+            serde_json::to_string(&PlayerMessage::StackForecasts {
+                forecasts: stack.service.get_forecasts().await,
+            })?
+            .into(),
+        )
+        .await?;
+    }
     Ok(())
 }
 
@@ -226,13 +250,15 @@ async fn send_stack_history<MS: Market, PS: Stack>(
     ws: &mut WebSocket,
     context: &PlayerConnectionContext<MS, PS>,
 ) -> Result<(), PlayerConnectionError> {
-    ws.send(
-        serde_json::to_string(&PlayerMessage::StackHistory {
-            history: context.stack.service.get_history().await,
-        })?
-        .into(),
-    )
-    .await?;
+    if let Some(stack) = &context.stack {
+        ws.send(
+            serde_json::to_string(&PlayerMessage::StackHistory {
+                history: stack.service.get_history().await,
+            })?
+            .into(),
+        )
+        .await?;
+    }
     Ok(())
 }
 
@@ -317,8 +343,10 @@ async fn process_ws_messages<MS: Market, PS: Stack>(
     mut stream: SplitStream<WebSocket>,
     game_tx: Sender<GameMessage>,
     market: MS,
-    stack: PS,
+    stack: Option<PS>,
+    game_id: GameId,
     player_id: PlayerId,
+    state: ApiState,
 ) {
     while let Some(Ok(Message::Text(msg))) = stream.next().await {
         match serde_json::from_str::<WebSocketIncomingMessage>(msg.as_str()) {
@@ -326,6 +354,31 @@ async fn process_ws_messages<MS: Market, PS: Stack>(
                 let _ = game_tx
                     .send(GameMessage::PlayerIsReady(player_id.clone()))
                     .await;
+            }
+            Ok(WebSocketIncomingMessage::RegisterPlayerStackConfig(request)) => {
+                let (tx, rx) = oneshot::channel();
+                let _ = game_tx
+                    .send(GameMessage::RegisterPlayerStackConfig {
+                        player: player_id.clone(),
+                        config: request.into(),
+                        tx_back: tx,
+                    })
+                    .await;
+                if let Ok(Ok(stack)) = rx.await {
+                    let mut state = state.write().await;
+
+                    match state.stack_services.get_mut(&game_id) {
+                        Some(stacks) => {
+                            let _ = stacks.insert(player_id.clone(), stack);
+                        }
+                        None => {
+                            let _ = state.stack_services.insert(
+                                game_id.clone(),
+                                HashMap::from([(player_id.clone(), stack)]),
+                            );
+                        }
+                    };
+                }
             }
             Ok(WebSocketIncomingMessage::OrderRequest(request)) => {
                 let order_request = MarketOrderRequest {
@@ -341,7 +394,9 @@ async fn process_ws_messages<MS: Market, PS: Stack>(
             }
             Ok(WebSocketIncomingMessage::ConnectionReady) => { /* Only for WS initialisation */ }
             Ok(WebSocketIncomingMessage::ProgramPlant(req)) => {
-                let _ = stack.program_setpoint(req.plant_id, req.setpoint).await;
+                if let Some(ref stack) = stack {
+                    let _ = stack.program_setpoint(req.plant_id, req.setpoint).await;
+                }
             }
             Err(err) => tracing::error!("{err:?}"),
         }
@@ -352,20 +407,10 @@ async fn process_internal_messages(
     mut sink: SplitSink<WebSocket, Message>,
     mut rx: Receiver<PlayerMessage>,
     mut game_state: watch::Receiver<GameState>,
-    mut market_state: watch::Receiver<MarketState>,
-    mut stack_state: watch::Receiver<StackState>,
 ) {
-    // Send initial game, market and stack states before processing further messages
+    // Send initial game state before processing further messages
     let initial_game_state = serde_json::to_string(&game_state.borrow_and_update().clone());
     if send_msg(&mut sink, initial_game_state).await.is_err() {
-        return;
-    }
-    let initial_market_state = serde_json::to_string(&market_state.borrow_and_update().clone());
-    if send_msg(&mut sink, initial_market_state).await.is_err() {
-        return;
-    }
-    let initial_stack_state = serde_json::to_string(&stack_state.borrow_and_update().clone());
-    if send_msg(&mut sink, initial_stack_state).await.is_err() {
         return;
     }
 
@@ -374,12 +419,6 @@ async fn process_internal_messages(
             Some(msg) = rx.recv() => serde_json::to_string(&msg),
             Ok(()) = game_state.changed() => {
                 serde_json::to_string(&game_state.borrow_and_update().clone())
-            }
-            Ok(()) = market_state.changed() => {
-                serde_json::to_string(&market_state.borrow_and_update().clone())
-            }
-            Ok(()) = stack_state.changed() => {
-                serde_json::to_string(&stack_state.borrow_and_update().clone())
             }
         };
         if send_msg(&mut sink, msg).await.is_err() {
