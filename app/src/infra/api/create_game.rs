@@ -1,4 +1,4 @@
-use std::{collections::HashMap, time::Duration};
+use std::time::Duration;
 
 use axum::{Json, extract::State, http::StatusCode, response::IntoResponse};
 use serde::{Deserialize, Serialize};
@@ -7,16 +7,15 @@ use tracing::warn;
 use crate::{
     constants::DEFAULT_PERIOD_DURATION_SECONDS,
     forecast::Forecast,
-    game::{GameActor, GameId, GameName, infra::GameActorConfig},
-    infra::api::state::cleanup_state,
-    market::{MarketActor, bots::start_bots},
-    plants::{
-        PlantId, PowerPlant, StackPlants,
-        technologies::{
-            battery::Battery, consumers::Consumers, gas_plant::GasPlant, nuclear::NuclearPlant,
-            renewable::RenewablePlant,
+    game::{
+        GameActor, GameId, GameName,
+        infra::{
+            GameActorConfig,
+            stack_config::{GameStackBaseConfig, GameStackCapacitiesConfig, GameStackConfig},
         },
     },
+    infra::api::state::cleanup_state,
+    market::{MarketActor, bots::start_bots},
     player::infra::PlayerConnectionsService,
     utils::{
         program_actors_termination,
@@ -116,7 +115,7 @@ pub async fn create_game(
         name: game_name.clone(),
         delivery_period_duration: Some(Duration::from_secs(period_duration)),
         number_of_delivery_periods: request.number_of_periods,
-        build_stack: stack_plants_builder(request.stack),
+        stack_config: game_stack_config(request.stack),
     };
     let game_context = GameActor::start(
         game_config,
@@ -146,41 +145,19 @@ pub async fn create_game(
     ))
 }
 
-fn stack_plants_builder(
-    config: StackConfig,
-) -> impl Fn() -> StackPlants + Clone + Send + Sync + 'static {
-    move || {
-        let StackConfig {
-            gas,
-            nuclear,
-            battery,
-            consumers,
-            renewable_forecasts,
-        } = &config;
-        let mut map: HashMap<PlantId, Box<dyn PowerPlant + Send + Sync>> = HashMap::new();
-        map.insert(
-            PlantId::default(),
-            Box::new(Battery::new(battery.max_charge, Energy::from(0))),
-        );
-        map.insert(
-            PlantId::default(),
-            Box::new(GasPlant::new(gas.cost, gas.max_power)),
-        );
-        map.insert(
-            PlantId::default(),
-            Box::new(NuclearPlant::new(nuclear.max_power, nuclear.cost)),
-        );
-        map.insert(
-            PlantId::default(),
-            Box::new(RenewablePlant::new(renewable_forecasts.clone())),
-        );
-        map.insert(
-            PlantId::default(),
-            Box::new(Consumers::new(
-                consumers.revenues,
-                consumers.forecasts.clone(),
-            )),
-        );
-        StackPlants::new(map)
-    }
+fn game_stack_config(config: StackConfig) -> GameStackConfig {
+    GameStackConfig::Fixed(
+        GameStackBaseConfig {
+            consumers_revenues: config.consumers.revenues,
+            gas_cost: config.gas.cost,
+            nuclear_cost: config.nuclear.cost,
+        },
+        GameStackCapacitiesConfig {
+            gas_capacity: config.gas.max_power,
+            nuclear_capcity: config.nuclear.max_power,
+            battery_capacity: config.battery.max_charge,
+            renewable_forecasts: config.renewable_forecasts,
+            consumers_forecasts: config.consumers.forecasts,
+        },
+    )
 }

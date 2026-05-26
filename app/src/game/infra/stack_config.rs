@@ -33,7 +33,7 @@ pub struct GameStackCapacitiesConfig {
     pub renewable_forecasts: Vec<Forecast>,
 }
 
-pub fn build_stack(
+pub fn build_stack_from_configs(
     base: &GameStackBaseConfig,
     capacities: &GameStackCapacitiesConfig,
 ) -> StackPlants {
@@ -90,7 +90,7 @@ mod test_build_stack_from_configuration {
             consumers_forecasts: vec![],
         };
 
-        let stack = build_stack(&base_configuration, &capacities_configuration);
+        let stack = build_stack_from_configs(&base_configuration, &capacities_configuration);
         let snapshot = stack.snapshot();
 
         assert_eq!(snapshot.len(), 5);

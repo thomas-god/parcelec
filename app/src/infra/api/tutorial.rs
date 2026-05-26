@@ -6,15 +6,22 @@ use tokio::sync::oneshot;
 use tower_cookies::Cookies;
 
 use crate::{
+    forecast::{Forecast, ForecastValue},
     game::{
         GameActor, GameId, GameMessage, GameName, RegisterPlayerResponse,
-        infra::actor::GameActorConfig,
+        delivery_period::DeliveryPeriodId,
+        infra::{
+            actor::GameActorConfig,
+            stack_config::{GameStackBaseConfig, GameStackCapacitiesConfig, GameStackConfig},
+        },
     },
     infra::api::{cookies::add_game_cookies, state::cleanup_state},
     market::{MarketActor, bots::start_bots_tutorial},
-    plants::infra::actor::default_stack_plants_builder,
     player::{PlayerName, infra::PlayerConnectionsService},
-    utils::program_actors_termination,
+    utils::{
+        program_actors_termination,
+        units::{Energy, EnergyCost, Power},
+    },
 };
 
 use super::ApiState;
@@ -45,7 +52,7 @@ pub async fn create_tutorial_game(
         name: game_name,
         number_of_delivery_periods: 4,
         delivery_period_duration: None,
-        build_stack: default_stack_plants_builder(),
+        stack_config: game_stack_config(),
     };
     let game_context = GameActor::start(
         game_config,
@@ -117,4 +124,79 @@ pub async fn create_tutorial_game(
 
     tracing::info!("Tutorial game created");
     StatusCode::CREATED
+}
+
+fn game_stack_config() -> GameStackConfig {
+    GameStackConfig::Fixed(
+        GameStackBaseConfig {
+            consumers_revenues: EnergyCost::from(56),
+            gas_cost: EnergyCost::from(80),
+            nuclear_cost: EnergyCost::from(35),
+        },
+        GameStackCapacitiesConfig {
+            gas_capacity: Power::from(500),
+            nuclear_capcity: Power::from(1000),
+            battery_capacity: Energy::from(300),
+            consumers_forecasts: vec![
+                Forecast {
+                    period: DeliveryPeriodId::from(1),
+                    value: ForecastValue {
+                        value: -1000,
+                        deviation: 25,
+                    },
+                },
+                Forecast {
+                    period: DeliveryPeriodId::from(2),
+                    value: ForecastValue {
+                        value: -1200,
+                        deviation: 50,
+                    },
+                },
+                Forecast {
+                    period: DeliveryPeriodId::from(3),
+                    value: ForecastValue {
+                        value: -600,
+                        deviation: 75,
+                    },
+                },
+                Forecast {
+                    period: DeliveryPeriodId::from(4),
+                    value: ForecastValue {
+                        value: -1800,
+                        deviation: 100,
+                    },
+                },
+            ],
+            renewable_forecasts: vec![
+                Forecast {
+                    period: DeliveryPeriodId::from(1),
+                    value: ForecastValue {
+                        value: 250,
+                        deviation: 25,
+                    },
+                },
+                Forecast {
+                    period: DeliveryPeriodId::from(2),
+                    value: ForecastValue {
+                        value: 150,
+                        deviation: 50,
+                    },
+                },
+                Forecast {
+                    period: DeliveryPeriodId::from(3),
+                    value: ForecastValue {
+                        value: 300,
+                        deviation: 75,
+                    },
+                },
+                Forecast {
+                    period: DeliveryPeriodId::from(4),
+                    value: ForecastValue {
+                        value: 100,
+                        deviation: 75,
+                    },
+                },
+            ],
+        },
+    )
 }

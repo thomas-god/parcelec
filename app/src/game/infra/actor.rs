@@ -15,12 +15,10 @@ use crate::{
         Game, GameContext, GameEvent, GameId, GameMessage, GameName, GameState,
         GetPreviousScoresResult, RegisterPlayerResponse,
         delivery_period::{DeliveryPeriodId, DeliveryPeriodResults, start_delivery_period},
+        infra::stack_config::{GameStackConfig, build_stack_from_configs},
         scores::{PlayerDetailedScore, PlayerResult, PlayerScore, compute_game_rankings},
     },
-    plants::{
-        StackPlants,
-        infra::{StackActor, StackState},
-    },
+    plants::infra::{StackActor, StackState},
 };
 use crate::{
     market::{Market, MarketContext},
@@ -32,14 +30,10 @@ use crate::{
 /// - new player registration,
 /// - passing game context to new player connection (market and player's stack tx),
 /// - delivery period lifecycle
-pub struct GameActor<
-    MS: Market,
-    PC: PlayerConnections,
-    F: Fn() -> StackPlants + Clone + Send + Sync + 'static,
-> {
+pub struct GameActor<MS: Market, PC: PlayerConnections> {
     game: Game,
     cache: GameCache,
-    config: GameActorConfig<F>,
+    config: GameActorConfig,
     state_watch: watch::Sender<GameState>,
     players_connections: PC,
     market_context: MarketContext<MS>,
@@ -70,22 +64,17 @@ impl Default for GameCache {
     }
 }
 
-pub struct GameActorConfig<F>
-where
-    F: Fn() -> StackPlants + Clone + Send + Sync + 'static,
-{
+pub struct GameActorConfig {
     pub id: GameId,
     pub name: GameName,
     pub number_of_delivery_periods: usize,
     pub delivery_period_duration: Option<Duration>,
-    pub build_stack: F,
+    pub stack_config: GameStackConfig,
 }
 
-impl<MS: Market, PC: PlayerConnections, F: Fn() -> StackPlants + Clone + Send + Sync + 'static>
-    GameActor<MS, PC, F>
-{
+impl<MS: Market, PC: PlayerConnections> GameActor<MS, PC> {
     pub fn start(
-        config: GameActorConfig<F>,
+        config: GameActorConfig,
         players_connections: PC,
         market_context: MarketContext<MS>,
         cancelation_token: CancellationToken,
@@ -363,11 +352,16 @@ impl<MS: Market, PC: PlayerConnections, F: Fn() -> StackPlants + Clone + Send + 
         player_id: &PlayerId,
         tx_back: tokio::sync::oneshot::Sender<RegisterPlayerResponse>,
     ) {
+        let plants = match &self.config.stack_config {
+            GameStackConfig::Fixed(base, capacities) => build_stack_from_configs(base, capacities),
+            GameStackConfig::PerPlayer(_base) => todo!(),
+        };
+
         // Create a new stack for the player
         let mut player_stack = StackActor::new(
             self.config.id.clone(),
             player_id.clone(),
-            (self.config.build_stack)(),
+            plants,
             StackState::Closed,
             self.game.current_delivery_period(),
             self.players_connections.clone(),
@@ -424,8 +418,9 @@ mod test_utils {
     use tokio::sync::mpsc;
 
     use crate::{
+        game::infra::stack_config::{GameStackBaseConfig, GameStackCapacitiesConfig},
         market::{MarketState, OBS, order_book::TradeLeg},
-        plants::infra::actor::default_stack_plants_builder,
+        utils::units::{Energy, EnergyCost, Power},
     };
 
     use super::*;
@@ -495,14 +490,26 @@ mod test_utils {
         }
     }
 
-    pub fn default_game_config() -> GameActorConfig<impl Fn() -> StackPlants + Clone + Send + Sync>
-    {
+    pub fn default_game_config() -> GameActorConfig {
         GameActorConfig {
             delivery_period_duration: None,
             id: GameId::default(),
             name: GameName::default(),
             number_of_delivery_periods: 4,
-            build_stack: default_stack_plants_builder(),
+            stack_config: GameStackConfig::Fixed(
+                GameStackBaseConfig {
+                    consumers_revenues: EnergyCost::from(60),
+                    gas_cost: EnergyCost::from(70),
+                    nuclear_cost: EnergyCost::from(35),
+                },
+                GameStackCapacitiesConfig {
+                    gas_capacity: Power::from(300),
+                    nuclear_capcity: Power::from(1000),
+                    battery_capacity: Energy::from(200),
+                    renewable_forecasts: vec![],
+                    consumers_forecasts: vec![],
+                },
+            ),
         }
     }
 
@@ -514,11 +521,7 @@ mod test_utils {
     }
 
     pub fn build_game_actor() -> (
-        GameActor<
-            MockMarket,
-            test_utils::MockPlayerConnections,
-            impl (Fn() -> StackPlants) + Clone + std::marker::Send + Sync,
-        >,
+        GameActor<MockMarket, test_utils::MockPlayerConnections>,
         TestComms,
     ) {
         let config = default_game_config();
@@ -563,9 +566,8 @@ mod test_utils {
 mod tests {
     use std::{collections::HashMap, time::Duration};
 
-    use tokio::sync::{mpsc, watch};
-    use tokio_util::sync::CancellationToken;
-
+    use crate::game::infra::stack_config::GameStackConfig;
+    use crate::utils::units::{Energy, EnergyCost, Power};
     use crate::{
         game::{
             Game, GameId, GameName,
@@ -576,11 +578,13 @@ mod tests {
                     GameCache,
                     test_utils::{MockMarket, MockPlayerConnections},
                 },
+                stack_config::{GameStackBaseConfig, GameStackCapacitiesConfig},
             },
         },
         market::{MarketContext, MarketState},
-        plants::infra::actor::default_stack_plants_builder,
     };
+    use tokio::sync::{mpsc, watch};
+    use tokio_util::sync::CancellationToken;
 
     use super::GameActor;
 
@@ -599,7 +603,20 @@ mod tests {
         let config = GameActorConfig {
             id: GameId::default(),
             name: GameName::default(),
-            build_stack: default_stack_plants_builder(),
+            stack_config: GameStackConfig::Fixed(
+                GameStackBaseConfig {
+                    consumers_revenues: EnergyCost::from(60),
+                    gas_cost: EnergyCost::from(70),
+                    nuclear_cost: EnergyCost::from(35),
+                },
+                GameStackCapacitiesConfig {
+                    gas_capacity: Power::from(300),
+                    nuclear_capcity: Power::from(1000),
+                    battery_capacity: Energy::from(200),
+                    renewable_forecasts: vec![],
+                    consumers_forecasts: vec![],
+                },
+            ),
             number_of_delivery_periods: 3,
             delivery_period_duration: None,
         };
