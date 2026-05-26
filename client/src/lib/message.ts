@@ -133,14 +133,6 @@ const WSMessageSchema = z.discriminatedUnion("type", [
       .transform((rec) => new Map(Object.entries(rec))),
   }),
   z.object({
-    type: z.literal("MarketState"),
-    state: z.enum(["Open", "Closed"]),
-  }),
-  z.object({
-    type: z.literal("StackState"),
-    state: z.enum(["Open", "Closed"]),
-  }),
-  z.object({
     type: z.literal("GameState"),
     state: z.enum(["Open", "Running", "PostDelivery", "Ended"]),
     delivery_period: z.number(),

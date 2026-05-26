@@ -44,8 +44,6 @@
   let plants: StackSnapshot = $state(new Map());
   let plant_forecasts: StackForecasts = $state(new Map());
   let plant_history: StackHistory = $state(new Map());
-  let market_state: "Open" | "Closed" = $state("Open");
-  let stack_state: "Open" | "Closed" = $state("Open");
   let game_state: GameState = $state("Open");
   let delivery_period_id = $state(0);
   let delivery_period_end: Option<Date> = $state(none());
@@ -104,12 +102,6 @@
           if (state === "Running") {
             console.log(`Starting delivery period no: ${delivery_period_id}`);
           }
-        })
-        .with({ type: "MarketState" }, ({ state }) => {
-          market_state = state;
-        })
-        .with({ type: "StackState" }, ({ state }) => {
-          stack_state = state;
         })
         .with(
           { type: "DeliveryPeriodResults" },
