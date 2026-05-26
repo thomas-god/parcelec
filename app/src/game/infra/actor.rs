@@ -15,7 +15,7 @@ use crate::{
         Game, GameContext, GameEvent, GameId, GameMessage, GameName, GameState,
         GetPreviousScoresResult, RegisterPlayerResponse,
         delivery_period::{DeliveryPeriodId, DeliveryPeriodResults, start_delivery_period},
-        scores::{GameRankings, PlayerDetailedScore, PlayerResult, PlayerScore},
+        scores::{PlayerDetailedScore, PlayerResult, PlayerScore, compute_game_rankings},
     },
     plants::{
         StackPlants,
@@ -77,7 +77,6 @@ where
     pub id: GameId,
     pub name: GameName,
     pub number_of_delivery_periods: usize,
-    pub ranking_calculator: GameRankings,
     pub delivery_period_duration: Option<Duration>,
     pub build_stack: F,
 }
@@ -285,9 +284,7 @@ impl<MS: Market, PC: PlayerConnections, F: Fn() -> StackPlants + Clone + Send + 
         let scores = match self.cache.state {
             GameState::Ended(_) => PlayersRanking {
                 scores: map_rankings_to_player_name(
-                    self.config
-                        .ranking_calculator
-                        .compute_scores(&self.cache.players_scores.clone()),
+                    compute_game_rankings(&self.cache.players_scores.clone()),
                     &self.cache.players_id_to_name,
                 ),
             },
@@ -343,9 +340,7 @@ impl<MS: Market, PC: PlayerConnections, F: Fn() -> StackPlants + Clone + Send + 
                 &self.config.id,
                 PlayerMessage::GameResults {
                     rankings: map_rankings_to_player_name(
-                        self.config
-                            .ranking_calculator
-                            .compute_scores(&self.cache.players_scores),
+                        compute_game_rankings(&self.cache.players_scores),
                         &self.cache.players_id_to_name,
                     ),
                 },
@@ -419,7 +414,6 @@ fn map_rankings_to_player_name(
                 player: name.clone(),
                 rank: rank.rank,
                 score: rank.score,
-                tier: rank.tier.clone(),
             })
         })
         .collect()
@@ -508,7 +502,6 @@ mod test_utils {
             id: GameId::default(),
             name: GameName::default(),
             number_of_delivery_periods: 4,
-            ranking_calculator: GameRankings { tier_limits: None },
             build_stack: default_stack_plants_builder(),
         }
     }
@@ -584,7 +577,6 @@ mod tests {
                     test_utils::{MockMarket, MockPlayerConnections},
                 },
             },
-            scores::GameRankings,
         },
         market::{MarketContext, MarketState},
         plants::infra::actor::default_stack_plants_builder,
@@ -610,7 +602,6 @@ mod tests {
             build_stack: default_stack_plants_builder(),
             number_of_delivery_periods: 3,
             delivery_period_duration: None,
-            ranking_calculator: GameRankings { tier_limits: None },
         };
         let mut game = GameActor {
             config,
@@ -824,7 +815,6 @@ mod test_rankings_mapping {
             player: player_id.clone(),
             rank: 1,
             score: Money::from(0),
-            tier: None,
         }];
 
         assert_eq!(
@@ -833,7 +823,6 @@ mod test_rankings_mapping {
                 player: player_name.clone(),
                 rank: 1,
                 score: Money::from(0),
-                tier: None,
             }]
         );
     }
@@ -846,7 +835,6 @@ mod test_rankings_mapping {
             player: player_id.clone(),
             rank: 1,
             score: Money::from(0),
-            tier: None,
         }];
 
         assert!(map_rankings_to_player_name(rankings, &players_mapping).is_empty());

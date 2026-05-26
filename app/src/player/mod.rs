@@ -10,7 +10,7 @@ use crate::{
     game::{
         GameId,
         delivery_period::DeliveryPeriodId,
-        scores::{PlayerDetailedScore, PlayerScore, RankTier},
+        scores::{PlayerDetailedScore, PlayerScore},
     },
     market::{OrderRepr, order_book::TradeLeg},
     plants::{PlantId, PlantOutput, PowerPlantPublicRepr},
@@ -53,7 +53,6 @@ pub struct PlayerResultView {
     pub player: PlayerName,
     pub rank: usize,
     pub score: Money,
-    pub tier: Option<RankTier>,
 }
 
 #[derive(Clone, Serialize, Debug)]

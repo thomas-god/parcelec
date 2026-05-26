@@ -168,12 +168,6 @@ const WSMessageSchema = z.discriminatedUnion("type", [
         player: z.string(),
         rank: z.number(),
         score: z.number(),
-        tier: z.union([
-          z.literal("Bronze"),
-          z.literal("Silver"),
-          z.literal("Gold"),
-          z.null(),
-        ]),
       }),
     ),
   }),

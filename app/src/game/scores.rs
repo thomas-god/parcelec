@@ -268,64 +268,32 @@ pub struct PlayerResult {
     pub player: PlayerId,
     pub rank: usize,
     pub score: Money,
-    pub tier: Option<RankTier>,
 }
 
-#[derive(Debug, PartialEq, Clone, Serialize)]
-pub enum RankTier {
-    Bronze,
-    Silver,
-    Gold,
-}
-
-#[derive(Debug, Clone)]
-pub struct TierLimits {
-    pub gold: Money,
-    pub silver: Money,
-    pub bronze: Money,
-}
-
-#[derive(Debug, Clone)]
-pub struct GameRankings {
-    pub tier_limits: Option<TierLimits>,
-}
-
-impl GameRankings {
-    pub fn compute_scores(
-        &self,
-        players_scores: &HashMap<PlayerId, HashMap<DeliveryPeriodId, PlayerScore>>,
-    ) -> Vec<PlayerResult> {
-        let mut scores: Vec<(PlayerId, Money)> = players_scores
-            .iter()
-            .map(|(player, score)| {
-                (
-                    player.clone(),
-                    score
-                        .iter()
-                        .fold(Money::from(0), |acc, (_, s)| acc + s.pnl + s.imbalance_cost),
-                )
-            })
-            .collect();
-        scores.sort_by(|(_, a), (_, b)| b.cmp(a));
-        scores
-            .iter()
-            .enumerate()
-            .map(|(idx, (player_id, score))| PlayerResult {
-                player: player_id.clone(),
-                rank: idx + 1,
-                score: *score,
-                tier: match (&self.tier_limits, score) {
-                    (None, _) => None,
-                    (Some(limits), score) => match score {
-                        score if *score >= limits.gold => Some(RankTier::Gold),
-                        score if *score >= limits.silver => Some(RankTier::Silver),
-                        score if *score >= limits.bronze => Some(RankTier::Bronze),
-                        _ => None,
-                    },
-                },
-            })
-            .collect()
-    }
+pub fn compute_game_rankings(
+    players_scores: &HashMap<PlayerId, HashMap<DeliveryPeriodId, PlayerScore>>,
+) -> Vec<PlayerResult> {
+    let mut scores: Vec<(PlayerId, Money)> = players_scores
+        .iter()
+        .map(|(player, score)| {
+            (
+                player.clone(),
+                score
+                    .iter()
+                    .fold(Money::from(0), |acc, (_, s)| acc + s.pnl + s.imbalance_cost),
+            )
+        })
+        .collect();
+    scores.sort_by(|(_, a), (_, b)| b.cmp(a));
+    scores
+        .iter()
+        .enumerate()
+        .map(|(idx, (player_id, score))| PlayerResult {
+            player: player_id.clone(),
+            rank: idx + 1,
+            score: *score,
+        })
+        .collect()
 }
 
 #[cfg(test)]
@@ -734,14 +702,14 @@ mod test_pnl_ranking {
     use crate::{
         game::{
             delivery_period::DeliveryPeriodId,
-            scores::{GameRankings, PlayerResult, PlayerScore, RankTier, TierLimits},
+            scores::{PlayerResult, PlayerScore, compute_game_rankings},
         },
         player::PlayerId,
         utils::units::{Money, Power},
     };
 
     #[test]
-    fn test_pnl_ranking_no_tiers() {
+    fn test_pnl_ranking() {
         let scores = HashMap::from([
             (
                 PlayerId::from("toto"),
@@ -787,108 +755,19 @@ mod test_pnl_ranking {
             ),
         ]);
 
-        let ranking = GameRankings { tier_limits: None };
+        let rankings = compute_game_rankings(&scores);
         assert_eq!(
-            ranking.compute_scores(&scores),
+            rankings,
             vec![
                 PlayerResult {
                     player: PlayerId::from("toto"),
                     rank: 1,
                     score: Money::from(1990),
-                    tier: None
                 },
                 PlayerResult {
                     player: PlayerId::from("other_player"),
                     rank: 2,
                     score: Money::from(-60),
-                    tier: None
-                }
-            ]
-        )
-    }
-
-    #[test]
-    fn test_pnl_ranking_with_tiers() {
-        let scores = HashMap::from([
-            (
-                PlayerId::from("gold"),
-                HashMap::from([(
-                    DeliveryPeriodId::from(1),
-                    PlayerScore {
-                        balance: Power::from(0),
-                        imbalance_cost: Money::from(0),
-                        pnl: Money::from(1000),
-                    },
-                )]),
-            ),
-            (
-                PlayerId::from("silver"),
-                HashMap::from([(
-                    DeliveryPeriodId::from(1),
-                    PlayerScore {
-                        balance: Power::from(0),
-                        imbalance_cost: Money::from(0),
-                        pnl: Money::from(500),
-                    },
-                )]),
-            ),
-            (
-                PlayerId::from("bronze"),
-                HashMap::from([(
-                    DeliveryPeriodId::from(1),
-                    PlayerScore {
-                        balance: Power::from(0),
-                        imbalance_cost: Money::from(0),
-                        pnl: Money::from(100),
-                    },
-                )]),
-            ),
-            (
-                PlayerId::from("none"),
-                HashMap::from([(
-                    DeliveryPeriodId::from(1),
-                    PlayerScore {
-                        balance: Power::from(0),
-                        imbalance_cost: Money::from(0),
-                        pnl: Money::from(-500),
-                    },
-                )]),
-            ),
-        ]);
-
-        let ranking = GameRankings {
-            tier_limits: Some(TierLimits {
-                gold: Money::from(1000),
-                silver: Money::from(500),
-                bronze: Money::from(100),
-            }),
-        };
-        assert_eq!(
-            ranking.compute_scores(&scores),
-            vec![
-                PlayerResult {
-                    player: PlayerId::from("gold"),
-                    rank: 1,
-                    score: Money::from(1000),
-                    tier: Some(RankTier::Gold)
-                },
-                PlayerResult {
-                    player: PlayerId::from("silver"),
-                    rank: 2,
-                    score: Money::from(500),
-                    tier: Some(RankTier::Silver)
-                },
-                PlayerResult {
-                    player: PlayerId::from("bronze"),
-                    rank: 3,
-                    score: Money::from(100),
-                    tier: Some(RankTier::Bronze)
-                },
-                PlayerResult {
-                    player: PlayerId::from("none"),
-                    rank: 4,
-                    score: Money::from(-500),
-                    tier: None
                 }
             ]
         )

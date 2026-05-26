@@ -7,11 +7,7 @@ use tracing::warn;
 use crate::{
     constants::DEFAULT_PERIOD_DURATION_SECONDS,
     forecast::Forecast,
-    game::{
-        GameActor, GameId, GameName,
-        infra::GameActorConfig,
-        scores::{GameRankings, TierLimits},
-    },
+    game::{GameActor, GameId, GameName, infra::GameActorConfig},
     infra::api::state::cleanup_state,
     market::{MarketActor, bots::start_bots},
     plants::{
@@ -24,7 +20,7 @@ use crate::{
     player::infra::PlayerConnectionsService,
     utils::{
         program_actors_termination,
-        units::{Energy, EnergyCost, Money, Power},
+        units::{Energy, EnergyCost, Power},
     },
 };
 
@@ -120,13 +116,6 @@ pub async fn create_game(
         name: game_name.clone(),
         delivery_period_duration: Some(Duration::from_secs(period_duration)),
         number_of_delivery_periods: request.number_of_periods,
-        ranking_calculator: GameRankings {
-            tier_limits: Some(TierLimits {
-                gold: Money::from(80_000),
-                silver: Money::from(50_000),
-                bronze: Money::from(25_000),
-            }),
-        },
         build_stack: stack_plants_builder(request.stack),
     };
     let game_context = GameActor::start(

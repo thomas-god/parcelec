@@ -9,13 +9,12 @@ use crate::{
     game::{
         GameActor, GameId, GameMessage, GameName, RegisterPlayerResponse,
         infra::actor::GameActorConfig,
-        scores::{GameRankings, TierLimits},
     },
     infra::api::{cookies::add_game_cookies, state::cleanup_state},
     market::{MarketActor, bots::start_bots_tutorial},
     plants::infra::actor::default_stack_plants_builder,
     player::{PlayerName, infra::PlayerConnectionsService},
-    utils::{program_actors_termination, units::Money},
+    utils::program_actors_termination,
 };
 
 use super::ApiState;
@@ -46,13 +45,6 @@ pub async fn create_tutorial_game(
         name: game_name,
         number_of_delivery_periods: 4,
         delivery_period_duration: None,
-        ranking_calculator: GameRankings {
-            tier_limits: Some(TierLimits {
-                gold: Money::from(80_000),
-                silver: Money::from(50_000),
-                bronze: Money::from(25_000),
-            }),
-        },
         build_stack: default_stack_plants_builder(),
     };
     let game_context = GameActor::start(
