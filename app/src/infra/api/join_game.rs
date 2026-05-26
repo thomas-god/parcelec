@@ -65,19 +65,21 @@ pub async fn join_game(
             return StatusCode::INTERNAL_SERVER_ERROR;
         }
     };
-    match state.stack_services.get_mut(&game_id) {
-        Some(game_stacks) => {
-            if game_stacks.get(&player_id).is_some() {
-                tracing::error!(
-                    "A stack already exist for player {player_id:?} in game {game_id:?}"
-                );
-                return StatusCode::INTERNAL_SERVER_ERROR;
+    if let Some(stack) = player_stack {
+        match state.stack_services.get_mut(&game_id) {
+            Some(game_stacks) => {
+                if game_stacks.get(&player_id).is_some() {
+                    tracing::error!(
+                        "A stack already exist for player {player_id:?} in game {game_id:?}"
+                    );
+                    return StatusCode::INTERNAL_SERVER_ERROR;
+                }
+                game_stacks.insert(player_id.clone(), stack.clone());
             }
-            game_stacks.insert(player_id.clone(), player_stack.clone());
-        }
-        None => {
-            let game_stacks = HashMap::from([(player_id.clone(), player_stack)]);
-            state.stack_services.insert(game_id.clone(), game_stacks);
+            None => {
+                let game_stacks = HashMap::from([(player_id.clone(), stack)]);
+                state.stack_services.insert(game_id.clone(), game_stacks);
+            }
         }
     }
 
@@ -166,7 +168,7 @@ mod test_api_join_game {
                 tx_back
                     .send(RegisterPlayerResponse::Success {
                         id: player_id,
-                        stack: player_stack,
+                        stack: Some(player_stack),
                     })
                     .unwrap();
             }

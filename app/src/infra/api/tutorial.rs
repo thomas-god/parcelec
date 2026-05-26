@@ -92,12 +92,13 @@ pub async fn create_tutorial_game(
         .await;
     let Ok(RegisterPlayerResponse::Success {
         id: player_id,
-        stack,
+        stack: Some(stack),
     }) = rx.await
     else {
         tracing::error!("Unable to register tutorial player");
         return StatusCode::INTERNAL_SERVER_ERROR;
     };
+
     match state.stack_services.get_mut(&game_id) {
         Some(game_stacks) => {
             if game_stacks.get(&player_id).is_some() {

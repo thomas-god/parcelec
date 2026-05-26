@@ -13,9 +13,12 @@ use tokio_util::sync::CancellationToken;
 use crate::{
     game::{
         Game, GameContext, GameEvent, GameId, GameMessage, GameName, GameState,
-        GetPreviousScoresResult, RegisterPlayerResponse,
+        GetPreviousScoresResult, RegisterPlayerResponse, RegisterPlayerStackError,
         delivery_period::{DeliveryPeriodId, DeliveryPeriodResults, start_delivery_period},
-        infra::stack_config::{GameStackConfig, build_stack_from_configs},
+        infra::stack_config::{
+            GameStackBaseConfig, GameStackCapacitiesConfig, GameStackConfig,
+            build_stack_from_configs,
+        },
         scores::{PlayerDetailedScore, PlayerResult, PlayerScore, compute_game_rankings},
     },
     plants::infra::{StackActor, StackState},
@@ -123,28 +126,7 @@ impl<MS: Market, PC: PlayerConnections> GameActor<MS, PC> {
     async fn process_message(&mut self, message: GameMessage) {
         let events = match message {
             GameMessage::RegisterPlayer { name, tx_back } => {
-                match self.game.try_register_player(name) {
-                    Ok(events) => {
-                        if let Some(id) = events.iter().find_map(|e| match e {
-                            GameEvent::PlayerJoined { id, .. } => Some(id.clone()),
-                            _ => None,
-                        }) {
-                            self.create_player_stack(&id, tx_back).await;
-                        }
-                        events
-                    }
-                    Err(err) => {
-                        let _ = tx_back.send(match err {
-                            crate::game::RegisterPlayerError::GameStarted => {
-                                RegisterPlayerResponse::GameStarted
-                            }
-                            crate::game::RegisterPlayerError::NameAlreadyExists => {
-                                RegisterPlayerResponse::PlayerAlreadyExist
-                            }
-                        });
-                        vec![]
-                    }
-                }
+                self.register_player(name, tx_back).await
             }
             GameMessage::GetScores { player_id, tx_back } => {
                 self.send_scores(player_id, tx_back);
@@ -154,7 +136,20 @@ impl<MS: Market, PC: PlayerConnections> GameActor<MS, PC> {
                 let _ = tx_back.send(self.cache.players_readiness.clone());
                 vec![]
             }
-            GameMessage::PlayerIsReady(player_id) => self.game.register_player_ready(&player_id),
+            GameMessage::RegisterPlayerStackConfig {
+                player,
+                config,
+                tx_back,
+            } => {
+                self.register_player_stack_config(player, config, tx_back)
+                    .await
+            }
+            GameMessage::PlayerIsReady(player_id) => {
+                if !self.stacks_contexts.contains_key(&player_id) {
+                    return;
+                }
+                self.game.register_player_ready(&player_id)
+            }
             GameMessage::DeliveryPeriodResults(results) => {
                 self.update_cached_scores(&results);
                 let events = self.game.process_delivery_period_results(&results);
@@ -183,7 +178,7 @@ impl<MS: Market, PC: PlayerConnections> GameActor<MS, PC> {
                         self.send_final_scores().await;
                     }
                 }
-                GameEvent::PlayerReadinessChanged { readiness } => {
+                GameEvent::PlayersReadinessChanged { readiness } => {
                     self.cache.players_readiness = readiness;
                     let _ = self
                         .players_connections
@@ -210,6 +205,77 @@ impl<MS: Market, PC: PlayerConnections> GameActor<MS, PC> {
                 }
             }
         }
+    }
+
+    async fn register_player(
+        &mut self,
+        name: PlayerName,
+        tx_back: tokio::sync::oneshot::Sender<RegisterPlayerResponse>,
+    ) -> Vec<GameEvent> {
+        match self.game.try_register_player(name) {
+            Ok(events) => {
+                if let Some(id) = events.iter().find_map(|e| match e {
+                    GameEvent::PlayerJoined { id, .. } => Some(id.clone()),
+                    _ => None,
+                }) {
+                    let stack = match &self.config.stack_config {
+                        GameStackConfig::Fixed(base, capacities) => Some(
+                            self.create_player_stack(&id, base.clone(), capacities.clone())
+                                .await,
+                        ),
+                        GameStackConfig::PerPlayer(..) => None,
+                    };
+                    let _ = tx_back.send(RegisterPlayerResponse::Success { id, stack });
+                }
+                events
+            }
+            Err(err) => {
+                let _ = tx_back.send(match err {
+                    crate::game::RegisterPlayerError::GameStarted => {
+                        RegisterPlayerResponse::GameStarted
+                    }
+                    crate::game::RegisterPlayerError::NameAlreadyExists => {
+                        RegisterPlayerResponse::PlayerAlreadyExist
+                    }
+                });
+                vec![]
+            }
+        }
+    }
+
+    async fn register_player_stack_config(
+        &mut self,
+        player: PlayerId,
+        config: GameStackCapacitiesConfig,
+        tx_back: oneshot::Sender<Result<StackContext<StackService>, RegisterPlayerStackError>>,
+    ) -> Vec<GameEvent> {
+        let GameStackConfig::PerPlayer(base_config) = &self.config.stack_config else {
+            tracing::warn!(
+                "Trying to register a stack for player {:} but the game is in fixed mode",
+                &player
+            );
+            let _ = tx_back.send(Err(
+                RegisterPlayerStackError::GameConfigDoesNotAllowPerPlayerStack,
+            ));
+            return vec![];
+        };
+        if !self.cache.players_id_to_name.contains_key(&player) {
+            tracing::warn!(
+                "Trying to register a stack for player {:} that does not exist",
+                &player
+            );
+            let _ = tx_back.send(Err(RegisterPlayerStackError::PlayerDoesNotExist));
+            return vec![];
+        }
+
+        let stack = self
+            .create_player_stack(&player, base_config.clone(), config)
+            .await;
+        self.stacks_contexts.insert(player, stack.clone());
+
+        let _ = tx_back.send(Ok(stack));
+
+        vec![]
     }
 
     fn start_delivery_period_tasks(&mut self, id: DeliveryPeriodId) {
@@ -350,14 +416,11 @@ impl<MS: Market, PC: PlayerConnections> GameActor<MS, PC> {
     async fn create_player_stack(
         &mut self,
         player_id: &PlayerId,
-        tx_back: tokio::sync::oneshot::Sender<RegisterPlayerResponse>,
-    ) {
-        let plants = match &self.config.stack_config {
-            GameStackConfig::Fixed(base, capacities) => build_stack_from_configs(base, capacities),
-            GameStackConfig::PerPlayer(_base) => todo!(),
-        };
+        base_config: GameStackBaseConfig,
+        capacities_config: GameStackCapacitiesConfig,
+    ) -> StackContext<StackService> {
+        let plants = build_stack_from_configs(&base_config, &capacities_config);
 
-        // Create a new stack for the player
         let mut player_stack = StackActor::new(
             self.config.id.clone(),
             player_id.clone(),
@@ -375,10 +438,7 @@ impl<MS: Market, PC: PlayerConnections> GameActor<MS, PC> {
         });
         tracing::info!("Stack created for player {player_id}");
 
-        let _ = tx_back.send(RegisterPlayerResponse::Success {
-            id: player_id.clone(),
-            stack: stack_context,
-        });
+        stack_context
     }
 }
 
@@ -649,13 +709,22 @@ mod tests {
 
 #[cfg(test)]
 mod test_game_actor_process_game_messages {
-    use crate::game::infra::actor::test_utils::build_game_actor;
+    use crate::{
+        game::{
+            RegisterPlayerStackError,
+            infra::actor::test_utils::{MockMarket, TestComms, build_game_actor},
+        },
+        utils::units::{Energy, EnergyCost, Power},
+    };
 
     use super::*;
 
     #[tokio::test]
-    async fn test_register_player_success_create_stack() {
+    async fn test_register_player_success_create_stack_if_stacked_config_is_fiexd() {
         let (mut game, _) = build_game_actor();
+        let GameStackConfig::Fixed(..) = game.config.stack_config else {
+            unreachable!("Stack config should be fixed")
+        };
         let (tx_back, rx) = oneshot::channel();
         let msg = GameMessage::RegisterPlayer {
             name: PlayerName::from("p1"),
@@ -665,10 +734,192 @@ mod test_game_actor_process_game_messages {
         assert!(game.stacks_contexts.is_empty());
         game.process_message(msg).await;
 
-        let Ok(_) = rx.await else {
+        let Ok(RegisterPlayerResponse::Success { stack, .. }) = rx.await else {
             unreachable!("Should have return success message")
         };
+        assert!(stack.is_some());
         assert!(!game.stacks_contexts.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_register_player_success_does_not_create_stack_if_stacked_config_is_per_player() {
+        let (mut game, _) = build_game_actor();
+        game.config.stack_config = GameStackConfig::PerPlayer(GameStackBaseConfig {
+            consumers_revenues: EnergyCost::from(60),
+            gas_cost: EnergyCost::from(70),
+            nuclear_cost: EnergyCost::from(35),
+        });
+        let (tx_back, rx) = oneshot::channel();
+        let msg = GameMessage::RegisterPlayer {
+            name: PlayerName::from("p1"),
+            tx_back,
+        };
+
+        assert!(game.stacks_contexts.is_empty());
+        assert!(game.game.players.is_empty());
+        game.process_message(msg).await;
+
+        let Ok(RegisterPlayerResponse::Success { stack, .. }) = rx.await else {
+            unreachable!("Should have return success message")
+        };
+
+        assert!(stack.is_none());
+        assert!(!game.game.players.is_empty());
+        assert!(game.stacks_contexts.is_empty());
+    }
+
+    fn build_game_with_per_player_stack() -> (
+        GameActor<MockMarket, test_utils::MockPlayerConnections>,
+        TestComms,
+    ) {
+        let (mut game, comms) = build_game_actor();
+        game.config.stack_config = GameStackConfig::PerPlayer(GameStackBaseConfig {
+            consumers_revenues: EnergyCost::from(60),
+            gas_cost: EnergyCost::from(70),
+            nuclear_cost: EnergyCost::from(35),
+        });
+
+        (game, comms)
+    }
+
+    async fn register_player(
+        game: &mut GameActor<MockMarket, test_utils::MockPlayerConnections>,
+        name: &'static str,
+    ) -> PlayerId {
+        let (tx_back, rx) = oneshot::channel();
+        let msg = GameMessage::RegisterPlayer {
+            name: PlayerName::from(name),
+            tx_back,
+        };
+        let _ = game.process_message(msg).await;
+        let Ok(RegisterPlayerResponse::Success { id, .. }) = rx.await else {
+            unreachable!("Should have register player")
+        };
+        id
+    }
+
+    #[tokio::test]
+    async fn test_register_player_stack_config_game_config_is_fixed_stack() {
+        let (mut game, _) = build_game_actor();
+        let GameStackConfig::Fixed(..) = game.config.stack_config else {
+            unreachable!("Stack config should be fixed")
+        };
+        let _ = register_player(&mut game, "p1").await;
+
+        let (tx_back, rx) = oneshot::channel();
+        let msg = GameMessage::RegisterPlayerStackConfig {
+            player: PlayerId::from("p1"),
+            config: player_stack_config(),
+            tx_back,
+        };
+
+        game.process_message(msg).await;
+
+        let Ok(Err(RegisterPlayerStackError::GameConfigDoesNotAllowPerPlayerStack)) = rx.await
+        else {
+            unreachable!("Should have return an error message")
+        };
+    }
+
+    fn player_stack_config() -> GameStackCapacitiesConfig {
+        GameStackCapacitiesConfig {
+            gas_capacity: Power::from(300),
+            nuclear_capcity: Power::from(1000),
+            battery_capacity: Energy::from(200),
+            renewable_forecasts: vec![],
+            consumers_forecasts: vec![],
+        }
+    }
+
+    #[tokio::test]
+    async fn test_register_player_stack_config_player_does_not_exist() {
+        let (mut game, _) = build_game_with_per_player_stack();
+        let (tx_back, rx) = oneshot::channel();
+        let msg = GameMessage::RegisterPlayerStackConfig {
+            player: PlayerId::from("player-not-registered"),
+            config: player_stack_config(),
+            tx_back,
+        };
+
+        game.process_message(msg).await;
+
+        let Ok(Err(RegisterPlayerStackError::PlayerDoesNotExist)) = rx.await else {
+            unreachable!("Should have return an error message")
+        };
+    }
+
+    #[tokio::test]
+    async fn test_player_ready_but_with_no_stack_built() {
+        let (mut game, _) = build_game_with_per_player_stack();
+        // Register two players
+        let id = register_player(&mut game, "p1").await;
+        let _ = register_player(&mut game, "p2").await;
+
+        let msg = GameMessage::PlayerIsReady(id.clone());
+
+        game.process_message(msg).await;
+        assert!(
+            !game
+                .cache
+                .players_readiness
+                .get(&PlayerName::from("p1"))
+                .unwrap()
+        );
+    }
+
+    #[tokio::test]
+    async fn test_register_player_stack_config_ok() {
+        let (mut game, _) = build_game_with_per_player_stack();
+
+        // Register player
+        let id = register_player(&mut game, "p1").await;
+
+        // Register its stack config
+        let (tx_back, rx) = oneshot::channel();
+        let msg = GameMessage::RegisterPlayerStackConfig {
+            player: id.clone(),
+            config: player_stack_config(),
+            tx_back,
+        };
+
+        let _ = game.process_message(msg).await;
+
+        let Ok(Ok(_stack)) = rx.await else {
+            unreachable!("Should have return the created stack's context")
+        };
+    }
+
+    #[tokio::test]
+    async fn test_register_player_player_wiht_stack_config_ok() {
+        let (mut game, _) = build_game_with_per_player_stack();
+
+        // Register two players
+        let id = register_player(&mut game, "p1").await;
+        let _ = register_player(&mut game, "p2").await;
+
+        // Register its stack config
+        let (tx_back, rx) = oneshot::channel();
+        let msg = GameMessage::RegisterPlayerStackConfig {
+            player: id.clone(),
+            config: player_stack_config(),
+            tx_back,
+        };
+
+        let _ = game.process_message(msg).await;
+
+        let Ok(Ok(_stack)) = rx.await else {
+            unreachable!("Should have return the created stack's context")
+        };
+
+        // PLayer is ready
+        let msg = GameMessage::PlayerIsReady(id.clone());
+        let _ = game.process_message(msg).await;
+        assert!(
+            game.cache
+                .players_readiness
+                .get(&PlayerName::from("p1"))
+                .unwrap()
+        );
     }
 
     #[tokio::test]

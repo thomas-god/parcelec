@@ -12,7 +12,7 @@ use tokio::sync::{
 };
 
 use crate::{
-    game::scores::PlayerDetailedScore,
+    game::{infra::stack_config::GameStackCapacitiesConfig, scores::PlayerDetailedScore},
     plants::infra::{StackContext, StackService},
     player::{PlayerId, PlayerName, PlayerResultView},
 };
@@ -47,6 +47,12 @@ pub enum GameMessage {
         name: PlayerName,
         tx_back: oneshot::Sender<RegisterPlayerResponse>,
     },
+    // Connect this message to WS
+    RegisterPlayerStackConfig {
+        player: PlayerId,
+        config: GameStackCapacitiesConfig,
+        tx_back: oneshot::Sender<Result<StackContext<StackService>, RegisterPlayerStackError>>,
+    },
     PlayerIsReady(PlayerId),
     DeliveryPeriodResults(DeliveryPeriodResults),
     PostDeliveryPeriodEnded(DeliveryPeriodId),
@@ -59,11 +65,17 @@ pub enum GameMessage {
     },
 }
 
+#[derive(Debug, Display, thiserror::Error)]
+pub enum RegisterPlayerStackError {
+    PlayerDoesNotExist,
+    GameConfigDoesNotAllowPerPlayerStack,
+}
+
 #[derive(Debug)]
 pub enum RegisterPlayerResponse {
     Success {
         id: PlayerId,
-        stack: StackContext<StackService>,
+        stack: Option<StackContext<StackService>>,
     },
     PlayerAlreadyExist,
     GameStarted,
@@ -195,7 +207,7 @@ pub enum GameEvent {
     DeliveryPeriodEnded {
         id: DeliveryPeriodId,
     },
-    PlayerReadinessChanged {
+    PlayersReadinessChanged {
         readiness: HashMap<PlayerName, bool>,
     },
 }
@@ -257,7 +269,7 @@ impl Game {
 
         Ok(vec![
             GameEvent::PlayerJoined { id, name },
-            GameEvent::PlayerReadinessChanged {
+            GameEvent::PlayersReadinessChanged {
                 readiness: self.players_readines(),
             },
         ])
@@ -270,7 +282,7 @@ impl Game {
         player.ready = true;
 
         if !self.all_players_ready() {
-            return vec![GameEvent::PlayerReadinessChanged {
+            return vec![GameEvent::PlayersReadinessChanged {
                 readiness: self.players_readines(),
             }];
         }
@@ -307,7 +319,7 @@ impl Game {
         }
 
         events.push(GameEvent::StateUpdated(self.state.clone()));
-        events.push(GameEvent::PlayerReadinessChanged {
+        events.push(GameEvent::PlayersReadinessChanged {
             readiness: self.players_readines(),
         });
 
@@ -377,7 +389,7 @@ impl Game {
                         id: self.current_delivery_period(),
                     },
                     GameEvent::StateUpdated(self.state.clone()),
-                    GameEvent::PlayerReadinessChanged {
+                    GameEvent::PlayersReadinessChanged {
                         readiness: self.players_readines(),
                     },
                 ]
@@ -410,7 +422,7 @@ impl Game {
                 id: self.current_delivery_period(),
             },
             GameEvent::StateUpdated(self.state.clone()),
-            GameEvent::PlayerReadinessChanged {
+            GameEvent::PlayersReadinessChanged {
                 readiness: self.players_readines(),
             },
         ]
@@ -651,7 +663,7 @@ mod test_game {
         events
             .iter()
             .flat_map(|event| match event {
-                GameEvent::PlayerReadinessChanged { readiness } => Some(readiness),
+                GameEvent::PlayersReadinessChanged { readiness } => Some(readiness),
                 _ => None,
             })
             .next()

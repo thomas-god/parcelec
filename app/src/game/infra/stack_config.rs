@@ -18,6 +18,7 @@ pub enum GameStackConfig {
 }
 
 /// Configuration for the stack's plants that are common to all players (costs, efficiency, etc.).
+#[derive(Debug, Clone)]
 pub struct GameStackBaseConfig {
     pub gas_cost: EnergyCost,
     pub nuclear_cost: EnergyCost,
@@ -25,6 +26,7 @@ pub struct GameStackBaseConfig {
 }
 
 /// Configuration for the stack's plants that may vary per player, typically the installed capacities.
+#[derive(Debug, Clone)]
 pub struct GameStackCapacitiesConfig {
     pub gas_capacity: Power,
     pub nuclear_capcity: Power,
