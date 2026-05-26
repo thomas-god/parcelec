@@ -232,7 +232,7 @@ fn process_player_trades(player_id: &PlayerId, trades: &[Trade]) -> MarketScore 
                 }
                 Direction::Sell => {
                     // SELL -> our position decreases
-                    volume_sold = volume_sold - leg.volume;
+                    volume_sold -= leg.volume;
                     pnl_sold = pnl_sold + leg.price * leg.volume;
                 }
             }
