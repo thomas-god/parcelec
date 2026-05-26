@@ -19,6 +19,16 @@ pub struct GasPlantSettings {
     max_setpoint: Power,
 }
 
+impl GasPlantSettings {
+    pub fn energy_cost(&self) -> EnergyCost {
+        self.energy_cost
+    }
+
+    pub fn max_setpoint(&self) -> Power {
+        self.max_setpoint
+    }
+}
+
 impl GasPlant {
     pub fn new(energy_cost: EnergyCost, max_setpoint: Power) -> GasPlant {
         GasPlant {

@@ -12,6 +12,7 @@ use super::variable::VariablePlant;
 #[derive(Debug, Serialize, Clone, Copy)]
 pub struct ConsumersPublicRepr {
     pub output: PlantOutput,
+    pub revenue: EnergyCost,
 }
 pub struct Consumers {
     price_per_mwh: EnergyCost,
@@ -68,6 +69,7 @@ impl PowerPlant for Consumers {
 
     fn current_state(&self) -> PowerPlantPublicRepr {
         PowerPlantPublicRepr::Consumers(ConsumersPublicRepr {
+            revenue: self.price_per_mwh,
             output: PlantOutput {
                 setpoint: self.current_setpoint,
                 cost: (self.current_setpoint

@@ -16,6 +16,8 @@ use crate::{
 
 use super::{ProgramPlant, actor::StackMessage};
 
+/// Wrap the connection to the underlying [`crate::plants::infra::StackActor`] and implement the
+/// [`Stack`] API to interact with it.
 #[derive(Debug, Clone)]
 pub struct StackService {
     tx: mpsc::Sender<StackMessage>,

@@ -80,7 +80,7 @@ pub struct StackActor<PC: PlayerConnections> {
     state_sender: watch::Sender<StackState>,
     delivery_period: DeliveryPeriodId,
     player: PlayerId,
-    stack: StackPlants,
+    plants: StackPlants,
     tx: Sender<StackMessage>,
     rx: Receiver<StackMessage>,
     players_connections: PC,
@@ -92,7 +92,7 @@ impl<PC: PlayerConnections> StackActor<PC> {
     pub fn new(
         game: GameId,
         player: PlayerId,
-        stack: StackPlants,
+        plants: StackPlants,
         initial_state: StackState,
         delivery_period: DeliveryPeriodId,
         players_connections: PC,
@@ -107,7 +107,7 @@ impl<PC: PlayerConnections> StackActor<PC> {
             state_sender: state_tx,
             delivery_period,
             player,
-            stack,
+            plants,
             players_connections,
             past_results: HashMap::new(),
             tx,
@@ -167,13 +167,13 @@ impl<PC: PlayerConnections> StackActor<PC> {
         use StackState::*;
         match (&self.state, message) {
             (_, GetSnapshot(tx_back)) => {
-                let _ = tx_back.send(self.stack.snapshot());
+                let _ = tx_back.send(self.plants.snapshot());
             }
             (_, GetForecasts(tx_back)) => {
-                let _ = tx_back.send(self.stack.forecasts());
+                let _ = tx_back.send(self.plants.forecasts());
             }
             (_, GetHistory(tx_back)) => {
-                let _ = tx_back.send(self.stack.history());
+                let _ = tx_back.send(self.plants.history());
             }
             (Open, ProgramSetpoint(ProgramPlant { plant_id, setpoint })) => {
                 self.program_plant_setpoint(plant_id, setpoint).await;
@@ -213,7 +213,7 @@ impl<PC: PlayerConnections> StackActor<PC> {
     }
 
     async fn send_stack_snapshot(&self) {
-        let stack_snapshot = self.stack.snapshot();
+        let stack_snapshot = self.plants.snapshot();
 
         self.players_connections
             .send_to_player(
@@ -227,7 +227,7 @@ impl<PC: PlayerConnections> StackActor<PC> {
     }
 
     async fn send_stack_forecasts(&self) {
-        let forecasts = self.stack.forecasts();
+        let forecasts = self.plants.forecasts();
 
         self.players_connections
             .send_to_player(
@@ -239,7 +239,7 @@ impl<PC: PlayerConnections> StackActor<PC> {
     }
 
     async fn send_stack_history(&self) {
-        let history = self.stack.history();
+        let history = self.plants.history();
 
         self.players_connections
             .send_to_player(
@@ -259,7 +259,7 @@ impl<PC: PlayerConnections> StackActor<PC> {
         self.state = StackState::Closed;
 
         // Dispatch plants and collect their outputs
-        let dispatch_results = self.stack.dispatch_plants();
+        let dispatch_results = self.plants.dispatch_plants();
 
         // Store results for future reference
         self.past_results
@@ -291,7 +291,7 @@ impl<PC: PlayerConnections> StackActor<PC> {
     }
 
     async fn program_plant_setpoint(&mut self, plant_id: PlantId, setpoint: Power) {
-        if let Some(PlantOutput { cost, .. }) = self.stack.program_setpoint(&plant_id, setpoint) {
+        if let Some(PlantOutput { cost, .. }) = self.plants.program_setpoint(&plant_id, setpoint) {
             tracing::info!("Programmed setpoint {setpoint:?} for plant {plant_id} (cost: {cost}");
             self.send_stack_snapshot().await;
         };
