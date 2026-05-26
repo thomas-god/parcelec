@@ -1,7 +1,7 @@
 <script lang="ts">
   import { goto } from "$app/navigation";
   import { PUBLIC_APP_URL } from "$env/static/public";
-  import { FORECAST_STEP, generateForecast } from "$lib/forecasts";
+  import { generateForecast } from "$lib/forecasts";
   import { PLANT_ICONS, PLANT_NAMES } from "$lib/label";
   import NumericInput from "../../../components/atoms/NumericInput.svelte";
 
@@ -193,8 +193,14 @@
           <!-- CONSUMERS OPTIONS -->
           <div class="collapse collapse-arrow join-item border-base-300 border">
             <input type="checkbox" />
-            <div class="collapse-title font-semibold">
-              {PLANT_ICONS["Consumers"]}
+            <div
+              class="collapse-title font-semibold flex flex-row items-center gap-1"
+            >
+              <img
+                src={PLANT_ICONS["Consumers"]}
+                alt={PLANT_NAMES["Consumers"] + "icon"}
+                class="inline w-6 h-6"
+              />
               {PLANT_NAMES["Consumers"]}
             </div>
             <div class="collapse-content text-sm">
@@ -234,8 +240,14 @@
           <!-- RENEWABLE PLANT OPTIONS -->
           <div class="collapse collapse-arrow join-item border-base-300 border">
             <input type="checkbox" />
-            <div class="collapse-title font-semibold">
-              {PLANT_ICONS["RenewablePlant"]}
+            <div
+              class="collapse-title font-semibold flex flex-row items-center gap-1"
+            >
+              <img
+                src={PLANT_ICONS["RenewablePlant"]}
+                alt={PLANT_NAMES["RenewablePlant"] + "icon"}
+                class="inline w-6 h-6"
+              />
               {PLANT_NAMES["RenewablePlant"]}
             </div>
             <div class="collapse-content text-sm">
@@ -251,8 +263,14 @@
           <!-- GAS PLANT OPTIONS -->
           <div class="collapse collapse-arrow join-item border-base-300 border">
             <input type="checkbox" />
-            <div class="collapse-title font-semibold">
-              {PLANT_ICONS["GasPlant"]}
+            <div
+              class="collapse-title font-semibold flex flex-row items-center gap-1"
+            >
+              <img
+                src={PLANT_ICONS["GasPlant"]}
+                alt={PLANT_NAMES["GasPlant"] + "icon"}
+                class="inline w-6 h-6"
+              />
               {PLANT_NAMES["GasPlant"]}
             </div>
             <div class="collapse-content text-sm">
@@ -274,8 +292,14 @@
           <!-- NUCLEAR PLANT OPTIONS -->
           <div class="collapse collapse-arrow join-item border-base-300 border">
             <input type="checkbox" />
-            <div class="collapse-title font-semibold">
-              {PLANT_ICONS["Nuclear"]}
+            <div
+              class="collapse-title font-semibold flex flex-row items-center gap-1"
+            >
+              <img
+                src={PLANT_ICONS["Nuclear"]}
+                alt={PLANT_NAMES["Nuclear"] + "icon"}
+                class="inline w-6 h-6"
+              />
               {PLANT_NAMES["Nuclear"]}
             </div>
             <div class="collapse-content text-sm">
@@ -297,8 +321,14 @@
           <!-- BATTERY OPTIONS -->
           <div class="collapse collapse-arrow join-item border-base-300 border">
             <input type="checkbox" />
-            <div class="collapse-title font-semibold">
-              {PLANT_ICONS["Battery"]}
+            <div
+              class="collapse-title font-semibold flex flex-row items-center gap-1"
+            >
+              <img
+                src={PLANT_ICONS["Battery"]}
+                alt={PLANT_NAMES["Battery"] + "icon"}
+                class="inline w-6 h-6"
+              />
               {PLANT_NAMES["Battery"]}
             </div>
             <div class="collapse-content text-sm">
