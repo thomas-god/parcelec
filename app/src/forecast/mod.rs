@@ -1,3 +1,4 @@
+use derive_more::Display;
 use serde::{Deserialize, Serialize};
 
 use crate::{constants, game::delivery_period::DeliveryPeriodId};
@@ -69,13 +70,69 @@ fn round_to_nearest(value: i32, constant: i32) -> i32 {
     }
 }
 
+/// Forecast value within [0, 1], usefull to generate forecast shapes without knowing the actual
+/// capacity
+#[derive(Debug, Clone, Copy, PartialEq, PartialOrd, Serialize, Deserialize)]
+pub struct NormalizedForecast {
+    pub period: DeliveryPeriodId,
+    pub value: NormalizedForecastValue,
+}
+
+impl NormalizedForecast {
+    pub fn as_forecast(&self, capacity: i32) -> Forecast {
+        Forecast {
+            period: self.period,
+            value: self.value.as_forecast(capacity),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, PartialOrd, Serialize, Deserialize)]
+pub struct NormalizedForecastValue {
+    value: f64,
+    deviation: f64,
+}
+
+#[derive(Debug, Display, Clone, thiserror::Error, PartialEq)]
+pub enum CreateNormalizedForecastError {
+    ValueOutOfRange,
+    DeviationOutOfRange,
+}
+
+impl NormalizedForecastValue {
+    pub fn try_new(value: f64, deviation: f64) -> Result<Self, CreateNormalizedForecastError> {
+        if !(0. ..=1.).contains(&value) {
+            return Err(CreateNormalizedForecastError::ValueOutOfRange);
+        }
+        if !(0. ..=1.).contains(&deviation) {
+            return Err(CreateNormalizedForecastError::DeviationOutOfRange);
+        }
+
+        Ok(Self { value, deviation })
+    }
+
+    pub fn as_forecast(&self, capacity: i32) -> ForecastValue {
+        let value = self.value * f64::from(capacity);
+        ForecastValue {
+            value: round_to_nearest(value as i32, constants::SETPOINT_BASE_VALUE),
+            deviation: round_to_nearest(
+                (value * self.deviation) as i32,
+                constants::SETPOINT_BASE_VALUE,
+            ) as u32,
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     #![allow(unused_comparisons)]
     use std::ops::Rem;
 
     use super::forecast_in_range;
-    use crate::{constants, forecast::round_to_nearest};
+    use crate::{
+        constants,
+        forecast::{CreateNormalizedForecastError, NormalizedForecastValue, round_to_nearest},
+    };
 
     #[test]
     fn test_round_to_nearest() {
@@ -122,5 +179,48 @@ mod tests {
         let max = 105;
 
         assert_eq!(forecast_in_range(min, max), 100);
+    }
+
+    #[test]
+    fn test_create_normalized_forecast() {
+        assert_eq!(
+            NormalizedForecastValue::try_new(-f64::EPSILON, 0.),
+            Err(CreateNormalizedForecastError::ValueOutOfRange)
+        );
+        assert_eq!(
+            NormalizedForecastValue::try_new(1. + f64::EPSILON, 0.),
+            Err(CreateNormalizedForecastError::ValueOutOfRange)
+        );
+
+        assert_eq!(
+            NormalizedForecastValue::try_new(0., -f64::EPSILON),
+            Err(CreateNormalizedForecastError::DeviationOutOfRange)
+        );
+        assert_eq!(
+            NormalizedForecastValue::try_new(0., 1. + f64::EPSILON),
+            Err(CreateNormalizedForecastError::DeviationOutOfRange)
+        );
+    }
+
+    #[test]
+    fn test_normalized_forecast_to_forecast() {
+        let normalized_forecast = NormalizedForecastValue::try_new(0.5, 0.1).unwrap();
+        let capacity = 1000;
+
+        let forecast = normalized_forecast.as_forecast(capacity);
+
+        assert_eq!(forecast.value, 500);
+        assert_eq!(forecast.deviation, 50);
+    }
+
+    #[test]
+    fn test_normalized_forecast_to_forecast_multiple_of_step() {
+        let normalized_forecast = NormalizedForecastValue::try_new(0.333, 0.1).unwrap();
+        let capacity = 1000;
+
+        let forecast = normalized_forecast.as_forecast(capacity);
+
+        assert_eq!(forecast.value, 325);
+        assert_eq!(forecast.deviation, 25);
     }
 }
