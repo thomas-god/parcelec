@@ -16,11 +16,10 @@ use tokio::{
 use uuid::Uuid;
 
 use crate::{
-    forecast::Forecast,
     game::{
         GameContext, GameId, GameMessage, GameState, GetPreviousScoresResult,
         delivery_period::DeliveryPeriodId,
-        infra::stack_config::GameStackCapacitiesConfig,
+        infra::stack_config::GameStackPerPlayerPlayerConfig,
         scores::{PlayerDetailedScore, PlayerScore},
     },
     infra::api::state::ApiState,
@@ -50,19 +49,18 @@ pub struct PlayerStackConfigRequest {
     pub gas_capacity: Power,
     pub nuclear_capcity: Power,
     pub battery_capacity: Energy,
-    // TODO: might want a pmax and generate the forecast server-side instead
-    pub consumers_forecasts: Vec<Forecast>,
-    pub renewable_forecasts: Vec<Forecast>,
+    pub consumers_capacity: Power,
+    pub renewable_capacity: Power,
 }
 
-impl From<PlayerStackConfigRequest> for GameStackCapacitiesConfig {
+impl From<PlayerStackConfigRequest> for GameStackPerPlayerPlayerConfig {
     fn from(value: PlayerStackConfigRequest) -> Self {
         Self {
             gas_capacity: value.gas_capacity,
-            nuclear_capcity: value.nuclear_capcity,
+            nuclear_capacity: value.nuclear_capcity,
             battery_capacity: value.battery_capacity,
-            consumers_forecasts: value.consumers_forecasts,
-            renewable_forecasts: value.renewable_forecasts,
+            consumers_capacity: value.consumers_capacity,
+            renewable_capacity: value.renewable_capacity,
         }
     }
 }

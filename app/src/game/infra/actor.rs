@@ -15,13 +15,13 @@ use crate::{
         Game, GameContext, GameEvent, GameId, GameMessage, GameName, GameState,
         GetPreviousScoresResult, RegisterPlayerResponse, RegisterPlayerStackError,
         delivery_period::{DeliveryPeriodId, DeliveryPeriodResults, start_delivery_period},
-        infra::stack_config::{
-            GameStackBaseConfig, GameStackCapacitiesConfig, GameStackConfig,
-            build_stack_from_configs,
-        },
+        infra::stack_config::{GameStackConfig, GameStackPerPlayerPlayerConfig},
         scores::{PlayerDetailedScore, PlayerResult, PlayerScore, compute_game_rankings},
     },
-    plants::infra::{StackActor, StackState},
+    plants::{
+        StackPlants,
+        infra::{StackActor, StackState},
+    },
 };
 use crate::{
     market::{Market, MarketContext},
@@ -219,8 +219,8 @@ impl<MS: Market, PC: PlayerConnections> GameActor<MS, PC> {
                     _ => None,
                 }) {
                     let stack = match &self.config.stack_config {
-                        GameStackConfig::Fixed(base, capacities) => Some(
-                            self.create_player_stack(&id, base.clone(), capacities.clone())
+                        GameStackConfig::Fixed(config) => Some(
+                            self.create_player_stack(&id, config.generate_plants())
                                 .await,
                         ),
                         GameStackConfig::PerPlayer(..) => None,
@@ -246,7 +246,7 @@ impl<MS: Market, PC: PlayerConnections> GameActor<MS, PC> {
     async fn register_player_stack_config(
         &mut self,
         player: PlayerId,
-        config: GameStackCapacitiesConfig,
+        player_config: GameStackPerPlayerPlayerConfig,
         tx_back: oneshot::Sender<Result<StackContext<StackService>, RegisterPlayerStackError>>,
     ) -> Vec<GameEvent> {
         let GameStackConfig::PerPlayer(base_config) = &self.config.stack_config else {
@@ -269,7 +269,7 @@ impl<MS: Market, PC: PlayerConnections> GameActor<MS, PC> {
         }
 
         let stack = self
-            .create_player_stack(&player, base_config.clone(), config)
+            .create_player_stack(&player, base_config.generate_plants(player_config))
             .await;
         self.stacks_contexts.insert(player, stack.clone());
 
@@ -416,11 +416,8 @@ impl<MS: Market, PC: PlayerConnections> GameActor<MS, PC> {
     async fn create_player_stack(
         &mut self,
         player_id: &PlayerId,
-        base_config: GameStackBaseConfig,
-        capacities_config: GameStackCapacitiesConfig,
+        plants: StackPlants,
     ) -> StackContext<StackService> {
-        let plants = build_stack_from_configs(&base_config, &capacities_config);
-
         let mut player_stack = StackActor::new(
             self.config.id.clone(),
             player_id.clone(),
@@ -478,7 +475,7 @@ mod test_utils {
     use tokio::sync::mpsc;
 
     use crate::{
-        game::infra::stack_config::{GameStackBaseConfig, GameStackCapacitiesConfig},
+        game::infra::stack_config::GameStackFixedConfig,
         market::{MarketState, OBS, order_book::TradeLeg},
         utils::units::{Energy, EnergyCost, Power},
     };
@@ -556,20 +553,16 @@ mod test_utils {
             id: GameId::default(),
             name: GameName::default(),
             number_of_delivery_periods: 4,
-            stack_config: GameStackConfig::Fixed(
-                GameStackBaseConfig {
-                    consumers_revenues: EnergyCost::from(60),
-                    gas_cost: EnergyCost::from(70),
-                    nuclear_cost: EnergyCost::from(35),
-                },
-                GameStackCapacitiesConfig {
-                    gas_capacity: Power::from(300),
-                    nuclear_capcity: Power::from(1000),
-                    battery_capacity: Energy::from(200),
-                    renewable_forecasts: vec![],
-                    consumers_forecasts: vec![],
-                },
-            ),
+            stack_config: GameStackConfig::Fixed(GameStackFixedConfig {
+                consumers_revenues: EnergyCost::from(60),
+                gas_cost: EnergyCost::from(70),
+                nuclear_cost: EnergyCost::from(35),
+                gas_capacity: Power::from(300),
+                nuclear_capacity: Power::from(1000),
+                battery_capacity: Energy::from(200),
+                renewable_forecasts: vec![],
+                consumers_forecasts: vec![],
+            }),
         }
     }
 
@@ -626,7 +619,7 @@ mod test_utils {
 mod tests {
     use std::{collections::HashMap, time::Duration};
 
-    use crate::game::infra::stack_config::GameStackConfig;
+    use crate::game::infra::stack_config::{GameStackConfig, GameStackFixedConfig};
     use crate::utils::units::{Energy, EnergyCost, Power};
     use crate::{
         game::{
@@ -638,7 +631,6 @@ mod tests {
                     GameCache,
                     test_utils::{MockMarket, MockPlayerConnections},
                 },
-                stack_config::{GameStackBaseConfig, GameStackCapacitiesConfig},
             },
         },
         market::{MarketContext, MarketState},
@@ -663,20 +655,16 @@ mod tests {
         let config = GameActorConfig {
             id: GameId::default(),
             name: GameName::default(),
-            stack_config: GameStackConfig::Fixed(
-                GameStackBaseConfig {
-                    consumers_revenues: EnergyCost::from(60),
-                    gas_cost: EnergyCost::from(70),
-                    nuclear_cost: EnergyCost::from(35),
-                },
-                GameStackCapacitiesConfig {
-                    gas_capacity: Power::from(300),
-                    nuclear_capcity: Power::from(1000),
-                    battery_capacity: Energy::from(200),
-                    renewable_forecasts: vec![],
-                    consumers_forecasts: vec![],
-                },
-            ),
+            stack_config: GameStackConfig::Fixed(GameStackFixedConfig {
+                consumers_revenues: EnergyCost::from(60),
+                gas_cost: EnergyCost::from(70),
+                nuclear_cost: EnergyCost::from(35),
+                gas_capacity: Power::from(300),
+                nuclear_capacity: Power::from(1000),
+                battery_capacity: Energy::from(200),
+                renewable_forecasts: vec![],
+                consumers_forecasts: vec![],
+            }),
             number_of_delivery_periods: 3,
             delivery_period_duration: None,
         };
@@ -712,7 +700,10 @@ mod test_game_actor_process_game_messages {
     use crate::{
         game::{
             RegisterPlayerStackError,
-            infra::actor::test_utils::{MockMarket, TestComms, build_game_actor},
+            infra::{
+                actor::test_utils::{MockMarket, TestComms, build_game_actor},
+                stack_config::GameStackPerPlayerBaseConfig,
+            },
         },
         utils::units::{Energy, EnergyCost, Power},
     };
@@ -741,14 +732,25 @@ mod test_game_actor_process_game_messages {
         assert!(!game.stacks_contexts.is_empty());
     }
 
-    #[tokio::test]
-    async fn test_register_player_success_does_not_create_stack_if_stacked_config_is_per_player() {
-        let (mut game, _) = build_game_actor();
-        game.config.stack_config = GameStackConfig::PerPlayer(GameStackBaseConfig {
+    fn per_player_base_config() -> GameStackPerPlayerBaseConfig {
+        GameStackPerPlayerBaseConfig {
             consumers_revenues: EnergyCost::from(60),
             gas_cost: EnergyCost::from(70),
             nuclear_cost: EnergyCost::from(35),
-        });
+            battery_max_capacity: Energy::from(300),
+            consumers_forecasts: vec![],
+            consumers_max_capacity: Power::from(1500),
+            gas_max_capacity: Power::from(500),
+            nuclear_max_capacity: Power::from(1200),
+            renewable_forecasts: vec![],
+            renewable_max_capacity: Power::from(400),
+        }
+    }
+
+    #[tokio::test]
+    async fn test_register_player_success_does_not_create_stack_if_stacked_config_is_per_player() {
+        let (mut game, _) = build_game_actor();
+        game.config.stack_config = GameStackConfig::PerPlayer(per_player_base_config());
         let (tx_back, rx) = oneshot::channel();
         let msg = GameMessage::RegisterPlayer {
             name: PlayerName::from("p1"),
@@ -773,11 +775,7 @@ mod test_game_actor_process_game_messages {
         TestComms,
     ) {
         let (mut game, comms) = build_game_actor();
-        game.config.stack_config = GameStackConfig::PerPlayer(GameStackBaseConfig {
-            consumers_revenues: EnergyCost::from(60),
-            gas_cost: EnergyCost::from(70),
-            nuclear_cost: EnergyCost::from(35),
-        });
+        game.config.stack_config = GameStackConfig::PerPlayer(per_player_base_config());
 
         (game, comms)
     }
@@ -798,6 +796,16 @@ mod test_game_actor_process_game_messages {
         id
     }
 
+    fn per_player_player_config() -> GameStackPerPlayerPlayerConfig {
+        GameStackPerPlayerPlayerConfig {
+            gas_capacity: Power::from(300),
+            nuclear_capacity: Power::from(1000),
+            battery_capacity: Energy::from(200),
+            consumers_capacity: Power::from(1200),
+            renewable_capacity: Power::from(300),
+        }
+    }
+
     #[tokio::test]
     async fn test_register_player_stack_config_game_config_is_fixed_stack() {
         let (mut game, _) = build_game_actor();
@@ -809,7 +817,7 @@ mod test_game_actor_process_game_messages {
         let (tx_back, rx) = oneshot::channel();
         let msg = GameMessage::RegisterPlayerStackConfig {
             player: PlayerId::from("p1"),
-            config: player_stack_config(),
+            config: per_player_player_config(),
             tx_back,
         };
 
@@ -821,23 +829,13 @@ mod test_game_actor_process_game_messages {
         };
     }
 
-    fn player_stack_config() -> GameStackCapacitiesConfig {
-        GameStackCapacitiesConfig {
-            gas_capacity: Power::from(300),
-            nuclear_capcity: Power::from(1000),
-            battery_capacity: Energy::from(200),
-            renewable_forecasts: vec![],
-            consumers_forecasts: vec![],
-        }
-    }
-
     #[tokio::test]
     async fn test_register_player_stack_config_player_does_not_exist() {
         let (mut game, _) = build_game_with_per_player_stack();
         let (tx_back, rx) = oneshot::channel();
         let msg = GameMessage::RegisterPlayerStackConfig {
             player: PlayerId::from("player-not-registered"),
-            config: player_stack_config(),
+            config: per_player_player_config(),
             tx_back,
         };
 
@@ -878,7 +876,7 @@ mod test_game_actor_process_game_messages {
         let (tx_back, rx) = oneshot::channel();
         let msg = GameMessage::RegisterPlayerStackConfig {
             player: id.clone(),
-            config: player_stack_config(),
+            config: per_player_player_config(),
             tx_back,
         };
 
@@ -901,7 +899,7 @@ mod test_game_actor_process_game_messages {
         let (tx_back, rx) = oneshot::channel();
         let msg = GameMessage::RegisterPlayerStackConfig {
             player: id.clone(),
-            config: player_stack_config(),
+            config: per_player_player_config(),
             tx_back,
         };
 

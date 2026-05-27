@@ -12,7 +12,7 @@ use crate::{
         delivery_period::DeliveryPeriodId,
         infra::{
             actor::GameActorConfig,
-            stack_config::{GameStackBaseConfig, GameStackCapacitiesConfig, GameStackConfig},
+            stack_config::{GameStackConfig, GameStackFixedConfig},
         },
     },
     infra::api::{cookies::add_game_cookies, state::cleanup_state},
@@ -128,76 +128,72 @@ pub async fn create_tutorial_game(
 }
 
 fn game_stack_config() -> GameStackConfig {
-    GameStackConfig::Fixed(
-        GameStackBaseConfig {
-            consumers_revenues: EnergyCost::from(56),
-            gas_cost: EnergyCost::from(80),
-            nuclear_cost: EnergyCost::from(35),
-        },
-        GameStackCapacitiesConfig {
-            gas_capacity: Power::from(500),
-            nuclear_capcity: Power::from(1000),
-            battery_capacity: Energy::from(300),
-            consumers_forecasts: vec![
-                Forecast {
-                    period: DeliveryPeriodId::from(1),
-                    value: ForecastValue {
-                        value: -1000,
-                        deviation: 25,
-                    },
+    GameStackConfig::Fixed(GameStackFixedConfig {
+        consumers_revenues: EnergyCost::from(56),
+        gas_cost: EnergyCost::from(80),
+        nuclear_cost: EnergyCost::from(35),
+        gas_capacity: Power::from(500),
+        nuclear_capacity: Power::from(1000),
+        battery_capacity: Energy::from(300),
+        consumers_forecasts: vec![
+            Forecast {
+                period: DeliveryPeriodId::from(1),
+                value: ForecastValue {
+                    value: -1000,
+                    deviation: 25,
                 },
-                Forecast {
-                    period: DeliveryPeriodId::from(2),
-                    value: ForecastValue {
-                        value: -1200,
-                        deviation: 50,
-                    },
+            },
+            Forecast {
+                period: DeliveryPeriodId::from(2),
+                value: ForecastValue {
+                    value: -1200,
+                    deviation: 50,
                 },
-                Forecast {
-                    period: DeliveryPeriodId::from(3),
-                    value: ForecastValue {
-                        value: -600,
-                        deviation: 75,
-                    },
+            },
+            Forecast {
+                period: DeliveryPeriodId::from(3),
+                value: ForecastValue {
+                    value: -600,
+                    deviation: 75,
                 },
-                Forecast {
-                    period: DeliveryPeriodId::from(4),
-                    value: ForecastValue {
-                        value: -1800,
-                        deviation: 100,
-                    },
+            },
+            Forecast {
+                period: DeliveryPeriodId::from(4),
+                value: ForecastValue {
+                    value: -1800,
+                    deviation: 100,
                 },
-            ],
-            renewable_forecasts: vec![
-                Forecast {
-                    period: DeliveryPeriodId::from(1),
-                    value: ForecastValue {
-                        value: 250,
-                        deviation: 25,
-                    },
+            },
+        ],
+        renewable_forecasts: vec![
+            Forecast {
+                period: DeliveryPeriodId::from(1),
+                value: ForecastValue {
+                    value: 250,
+                    deviation: 25,
                 },
-                Forecast {
-                    period: DeliveryPeriodId::from(2),
-                    value: ForecastValue {
-                        value: 150,
-                        deviation: 50,
-                    },
+            },
+            Forecast {
+                period: DeliveryPeriodId::from(2),
+                value: ForecastValue {
+                    value: 150,
+                    deviation: 50,
                 },
-                Forecast {
-                    period: DeliveryPeriodId::from(3),
-                    value: ForecastValue {
-                        value: 300,
-                        deviation: 75,
-                    },
+            },
+            Forecast {
+                period: DeliveryPeriodId::from(3),
+                value: ForecastValue {
+                    value: 300,
+                    deviation: 75,
                 },
-                Forecast {
-                    period: DeliveryPeriodId::from(4),
-                    value: ForecastValue {
-                        value: 100,
-                        deviation: 75,
-                    },
+            },
+            Forecast {
+                period: DeliveryPeriodId::from(4),
+                value: ForecastValue {
+                    value: 100,
+                    deviation: 75,
                 },
-            ],
-        },
-    )
+            },
+        ],
+    })
 }

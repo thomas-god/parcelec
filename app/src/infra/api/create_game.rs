@@ -11,7 +11,7 @@ use crate::{
         GameActor, GameId, GameName,
         infra::{
             GameActorConfig,
-            stack_config::{GameStackBaseConfig, GameStackCapacitiesConfig, GameStackConfig},
+            stack_config::{GameStackConfig, GameStackFixedConfig},
         },
     },
     infra::api::state::cleanup_state,
@@ -146,18 +146,14 @@ pub async fn create_game(
 }
 
 fn game_stack_config(config: StackConfig) -> GameStackConfig {
-    GameStackConfig::Fixed(
-        GameStackBaseConfig {
-            consumers_revenues: config.consumers.revenues,
-            gas_cost: config.gas.cost,
-            nuclear_cost: config.nuclear.cost,
-        },
-        GameStackCapacitiesConfig {
-            gas_capacity: config.gas.max_power,
-            nuclear_capcity: config.nuclear.max_power,
-            battery_capacity: config.battery.max_charge,
-            renewable_forecasts: config.renewable_forecasts,
-            consumers_forecasts: config.consumers.forecasts,
-        },
-    )
+    GameStackConfig::Fixed(GameStackFixedConfig {
+        consumers_revenues: config.consumers.revenues,
+        gas_cost: config.gas.cost,
+        nuclear_cost: config.nuclear.cost,
+        gas_capacity: config.gas.max_power,
+        nuclear_capacity: config.nuclear.max_power,
+        battery_capacity: config.battery.max_charge,
+        renewable_forecasts: config.renewable_forecasts,
+        consumers_forecasts: config.consumers.forecasts,
+    })
 }

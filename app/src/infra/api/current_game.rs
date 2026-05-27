@@ -1,7 +1,6 @@
 use axum::{Json, extract::State, http::StatusCode, response::IntoResponse};
 use serde::Serialize;
 use tower_cookies::Cookies;
-use tracing::info;
 
 use crate::{
     game::{GameName, GameState},
@@ -29,21 +28,18 @@ fn state_name(state: &GameState) -> String {
 pub async fn current_game(State(state): State<ApiState>, cookies: Cookies) -> impl IntoResponse {
     let Some((_player_id, _player_name, game_id)) = extract_game_cookies(&cookies) else {
         invalidate_game_cookies(&cookies);
-        info!("No cookies");
         return StatusCode::NO_CONTENT.into_response();
     };
 
     let state = state.read().await;
     let Some(game_context) = state.game_services.get(&game_id) else {
         invalidate_game_cookies(&cookies);
-        info!("No game found");
         return StatusCode::NO_CONTENT.into_response();
     };
 
     let state = game_context.state_rx.borrow();
     if let GameState::Ended(_) = *state {
         invalidate_game_cookies(&cookies);
-        info!("Game ended");
         return StatusCode::NO_CONTENT.into_response();
     }
 

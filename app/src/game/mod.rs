@@ -12,7 +12,7 @@ use tokio::sync::{
 };
 
 use crate::{
-    game::{infra::stack_config::GameStackCapacitiesConfig, scores::PlayerDetailedScore},
+    game::{infra::stack_config::GameStackPerPlayerPlayerConfig, scores::PlayerDetailedScore},
     plants::infra::{StackContext, StackService},
     player::{PlayerId, PlayerName, PlayerResultView},
 };
@@ -49,7 +49,7 @@ pub enum GameMessage {
     },
     RegisterPlayerStackConfig {
         player: PlayerId,
-        config: GameStackCapacitiesConfig,
+        config: GameStackPerPlayerPlayerConfig,
         tx_back: oneshot::Sender<Result<StackContext<StackService>, RegisterPlayerStackError>>,
     },
     PlayerIsReady(PlayerId),

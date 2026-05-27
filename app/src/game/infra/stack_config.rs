@@ -1,7 +1,7 @@
-use std::collections::HashMap;
+use std::{cmp::min, collections::HashMap};
 
 use crate::{
-    forecast::Forecast,
+    forecast::{Forecast, NormalizedForecast},
     plants::{
         PlantId, PowerPlant, StackPlants,
         technologies::{
@@ -13,86 +13,155 @@ use crate::{
 };
 
 pub enum GameStackConfig {
-    Fixed(GameStackBaseConfig, GameStackCapacitiesConfig),
-    PerPlayer(GameStackBaseConfig),
+    Fixed(GameStackFixedConfig),
+    PerPlayer(GameStackPerPlayerBaseConfig),
 }
 
-/// Configuration for the stack's plants that are common to all players (costs, efficiency, etc.).
 #[derive(Debug, Clone)]
-pub struct GameStackBaseConfig {
+pub struct GameStackFixedConfig {
     pub gas_cost: EnergyCost,
     pub nuclear_cost: EnergyCost,
     pub consumers_revenues: EnergyCost,
-}
-
-/// Configuration for the stack's plants that may vary per player, typically the installed capacities.
-#[derive(Debug, Clone)]
-pub struct GameStackCapacitiesConfig {
     pub gas_capacity: Power,
-    pub nuclear_capcity: Power,
+    pub nuclear_capacity: Power,
     pub battery_capacity: Energy,
     pub consumers_forecasts: Vec<Forecast>,
     pub renewable_forecasts: Vec<Forecast>,
 }
 
-pub fn build_stack_from_configs(
-    base: &GameStackBaseConfig,
-    capacities: &GameStackCapacitiesConfig,
-) -> StackPlants {
-    let mut stack: HashMap<PlantId, Box<dyn PowerPlant + Send + Sync>> = HashMap::new();
+impl GameStackFixedConfig {
+    pub fn generate_plants(&self) -> StackPlants {
+        let mut stack: HashMap<PlantId, Box<dyn PowerPlant + Send + Sync>> = HashMap::new();
 
-    stack.insert(
-        PlantId::default(),
-        Box::new(Battery::new(capacities.battery_capacity, Energy::from(0))),
-    );
-    stack.insert(
-        PlantId::default(),
-        Box::new(GasPlant::new(base.gas_cost, capacities.gas_capacity)),
-    );
-    stack.insert(
-        PlantId::default(),
-        Box::new(NuclearPlant::new(
-            capacities.nuclear_capcity,
-            base.nuclear_cost,
-        )),
-    );
-    stack.insert(
-        PlantId::default(),
-        Box::new(RenewablePlant::new(capacities.renewable_forecasts.clone())),
-    );
-    stack.insert(
-        PlantId::default(),
-        Box::new(Consumers::new(
-            base.consumers_revenues,
-            capacities.consumers_forecasts.clone(),
-        )),
-    );
+        stack.insert(
+            PlantId::default(),
+            Box::new(Battery::new(self.battery_capacity, Energy::from(0))),
+        );
+        stack.insert(
+            PlantId::default(),
+            Box::new(GasPlant::new(self.gas_cost, self.gas_capacity)),
+        );
+        stack.insert(
+            PlantId::default(),
+            Box::new(NuclearPlant::new(self.nuclear_capacity, self.nuclear_cost)),
+        );
+        stack.insert(
+            PlantId::default(),
+            Box::new(RenewablePlant::new(self.renewable_forecasts.clone())),
+        );
+        stack.insert(
+            PlantId::default(),
+            Box::new(Consumers::new(
+                self.consumers_revenues,
+                self.consumers_forecasts.clone(),
+            )),
+        );
 
-    StackPlants::new(stack)
+        StackPlants::new(stack)
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct GameStackPerPlayerBaseConfig {
+    pub gas_cost: EnergyCost,
+    pub nuclear_cost: EnergyCost,
+    pub consumers_revenues: EnergyCost,
+    pub gas_max_capacity: Power,
+    pub nuclear_max_capacity: Power,
+    pub battery_max_capacity: Energy,
+    pub consumers_max_capacity: Power,
+    pub consumers_forecasts: Vec<NormalizedForecast>,
+    pub renewable_max_capacity: Power,
+    pub renewable_forecasts: Vec<NormalizedForecast>,
+}
+
+#[derive(Debug, Clone)]
+pub struct GameStackPerPlayerPlayerConfig {
+    pub gas_capacity: Power,
+    pub nuclear_capacity: Power,
+    pub battery_capacity: Energy,
+    pub consumers_capacity: Power,
+    pub renewable_capacity: Power,
+}
+
+impl GameStackPerPlayerBaseConfig {
+    pub fn generate_plants(&self, player_config: GameStackPerPlayerPlayerConfig) -> StackPlants {
+        let mut stack: HashMap<PlantId, Box<dyn PowerPlant + Send + Sync>> = HashMap::new();
+
+        stack.insert(
+            PlantId::default(),
+            Box::new(Battery::new(
+                min(self.battery_max_capacity, player_config.battery_capacity),
+                Energy::from(0),
+            )),
+        );
+        stack.insert(
+            PlantId::default(),
+            Box::new(GasPlant::new(
+                self.gas_cost,
+                min(self.gas_max_capacity, player_config.gas_capacity),
+            )),
+        );
+        stack.insert(
+            PlantId::default(),
+            Box::new(NuclearPlant::new(
+                min(self.nuclear_max_capacity, player_config.nuclear_capacity),
+                self.nuclear_cost,
+            )),
+        );
+        let capacity = min(
+            self.renewable_max_capacity,
+            player_config.renewable_capacity,
+        );
+        stack.insert(
+            PlantId::default(),
+            Box::new(RenewablePlant::new(
+                self.renewable_forecasts
+                    .iter()
+                    .map(|f| f.as_forecast(capacity.into()))
+                    .collect(),
+            )),
+        );
+
+        let capacity = min(
+            self.consumers_max_capacity,
+            player_config.consumers_capacity,
+        );
+        stack.insert(
+            PlantId::default(),
+            Box::new(Consumers::new(
+                self.consumers_revenues,
+                self.consumers_forecasts
+                    .iter()
+                    .map(|f| f.as_forecast(capacity.into()))
+                    .collect(),
+            )),
+        );
+
+        StackPlants::new(stack)
+    }
 }
 
 #[cfg(test)]
-mod test_build_stack_from_configuration {
+mod test_fixed_config_generate_stack {
     use crate::plants::PowerPlantPublicRepr;
 
     use super::*;
 
     #[test]
-    fn test_build_stack() {
-        let base_configuration = GameStackBaseConfig {
-            consumers_revenues: EnergyCost::from(60),
+    fn test_generate_stack() {
+        let config = GameStackFixedConfig {
             gas_cost: EnergyCost::from(70),
             nuclear_cost: EnergyCost::from(35),
-        };
-        let capacities_configuration = GameStackCapacitiesConfig {
+            consumers_revenues: EnergyCost::from(60),
             gas_capacity: Power::from(300),
-            nuclear_capcity: Power::from(1000),
+            nuclear_capacity: Power::from(1000),
             battery_capacity: Energy::from(200),
-            renewable_forecasts: vec![],
             consumers_forecasts: vec![],
+            renewable_forecasts: vec![],
         };
 
-        let stack = build_stack_from_configs(&base_configuration, &capacities_configuration);
+        let stack = config.generate_plants();
         let snapshot = stack.snapshot();
 
         assert_eq!(snapshot.len(), 5);
@@ -113,7 +182,102 @@ mod test_build_stack_from_configuration {
                     assert_eq!(plant.energy_cost, EnergyCost::from(35));
                     assert_eq!(plant.max_setpoint, Power::from(1000));
                 }
+                _ => {}
+            }
+        }
+    }
+}
 
+#[cfg(test)]
+mod test_per_player_config_generate_stack {
+    use crate::plants::PowerPlantPublicRepr;
+
+    use super::*;
+
+    fn base_config() -> GameStackPerPlayerBaseConfig {
+        GameStackPerPlayerBaseConfig {
+            gas_cost: EnergyCost::from(70),
+            nuclear_cost: EnergyCost::from(35),
+            consumers_revenues: EnergyCost::from(60),
+            gas_max_capacity: Power::from(500),
+            nuclear_max_capacity: Power::from(1000),
+            battery_max_capacity: Energy::from(400),
+            consumers_max_capacity: Power::from(800),
+            consumers_forecasts: vec![],
+            renewable_max_capacity: Power::from(600),
+            renewable_forecasts: vec![],
+        }
+    }
+
+    #[test]
+    fn test_generate_stack_player_below_max() {
+        let base = base_config();
+        let player_config = GameStackPerPlayerPlayerConfig {
+            gas_capacity: Power::from(300),
+            nuclear_capacity: Power::from(800),
+            battery_capacity: Energy::from(200),
+            consumers_capacity: Power::from(500),
+            renewable_capacity: Power::from(400),
+        };
+
+        let stack = base.generate_plants(player_config);
+        let snapshot = stack.snapshot();
+
+        assert_eq!(snapshot.len(), 5);
+
+        for (_id, plant) in snapshot.iter() {
+            match plant {
+                PowerPlantPublicRepr::Battery(battery) => {
+                    assert_eq!(battery.max_charge, Energy::from(200))
+                }
+                PowerPlantPublicRepr::Consumers(consumers) => {
+                    assert_eq!(consumers.revenue, EnergyCost::from(60))
+                }
+                PowerPlantPublicRepr::GasPlant(plant) => {
+                    assert_eq!(plant.settings.energy_cost(), EnergyCost::from(70));
+                    assert_eq!(plant.settings.max_setpoint(), Power::from(300));
+                }
+                PowerPlantPublicRepr::Nuclear(plant) => {
+                    assert_eq!(plant.energy_cost, EnergyCost::from(35));
+                    assert_eq!(plant.max_setpoint, Power::from(800));
+                }
+                _ => {}
+            }
+        }
+    }
+
+    #[test]
+    fn test_generate_stack_player_exceeds_max() {
+        let base = base_config();
+        let player_config = GameStackPerPlayerPlayerConfig {
+            gas_capacity: Power::from(900),
+            nuclear_capacity: Power::from(2000),
+            battery_capacity: Energy::from(1000),
+            consumers_capacity: Power::from(1500),
+            renewable_capacity: Power::from(1200),
+        };
+
+        let stack = base.generate_plants(player_config);
+        let snapshot = stack.snapshot();
+
+        assert_eq!(snapshot.len(), 5);
+
+        for (_id, plant) in snapshot.iter() {
+            match plant {
+                PowerPlantPublicRepr::Battery(battery) => {
+                    assert_eq!(battery.max_charge, Energy::from(400))
+                }
+                PowerPlantPublicRepr::Consumers(consumers) => {
+                    assert_eq!(consumers.revenue, EnergyCost::from(60))
+                }
+                PowerPlantPublicRepr::GasPlant(plant) => {
+                    assert_eq!(plant.settings.energy_cost(), EnergyCost::from(70));
+                    assert_eq!(plant.settings.max_setpoint(), Power::from(500));
+                }
+                PowerPlantPublicRepr::Nuclear(plant) => {
+                    assert_eq!(plant.energy_cost, EnergyCost::from(35));
+                    assert_eq!(plant.max_setpoint, Power::from(1000));
+                }
                 _ => {}
             }
         }
