@@ -1,7 +1,7 @@
 use derive_more::Display;
 use serde::{Deserialize, Serialize};
 
-use crate::{constants, game::delivery_period::DeliveryPeriodId};
+use crate::{constants, game::delivery_period::DeliveryPeriodId, utils::units::Power};
 
 pub type Forecasts = Vec<Forecast>;
 #[derive(Debug, Clone, Copy, PartialEq, PartialOrd, Serialize, Deserialize)]
@@ -10,13 +10,17 @@ pub struct Forecast {
     pub value: ForecastValue,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, PartialOrd, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, PartialOrd, Serialize, Deserialize, Default)]
 pub struct ForecastValue {
     pub value: i32,
     pub deviation: u32,
 }
 
 impl ForecastValue {
+    pub fn forecast(&self) -> Power {
+        Power::from(forecast_in_range(self.lower_range(), self.upper_range()))
+    }
+
     pub fn lower_range(&self) -> i32 {
         self.value.saturating_sub_unsigned(self.deviation)
     }
@@ -222,5 +226,31 @@ mod tests {
 
         assert_eq!(forecast.value, 325);
         assert_eq!(forecast.deviation, 25);
+    }
+
+    #[test]
+    fn test_forecast_value_forecast_within_range() {
+        let fv = super::ForecastValue {
+            value: 500,
+            deviation: 100,
+        };
+
+        for _ in 0..0x1e4 {
+            let power: i32 = fv.forecast().into();
+            assert!(power >= fv.lower_range());
+            assert!(power <= fv.upper_range());
+            assert_eq!(power.rem(constants::SETPOINT_BASE_VALUE), 0);
+        }
+    }
+
+    #[test]
+    fn test_forecast_value_forecast_zero_deviation() {
+        let fv = super::ForecastValue {
+            value: 300,
+            deviation: 0,
+        };
+
+        let power: i32 = fv.forecast().into();
+        assert_eq!(power, 300);
     }
 }
