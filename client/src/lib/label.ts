@@ -12,7 +12,7 @@ export const PLANT_ICONS: Record<plantType, string> = {
 
 export const PLANT_NAMES: Record<plantType, string> = {
   GasPlant: "Centrale gaz",
-  RenewablePlant: "Solaire",
+  RenewablePlant: "Renouvelables",
   Consumers: "Clients",
   Battery: "Batterie",
   Nuclear: "Centrale nucléaire",
