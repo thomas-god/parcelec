@@ -183,6 +183,7 @@
             {trades}
             {trades_to_display}
             {removeTradeToDisplay}
+            last_delivery_period={last_delivery_period_id}
           />
         {:else if game_state === "Open"}
           <PlayersReadyList {player_name} {readiness_status} />

@@ -21,6 +21,7 @@
     trades_to_display: Trade[];
     removeTradeToDisplay: (trade_to_remove: Trade) => void;
     orderBook: OrderBook;
+    last_delivery_period: number;
     sendMessage: (msg: string) => void;
   }
 
@@ -33,6 +34,7 @@
     orderBook,
     plant_forecasts,
     plant_history,
+    last_delivery_period,
   }: Props = $props();
 
   let orderBookFlash = $state(false);
@@ -116,6 +118,7 @@
         {plant_forecasts}
         plant_snapshots={plants}
         history={plant_history}
+        {last_delivery_period}
       />
     </div>
   </div>
@@ -161,6 +164,7 @@
         {plant_forecasts}
         plant_snapshots={plants}
         history={plant_history}
+        {last_delivery_period}
       />
     </div>
   </div>

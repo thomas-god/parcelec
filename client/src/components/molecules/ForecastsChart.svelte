@@ -10,6 +10,7 @@
     consumers_history,
     renewables_forecasts,
     renewables_history,
+    last_delivery_period,
   }: {
     width: number;
     height: number;
@@ -17,6 +18,7 @@
     consumers_history: number[];
     renewables_forecasts: Forecasts;
     renewables_history: number[];
+    last_delivery_period: number;
   } = $props();
 
   let marginTop = 20;
@@ -68,23 +70,27 @@
     }
 
     // Add forecasts
-    for (const [key, value] of consumers_forecasts.entries()) {
-      points.push({
-        source: "consumers",
-        type: "forecast",
-        period: key,
-        value: Math.abs(value.value),
-        deviation: value.deviation,
-      });
+    for (const [period, value] of consumers_forecasts.entries()) {
+      if (period <= last_delivery_period) {
+        points.push({
+          source: "consumers",
+          type: "forecast",
+          period: period,
+          value: Math.abs(value.value),
+          deviation: value.deviation,
+        });
+      }
     }
-    for (const [key, value] of renewables_forecasts.entries()) {
-      points.push({
-        source: "renewables",
-        type: "forecast",
-        period: key,
-        value: Math.abs(value.value),
-        deviation: value.deviation,
-      });
+    for (const [period, value] of renewables_forecasts.entries()) {
+      if (period <= last_delivery_period) {
+        points.push({
+          source: "renewables",
+          type: "forecast",
+          period: period,
+          value: Math.abs(value.value),
+          deviation: value.deviation,
+        });
+      }
     }
     return points;
   });

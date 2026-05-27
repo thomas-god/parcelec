@@ -10,10 +10,12 @@
     plant_forecasts,
     plant_snapshots,
     history,
+    last_delivery_period,
   }: {
     plant_forecasts: StackForecasts;
     plant_snapshots: StackSnapshot;
     history: StackHistory;
+    last_delivery_period: number;
   } = $props();
   let chartWidth: number = $state(300);
 
@@ -166,6 +168,7 @@
       {consumers_history}
       {renewables_forecasts}
       {renewables_history}
+      {last_delivery_period}
       width={chartWidth}
       height={300}
     />
