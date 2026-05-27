@@ -11,16 +11,16 @@ pub struct Forecast {
 
 #[derive(Debug, Clone, Copy, PartialEq, PartialOrd, Serialize, Deserialize)]
 pub struct ForecastValue {
-    pub value: isize,
-    pub deviation: usize,
+    pub value: i32,
+    pub deviation: u32,
 }
 
 impl ForecastValue {
-    pub fn lower_range(&self) -> isize {
+    pub fn lower_range(&self) -> i32 {
         self.value.saturating_sub_unsigned(self.deviation)
     }
 
-    pub fn upper_range(&self) -> isize {
+    pub fn upper_range(&self) -> i32 {
         self.value.saturating_add_unsigned(self.deviation)
     }
 
@@ -31,32 +31,32 @@ impl ForecastValue {
 
 #[derive(Debug, Clone)]
 pub struct Clip {
-    pub min: isize,
-    pub max: isize,
+    pub min: i32,
+    pub max: i32,
 }
 
-pub fn forecast_in_range(min: isize, max: isize) -> isize {
+pub fn forecast_in_range(min: i32, max: i32) -> i32 {
     if min == max {
         return round_to_nearest(min, constants::SETPOINT_BASE_VALUE);
     }
 
     round_to_nearest(
-        i64_to_isize_saturating(rand::random_range((min as i64)..(max as i64))),
+        i64_to_i32_saturating(rand::random_range((min as i64)..(max as i64))),
         constants::SETPOINT_BASE_VALUE,
     )
 }
 
-fn i64_to_isize_saturating(value: i64) -> isize {
-    if value > isize::MAX as i64 {
-        isize::MAX
-    } else if value < isize::MIN as i64 {
-        isize::MIN
+fn i64_to_i32_saturating(value: i64) -> i32 {
+    if value > i32::MAX as i64 {
+        i32::MAX
+    } else if value < i32::MIN as i64 {
+        i32::MIN
     } else {
-        value as isize
+        value as i32
     }
 }
 
-fn round_to_nearest(value: isize, constant: isize) -> isize {
+fn round_to_nearest(value: i32, constant: i32) -> i32 {
     let rem = value % constant;
     let half = constant / 2;
 

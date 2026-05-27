@@ -12,7 +12,7 @@ pub type CurrentPeriod = DeliveryPeriodId;
 #[derive(Debug, Clone)]
 pub enum State {
     Forecast(ForecastValue),
-    Setpoint(isize),
+    Setpoint(i32),
 }
 
 type PlantState = HashMap<TargetPeriod, HashMap<CurrentPeriod, State>>;
@@ -89,7 +89,7 @@ impl VariablePlant {
             .and_then(|state| state.get(&current_period).cloned())
     }
 
-    pub fn get_setpoint(&self, target_period: DeliveryPeriodId) -> Option<isize> {
+    pub fn get_setpoint(&self, target_period: DeliveryPeriodId) -> Option<i32> {
         match self.get_state(target_period, target_period) {
             Some(State::Setpoint(setpoint)) => Some(setpoint),
             _ => None,
@@ -116,25 +116,25 @@ fn generate_forecast(
     target_period: DeliveryPeriodId,
     previous_forecast: ForecastValue,
 ) -> ForecastValue {
-    let distance_to_target: usize =
-        usize::from(target_period).saturating_sub(usize::from(current_period));
+    let distance_to_target = (target_period - current_period) as u32;
 
     let deviation = if distance_to_target <= 4 {
-        distance_to_target * constants::SETPOINT_BASE_VALUE as usize
+        distance_to_target * (constants::SETPOINT_BASE_VALUE as u32)
     } else {
-        4 * constants::SETPOINT_BASE_VALUE as usize
+        4 * constants::SETPOINT_BASE_VALUE as u32
     };
 
-    let deviation_variation_in_steps = previous_forecast.deviation.saturating_sub(deviation)
-        / constants::SETPOINT_BASE_VALUE as usize;
+    let deviation_variation_in_steps = (previous_forecast.deviation.saturating_sub(deviation)
+        as i32)
+        / constants::SETPOINT_BASE_VALUE;
 
     if deviation_variation_in_steps == 0 {
         return previous_forecast;
     }
 
-    let new_value_offset = rand::random_range(
-        (-(deviation_variation_in_steps as i64))..=(deviation_variation_in_steps as i64),
-    ) as isize;
+    let new_value_offset =
+        rand::random_range((-(deviation_variation_in_steps))..=(deviation_variation_in_steps))
+            as i32;
 
     ForecastValue {
         value: previous_forecast.value + new_value_offset * constants::SETPOINT_BASE_VALUE,
@@ -433,7 +433,7 @@ mod tests_generate_forecast {
         // 500 +/- 75
         // 525 +/- 75
 
-        let values: Vec<isize> = (0..1000)
+        let values: Vec<i32> = (0..1000)
             .map(|_| generate_forecast(current_period, target_period, forecast).value)
             .collect();
 

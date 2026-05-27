@@ -346,8 +346,8 @@ impl Default for OrderBook {
 #[cfg(test)]
 fn build_order_request(
     direction: Direction,
-    price: isize,
-    volume: isize,
+    price: i32,
+    volume: i32,
     owner: PlayerId,
 ) -> OrderRequest {
     OrderRequest {
@@ -574,7 +574,7 @@ mod test_bid_and_offer {
 
     #[test]
     fn test_bids_ordering() {
-        fn build_bid(price: isize) -> Bid {
+        fn build_bid(price: i32) -> Bid {
             Bid(Order {
                 direction: Direction::Buy,
                 price: EnergyCost::from(price),
@@ -600,7 +600,7 @@ mod test_bid_and_offer {
 
     #[test]
     fn test_offers_ordering() {
-        fn build_offer(price: isize) -> Offer {
+        fn build_offer(price: i32) -> Offer {
             Offer(Order {
                 direction: Direction::Sell,
                 price: EnergyCost::from(price),

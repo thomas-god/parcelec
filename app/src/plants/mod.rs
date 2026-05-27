@@ -459,7 +459,7 @@ mod test {
         (StackPlants::new(plants), plant_id)
     }
 
-    fn make_forecast(period: usize, value: isize) -> Forecast {
+    fn make_forecast(period: usize, value: i32) -> Forecast {
         Forecast {
             period: DeliveryPeriodId::from(period),
             value: ForecastValue {

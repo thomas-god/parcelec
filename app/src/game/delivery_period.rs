@@ -1,4 +1,4 @@
-use std::{collections::HashMap, time::Duration};
+use std::{collections::HashMap, ops::Sub, time::Duration};
 
 use derive_more::{Display, From, Into};
 use futures_util::future::join_all;
@@ -36,6 +36,14 @@ use super::{GameMessage, scores::PlayerScore};
     Into,
 )]
 pub struct DeliveryPeriodId(usize);
+
+impl Sub for DeliveryPeriodId {
+    type Output = usize;
+
+    fn sub(self, rhs: Self) -> Self::Output {
+        self.0.saturating_sub(rhs.0)
+    }
+}
 
 impl DeliveryPeriodId {
     pub fn previous(&self) -> DeliveryPeriodId {

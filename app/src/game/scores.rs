@@ -303,14 +303,14 @@ mod test_player_score_details {
         utils::units::{Energy, Money},
     };
 
-    fn make_score(volume: isize, pnl: isize) -> ScoreDetails {
+    fn make_score(volume: i32, pnl: i32) -> ScoreDetails {
         ScoreDetails {
             volume: Energy::from(volume),
             pnl: Money::from(pnl),
         }
     }
 
-    fn make_details(volumes: [isize; 9], pnls: [isize; 9]) -> PlayerDetailedScore {
+    fn make_details(volumes: [i32; 9], pnls: [i32; 9]) -> PlayerDetailedScore {
         PlayerDetailedScore {
             consumers: make_score(volumes[0], pnls[0]),
             renewables: make_score(volumes[1], pnls[1]),

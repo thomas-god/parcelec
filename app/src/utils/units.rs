@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 #[derive(
     Debug, From, Into, PartialEq, PartialOrd, Ord, Eq, Mul, Add, Serialize, Deserialize, Clone, Copy,
 )]
-pub struct Power(isize);
+pub struct Power(i32);
 
 impl Mul<Time> for Power {
     type Output = Energy;
@@ -31,7 +31,7 @@ pub const NO_POWER: Power = Power(0);
 #[derive(
     Debug, From, Into, PartialEq, PartialOrd, Ord, Eq, Mul, Add, Serialize, Deserialize, Clone, Copy,
 )]
-pub struct Time(isize);
+pub struct Time(i32);
 
 pub const TIMESTEP: Time = Time(1);
 
@@ -54,7 +54,7 @@ pub const TIMESTEP: Time = Time(1);
     Clone,
     Copy,
 )]
-pub struct Energy(isize);
+pub struct Energy(i32);
 
 pub const ZERO_ENERGY: Energy = Energy(0);
 
@@ -84,7 +84,7 @@ impl Div<Time> for Energy {
     Clone,
     Copy,
 )]
-pub struct EnergyCost(isize);
+pub struct EnergyCost(i32);
 
 impl Mul<EnergyCost> for Energy {
     type Output = Money;
@@ -106,7 +106,7 @@ impl Mul<Energy> for EnergyCost {
 /// utility perspective. Assuming a positive value of [`EnergyCost`] :
 /// energy > 0 : means energy is entering the system (produced), so we have to pay for it (money < 0)
 /// energy < 0 : means energy is leaving the system (consummed), so we are payed for it (money > 0)
-pub const GENERATOR_CONVENTION_TO_MONEY: isize = -1;
+pub const GENERATOR_CONVENTION_TO_MONEY: i32 = -1;
 
 /// Represent an arbitrary unit of money (like €).
 #[derive(
@@ -128,7 +128,7 @@ pub const GENERATOR_CONVENTION_TO_MONEY: isize = -1;
     Copy,
     Default,
 )]
-pub struct Money(isize);
+pub struct Money(i32);
 
 #[cfg(test)]
 mod test {
