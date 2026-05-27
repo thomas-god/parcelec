@@ -147,6 +147,7 @@ impl GameStackPerPlayerBaseConfig {
 
 #[cfg(test)]
 mod test_fixed_config_generate_stack {
+
     use crate::plants::PowerPlantPublicRepr;
 
     use super::*;
@@ -155,11 +156,11 @@ mod test_fixed_config_generate_stack {
     fn test_generate_stack() {
         let config = GameStackFixedConfig {
             gas_cost: EnergyCost::from(70),
-            nuclear_cost: EnergyCost::from(35),
-            consumers_revenues: EnergyCost::from(60),
             gas_capacity: Power::from(300),
+            nuclear_cost: EnergyCost::from(35),
             nuclear_capacity: Power::from(1000),
             battery_capacity: Energy::from(200),
+            consumers_revenues: EnergyCost::from(60),
             consumers_forecasts: vec![],
             renewable_forecasts: vec![],
         };

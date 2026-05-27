@@ -1,7 +1,7 @@
 <script lang="ts">
   import { goto } from "$app/navigation";
   import { PUBLIC_APP_URL } from "$env/static/public";
-  import { generateForecast } from "$lib/forecasts";
+  import { generateForecastValues } from "$lib/forecasts";
   import { PLANT_ICONS, PLANT_NAMES } from "$lib/label";
   import NumericInput from "../../../components/atoms/NumericInput.svelte";
 
@@ -85,18 +85,22 @@
       !isNaN(Number(clients_revenues)) &&
       Number(clients_revenues) > 0;
 
-    return max_power_valid && min_power_valid;
+    return max_power_valid && min_power_valid && revenues_valid;
   });
 
   let consumers_forecasts = $derived(
-    generateForecast(
+    generateForecastValues(
       Number(number_of_periods),
       -Number(clients_pmax),
       -Number(clients_pmin),
     ),
   );
   let renewable_forecasts = $derived(
-    generateForecast(Number(number_of_periods), 0, Number(renewable_pmax)),
+    generateForecastValues(
+      Number(number_of_periods),
+      0,
+      Number(renewable_pmax),
+    ),
   );
 
   let isFormValid = $derived(
@@ -115,22 +119,16 @@
       period_duration_seconds: Number(period_duration_seconds),
       number_of_periods: Number(number_of_periods),
       stack: {
-        gas: {
-          max_power: Number(gas_installed_capacity),
-          cost: Number(gas_cost),
+        Fixed: {
+          gas_cost: Number(gas_cost),
+          gas_capacity: Number(gas_installed_capacity),
+          nuclear_cost: Number(nuclear_cost),
+          nuclear_capacity: Number(nuclear_installed_capacity),
+          battery_capacity: Number(battery_charge),
+          consumers_revenues: Number(clients_revenues),
+          consumers_forecasts,
+          renewable_forecasts,
         },
-        nuclear: {
-          max_power: Number(nuclear_installed_capacity),
-          cost: Number(nuclear_cost),
-        },
-        battery: {
-          max_charge: Number(battery_charge),
-        },
-        consumers: {
-          revenues: 56,
-          forecasts: consumers_forecasts,
-        },
-        renewable_forecasts,
       },
     };
 

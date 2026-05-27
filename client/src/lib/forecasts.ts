@@ -1,18 +1,13 @@
-import type { Forecast } from "../components/organisms/Forecasts.svelte";
-
 export const FORECAST_STEP = 25; // In MW
 
-export const generateForecast = (
+export const generateForecastValues = (
   number_of_periods: number,
   min: number,
   max: number,
-): Forecast => {
-  const forecasts: Forecast = [];
+): { value: number; deviation: number }[] => {
+  const forecasts = [];
   for (let period = 1; period <= number_of_periods; period++) {
-    forecasts.push({
-      period,
-      value: { value: random(min, max), deviation: deviation(period) },
-    });
+    forecasts.push({ value: random(min, max), deviation: deviation(period) });
   }
   return forecasts;
 };
