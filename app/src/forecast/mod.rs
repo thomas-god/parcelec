@@ -1,4 +1,5 @@
 use derive_more::Display;
+use rand::random_range;
 use serde::{Deserialize, Serialize};
 
 use crate::{constants, game::delivery_period::DeliveryPeriodId, utils::units::Power};
@@ -91,7 +92,7 @@ impl NormalizedForecast {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, PartialOrd, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, PartialOrd, Serialize, Deserialize, Default)]
 pub struct NormalizedForecastValue {
     value: f64,
     deviation: f64,
@@ -125,6 +126,15 @@ impl NormalizedForecastValue {
             ) as u32,
         }
     }
+}
+
+pub fn generate_random_forecasts_shape(len: usize) -> Vec<NormalizedForecastValue> {
+    (0..len)
+        .map(|_| {
+            NormalizedForecastValue::try_new(random_range((0.)..=1.), random_range((0.)..=0.1))
+                .unwrap_or_default()
+        })
+        .collect()
 }
 
 #[cfg(test)]

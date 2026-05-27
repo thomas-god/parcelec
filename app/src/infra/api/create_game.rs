@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     constants::DEFAULT_PERIOD_DURATION_SECONDS,
+    forecast::generate_random_forecasts_shape,
     game::{
         GameActor, GameId, GameName,
         infra::{
@@ -57,10 +58,9 @@ impl From<GameStackConfigRequest> for GameStackConfig {
                     battery_max_capacity: config.battery_max_capacity,
                     consumers_max_abs_capacity: config.consumers_max_capacity,
                     renewable_max_capacity: config.renewable_max_capacity,
-                    // TODO: generate forecast shapes
-                    consumers_forecasts: vec![],
+                    consumers_forecasts: generate_random_forecasts_shape(10),
                     consumers_forecasts_range: config.consumers_forecasts_range,
-                    renewable_forecasts: vec![],
+                    renewable_forecasts: generate_random_forecasts_shape(10),
                     renewable_forecasts_range: config.renewable_forecasts_range,
                 })
             }
