@@ -7,7 +7,20 @@ use serde::{Deserialize, Serialize};
 /// power < 0 : means power is leaving the system (consumers, charge of storage)
 /// power > 0 : means power is entering the system (power plant output, discharge of storage)
 #[derive(
-    Debug, From, Into, PartialEq, PartialOrd, Ord, Eq, Mul, Add, Serialize, Deserialize, Clone, Copy,
+    Debug,
+    From,
+    Into,
+    PartialEq,
+    PartialOrd,
+    Ord,
+    Eq,
+    Mul,
+    Add,
+    Serialize,
+    Deserialize,
+    Clone,
+    Copy,
+    Neg,
 )]
 pub struct Power(i32);
 
@@ -22,6 +35,12 @@ impl Mul<Time> for Power {
 impl Default for Power {
     fn default() -> Self {
         NO_POWER
+    }
+}
+
+impl Power {
+    pub fn abs(&self) -> Self {
+        Self(self.0.abs())
     }
 }
 

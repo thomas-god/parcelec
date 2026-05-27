@@ -1,74 +1,68 @@
 use serde::Serialize;
 
 use crate::{
-    forecast::{Forecast, Forecasts},
-    game::delivery_period::DeliveryPeriodId,
-    plants::{PlantOutput, PowerPlant, PowerPlantPublicRepr},
+    forecast::{Forecast, ForecastValue},
+    plants::{PlantOutput, PowerPlant, PowerPlantPublicRepr, technologies::ForecastsBasedPlant},
     utils::units::{Money, Power},
 };
-
-use super::variable::VariablePlant;
 
 #[derive(Debug, Serialize, Clone, Copy)]
 pub struct RenewablePlantPublicRepr {
     pub output: PlantOutput,
 }
 pub struct RenewablePlant {
-    state: VariablePlant,
-    period: DeliveryPeriodId,
-    current_setpoint: Power,
-    current_forecasts: Forecasts,
+    state: ForecastsBasedPlant,
     history: Vec<PlantOutput>,
 }
 
 impl RenewablePlant {
-    pub fn new(forecasts: Vec<Forecast>) -> RenewablePlant {
-        let period = DeliveryPeriodId::from(1);
-        let plant = VariablePlant::new(forecasts);
-        let current_setpoint = Power::from(plant.get_setpoint(period).unwrap_or(0));
-        let current_forecasts = plant.get_forecasts(period);
+    pub fn new(forecasts: Vec<ForecastValue>) -> RenewablePlant {
+        // TODO: expose forecast range to constructor
+        let plant = ForecastsBasedPlant::new(forecasts, 2);
         let history = Vec::new();
 
         RenewablePlant {
-            current_setpoint,
             state: plant,
-            current_forecasts,
-            period,
             history,
         }
+    }
+
+    fn cost(&self) -> Money {
+        Money::from(0)
+    }
+
+    fn setpoint(&self) -> Power {
+        self.state.setpoint()
     }
 }
 
 impl PowerPlant for RenewablePlant {
     fn program_setpoint(&mut self, _setpoint: Power) -> PlantOutput {
         PlantOutput {
-            setpoint: self.current_setpoint,
-            cost: Money::from(0),
+            setpoint: self.setpoint(),
+            cost: self.cost(),
         }
     }
-    fn dispatch(&mut self) -> PlantOutput {
-        let previous_setpoint = self.current_setpoint;
-        self.period = self.period.next();
-        self.current_setpoint = Power::from(self.state.get_setpoint(self.period).unwrap_or(0));
-        self.current_forecasts = self.state.get_forecasts(self.period);
 
+    fn dispatch(&mut self) -> PlantOutput {
         let output = PlantOutput {
-            setpoint: previous_setpoint,
-            cost: Money::from(0),
+            setpoint: self.setpoint(),
+            cost: self.cost(),
         };
+        self.state.dispatch();
         self.history.push(output);
         output
     }
     fn current_state(&self) -> PowerPlantPublicRepr {
         PowerPlantPublicRepr::RenewablePlant(RenewablePlantPublicRepr {
             output: PlantOutput {
-                setpoint: self.current_setpoint,
+                setpoint: self.setpoint(),
                 cost: Money::from(0),
             },
         })
     }
     fn get_forecast(&self) -> Option<Vec<Forecast>> {
-        Some(self.current_forecasts.clone())
+        Some(self.state.forecasts.clone())
     }
 
     fn get_history(&self) -> Vec<PlantOutput> {
@@ -83,7 +77,7 @@ impl PowerPlant for RenewablePlant {
 #[cfg(test)]
 mod tests {
     use crate::{
-        forecast::{Forecast, ForecastValue},
+        forecast::ForecastValue,
         game::delivery_period::DeliveryPeriodId,
         plants::{PlantOutput, PowerPlant},
         utils::units::{Money, Power},
@@ -91,28 +85,19 @@ mod tests {
 
     use super::RenewablePlant;
 
-    fn get_forecasts() -> Vec<Forecast> {
+    fn get_forecasts() -> Vec<ForecastValue> {
         vec![
-            Forecast {
-                period: DeliveryPeriodId::from(1),
-                value: ForecastValue {
-                    value: 100,
-                    deviation: 50,
-                },
+            ForecastValue {
+                value: 100,
+                deviation: 50,
             },
-            Forecast {
-                period: DeliveryPeriodId::from(2),
-                value: ForecastValue {
-                    value: 500,
-                    deviation: 100,
-                },
+            ForecastValue {
+                value: 500,
+                deviation: 100,
             },
-            Forecast {
-                period: DeliveryPeriodId::from(3),
-                value: ForecastValue {
-                    value: 900,
-                    deviation: 100,
-                },
+            ForecastValue {
+                value: 900,
+                deviation: 100,
             },
         ]
     }
@@ -129,12 +114,12 @@ mod tests {
         assert_eq!(cost, Money::from(0));
 
         // The plant cannot be programed
-        let initial_setpoint: Power = plant.current_setpoint;
+        let initial_setpoint: Power = plant.setpoint();
         let PlantOutput { setpoint, .. } = plant.program_setpoint(initial_setpoint + 1.into());
         assert_eq!(setpoint, initial_setpoint);
 
         // Dispatching should return the previous setpoint
-        let previous_value: Power = plant.current_setpoint;
+        let previous_value: Power = plant.setpoint();
         let returned_value = plant.dispatch();
         assert_eq!(previous_value, returned_value.setpoint);
         assert_eq!(plant.get_history(), vec![returned_value]);
@@ -154,21 +139,7 @@ mod tests {
         let forecasts = plant.get_forecast().unwrap();
         assert_eq!(
             forecasts.iter().map(|f| f.period).collect::<Vec<_>>(),
-            vec![DeliveryPeriodId::from(3)]
-        );
-
-        plant.dispatch();
-        let forecasts = plant.get_forecast().unwrap();
-        assert_eq!(
-            forecasts.iter().map(|f| f.period).collect::<Vec<_>>(),
-            vec![]
-        );
-
-        plant.dispatch();
-        let forecasts = plant.get_forecast().unwrap();
-        assert_eq!(
-            forecasts.iter().map(|f| f.period).collect::<Vec<_>>(),
-            vec![]
+            vec![DeliveryPeriodId::from(3), DeliveryPeriodId::from(4)]
         );
     }
 }

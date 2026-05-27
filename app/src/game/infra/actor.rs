@@ -739,7 +739,7 @@ mod test_game_actor_process_game_messages {
             nuclear_cost: EnergyCost::from(35),
             battery_max_capacity: Energy::from(300),
             consumers_forecasts: vec![],
-            consumers_max_capacity: Power::from(1500),
+            consumers_max_abs_capacity: Power::from(1500),
             gas_max_capacity: Power::from(500),
             nuclear_max_capacity: Power::from(1200),
             renewable_forecasts: vec![],

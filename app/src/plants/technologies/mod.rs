@@ -9,7 +9,6 @@ pub mod consumers;
 pub mod gas_plant;
 pub mod nuclear;
 pub mod renewable;
-mod variable;
 
 pub struct ForecastsBasedPlant {
     period: usize,

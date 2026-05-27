@@ -2,16 +2,14 @@ use std::time::Duration;
 
 use axum::{Json, extract::State, http::StatusCode, response::IntoResponse};
 use serde::{Deserialize, Serialize};
-use tracing::warn;
 
 use crate::{
     constants::DEFAULT_PERIOD_DURATION_SECONDS,
-    forecast::Forecast,
     game::{
         GameActor, GameId, GameName,
         infra::{
             GameActorConfig,
-            stack_config::{GameStackConfig, GameStackFixedConfig},
+            stack_config::{GameStackConfig, GameStackFixedConfig, GameStackPerPlayerBaseConfig},
         },
     },
     infra::api::state::cleanup_state,
@@ -25,36 +23,45 @@ use crate::{
 
 use super::ApiState;
 
-#[derive(Debug, Deserialize, Clone, Copy)]
-struct GasPlantConfig {
-    max_power: Power,
-    cost: EnergyCost,
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct GameStackPerPlayerBaseConfigRequest {
+    pub gas_cost: EnergyCost,
+    pub nuclear_cost: EnergyCost,
+    pub consumers_revenues: EnergyCost,
+    pub gas_max_capacity: Power,
+    pub nuclear_max_capacity: Power,
+    pub battery_max_capacity: Energy,
+    pub consumers_max_capacity: Power,
+    pub renewable_max_capacity: Power,
 }
 
-#[derive(Debug, Deserialize, Clone, Copy)]
-struct NuclearPlantConfig {
-    max_power: Power,
-    cost: EnergyCost,
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub enum GameStackConfigRequest {
+    Fixed(GameStackFixedConfig),
+    PerPlayer(GameStackPerPlayerBaseConfigRequest),
 }
 
-#[derive(Debug, Deserialize, Clone)]
-struct ConsumersConfig {
-    revenues: EnergyCost,
-    forecasts: Vec<Forecast>,
-}
-
-#[derive(Debug, Deserialize, Clone, Copy)]
-struct BatteryConfig {
-    max_charge: Energy,
-}
-
-#[derive(Debug, Deserialize, Clone)]
-struct StackConfig {
-    gas: GasPlantConfig,
-    nuclear: NuclearPlantConfig,
-    battery: BatteryConfig,
-    consumers: ConsumersConfig,
-    renewable_forecasts: Vec<Forecast>,
+impl From<GameStackConfigRequest> for GameStackConfig {
+    fn from(value: GameStackConfigRequest) -> Self {
+        match value {
+            GameStackConfigRequest::Fixed(config) => GameStackConfig::Fixed(config),
+            GameStackConfigRequest::PerPlayer(config) => {
+                GameStackConfig::PerPlayer(GameStackPerPlayerBaseConfig {
+                    gas_cost: config.gas_cost,
+                    nuclear_cost: config.nuclear_cost,
+                    consumers_revenues: config.consumers_revenues,
+                    gas_max_capacity: config.gas_max_capacity,
+                    nuclear_max_capacity: config.nuclear_max_capacity,
+                    battery_max_capacity: config.battery_max_capacity,
+                    consumers_max_abs_capacity: config.consumers_max_capacity,
+                    renewable_max_capacity: config.renewable_max_capacity,
+                    // TODO: generate forecast shapes
+                    consumers_forecasts: vec![],
+                    renewable_forecasts: vec![],
+                })
+            }
+        }
+    }
 }
 
 #[derive(Debug, Deserialize)]
@@ -62,7 +69,7 @@ pub struct NewGameRequest {
     game_name: String,
     period_duration_seconds: Option<u64>,
     number_of_periods: usize,
-    stack: StackConfig,
+    stack: GameStackConfigRequest,
 }
 
 #[derive(Debug, Serialize)]
@@ -78,18 +85,6 @@ pub async fn create_game(
     let Ok(game_name) = GameName::new(request.game_name) else {
         return Err(StatusCode::BAD_REQUEST);
     };
-
-    if request.stack.consumers.forecasts.len() != request.number_of_periods
-        || request.stack.renewable_forecasts.len() != request.number_of_periods
-    {
-        warn!(
-            "Invalid number of forecasts, expected {}, got ({}, {}) for consumers and renewable",
-            request.number_of_periods,
-            request.stack.consumers.forecasts.len(),
-            request.stack.renewable_forecasts.len()
-        );
-        return Err(StatusCode::BAD_REQUEST);
-    }
 
     let mut state = state.write().await;
     let game_id = GameId::default();
@@ -115,7 +110,7 @@ pub async fn create_game(
         name: game_name.clone(),
         delivery_period_duration: Some(Duration::from_secs(period_duration)),
         number_of_delivery_periods: request.number_of_periods,
-        stack_config: game_stack_config(request.stack),
+        stack_config: request.stack.into(),
     };
     let game_context = GameActor::start(
         game_config,
@@ -143,17 +138,4 @@ pub async fn create_game(
         StatusCode::CREATED,
         Json(NewGameSuccess { game_id, game_name }),
     ))
-}
-
-fn game_stack_config(config: StackConfig) -> GameStackConfig {
-    GameStackConfig::Fixed(GameStackFixedConfig {
-        consumers_revenues: config.consumers.revenues,
-        gas_cost: config.gas.cost,
-        nuclear_cost: config.nuclear.cost,
-        gas_capacity: config.gas.max_power,
-        nuclear_capacity: config.nuclear.max_power,
-        battery_capacity: config.battery.max_charge,
-        renewable_forecasts: config.renewable_forecasts,
-        consumers_forecasts: config.consumers.forecasts,
-    })
 }

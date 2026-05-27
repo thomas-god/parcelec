@@ -312,33 +312,21 @@ pub fn default_stack_plants_builder() -> impl Fn() -> StackPlants + Clone + Send
         map.insert(
             PlantId::default(),
             Box::new(RenewablePlant::new(vec![
-                Forecast {
-                    period: DeliveryPeriodId::from(1),
-                    value: ForecastValue {
-                        value: 250,
-                        deviation: 25,
-                    },
+                ForecastValue {
+                    value: 250,
+                    deviation: 25,
                 },
-                Forecast {
-                    period: DeliveryPeriodId::from(2),
-                    value: ForecastValue {
-                        value: 150,
-                        deviation: 50,
-                    },
+                ForecastValue {
+                    value: 150,
+                    deviation: 50,
                 },
-                Forecast {
-                    period: DeliveryPeriodId::from(3),
-                    value: ForecastValue {
-                        value: 300,
-                        deviation: 75,
-                    },
+                ForecastValue {
+                    value: 300,
+                    deviation: 75,
                 },
-                Forecast {
-                    period: DeliveryPeriodId::from(4),
-                    value: ForecastValue {
-                        value: 100,
-                        deviation: 75,
-                    },
+                ForecastValue {
+                    value: 100,
+                    deviation: 75,
                 },
             ])),
         );
@@ -347,33 +335,21 @@ pub fn default_stack_plants_builder() -> impl Fn() -> StackPlants + Clone + Send
             Box::new(Consumers::new(
                 EnergyCost::from(56),
                 vec![
-                    Forecast {
-                        period: DeliveryPeriodId::from(1),
-                        value: ForecastValue {
-                            value: -1000,
-                            deviation: 25,
-                        },
+                    ForecastValue {
+                        value: -1000,
+                        deviation: 25,
                     },
-                    Forecast {
-                        period: DeliveryPeriodId::from(2),
-                        value: ForecastValue {
-                            value: -1200,
-                            deviation: 50,
-                        },
+                    ForecastValue {
+                        value: -1200,
+                        deviation: 50,
                     },
-                    Forecast {
-                        period: DeliveryPeriodId::from(3),
-                        value: ForecastValue {
-                            value: -600,
-                            deviation: 75,
-                        },
+                    ForecastValue {
+                        value: -600,
+                        deviation: 75,
                     },
-                    Forecast {
-                        period: DeliveryPeriodId::from(4),
-                        value: ForecastValue {
-                            value: -1800,
-                            deviation: 100,
-                        },
+                    ForecastValue {
+                        value: -1800,
+                        deviation: 100,
                     },
                 ],
             )),
