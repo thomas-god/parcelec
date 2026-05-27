@@ -487,6 +487,7 @@ mod test {
                 value: -100,
                 deviation: 0,
             }],
+            3,
         );
         let (mut stack, _) = make_single_plant_stack(plant, "consumers-a");
         let result = stack.dispatch_plants();
@@ -497,10 +498,13 @@ mod test {
 
     #[test]
     fn test_dispatch_aggregates_renewable_plant_output() {
-        let plant = RenewablePlant::new(vec![ForecastValue {
-            value: 75,
-            deviation: 0,
-        }]);
+        let plant = RenewablePlant::new(
+            vec![ForecastValue {
+                value: 75,
+                deviation: 0,
+            }],
+            3,
+        );
         let (mut stack, _) = make_single_plant_stack(plant, "renewable-a");
         let result = stack.dispatch_plants();
         let state = result.aggregated_state();
@@ -600,6 +604,7 @@ mod test {
                     value: -100,
                     deviation: 0,
                 }],
+                3,
             )),
         );
         plants.insert(
@@ -610,6 +615,7 @@ mod test {
                     value: -75,
                     deviation: 0,
                 }],
+                3,
             )),
         );
         let mut stack = StackPlants::new(plants);
@@ -627,17 +633,23 @@ mod test {
             HashMap::new();
         plants.insert(
             id_a.clone(),
-            Box::new(RenewablePlant::new(vec![ForecastValue {
-                value: 50,
-                deviation: 0,
-            }])),
+            Box::new(RenewablePlant::new(
+                vec![ForecastValue {
+                    value: 50,
+                    deviation: 0,
+                }],
+                3,
+            )),
         );
         plants.insert(
             id_b.clone(),
-            Box::new(RenewablePlant::new(vec![ForecastValue {
-                value: 25,
-                deviation: 0,
-            }])),
+            Box::new(RenewablePlant::new(
+                vec![ForecastValue {
+                    value: 25,
+                    deviation: 0,
+                }],
+                3,
+            )),
         );
         let mut stack = StackPlants::new(plants);
         let result = stack.dispatch_plants();
@@ -797,10 +809,13 @@ mod test {
         );
         plants.insert(
             id_renewable.clone(),
-            Box::new(RenewablePlant::new(vec![ForecastValue {
-                value: 50,
-                deviation: 0,
-            }])),
+            Box::new(RenewablePlant::new(
+                vec![ForecastValue {
+                    value: 50,
+                    deviation: 0,
+                }],
+                3,
+            )),
         );
         plants.insert(
             id_battery.clone(),

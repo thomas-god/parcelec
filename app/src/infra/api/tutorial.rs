@@ -152,6 +152,7 @@ fn game_stack_config() -> GameStackConfig {
                 deviation: 100,
             },
         ],
+        consumers_forecasts_range: 3,
         renewable_forecasts: vec![
             ForecastValue {
                 value: 250,
@@ -170,5 +171,6 @@ fn game_stack_config() -> GameStackConfig {
                 deviation: 75,
             },
         ],
+        renewable_forecasts_range: 3,
     })
 }

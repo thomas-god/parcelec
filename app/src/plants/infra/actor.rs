@@ -8,18 +8,13 @@ use tokio::sync::{
 use tokio_util::sync::CancellationToken;
 
 use crate::{
-    forecast::{Forecast, ForecastValue},
+    forecast::Forecast,
     game::{GameId, delivery_period::DeliveryPeriodId},
     plants::{
-        PlantId, PlantOutput, PowerPlant, PowerPlantPublicRepr, Stack, StackDispatchResults,
-        StackPlants,
-        technologies::{
-            battery::Battery, consumers::Consumers, gas_plant::GasPlant, nuclear::NuclearPlant,
-            renewable::RenewablePlant,
-        },
+        PlantId, PlantOutput, PowerPlantPublicRepr, Stack, StackDispatchResults, StackPlants,
     },
     player::{PlayerConnections, PlayerId, PlayerMessage},
-    utils::units::{Energy, EnergyCost, Power},
+    utils::units::Power,
 };
 
 use super::StackService;
@@ -114,30 +109,6 @@ impl<PC: PlayerConnections> StackActor<PC> {
             rx,
             cancellation_token,
         }
-    }
-
-    pub fn start(
-        game: &GameId,
-        player: &PlayerId,
-        players_connections: PC,
-        cancellation_token: CancellationToken,
-    ) -> StackContext<StackService> {
-        let plants_builder = default_stack_plants_builder();
-        let mut stack = StackActor::new(
-            game.clone(),
-            player.clone(),
-            plants_builder(),
-            StackState::Closed,
-            DeliveryPeriodId::default(),
-            players_connections,
-            cancellation_token,
-        );
-        let context = stack.get_context();
-
-        tokio::spawn(async move {
-            stack.run().await;
-        });
-        context
     }
 
     pub fn get_context(&self) -> StackContext<StackService> {
@@ -298,70 +269,6 @@ impl<PC: PlayerConnections> StackActor<PC> {
     }
 }
 
-pub fn default_stack_plants_builder() -> impl Fn() -> StackPlants + Clone + Send + Sync + 'static {
-    move || {
-        let mut map: HashMap<PlantId, Box<dyn PowerPlant + Send + Sync>> = HashMap::new();
-        map.insert(
-            PlantId::default(),
-            Box::new(Battery::new(Energy::from(300), Energy::from(0))),
-        );
-        map.insert(
-            PlantId::default(),
-            Box::new(GasPlant::new(EnergyCost::from(80), Power::from(500))),
-        );
-        map.insert(
-            PlantId::default(),
-            Box::new(RenewablePlant::new(vec![
-                ForecastValue {
-                    value: 250,
-                    deviation: 25,
-                },
-                ForecastValue {
-                    value: 150,
-                    deviation: 50,
-                },
-                ForecastValue {
-                    value: 300,
-                    deviation: 75,
-                },
-                ForecastValue {
-                    value: 100,
-                    deviation: 75,
-                },
-            ])),
-        );
-        map.insert(
-            PlantId::default(),
-            Box::new(Consumers::new(
-                EnergyCost::from(56),
-                vec![
-                    ForecastValue {
-                        value: -1000,
-                        deviation: 25,
-                    },
-                    ForecastValue {
-                        value: -1200,
-                        deviation: 50,
-                    },
-                    ForecastValue {
-                        value: -600,
-                        deviation: 75,
-                    },
-                    ForecastValue {
-                        value: -1800,
-                        deviation: 100,
-                    },
-                ],
-            )),
-        );
-        map.insert(
-            PlantId::default(),
-            Box::new(NuclearPlant::new(Power::from(1000), EnergyCost::from(35))),
-        );
-        StackPlants::new(map)
-    }
-}
-
 #[cfg(test)]
 mod tests_stack {
     use std::{collections::HashMap, time::Duration};
@@ -373,13 +280,21 @@ mod tests_stack {
     use tokio_util::sync::CancellationToken;
 
     use crate::{
+        forecast::ForecastValue,
         game::{GameId, delivery_period::DeliveryPeriodId},
-        plants::{PlantId, PowerPlantPublicRepr, infra::ProgramPlant},
+        plants::{
+            PlantId, PowerPlant, PowerPlantPublicRepr, StackPlants,
+            infra::ProgramPlant,
+            technologies::{
+                battery::Battery, consumers::Consumers, gas_plant::GasPlant, nuclear::NuclearPlant,
+                renewable::RenewablePlant,
+            },
+        },
         player::{PlayerConnections, PlayerId, PlayerMessage},
-        utils::units::NO_POWER,
+        utils::units::{Energy, EnergyCost, NO_POWER, Power},
     };
 
-    use super::{StackActor, StackMessage, StackState, default_stack_plants_builder};
+    use super::{StackActor, StackMessage, StackState};
 
     #[derive(Debug, Clone)]
     struct MockedPlayerConnections {
@@ -426,6 +341,74 @@ mod tests_stack {
             stack.run().await;
         });
         (player_id, tx, state_rx, conn_rx)
+    }
+
+    fn default_stack_plants_builder() -> impl Fn() -> StackPlants + Clone + Send + Sync + 'static {
+        move || {
+            let mut map: HashMap<PlantId, Box<dyn PowerPlant + Send + Sync>> = HashMap::new();
+            map.insert(
+                PlantId::default(),
+                Box::new(Battery::new(Energy::from(300), Energy::from(0))),
+            );
+            map.insert(
+                PlantId::default(),
+                Box::new(GasPlant::new(EnergyCost::from(80), Power::from(500))),
+            );
+            map.insert(
+                PlantId::default(),
+                Box::new(RenewablePlant::new(
+                    vec![
+                        ForecastValue {
+                            value: 250,
+                            deviation: 25,
+                        },
+                        ForecastValue {
+                            value: 150,
+                            deviation: 50,
+                        },
+                        ForecastValue {
+                            value: 300,
+                            deviation: 75,
+                        },
+                        ForecastValue {
+                            value: 100,
+                            deviation: 75,
+                        },
+                    ],
+                    3,
+                )),
+            );
+            map.insert(
+                PlantId::default(),
+                Box::new(Consumers::new(
+                    EnergyCost::from(56),
+                    vec![
+                        ForecastValue {
+                            value: -1000,
+                            deviation: 25,
+                        },
+                        ForecastValue {
+                            value: -1200,
+                            deviation: 50,
+                        },
+                        ForecastValue {
+                            value: -600,
+                            deviation: 75,
+                        },
+                        ForecastValue {
+                            value: -1800,
+                            deviation: 100,
+                        },
+                    ],
+                    3,
+                )),
+            );
+            map.insert(
+                PlantId::default(),
+                Box::new(NuclearPlant::new(Power::from(1000), EnergyCost::from(35))),
+            );
+            StackPlants::new(map)
+        }
     }
 
     #[tokio::test]

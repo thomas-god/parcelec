@@ -29,7 +29,9 @@ pub struct GameStackFixedConfig {
     pub nuclear_capacity: Power,
     pub battery_capacity: Energy,
     pub consumers_forecasts: Vec<ForecastValue>,
+    pub consumers_forecasts_range: usize,
     pub renewable_forecasts: Vec<ForecastValue>,
+    pub renewable_forecasts_range: usize,
 }
 
 impl GameStackFixedConfig {
@@ -50,13 +52,17 @@ impl GameStackFixedConfig {
         );
         stack.insert(
             PlantId::default(),
-            Box::new(RenewablePlant::new(self.renewable_forecasts.clone())),
+            Box::new(RenewablePlant::new(
+                self.renewable_forecasts.clone(),
+                self.renewable_forecasts_range,
+            )),
         );
         stack.insert(
             PlantId::default(),
             Box::new(Consumers::new(
                 self.consumers_revenues,
                 self.consumers_forecasts.clone(),
+                self.consumers_forecasts_range,
             )),
         );
 
@@ -74,8 +80,10 @@ pub struct GameStackPerPlayerBaseConfig {
     pub battery_max_capacity: Energy,
     pub consumers_max_abs_capacity: Power,
     pub consumers_forecasts: Vec<NormalizedForecastValue>,
+    pub consumers_forecasts_range: usize,
     pub renewable_max_capacity: Power,
     pub renewable_forecasts: Vec<NormalizedForecastValue>,
+    pub renewable_forecasts_range: usize,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -123,6 +131,7 @@ impl GameStackPerPlayerBaseConfig {
                     .iter()
                     .map(|f| f.as_forecast(capacity.into()))
                     .collect(),
+                self.consumers_forecasts_range,
             )),
         );
 
@@ -138,6 +147,7 @@ impl GameStackPerPlayerBaseConfig {
                     .iter()
                     .map(|f| f.as_forecast(capacity.into()))
                     .collect(),
+                self.consumers_forecasts_range,
             )),
         );
 
@@ -162,7 +172,9 @@ mod test_fixed_config_generate_stack {
             battery_capacity: Energy::from(200),
             consumers_revenues: EnergyCost::from(60),
             consumers_forecasts: vec![],
+            consumers_forecasts_range: 3,
             renewable_forecasts: vec![],
+            renewable_forecasts_range: 3,
         };
 
         let stack = config.generate_plants();
@@ -208,8 +220,10 @@ mod test_per_player_config_generate_stack {
             battery_max_capacity: Energy::from(400),
             consumers_max_abs_capacity: Power::from(-800),
             consumers_forecasts: vec![NormalizedForecastValue::try_new(1., 0.).unwrap()],
+            consumers_forecasts_range: 3,
             renewable_max_capacity: Power::from(600),
             renewable_forecasts: vec![NormalizedForecastValue::try_new(1., 0.).unwrap()],
+            renewable_forecasts_range: 3,
         }
     }
 

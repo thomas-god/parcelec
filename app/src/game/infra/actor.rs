@@ -561,7 +561,9 @@ mod test_utils {
                 nuclear_capacity: Power::from(1000),
                 battery_capacity: Energy::from(200),
                 renewable_forecasts: vec![],
+                renewable_forecasts_range: 3,
                 consumers_forecasts: vec![],
+                consumers_forecasts_range: 3,
             }),
         }
     }
@@ -663,7 +665,9 @@ mod tests {
                 nuclear_capacity: Power::from(1000),
                 battery_capacity: Energy::from(200),
                 renewable_forecasts: vec![],
+                renewable_forecasts_range: 3,
                 consumers_forecasts: vec![],
+                consumers_forecasts_range: 3,
             }),
             number_of_delivery_periods: 3,
             delivery_period_duration: None,
@@ -739,10 +743,12 @@ mod test_game_actor_process_game_messages {
             nuclear_cost: EnergyCost::from(35),
             battery_max_capacity: Energy::from(300),
             consumers_forecasts: vec![],
+            consumers_forecasts_range: 3,
             consumers_max_abs_capacity: Power::from(1500),
             gas_max_capacity: Power::from(500),
             nuclear_max_capacity: Power::from(1200),
             renewable_forecasts: vec![],
+            renewable_forecasts_range: 3,
             renewable_max_capacity: Power::from(400),
         }
     }

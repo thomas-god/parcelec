@@ -32,7 +32,9 @@ pub struct GameStackPerPlayerBaseConfigRequest {
     pub nuclear_max_capacity: Power,
     pub battery_max_capacity: Energy,
     pub consumers_max_capacity: Power,
+    pub consumers_forecasts_range: usize,
     pub renewable_max_capacity: Power,
+    pub renewable_forecasts_range: usize,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -57,7 +59,9 @@ impl From<GameStackConfigRequest> for GameStackConfig {
                     renewable_max_capacity: config.renewable_max_capacity,
                     // TODO: generate forecast shapes
                     consumers_forecasts: vec![],
+                    consumers_forecasts_range: config.consumers_forecasts_range,
                     renewable_forecasts: vec![],
+                    renewable_forecasts_range: config.renewable_forecasts_range,
                 })
             }
         }

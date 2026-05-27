@@ -16,9 +16,8 @@ pub struct RenewablePlant {
 }
 
 impl RenewablePlant {
-    pub fn new(forecasts: Vec<ForecastValue>) -> RenewablePlant {
-        // TODO: expose forecast range to constructor
-        let plant = ForecastsBasedPlant::new(forecasts, 2);
+    pub fn new(forecasts: Vec<ForecastValue>, forecasts_range: usize) -> RenewablePlant {
+        let plant = ForecastsBasedPlant::new(forecasts, forecasts_range);
         let history = Vec::new();
 
         RenewablePlant {
@@ -104,7 +103,7 @@ mod tests {
 
     #[test]
     fn test_renewable_plant() {
-        let mut plant = RenewablePlant::new(get_forecasts());
+        let mut plant = RenewablePlant::new(get_forecasts(), 2);
 
         // Initial history is empty
         assert!(plant.get_history().is_empty());
@@ -127,7 +126,7 @@ mod tests {
 
     #[test]
     fn test_renewable_forecasts_periods() {
-        let mut plant = RenewablePlant::new(get_forecasts());
+        let mut plant = RenewablePlant::new(get_forecasts(), 2);
 
         let forecasts = plant.get_forecast().unwrap();
         assert_eq!(

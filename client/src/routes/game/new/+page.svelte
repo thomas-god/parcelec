@@ -127,7 +127,9 @@
           battery_capacity: Number(battery_charge),
           consumers_revenues: Number(clients_revenues),
           consumers_forecasts,
+          consumers_forecasts_range: Number(number_of_periods),
           renewable_forecasts,
+          renewable_forecasts_range: Number(number_of_periods),
         },
       },
     };

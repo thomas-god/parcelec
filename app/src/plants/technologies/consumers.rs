@@ -18,9 +18,12 @@ pub struct Consumers {
 }
 
 impl Consumers {
-    pub fn new(price_per_mwh: EnergyCost, forecasts: Vec<ForecastValue>) -> Consumers {
-        // TODO expose forecast range in constructor
-        let state = ForecastsBasedPlant::new(forecasts, 2);
+    pub fn new(
+        price_per_mwh: EnergyCost,
+        forecasts: Vec<ForecastValue>,
+        forecasts_range: usize,
+    ) -> Consumers {
+        let state = ForecastsBasedPlant::new(forecasts, forecasts_range);
 
         Consumers {
             price_per_mwh,
@@ -112,7 +115,7 @@ mod tests {
     fn test_consumers() {
         let energy_cost = EnergyCost::from(75);
         let forecasts = get_forecasts();
-        let mut consumers = Consumers::new(energy_cost, forecasts);
+        let mut consumers = Consumers::new(energy_cost, forecasts, 2);
 
         // Consumers cannot be programed
         let initial_setpoint = consumers.state.setpoint();
@@ -144,7 +147,7 @@ mod tests {
     fn test_consumers_forecasts_periods() {
         let energy_cost = EnergyCost::from(75);
         let forecsts = get_forecasts();
-        let mut consumers = Consumers::new(energy_cost, forecsts);
+        let mut consumers = Consumers::new(energy_cost, forecsts, 2);
 
         let forecasts = consumers.get_forecast().unwrap();
         assert_eq!(
