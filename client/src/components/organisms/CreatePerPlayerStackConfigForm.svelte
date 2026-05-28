@@ -10,7 +10,7 @@
   let nuclear_max_capacity = $state("1000");
   let nuclear_cost = $state("35");
   let renewable_max_capacity = $state("1000");
-  let consumers_max_capacity = $state("1000");
+  let consumers_capacity = $state("1000");
   let consumers_revenues = $state("56");
   let battery_max_charge = $state("300");
   let number_of_periods = $state("6");
@@ -58,9 +58,9 @@
 
   let areConsumersOptionsValid = $derived.by(() => {
     const max_capacity_valid =
-      consumers_max_capacity !== "" &&
-      !isNaN(Number(consumers_max_capacity)) &&
-      Number(consumers_max_capacity) > 0;
+      consumers_capacity !== "" &&
+      !isNaN(Number(consumers_capacity)) &&
+      Number(consumers_capacity) > 0;
 
     const revenues_valid =
       consumers_revenues !== "" &&
@@ -88,7 +88,7 @@
           nuclear_max_capacity: Number(nuclear_max_capacity),
           battery_max_capacity: Number(battery_max_charge),
           consumers_revenues: Number(consumers_revenues),
-          consumers_max_capacity: Number(consumers_max_capacity),
+          consumers_capacity: Number(consumers_capacity),
           consumers_forecasts_range: Number(number_of_periods),
           renewable_max_capacity: Number(renewable_max_capacity),
           renewable_forecasts_range: Number(number_of_periods),
@@ -117,10 +117,10 @@
       </div>
       <div class="collapse-content text-sm">
         <NumericInput
-          title="Puissance maximale possible (en MW)"
+          title="Puissance maximale consommée par les clients (en MW)"
           error_message="La puissance doit être > 0"
           min_value="1"
-          bind:value={consumers_max_capacity}
+          bind:value={consumers_capacity}
         />
 
         <NumericInput

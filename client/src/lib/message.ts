@@ -68,34 +68,32 @@ const PlayerDetailedScore = z.object({
 });
 
 const FixedStackConfigSchema = z.object({
-  Fixed: z.object({
-    gas_cost: z.number(),
-    nuclear_cost: z.number(),
-    consumers_revenues: z.number(),
-    gas_capacity: z.number(),
-    nuclear_capacity: z.number(),
-    battery_capacity: z.number(),
-    consumers_forecasts_range: z.number(),
-    renewable_forecasts_range: z.number(),
-  }),
+  type: z.literal("Fixed"),
+  gas_cost: z.number(),
+  nuclear_cost: z.number(),
+  consumers_revenues: z.number(),
+  gas_capacity: z.number(),
+  nuclear_capacity: z.number(),
+  battery_capacity: z.number(),
+  consumers_forecasts_range: z.number(),
+  renewable_forecasts_range: z.number(),
 });
 
 const PerPlayerStackConfigSchema = z.object({
-  PerPlayer: z.object({
-    gas_cost: z.number(),
-    gas_max_capacity: z.number(),
-    nuclear_cost: z.number(),
-    nuclear_max_capacity: z.number(),
-    battery_max_capacity: z.number().optional(),
-    consumers_revenues: z.number(),
-    consumers_max_abs_capacity: z.number(),
-    consumers_forecasts_range: z.number(),
-    renewable_max_capacity: z.number(),
-    renewable_forecasts_range: z.number(),
-  }),
+  type: z.literal("PerPlayer"),
+  gas_cost: z.number(),
+  gas_max_capacity: z.number(),
+  nuclear_cost: z.number(),
+  nuclear_max_capacity: z.number(),
+  battery_max_capacity: z.number(),
+  consumers_revenues: z.number(),
+  consumers_capacity: z.number(),
+  consumers_forecasts_range: z.number(),
+  renewable_max_capacity: z.number(),
+  renewable_forecasts_range: z.number(),
 });
 
-export const StackConfigSchema = z.union([
+export const StackConfigSchema = z.discriminatedUnion("type", [
   FixedStackConfigSchema,
   PerPlayerStackConfigSchema,
 ]);
@@ -233,6 +231,10 @@ export type StackConfig = Omit<
   Extract<WSMessage, { type: "StackConfig" }>,
   "type"
 >["config"];
+export type PerPlayerStackConfig = Omit<
+  Extract<StackConfig, { type: "PerPlayer" }>,
+  "type"
+>;
 export type StackSnapshot = Omit<
   Extract<WSMessage, { type: "StackSnapshot" }>,
   "type"

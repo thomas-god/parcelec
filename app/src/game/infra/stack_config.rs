@@ -78,7 +78,7 @@ pub struct GameStackPerPlayerBaseConfig {
     pub gas_max_capacity: Power,
     pub nuclear_max_capacity: Power,
     pub battery_max_capacity: Energy,
-    pub consumers_max_abs_capacity: Power,
+    pub consumers_capacity: Power,
     pub consumers_forecasts: Vec<NormalizedForecastValue>,
     pub consumers_forecasts_range: usize,
     pub renewable_max_capacity: Power,
@@ -91,7 +91,6 @@ pub struct GameStackPerPlayerPlayerConfig {
     pub gas_capacity: Power,
     pub nuclear_capacity: Power,
     pub battery_capacity: Energy,
-    pub consumers_capacity: Power,
     pub renewable_capacity: Power,
 }
 
@@ -135,17 +134,13 @@ impl GameStackPerPlayerBaseConfig {
             )),
         );
 
-        let capacity = -min(
-            self.consumers_max_abs_capacity.abs(),
-            player_config.consumers_capacity.abs(),
-        );
         stack.insert(
             PlantId::default(),
             Box::new(Consumers::new(
                 self.consumers_revenues,
                 self.consumers_forecasts
                     .iter()
-                    .map(|f| f.as_forecast(capacity.into()))
+                    .map(|f| f.as_forecast(self.consumers_capacity.into()))
                     .collect(),
                 self.consumers_forecasts_range,
             )),
@@ -218,7 +213,7 @@ mod test_per_player_config_generate_stack {
             gas_max_capacity: Power::from(500),
             nuclear_max_capacity: Power::from(1000),
             battery_max_capacity: Energy::from(400),
-            consumers_max_abs_capacity: Power::from(-800),
+            consumers_capacity: Power::from(-800),
             consumers_forecasts: vec![NormalizedForecastValue::try_new(1., 0.).unwrap()],
             consumers_forecasts_range: 3,
             renewable_max_capacity: Power::from(600),
@@ -234,7 +229,6 @@ mod test_per_player_config_generate_stack {
             gas_capacity: Power::from(300),
             nuclear_capacity: Power::from(800),
             battery_capacity: Energy::from(200),
-            consumers_capacity: Power::from(-500),
             renewable_capacity: Power::from(400),
         };
 
@@ -271,7 +265,6 @@ mod test_per_player_config_generate_stack {
             gas_capacity: Power::from(900),
             nuclear_capacity: Power::from(2000),
             battery_capacity: Energy::from(1000),
-            consumers_capacity: Power::from(-1500),
             renewable_capacity: Power::from(1200),
         };
 
@@ -285,11 +278,6 @@ mod test_per_player_config_generate_stack {
                 PowerPlantPublicRepr::Battery(battery) => {
                     assert_eq!(battery.max_charge, Energy::from(400))
                 }
-                PowerPlantPublicRepr::Consumers(consumers) => {
-                    assert_eq!(consumers.revenue, EnergyCost::from(60));
-                    dbg!(consumers.output.setpoint);
-                    assert!(consumers.output.setpoint == base.consumers_max_abs_capacity)
-                }
                 PowerPlantPublicRepr::GasPlant(plant) => {
                     assert_eq!(plant.settings.energy_cost(), EnergyCost::from(70));
                     assert_eq!(plant.settings.max_setpoint(), Power::from(500));
@@ -301,6 +289,7 @@ mod test_per_player_config_generate_stack {
                 PowerPlantPublicRepr::RenewablePlant(plant) => {
                     assert!(plant.output.setpoint == base.renewable_max_capacity)
                 }
+                _ => {}
             }
         }
     }

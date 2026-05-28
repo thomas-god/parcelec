@@ -59,6 +59,7 @@ pub struct PlayerResultView {
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, PartialOrd)]
+#[serde(tag = "type")]
 pub enum GameStackConfigView {
     Fixed(GameStackFixedConfigView),
     PerPlayer(GameStackPerPlayerBaseConfigView),
@@ -107,7 +108,7 @@ pub struct GameStackPerPlayerBaseConfigView {
     pub gas_max_capacity: Power,
     pub nuclear_max_capacity: Power,
     pub battery_max_capacity: Energy,
-    pub consumers_max_abs_capacity: Power,
+    pub consumers_capacity: Power,
     pub consumers_revenues: EnergyCost,
     pub consumers_forecasts_range: usize,
     pub renewable_max_capacity: Power,
@@ -124,7 +125,7 @@ impl From<&GameStackPerPlayerBaseConfig> for GameStackPerPlayerBaseConfigView {
             battery_max_capacity: value.battery_max_capacity,
             consumers_forecasts_range: value.consumers_forecasts_range,
             consumers_revenues: value.consumers_revenues,
-            consumers_max_abs_capacity: value.consumers_max_abs_capacity,
+            consumers_capacity: value.consumers_capacity,
             renewable_forecasts_range: value.renewable_forecasts_range,
             renewable_max_capacity: value.renewable_max_capacity,
         }

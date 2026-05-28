@@ -745,7 +745,7 @@ mod test_game_actor_process_game_messages {
             battery_max_capacity: Energy::from(300),
             consumers_forecasts: vec![],
             consumers_forecasts_range: 3,
-            consumers_max_abs_capacity: Power::from(1500),
+            consumers_capacity: Power::from(1500),
             gas_max_capacity: Power::from(500),
             nuclear_max_capacity: Power::from(1200),
             renewable_forecasts: vec![],
@@ -808,7 +808,6 @@ mod test_game_actor_process_game_messages {
             gas_capacity: Power::from(300),
             nuclear_capacity: Power::from(1000),
             battery_capacity: Energy::from(200),
-            consumers_capacity: Power::from(1200),
             renewable_capacity: Power::from(300),
         }
     }

@@ -3,8 +3,8 @@
   import { PUBLIC_APP_URL } from "$env/static/public";
   import { isNone, isSome, none, type Option } from "$lib/Options";
   import NumericInput from "../../../components/atoms/NumericInput.svelte";
-  import CreateFixedStack from "../../../components/organisms/CreateFixedStack.svelte";
-  import CreatePerPlayerStack from "../../../components/organisms/CreatePerPlayerStack.svelte";
+  import CreateFixedStack from "../../../components/organisms/CreateFixedStackConfigForm.svelte";
+  import CreatePerPlayerStack from "../../../components/organisms/CreatePerPlayerStackConfigForm.svelte";
 
   let game_name = $state("");
   let period_duration_seconds = $state("120");
