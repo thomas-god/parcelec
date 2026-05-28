@@ -95,6 +95,11 @@ const PerPlayerStackConfigSchema = z.object({
   }),
 });
 
+export const StackConfigSchema = z.union([
+  FixedStackConfigSchema,
+  PerPlayerStackConfigSchema,
+]);
+
 const WSMessageSchema = z.discriminatedUnion("type", [
   z.object({
     type: z.literal("OrderBookSnapshot"),
@@ -123,7 +128,7 @@ const WSMessageSchema = z.discriminatedUnion("type", [
   }),
   z.object({
     type: z.literal("StackConfig"),
-    config: z.union([FixedStackConfigSchema, PerPlayerStackConfigSchema]),
+    config: StackConfigSchema,
   }),
   z.object({
     type: z.literal("StackSnapshot"),

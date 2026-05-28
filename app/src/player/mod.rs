@@ -58,7 +58,7 @@ pub struct PlayerResultView {
     pub score: Money,
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, PartialOrd)]
 pub enum GameStackConfigView {
     Fixed(GameStackFixedConfigView),
     PerPlayer(GameStackPerPlayerBaseConfigView),

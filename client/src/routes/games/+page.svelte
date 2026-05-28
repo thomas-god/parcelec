@@ -1,6 +1,7 @@
 <script lang="ts">
   import { goto } from "$app/navigation";
   import { PUBLIC_APP_URL } from "$env/static/public";
+  import { StackConfigSchema } from "$lib/message";
   import { z } from "zod";
 
   const GamesSchema = z.object({
@@ -8,6 +9,7 @@
       z.object({
         id: z.string(),
         name: z.string(),
+        stack: StackConfigSchema,
       }),
     ),
   });

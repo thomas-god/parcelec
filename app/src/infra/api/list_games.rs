@@ -1,7 +1,7 @@
 use axum::{Json, extract::State, response::IntoResponse};
 use serde::{Deserialize, Serialize};
 
-use crate::game::{GameState, infra::stack_config::GameStackConfig};
+use crate::{game::GameState, player::GameStackConfigView};
 
 use super::ApiState;
 
@@ -9,7 +9,7 @@ use super::ApiState;
 struct GameView {
     id: String,
     name: String,
-    stack: GameStackConfig,
+    stack: GameStackConfigView,
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
@@ -29,7 +29,7 @@ pub async fn list_games(State(state): State<ApiState>) -> impl IntoResponse {
                     return Some(GameView {
                         id: game.id.to_string(),
                         name: game.name.to_string(),
-                        stack: game.stack.clone(),
+                        stack: (&game.stack).into(),
                     });
                 }
                 None
@@ -88,6 +88,11 @@ mod test_api_list_games {
         })
     }
 
+    fn stack_config_view() -> GameStackConfigView {
+        let config = stack_config();
+        (&config).into()
+    }
+
     fn start_game(id: GameId, name: GameName, state: GameState) -> GameContext {
         let (tx, _) = mpsc::channel(16);
         let (_, state_rx) = watch::channel(state);
@@ -142,12 +147,12 @@ mod test_api_list_games {
         assert!(body.games.contains(&GameView {
             id: 0.to_string(),
             name: 0.to_string(),
-            stack: stack_config(),
+            stack: stack_config_view(),
         }));
         assert!(body.games.contains(&GameView {
             id: 1.to_string(),
             name: 1.to_string(),
-            stack: stack_config(),
+            stack: stack_config_view(),
         },));
     }
 
@@ -190,7 +195,7 @@ mod test_api_list_games {
                 games: vec![GameView {
                     id: GameState::Open.to_string(),
                     name: GameState::Open.to_string(),
-                    stack: stack_config()
+                    stack: stack_config_view()
                 },]
             }
         );
