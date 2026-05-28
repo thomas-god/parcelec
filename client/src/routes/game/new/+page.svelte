@@ -4,11 +4,14 @@
   import { isNone, isSome, none, type Option } from "$lib/Options";
   import NumericInput from "../../../components/atoms/NumericInput.svelte";
   import CreateFixedStack from "../../../components/organisms/CreateFixedStack.svelte";
+  import CreatePerPlayerStack from "../../../components/organisms/CreatePerPlayerStack.svelte";
 
   let game_name = $state("");
   let period_duration_seconds = $state("120");
   let number_of_periods = $state("6");
-  let fixed_stack_payload: Option<string> = $state(none());
+  let stack_type: "fixed" | "customizable" = $state("fixed");
+  let fixed_stack_payload: Option<any> = $state(none());
+  let per_player_stack_payload: Option<any> = $state(none());
   let apiError = $state("");
 
   let isGameNameValid = $derived(game_name && game_name.trim() !== "");
@@ -24,7 +27,17 @@
   );
 
   const createGame = async () => {
-    if (isNone(fixed_stack_payload)) {
+    let stack: Option<any> = none();
+    if (stack_type === "fixed" && isSome(fixed_stack_payload)) {
+      stack = fixed_stack_payload.value;
+    } else if (
+      stack_type === "customizable" &&
+      isSome(per_player_stack_payload)
+    ) {
+      stack = per_player_stack_payload.value;
+    }
+
+    if (isNone(stack)) {
       return;
     }
 
@@ -32,7 +45,7 @@
       game_name: game_name.trim(),
       period_duration_seconds: Number(period_duration_seconds),
       number_of_periods: Number(number_of_periods),
-      stack: fixed_stack_payload.value,
+      stack: stack,
     };
 
     let rest = await fetch(`${PUBLIC_APP_URL}/game`, {
@@ -90,8 +103,35 @@
               />
             </div>
           </div>
+          <div class="divider divider-start text-sm font-semibold">
+            Centrales et clients
+          </div>
 
-          <CreateFixedStack bind:payload={fixed_stack_payload} />
+          <div>
+            <label class="fieldset-label flex-col"
+              ><div class="self-start text-sm">Type de parc</div>
+              <select class="select" bind:value={stack_type}>
+                <option value="fixed">Fixe</option>
+                <!-- TODO uncomment to enable -->
+                <!-- <option value="customizable">Paramétrable</option> -->
+              </select>
+            </label>
+            {#if stack_type === "fixed"}
+              <p class="p-1">
+                Avec un parc <i>fixe</i> tous les joueurs ont les mêmes configurations
+                (puissances, couts) de centrales et de clients.
+              </p>
+              <CreateFixedStack bind:payload={fixed_stack_payload} />
+            {:else if stack_type === "customizable"}
+              <p class="p-1">
+                Avec un parc <i>paramétrable</i>, les joueurs peuvent construire
+                leur parc en choissant les différentes puissances installées
+                avant de commencer la partie. Les couts restent les mêmes pour
+                tous les joueurs.
+              </p>
+              <CreatePerPlayerStack bind:payload={per_player_stack_payload} />
+            {/if}
+          </div>
 
           {#if apiError}
             <div class="alert alert-error mt-4 py-2">
