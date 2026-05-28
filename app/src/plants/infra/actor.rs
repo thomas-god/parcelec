@@ -191,7 +191,7 @@ impl<PC: PlayerConnections> StackActor<PC> {
                 &self.game,
                 &self.player,
                 PlayerMessage::StackSnapshot {
-                    plants: stack_snapshot,
+                    plants: Some(stack_snapshot),
                 },
             )
             .await;

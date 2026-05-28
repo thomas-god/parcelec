@@ -67,7 +67,7 @@ pub enum PlayerMessage {
         trades: Vec<TradeLeg>,
     },
     StackSnapshot {
-        plants: HashMap<PlantId, PowerPlantPublicRepr>,
+        plants: Option<HashMap<PlantId, PowerPlantPublicRepr>>,
     },
     StackForecasts {
         forecasts: HashMap<PlantId, Option<Vec<Forecast>>>,

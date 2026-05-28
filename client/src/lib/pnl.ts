@@ -13,6 +13,9 @@ export const marketPnl = (trades: Trade[]): number => {
 };
 
 export const plantsCosts = (plants: StackSnapshot): number => {
+  if (plants === null) {
+    return 0;
+  }
   /// Cannot use plants.entries().reduce(/.../) on WebKit...
   let total = 0;
   for (const [_, plant] of plants.entries()) {

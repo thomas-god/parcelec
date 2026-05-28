@@ -216,15 +216,12 @@ async fn send_initial_stack_snapshot<MS: Market, PS: Stack>(
     ws: &mut WebSocket,
     context: &PlayerConnectionContext<MS, PS>,
 ) -> Result<(), PlayerConnectionError> {
-    if let Some(stack) = &context.stack {
-        ws.send(
-            serde_json::to_string(&PlayerMessage::StackSnapshot {
-                plants: stack.service.get_snapshot().await?,
-            })?
-            .into(),
-        )
+    let plants = match &context.stack {
+        Some(stack) => Some(stack.service.get_snapshot().await?),
+        None => None,
+    };
+    ws.send(serde_json::to_string(&PlayerMessage::StackSnapshot { plants })?.into())
         .await?;
-    }
     Ok(())
 }
 

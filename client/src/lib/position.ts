@@ -1,5 +1,22 @@
-import type { PortfolioVolumes } from "../components/molecules/PortfolioChart.svelte";
 import type { StackSnapshot, Trade } from "./message";
+
+export type PortfolioType =
+  | "consumers"
+  | "renewables"
+  | "nuclear"
+  | "gas"
+  | "storage"
+  | "market";
+
+export type PortfolioVolumes = {
+  consumers: number;
+  renewable: number;
+  nuclear: number;
+  gas: number;
+  storage: number;
+  marketSold: number;
+  marketBought: number;
+};
 
 export const marketPosition = (trades: Trade[]): number =>
   trades.reduce(
@@ -9,6 +26,9 @@ export const marketPosition = (trades: Trade[]): number =>
   );
 
 export const plantsPosition = (plants: StackSnapshot): number => {
+  if (plants === null) {
+    return 0;
+  }
   /// Cannot use plants.entries().reduce(/.../) on WebKit...
   let total = 0;
   for (const [_, plant] of plants.entries()) {
@@ -31,23 +51,25 @@ export const computePortfolio = (
     marketBought: 0,
   };
 
-  for (const [_, plant] of plants.entries()) {
-    switch (plant.type) {
-      case "Consumers":
-        portfolio.consumers += plant.output.setpoint;
-        break;
-      case "RenewablePlant":
-        portfolio.renewable += plant.output.setpoint;
-        break;
-      case "Nuclear":
-        portfolio.nuclear += plant.output.setpoint;
-        break;
-      case "GasPlant":
-        portfolio.gas += plant.output.setpoint;
-        break;
-      case "Battery":
-        portfolio.storage += plant.output.setpoint;
-        break;
+  if (plants !== null) {
+    for (const [_, plant] of plants.entries()) {
+      switch (plant.type) {
+        case "Consumers":
+          portfolio.consumers += plant.output.setpoint;
+          break;
+        case "RenewablePlant":
+          portfolio.renewable += plant.output.setpoint;
+          break;
+        case "Nuclear":
+          portfolio.nuclear += plant.output.setpoint;
+          break;
+        case "GasPlant":
+          portfolio.gas += plant.output.setpoint;
+          break;
+        case "Battery":
+          portfolio.storage += plant.output.setpoint;
+          break;
+      }
     }
   }
 

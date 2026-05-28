@@ -1,6 +1,8 @@
 import type { StackSnapshot } from "./message";
 
-type plantType = (StackSnapshot extends Map<any, infer I> ? I : never)["type"];
+type plantType = (StackSnapshot extends Map<any, infer I> | null
+  ? I
+  : never)["type"];
 
 export const PLANT_ICONS: Record<plantType, string> = {
   GasPlant: "/icons/gas.svg",

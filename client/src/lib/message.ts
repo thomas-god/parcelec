@@ -97,7 +97,13 @@ const WSMessageSchema = z.discriminatedUnion("type", [
     type: z.literal("StackSnapshot"),
     plants: z
       .record(z.string(), PowerPlantRepr)
-      .transform((rec) => new Map(Object.entries(rec))),
+      .nullable()
+      .transform((rec) => {
+        if (rec === null) {
+          return null;
+        }
+        return new Map(Object.entries(rec));
+      }),
   }),
   z.object({
     type: z.literal("StackForecasts"),

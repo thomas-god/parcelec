@@ -1,7 +1,10 @@
 import { match, Pattern } from "ts-pattern";
 import type { StackSnapshot } from "./message";
 
-export const sortStack = (stack: StackSnapshot) => {
+export const sortStack = (stack: StackSnapshot): StackSnapshot => {
+  if (stack === null) {
+    return null;
+  }
   return new Map(
     [...stack.entries()].sort((a, b) =>
       match([a, b])

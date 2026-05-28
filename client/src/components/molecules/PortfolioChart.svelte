@@ -1,23 +1,6 @@
 <script lang="ts">
+  import type { PortfolioType, PortfolioVolumes } from "$lib/position";
   import * as d3 from "d3";
-
-  type PortfolioType =
-    | "consumers"
-    | "renewables"
-    | "nuclear"
-    | "gas"
-    | "storage"
-    | "market";
-
-  export type PortfolioVolumes = {
-    consumers: number;
-    renewable: number;
-    nuclear: number;
-    gas: number;
-    storage: number;
-    marketSold: number;
-    marketBought: number;
-  };
 
   interface Props {
     height?: number;
