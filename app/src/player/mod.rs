@@ -10,11 +10,14 @@ use crate::{
     game::{
         GameId,
         delivery_period::DeliveryPeriodId,
+        infra::stack_config::{
+            GameStackConfig, GameStackFixedConfig, GameStackPerPlayerBaseConfig,
+        },
         scores::{PlayerDetailedScore, PlayerScore},
     },
     market::{OrderRepr, order_book::TradeLeg},
     plants::{PlantId, PlantOutput, PowerPlantPublicRepr},
-    utils::units::Money,
+    utils::units::{Energy, EnergyCost, Money, Power},
 };
 
 pub mod infra;
@@ -55,6 +58,79 @@ pub struct PlayerResultView {
     pub score: Money,
 }
 
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub enum GameStackConfigView {
+    Fixed(GameStackFixedConfigView),
+    PerPlayer(GameStackPerPlayerBaseConfigView),
+}
+
+impl From<&GameStackConfig> for GameStackConfigView {
+    fn from(value: &GameStackConfig) -> Self {
+        match value {
+            GameStackConfig::Fixed(config) => Self::Fixed(config.into()),
+            GameStackConfig::PerPlayer(config) => Self::PerPlayer(config.into()),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, PartialOrd)]
+pub struct GameStackFixedConfigView {
+    pub gas_cost: EnergyCost,
+    pub nuclear_cost: EnergyCost,
+    pub consumers_revenues: EnergyCost,
+    pub gas_capacity: Power,
+    pub nuclear_capacity: Power,
+    pub battery_capacity: Energy,
+    pub consumers_forecasts_range: usize,
+    pub renewable_forecasts_range: usize,
+}
+
+impl From<&GameStackFixedConfig> for GameStackFixedConfigView {
+    fn from(value: &GameStackFixedConfig) -> Self {
+        Self {
+            gas_cost: value.gas_cost,
+            gas_capacity: value.gas_capacity,
+            nuclear_cost: value.nuclear_cost,
+            nuclear_capacity: value.nuclear_capacity,
+            battery_capacity: value.battery_capacity,
+            consumers_forecasts_range: value.consumers_forecasts_range,
+            consumers_revenues: value.consumers_revenues,
+            renewable_forecasts_range: value.renewable_forecasts_range,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, PartialOrd)]
+pub struct GameStackPerPlayerBaseConfigView {
+    pub gas_cost: EnergyCost,
+    pub nuclear_cost: EnergyCost,
+    pub gas_max_capacity: Power,
+    pub nuclear_max_capacity: Power,
+    pub battery_max_capacity: Energy,
+    pub consumers_max_abs_capacity: Power,
+    pub consumers_revenues: EnergyCost,
+    pub consumers_forecasts_range: usize,
+    pub renewable_max_capacity: Power,
+    pub renewable_forecasts_range: usize,
+}
+
+impl From<&GameStackPerPlayerBaseConfig> for GameStackPerPlayerBaseConfigView {
+    fn from(value: &GameStackPerPlayerBaseConfig) -> Self {
+        Self {
+            gas_cost: value.gas_cost,
+            gas_max_capacity: value.gas_max_capacity,
+            nuclear_cost: value.nuclear_cost,
+            nuclear_max_capacity: value.nuclear_max_capacity,
+            battery_max_capacity: value.battery_max_capacity,
+            consumers_forecasts_range: value.consumers_forecasts_range,
+            consumers_revenues: value.consumers_revenues,
+            consumers_max_abs_capacity: value.consumers_max_abs_capacity,
+            renewable_forecasts_range: value.renewable_forecasts_range,
+            renewable_max_capacity: value.renewable_max_capacity,
+        }
+    }
+}
+
 #[derive(Clone, Serialize, Debug)]
 #[serde(tag = "type")]
 pub enum PlayerMessage {
@@ -65,6 +141,9 @@ pub enum PlayerMessage {
     },
     TradeList {
         trades: Vec<TradeLeg>,
+    },
+    StackConfig {
+        config: GameStackConfigView,
     },
     StackSnapshot {
         plants: Option<HashMap<PlantId, PowerPlantPublicRepr>>,

@@ -67,6 +67,34 @@ const PlayerDetailedScore = z.object({
   imbalance: z.object({ volume: z.number(), pnl: z.number() }),
 });
 
+const FixedStackConfigSchema = z.object({
+  Fixed: z.object({
+    gas_cost: z.number(),
+    nuclear_cost: z.number(),
+    consumers_revenues: z.number(),
+    gas_capacity: z.number(),
+    nuclear_capacity: z.number(),
+    battery_capacity: z.number(),
+    consumers_forecasts_range: z.number(),
+    renewable_forecasts_range: z.number(),
+  }),
+});
+
+const PerPlayerStackConfigSchema = z.object({
+  PerPlayer: z.object({
+    gas_cost: z.number(),
+    gas_max_capacity: z.number(),
+    nuclear_cost: z.number(),
+    nuclear_max_capacity: z.number(),
+    battery_max_capacity: z.number().optional(),
+    consumers_revenues: z.number(),
+    consumers_max_abs_capacity: z.number(),
+    consumers_forecasts_range: z.number(),
+    renewable_max_capacity: z.number(),
+    renewable_forecasts_range: z.number(),
+  }),
+});
+
 const WSMessageSchema = z.discriminatedUnion("type", [
   z.object({
     type: z.literal("OrderBookSnapshot"),
@@ -92,6 +120,10 @@ const WSMessageSchema = z.discriminatedUnion("type", [
         execution_time: z.string().datetime(),
       }),
     ),
+  }),
+  z.object({
+    type: z.literal("StackConfig"),
+    config: z.union([FixedStackConfigSchema, PerPlayerStackConfigSchema]),
   }),
   z.object({
     type: z.literal("StackSnapshot"),
@@ -192,6 +224,10 @@ export type OrderBook = Omit<
 >;
 export type Trade = Omit<Extract<WSMessage, { type: "NewTrade" }>, "type">;
 export type OrderBookEntry = z.infer<typeof OrderBookEntrySchema>;
+export type StackConfig = Omit<
+  Extract<WSMessage, { type: "StackConfig" }>,
+  "type"
+>["config"];
 export type StackSnapshot = Omit<
   Extract<WSMessage, { type: "StackSnapshot" }>,
   "type"

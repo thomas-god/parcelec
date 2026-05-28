@@ -12,6 +12,7 @@
     type GameState,
     type StackHistory,
     type DeliveryPeriodDetailedScore,
+    type StackConfig,
   } from "$lib/message";
   import { PUBLIC_APP_URL } from "$env/static/public";
   import { goto } from "$app/navigation";
@@ -41,6 +42,7 @@
         trade.execution_time !== trade_to_remove.execution_time,
     );
   };
+  let stack_config: Option<StackConfig> = $state(none());
   let plants: StackSnapshot = $state(new Map());
   let plant_forecasts: StackForecasts = $state(new Map());
   let plant_history: StackHistory = $state(new Map());
@@ -78,6 +80,9 @@
         .with({ type: "NewTrade" }, (new_trade) => {
           trades.push(new_trade);
           trades_to_display.push(new_trade);
+        })
+        .with({ type: "StackConfig" }, ({ config }) => {
+          stack_config = some(config);
         })
         .with({ type: "StackSnapshot" }, (stack_snapshot) => {
           plants = stack_snapshot.plants;
