@@ -23,6 +23,7 @@
   import FinalScores from "../../components/molecules/FinalScores.svelte";
   import { isSome, none, some, type Option } from "$lib/Options";
   import RunningGame from "../../components/pages/game/RunningGame.svelte";
+  import CreatePlayerStack from "../../components/organisms/CreatePlayerStack.svelte";
 
   let player_name: string = $state("");
   let player_is_ready = $derived.by(() => {
@@ -193,7 +194,11 @@
             last_delivery_period={last_delivery_period_id}
           />
         {:else if game_state === "Open"}
-          <PlayersReadyList {player_name} {readiness_status} />
+          {#if plants === null && isSome(stack_config) && stack_config.value.type === "PerPlayer"}
+            <CreatePlayerStack config={stack_config.value} {sendMessage} />
+          {:else}
+            <PlayersReadyList {player_name} {readiness_status} />
+          {/if}
         {:else if game_state === "PostDelivery"}
           <div class="flex flex-col">
             <Scores {detailed_scores} current_period={delivery_period_id} />
