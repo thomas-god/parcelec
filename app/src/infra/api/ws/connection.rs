@@ -47,7 +47,7 @@ pub struct OrderRequest {
 #[derive(Deserialize, Debug)]
 pub struct PlayerStackConfigRequest {
     pub gas_capacity: Power,
-    pub nuclear_capcity: Power,
+    pub nuclear_capacity: Power,
     pub battery_capacity: Energy,
     pub renewable_capacity: Power,
 }
@@ -56,7 +56,7 @@ impl From<PlayerStackConfigRequest> for GameStackPerPlayerPlayerConfig {
     fn from(value: PlayerStackConfigRequest) -> Self {
         Self {
             gas_capacity: value.gas_capacity,
-            nuclear_capacity: value.nuclear_capcity,
+            nuclear_capacity: value.nuclear_capacity,
             battery_capacity: value.battery_capacity,
             renewable_capacity: value.renewable_capacity,
         }
@@ -147,7 +147,6 @@ pub async fn start_player_connection<MS: Market, PS: Stack>(
         stream,
         context.game.tx.clone(),
         context.market.service.clone(),
-        context.stack.map(|s| s.service.clone()),
         context.game_id.clone(),
         context.player_id.clone(),
         state,
@@ -347,11 +346,10 @@ async fn register_connection<MS: Market, PS: Stack>(
         .await;
 }
 
-async fn process_ws_messages<MS: Market, PS: Stack>(
+async fn process_ws_messages<MS: Market>(
     mut stream: SplitStream<WebSocket>,
     game_tx: Sender<GameMessage>,
     market: MS,
-    stack: Option<PS>,
     game_id: GameId,
     player_id: PlayerId,
     state: ApiState,
@@ -402,8 +400,16 @@ async fn process_ws_messages<MS: Market, PS: Stack>(
             }
             Ok(WebSocketIncomingMessage::ConnectionReady) => { /* Only for WS initialisation */ }
             Ok(WebSocketIncomingMessage::ProgramPlant(req)) => {
-                if let Some(ref stack) = stack {
-                    let _ = stack.program_setpoint(req.plant_id, req.setpoint).await;
+                let state = state.read().await;
+                if let Some(stack) = state
+                    .stack_services
+                    .get(&game_id)
+                    .and_then(|stacks| stacks.get(&player_id))
+                {
+                    let _ = stack
+                        .service
+                        .program_setpoint(req.plant_id, req.setpoint)
+                        .await;
                 }
             }
             Err(err) => tracing::error!("{err:?}"),
