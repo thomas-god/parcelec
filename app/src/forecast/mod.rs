@@ -123,7 +123,8 @@ impl NormalizedForecastValue {
             deviation: round_to_nearest(
                 (value * self.deviation) as i32,
                 constants::SETPOINT_BASE_VALUE,
-            ) as u32,
+            )
+            .abs() as u32,
         }
     }
 }
@@ -224,6 +225,17 @@ mod tests {
         let forecast = normalized_forecast.as_forecast(capacity);
 
         assert_eq!(forecast.value, 500);
+        assert_eq!(forecast.deviation, 50);
+    }
+
+    #[test]
+    fn test_normalized_forecast_to_forecast_negative_values() {
+        let normalized_forecast = NormalizedForecastValue::try_new(0.5, 0.1).unwrap();
+        let capacity = -1000;
+
+        let forecast = normalized_forecast.as_forecast(capacity);
+
+        assert_eq!(forecast.value, -500);
         assert_eq!(forecast.deviation, 50);
     }
 
