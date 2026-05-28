@@ -407,6 +407,7 @@ impl<MS: Market, PC: PlayerConnections> GameActor<MS, PC> {
         GameContext {
             id: self.config.id.clone(),
             name: self.config.name.clone(),
+            stack: self.config.stack_config.clone(),
             last_delivery_period: DeliveryPeriodId::from(self.config.number_of_delivery_periods),
             tx: self.tx.clone(),
             state_rx: self.state_watch.subscribe(),

@@ -1,14 +1,15 @@
 use axum::{Json, extract::State, response::IntoResponse};
 use serde::{Deserialize, Serialize};
 
-use crate::game::GameState;
+use crate::game::{GameState, infra::stack_config::GameStackConfig};
 
 use super::ApiState;
 
-#[derive(Debug, Serialize, Deserialize, PartialEq, PartialOrd, Eq, Ord)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, PartialOrd)]
 struct GameView {
     id: String,
     name: String,
+    stack: GameStackConfig,
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
@@ -28,6 +29,7 @@ pub async fn list_games(State(state): State<ApiState>) -> impl IntoResponse {
                     return Some(GameView {
                         id: game.id.to_string(),
                         name: game.name.to_string(),
+                        stack: game.stack.clone(),
                     });
                 }
                 None
@@ -39,9 +41,16 @@ pub async fn list_games(State(state): State<ApiState>) -> impl IntoResponse {
 #[cfg(test)]
 mod test_api_list_games {
     use crate::{
-        game::{GameContext, GameId, GameName, delivery_period::DeliveryPeriodId},
+        game::{
+            GameContext, GameId, GameName,
+            delivery_period::DeliveryPeriodId,
+            infra::stack_config::{GameStackConfig, GameStackFixedConfig},
+        },
         infra::api::state::AppState,
-        utils::config::AppConfig,
+        utils::{
+            config::AppConfig,
+            units::{Energy, EnergyCost, Power},
+        },
     };
 
     use super::*;
@@ -64,12 +73,28 @@ mod test_api_list_games {
         }))
     }
 
+    fn stack_config() -> GameStackConfig {
+        GameStackConfig::Fixed(GameStackFixedConfig {
+            battery_capacity: Energy::from(300),
+            consumers_forecasts: vec![],
+            consumers_forecasts_range: 2,
+            consumers_revenues: EnergyCost::from(50),
+            gas_capacity: Power::from(500),
+            gas_cost: EnergyCost::from(80),
+            nuclear_capacity: Power::from(1200),
+            nuclear_cost: EnergyCost::from(35),
+            renewable_forecasts: vec![],
+            renewable_forecasts_range: 2,
+        })
+    }
+
     fn start_game(id: GameId, name: GameName, state: GameState) -> GameContext {
         let (tx, _) = mpsc::channel(16);
         let (_, state_rx) = watch::channel(state);
         GameContext {
             id,
             name,
+            stack: stack_config(),
             last_delivery_period: DeliveryPeriodId::from(3),
             tx,
             state_rx,
@@ -113,20 +138,17 @@ mod test_api_list_games {
             .await
             .unwrap()
             .to_bytes();
-        let mut body: ListGamesResponse = serde_json::from_slice(&body).unwrap();
-        body.games.sort();
-        let mut expected_games = vec![
-            GameView {
-                id: 0.to_string(),
-                name: 0.to_string(),
-            },
-            GameView {
-                id: 1.to_string(),
-                name: 1.to_string(),
-            },
-        ];
-        expected_games.sort();
-        assert_eq!(body.games, expected_games);
+        let body: ListGamesResponse = serde_json::from_slice(&body).unwrap();
+        assert!(body.games.contains(&GameView {
+            id: 0.to_string(),
+            name: 0.to_string(),
+            stack: stack_config(),
+        }));
+        assert!(body.games.contains(&GameView {
+            id: 1.to_string(),
+            name: 1.to_string(),
+            stack: stack_config(),
+        },));
     }
 
     #[tokio::test]
@@ -167,7 +189,8 @@ mod test_api_list_games {
             ListGamesResponse {
                 games: vec![GameView {
                     id: GameState::Open.to_string(),
-                    name: GameState::Open.to_string()
+                    name: GameState::Open.to_string(),
+                    stack: stack_config()
                 },]
             }
         );

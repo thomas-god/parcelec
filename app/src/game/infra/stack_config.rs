@@ -14,13 +14,13 @@ use crate::{
     utils::units::{Energy, EnergyCost, Power},
 };
 
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, PartialOrd)]
 pub enum GameStackConfig {
     Fixed(GameStackFixedConfig),
     PerPlayer(GameStackPerPlayerBaseConfig),
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, PartialOrd)]
 pub struct GameStackFixedConfig {
     pub gas_cost: EnergyCost,
     pub nuclear_cost: EnergyCost,
@@ -70,7 +70,7 @@ impl GameStackFixedConfig {
     }
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, PartialOrd)]
 pub struct GameStackPerPlayerBaseConfig {
     pub gas_cost: EnergyCost,
     pub nuclear_cost: EnergyCost,

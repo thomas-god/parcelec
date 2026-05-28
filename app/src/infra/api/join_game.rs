@@ -91,6 +91,7 @@ pub async fn join_game(
 #[cfg(test)]
 mod test_api_join_game {
     use crate::game::delivery_period::DeliveryPeriodId;
+    use crate::game::infra::stack_config::{GameStackConfig, GameStackFixedConfig};
     use crate::game::{
         GameContext, GameId, GameMessage, GameName, GameState, RegisterPlayerResponse,
     };
@@ -100,6 +101,7 @@ mod test_api_join_game {
     use crate::plants::infra::{StackContext, StackState};
     use crate::player::PlayerId;
     use crate::utils::config::AppConfig;
+    use crate::utils::units::{Energy, EnergyCost, Power};
     use axum::Router;
     use axum::body::Body;
     use axum::http::{self, Request, StatusCode};
@@ -123,6 +125,21 @@ mod test_api_join_game {
         }))
     }
 
+    fn stack_config() -> GameStackConfig {
+        GameStackConfig::Fixed(GameStackFixedConfig {
+            battery_capacity: Energy::from(300),
+            consumers_forecasts: vec![],
+            consumers_forecasts_range: 2,
+            consumers_revenues: EnergyCost::from(50),
+            gas_capacity: Power::from(500),
+            gas_cost: EnergyCost::from(80),
+            nuclear_capacity: Power::from(1200),
+            nuclear_cost: EnergyCost::from(35),
+            renewable_forecasts: vec![],
+            renewable_forecasts_range: 2,
+        })
+    }
+
     fn start_game(id: GameId, state: GameState) -> (GameContext, mpsc::Receiver<GameMessage>) {
         let (tx, rx) = mpsc::channel(16);
         let (_, state_rx) = watch::channel(state);
@@ -130,6 +147,7 @@ mod test_api_join_game {
             GameContext {
                 id,
                 name: GameName::default(),
+                stack: stack_config(),
                 last_delivery_period: DeliveryPeriodId::from(3),
                 tx,
                 state_rx,

@@ -59,9 +59,29 @@ mod tests {
 
     use crate::{
         AppConfig,
-        game::{GameContext, GameId, GameName, GameState, delivery_period::DeliveryPeriodId},
+        game::{
+            GameContext, GameId, GameName, GameState,
+            delivery_period::DeliveryPeriodId,
+            infra::stack_config::{GameStackConfig, GameStackFixedConfig},
+        },
         infra::api::{build_router, state::new_api_state},
+        utils::units::{Energy, EnergyCost, Power},
     };
+
+    fn stack_config() -> GameStackConfig {
+        GameStackConfig::Fixed(GameStackFixedConfig {
+            battery_capacity: Energy::from(300),
+            consumers_forecasts: vec![],
+            consumers_forecasts_range: 2,
+            consumers_revenues: EnergyCost::from(50),
+            gas_capacity: Power::from(500),
+            gas_cost: EnergyCost::from(80),
+            nuclear_capacity: Power::from(1200),
+            nuclear_cost: EnergyCost::from(35),
+            renewable_forecasts: vec![],
+            renewable_forecasts_range: 2,
+        })
+    }
 
     fn make_game_context(id: &str, game_state: GameState) -> (GameId, GameContext) {
         let game_id = GameId::from(id);
@@ -70,6 +90,7 @@ mod tests {
         let ctx = GameContext {
             id: game_id.clone(),
             name: GameName::new("test-game".to_string()).unwrap(),
+            stack: stack_config(),
             last_delivery_period: DeliveryPeriodId::from(4),
             tx,
             state_rx,

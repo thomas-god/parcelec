@@ -12,7 +12,10 @@ use tokio::sync::{
 };
 
 use crate::{
-    game::{infra::stack_config::GameStackPerPlayerPlayerConfig, scores::PlayerDetailedScore},
+    game::{
+        infra::stack_config::{GameStackConfig, GameStackPerPlayerPlayerConfig},
+        scores::PlayerDetailedScore,
+    },
     plants::infra::{StackContext, StackService},
     player::{PlayerId, PlayerName, PlayerResultView},
 };
@@ -438,6 +441,7 @@ pub enum RegisterPlayerError {
 pub struct GameContext {
     pub id: GameId,
     pub name: GameName,
+    pub stack: GameStackConfig,
     pub last_delivery_period: DeliveryPeriodId,
     pub tx: mpsc::Sender<GameMessage>,
     pub state_rx: watch::Receiver<GameState>,
