@@ -88,7 +88,7 @@
           nuclear_max_capacity: Number(nuclear_max_capacity),
           battery_max_capacity: Number(battery_max_charge),
           consumers_revenues: Number(consumers_revenues),
-          consumers_capacity: Number(consumers_capacity),
+          consumers_capacity: -Number(consumers_capacity),
           consumers_forecasts_range: Number(number_of_periods),
           renewable_max_capacity: Number(renewable_max_capacity),
           renewable_forecasts_range: Number(number_of_periods),
