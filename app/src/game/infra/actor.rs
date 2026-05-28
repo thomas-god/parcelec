@@ -19,7 +19,7 @@ use crate::{
         scores::{PlayerDetailedScore, PlayerResult, PlayerScore, compute_game_rankings},
     },
     plants::{
-        StackPlants,
+        Stack, StackPlants,
         infra::{StackActor, StackState},
     },
 };
@@ -271,11 +271,39 @@ impl<MS: Market, PC: PlayerConnections> GameActor<MS, PC> {
         let stack = self
             .create_player_stack(&player, base_config.generate_plants(player_config))
             .await;
-        self.stacks_contexts.insert(player, stack.clone());
+        self.stacks_contexts.insert(player.clone(), stack.clone());
+
+        self.send_stack_updates_to_player(&player, &stack).await;
 
         let _ = tx_back.send(Ok(stack));
 
         vec![]
+    }
+
+    async fn send_stack_updates_to_player(
+        &self,
+        player: &PlayerId,
+        stack: &StackContext<StackService>,
+    ) {
+        if let Ok(snapshot) = stack.service.get_snapshot().await {
+            self.players_connections
+                .send_to_player(
+                    &self.config.id,
+                    &player,
+                    PlayerMessage::StackSnapshot {
+                        plants: Some(snapshot),
+                    },
+                )
+                .await;
+        }
+        let forecasts = stack.service.get_forecasts().await;
+        self.players_connections
+            .send_to_player(
+                &self.config.id,
+                &player,
+                PlayerMessage::StackForecasts { forecasts },
+            )
+            .await;
     }
 
     fn start_delivery_period_tasks(&mut self, id: DeliveryPeriodId) {
@@ -891,6 +919,36 @@ mod test_game_actor_process_game_messages {
         let Ok(Ok(_stack)) = rx.await else {
             unreachable!("Should have return the created stack's context")
         };
+    }
+
+    #[tokio::test]
+    async fn test_register_player_stack_config_sends_snapshot_and_forecasts() {
+        let (mut game, mut comms) = build_game_with_per_player_stack();
+
+        let id = register_player(&mut game, "p1").await;
+
+        let (tx_back, _rx) = oneshot::channel();
+        let msg = GameMessage::RegisterPlayerStackConfig {
+            player: id.clone(),
+            config: per_player_player_config(),
+            tx_back,
+        };
+
+        game.process_message(msg).await;
+
+        let Some((player_id, PlayerMessage::StackSnapshot { plants })) =
+            comms.rx_player.recv().await
+        else {
+            unreachable!("Should have received a StackSnapshot message")
+        };
+        assert_eq!(player_id, id);
+        assert!(plants.is_some());
+
+        let Some((player_id, PlayerMessage::StackForecasts { .. })) = comms.rx_player.recv().await
+        else {
+            unreachable!("Should have received a StackForecasts message")
+        };
+        assert_eq!(player_id, id);
     }
 
     #[tokio::test]
