@@ -21,7 +21,7 @@
   import Header from "../../components/molecules/Header.svelte";
   import PlayersReadyList from "../../components/molecules/PlayersReadyList.svelte";
   import FinalScores from "../../components/molecules/FinalScores.svelte";
-  import { none, some, type Option } from "$lib/Options";
+  import { isSome, none, some, type Option } from "$lib/Options";
   import RunningGame from "../../components/pages/game/RunningGame.svelte";
 
   let player_name: string = $state("");
@@ -56,7 +56,9 @@
   );
   let final_scores: GameResults = $state(new Array());
   let readiness_status: ReadinessStatus = $state(new SvelteMap());
-
+  let player_readiness: Option<boolean> = $derived(
+    plants === null ? none() : some(player_is_ready),
+  );
   const connect = () => {
     // Player and game IDs are stored as cookies and passed when creating the ws connection
     const socket = new WebSocket(`${PUBLIC_APP_URL}/ws`);
@@ -168,7 +170,7 @@
     <div class="flex flex-col items-stretch">
       <Header
         {game_state}
-        {player_is_ready}
+        player_is_ready={player_readiness}
         {make_player_ready}
         {delivery_period_end}
         periods={{

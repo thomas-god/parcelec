@@ -13,7 +13,7 @@
     make_player_ready,
   }: {
     game_state: GameState;
-    player_is_ready: boolean;
+    player_is_ready: Option<boolean>;
     make_player_ready: () => void;
     delivery_period_end: Option<Date>;
     periods: Periods;
@@ -81,25 +81,24 @@
       </div>
     {/if}
     {#if game_state !== "Ended"}
-      {#if !player_is_ready}
-        <button
-          class="btn btn-ghost @sm:btn-md btn-md"
-          onclick={make_player_ready}
-        >
-          {ctaBtnName}
-          <img
-            src="/icons/arrow-next.svg"
-            alt="Next arrow icon"
-            class="@sm:w-6 @sm:h-6 w-4 h-4 inline"
-          />
-        </button>
-      {:else}
-        <div class="italic opacity-80 flex flex-row items-center gap-1">
-          <div>
-            {width > 384 ? "En attente des autres joueurs" : "En attente"}
+      {#if isSome(player_is_ready)}
+        {#if !player_is_ready.value}
+          <button class="btn @sm:btn-md btn-md" onclick={make_player_ready}>
+            {ctaBtnName}
+            <img
+              src="/icons/arrow-next.svg"
+              alt="Next arrow icon"
+              class="@sm:w-6 @sm:h-6 w-4 h-4 inline"
+            />
+          </button>
+        {:else}
+          <div class="italic opacity-80 flex flex-row items-center gap-1">
+            <div>
+              {width > 384 ? "En attente des autres joueurs" : "En attente"}
+            </div>
+            <div class="loading loading-ring @ms:loading-sm loading-xs"></div>
           </div>
-          <div class="loading loading-ring @ms:loading-sm loading-xs"></div>
-        </div>
+        {/if}
       {/if}
     {/if}
   </div>
