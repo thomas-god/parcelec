@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     constants::DEFAULT_PERIOD_DURATION_SECONDS,
-    forecast::generate_random_forecasts_shape,
+    forecast::{generate_random_forecasts, generate_random_forecasts_shape},
     game::{
         GameActor, GameId, GameName,
         infra::{
@@ -23,6 +23,19 @@ use crate::{
 };
 
 use super::ApiState;
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct GameStackFixedConfigRequest {
+    pub gas_cost: EnergyCost,
+    pub nuclear_cost: EnergyCost,
+    pub consumers_revenues: EnergyCost,
+    pub gas_capacity: Power,
+    pub nuclear_capacity: Power,
+    pub battery_capacity: Energy,
+    pub consumers_capacity: Power,
+    pub consumers_forecasts_range: usize,
+    pub renewable_capacity: Power,
+    pub renewable_forecasts_range: usize,
+}
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct GameStackPerPlayerBaseConfigRequest {
@@ -40,14 +53,31 @@ pub struct GameStackPerPlayerBaseConfigRequest {
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub enum GameStackConfigRequest {
-    Fixed(GameStackFixedConfig),
+    Fixed(GameStackFixedConfigRequest),
     PerPlayer(GameStackPerPlayerBaseConfigRequest),
 }
 
 impl From<GameStackConfigRequest> for GameStackConfig {
     fn from(value: GameStackConfigRequest) -> Self {
         match value {
-            GameStackConfigRequest::Fixed(config) => GameStackConfig::Fixed(config),
+            GameStackConfigRequest::Fixed(config) => GameStackConfig::Fixed(GameStackFixedConfig {
+                gas_cost: config.gas_cost,
+                nuclear_cost: config.nuclear_cost,
+                consumers_revenues: config.consumers_revenues,
+                gas_capacity: config.gas_capacity,
+                nuclear_capacity: config.nuclear_capacity,
+                battery_capacity: config.battery_capacity,
+                consumers_forecasts: generate_random_forecasts(
+                    config.consumers_forecasts_range,
+                    config.consumers_capacity,
+                ),
+                consumers_forecasts_range: config.consumers_forecasts_range,
+                renewable_forecasts: generate_random_forecasts(
+                    config.renewable_forecasts_range,
+                    config.renewable_capacity,
+                ),
+                renewable_forecasts_range: config.renewable_forecasts_range,
+            }),
             GameStackConfigRequest::PerPlayer(config) => {
                 GameStackConfig::PerPlayer(GameStackPerPlayerBaseConfig {
                     gas_cost: config.gas_cost,
@@ -58,9 +88,13 @@ impl From<GameStackConfigRequest> for GameStackConfig {
                     battery_max_capacity: config.battery_max_capacity,
                     consumers_capacity: config.consumers_capacity,
                     renewable_max_capacity: config.renewable_max_capacity,
-                    consumers_forecasts: generate_random_forecasts_shape(10),
+                    consumers_forecasts: generate_random_forecasts_shape(
+                        config.consumers_forecasts_range,
+                    ),
                     consumers_forecasts_range: config.consumers_forecasts_range,
-                    renewable_forecasts: generate_random_forecasts_shape(10),
+                    renewable_forecasts: generate_random_forecasts_shape(
+                        config.renewable_forecasts_range,
+                    ),
                     renewable_forecasts_range: config.renewable_forecasts_range,
                 })
             }

@@ -138,6 +138,13 @@ pub fn generate_random_forecasts_shape(len: usize) -> Vec<NormalizedForecastValu
         .collect()
 }
 
+pub fn generate_random_forecasts(len: usize, capacity: Power) -> Vec<ForecastValue> {
+    generate_random_forecasts_shape(len)
+        .iter()
+        .map(|f| f.as_forecast(capacity.into()))
+        .collect()
+}
+
 #[cfg(test)]
 mod tests {
     #![allow(unused_comparisons)]

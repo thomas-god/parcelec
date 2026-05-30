@@ -2,14 +2,13 @@
   import { goto } from "$app/navigation";
   import { PUBLIC_APP_URL } from "$env/static/public";
   import { isNone, isSome, none, type Option } from "$lib/Options";
-  import NumericInput from "../../../components/atoms/NumericInput.svelte";
   import CreateFixedStack from "../../../components/organisms/CreateFixedStackConfigForm.svelte";
   import CreatePerPlayerStack from "../../../components/organisms/CreatePerPlayerStackConfigForm.svelte";
 
   let game_name = $state("");
-  let period_duration_seconds = $state("120");
-  let number_of_periods = $state("6");
-  let stack_type: "fixed" | "customizable" = $state("fixed");
+  let period_duration_seconds = $state(120);
+  let number_of_periods = $state(6);
+  let stack_type: "fixed" | "customizable" = $state("customizable");
   let fixed_stack_payload: Option<any> = $state(none());
   let per_player_stack_payload: Option<any> = $state(none());
   let apiError = $state("");
@@ -17,13 +16,22 @@
   let isGameNameValid = $derived(game_name && game_name.trim() !== "");
 
   let isPeriodDurationValid = $derived(
-    period_duration_seconds !== "" &&
-      !isNaN(Number(period_duration_seconds)) &&
+    !isNaN(Number(period_duration_seconds)) &&
       Number(period_duration_seconds) >= 30,
   );
 
+  let payloadValid = $derived.by(() => {
+    if (stack_type === "fixed") {
+      return isSome(fixed_stack_payload);
+    }
+    if (stack_type === "customizable") {
+      return isSome(per_player_stack_payload);
+    }
+    return false;
+  });
+
   let isFormValid = $derived(
-    isGameNameValid && isPeriodDurationValid && isSome(fixed_stack_payload),
+    isGameNameValid && isPeriodDurationValid && payloadValid,
   );
 
   const createGame = async () => {
@@ -67,69 +75,90 @@
 </script>
 
 <div class="flex flex-row justify-center w-full">
-  <div class="card w-86 mx-6 mt-6 bg-base-100 shadow-sm">
+  <div class="card mx-6 mt-6 bg-base-100 shadow-sm">
     <div class="card-body">
       <fieldset class="fieldset bg-base-100">
         <legend class="fieldset-legend text-base">Créer une partie</legend>
 
-        <label class="fieldset-label flex-col"
-          ><div class="self-start text-sm">Nom de la partie (requis)</div>
+        <label class="fieldset"
+          ><div class="text-sm">Nom de la partie</div>
           <input
             type="text"
-            class="input validator text-base"
+            class="input input-sm validator text-base"
             required
             bind:value={game_name}
           />
         </label>
 
-        <div class="divider divider-start text-sm font-semibold">Options</div>
+        <div class="divider divider-start text-sm font-semibold">
+          Durée de la partie
+        </div>
 
         <div class="join join-vertical bg-base-100">
-          <div class="collapse collapse-arrow join-item border-base-300 border">
-            <input type="checkbox" />
-            <div class="collapse-title font-semibold">Général</div>
-            <div class="collapse-content text-sm">
-              <NumericInput
-                title="Nombre de périodes"
-                error_message="Il doit y avoir au moins une période"
-                min_value="1"
-                bind:value={number_of_periods}
+          <div class="flex flex-row flex-wrap gap-3">
+            <label class="fieldset-label flex-col items-start shrink">
+              <div class="text-sm">Périodes</div>
+              <input
+                type="number"
+                min={1}
+                class="input input-sm validator text-base"
+                bind:value={
+                  () => number_of_periods,
+                  (v) => (number_of_periods = Number(v))
+                }
+                required
               />
-              <NumericInput
-                title="Durée des périodes (en secondes)"
-                error_message="La durée doit être d'au moins 30 secondes"
-                min_value="30"
-                bind:value={period_duration_seconds}
+            </label>
+
+            <label class="fieldset-label flex-col items-start shrink">
+              <div class="text-sm">Durée des périodes (s)</div>
+              <input
+                type="number"
+                min={30}
+                class="input input-sm validator text-base"
+                bind:value={
+                  () => period_duration_seconds,
+                  (v) => (period_duration_seconds = Number(v))
+                }
+                required
               />
-            </div>
+            </label>
           </div>
+
           <div class="divider divider-start text-sm font-semibold">
             Centrales et clients
           </div>
 
-          <div>
-            <label class="fieldset-label flex-col"
-              ><div class="self-start text-sm">Type de parc</div>
-              <select class="select" bind:value={stack_type}>
+          <div class="w-full">
+            <label class="fieldset-label flex-row items-center flex-wrap gap-2">
+              <div class="text-sm shrink-0">Type de parc</div>
+              <select class="select select-sm max-w-50" bind:value={stack_type}>
                 <option value="fixed">Fixe</option>
-                <!-- TODO uncomment to enable -->
-                <!-- <option value="customizable">Paramétrable</option> -->
+                <option value="customizable">Paramétrable</option>
               </select>
             </label>
+
             {#if stack_type === "fixed"}
-              <p class="p-1">
+              <p class="stack-type-legend">
                 Avec un parc <i>fixe</i> tous les joueurs ont les mêmes configurations
-                (puissances, couts) de centrales et de clients.
+                (puissances, coûts) de centrales et de clients, définies à la création
+                de la partie.
               </p>
               <CreateFixedStack bind:payload={fixed_stack_payload} />
             {:else if stack_type === "customizable"}
-              <p class="p-1">
+              <p class="stack-type-legend">
                 Avec un parc <i>paramétrable</i>, les joueurs peuvent construire
                 leur parc en choissant les différentes puissances installées
-                avant de commencer la partie. Les couts restent les mêmes pour
-                tous les joueurs.
+                avant de commencer la partie. <br /> A la création de la partie
+                vous pouvez paramétrer les coûts (communs à tous les joueurs) et
+                les capacités maximales que les joueurs peuvent choisir par
+                technologie. <br />Les clients (coûts et capacité) restent les
+                mêmes pour tous les joueurs.
               </p>
-              <CreatePerPlayerStack bind:payload={per_player_stack_payload} />
+              <CreatePerPlayerStack
+                bind:payload={per_player_stack_payload}
+                {number_of_periods}
+              />
             {/if}
           </div>
 
@@ -151,3 +180,11 @@
     </div>
   </div>
 </div>
+
+<style>
+  .stack-type-legend {
+    max-width: 36rem;
+    padding-top: 8px;
+    color: color-mix(in oklab, var(--color-base-content) 80%, transparent);
+  }
+</style>

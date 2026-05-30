@@ -1,10 +1,10 @@
 import type { StackSnapshot } from "./message";
 
-type plantType = (StackSnapshot extends Map<any, infer I> | null
+export type PlantType = (StackSnapshot extends Map<any, infer I> | null
   ? I
   : never)["type"];
 
-export const PLANT_ICONS: Record<plantType, string> = {
+export const PLANT_ICONS: Record<PlantType, string> = {
   GasPlant: "/icons/gas.svg",
   RenewablePlant: "/icons/renewable.svg",
   Consumers: "/icons/consumers.svg",
@@ -12,7 +12,7 @@ export const PLANT_ICONS: Record<plantType, string> = {
   Nuclear: "/icons/nuclear.svg",
 };
 
-export const PLANT_NAMES: Record<plantType, string> = {
+export const PLANT_NAMES: Record<PlantType, string> = {
   GasPlant: "Centrale gaz",
   RenewablePlant: "Renouvelables",
   Consumers: "Clients",
