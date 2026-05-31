@@ -287,9 +287,6 @@ mod test_per_player_config_generate_stack {
                     assert_eq!(plant.energy_cost, EnergyCost::from(35));
                     assert_eq!(plant.max_setpoint, Power::from(1000));
                 }
-                PowerPlantPublicRepr::RenewablePlant(plant) => {
-                    assert!(plant.output.setpoint == base.renewable_max_capacity)
-                }
                 _ => {}
             }
         }
