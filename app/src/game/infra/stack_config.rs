@@ -3,12 +3,11 @@ use std::{cmp::min, collections::HashMap};
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    forecast::{ForecastValue, NormalizedForecastValue},
     plants::{
         PlantId, PowerPlant, StackPlants,
         technologies::{
-            battery::Battery, consumers::Consumers, gas_plant::GasPlant, nuclear::NuclearPlant,
-            renewable::RenewablePlant,
+            PowerShape, battery::Battery, consumers::Consumers, gas_plant::GasPlant,
+            nuclear::NuclearPlant, renewable::RenewablePlant,
         },
     },
     utils::units::{Energy, EnergyCost, Power},
@@ -28,9 +27,11 @@ pub struct GameStackFixedConfig {
     pub gas_capacity: Power,
     pub nuclear_capacity: Power,
     pub battery_capacity: Energy,
-    pub consumers_forecasts: Vec<ForecastValue>,
+    pub consumers_power_shape: PowerShape,
+    pub consumers_capacity: Power,
     pub consumers_forecasts_range: usize,
-    pub renewable_forecasts: Vec<ForecastValue>,
+    pub renewable_power_shape: PowerShape,
+    pub renewable_capacity: Power,
     pub renewable_forecasts_range: usize,
 }
 
@@ -53,7 +54,8 @@ impl GameStackFixedConfig {
         stack.insert(
             PlantId::default(),
             Box::new(RenewablePlant::new(
-                self.renewable_forecasts.clone(),
+                self.renewable_power_shape.clone(),
+                self.renewable_capacity,
                 self.renewable_forecasts_range,
             )),
         );
@@ -61,7 +63,8 @@ impl GameStackFixedConfig {
             PlantId::default(),
             Box::new(Consumers::new(
                 self.consumers_revenues,
-                self.consumers_forecasts.clone(),
+                self.consumers_power_shape.clone(),
+                self.consumers_capacity,
                 self.consumers_forecasts_range,
             )),
         );
@@ -79,10 +82,10 @@ pub struct GameStackPerPlayerBaseConfig {
     pub nuclear_max_capacity: Power,
     pub battery_max_capacity: Energy,
     pub consumers_capacity: Power,
-    pub consumers_forecasts: Vec<NormalizedForecastValue>,
+    pub consumers_power_shape: PowerShape,
     pub consumers_forecasts_range: usize,
     pub renewable_max_capacity: Power,
-    pub renewable_forecasts: Vec<NormalizedForecastValue>,
+    pub renewable_power_shape: PowerShape,
     pub renewable_forecasts_range: usize,
 }
 
@@ -126,10 +129,8 @@ impl GameStackPerPlayerBaseConfig {
         stack.insert(
             PlantId::default(),
             Box::new(RenewablePlant::new(
-                self.renewable_forecasts
-                    .iter()
-                    .map(|f| f.as_forecast(capacity.into()))
-                    .collect(),
+                self.renewable_power_shape.clone(),
+                capacity,
                 self.consumers_forecasts_range,
             )),
         );
@@ -138,10 +139,8 @@ impl GameStackPerPlayerBaseConfig {
             PlantId::default(),
             Box::new(Consumers::new(
                 self.consumers_revenues,
-                self.consumers_forecasts
-                    .iter()
-                    .map(|f| f.as_forecast(self.consumers_capacity.into()))
-                    .collect(),
+                self.consumers_power_shape.clone(),
+                self.consumers_capacity,
                 self.consumers_forecasts_range,
             )),
         );
@@ -166,9 +165,11 @@ mod test_fixed_config_generate_stack {
             nuclear_capacity: Power::from(1000),
             battery_capacity: Energy::from(200),
             consumers_revenues: EnergyCost::from(60),
-            consumers_forecasts: vec![],
+            consumers_capacity: Power::from(-1000),
+            consumers_power_shape: vec![].into(),
             consumers_forecasts_range: 3,
-            renewable_forecasts: vec![],
+            renewable_power_shape: vec![].into(),
+            renewable_capacity: Power::from(300),
             renewable_forecasts_range: 3,
         };
 
@@ -214,10 +215,10 @@ mod test_per_player_config_generate_stack {
             nuclear_max_capacity: Power::from(1000),
             battery_max_capacity: Energy::from(400),
             consumers_capacity: Power::from(-800),
-            consumers_forecasts: vec![NormalizedForecastValue::try_new(1., 0.).unwrap()],
+            consumers_power_shape: vec![1.].into(),
             consumers_forecasts_range: 3,
             renewable_max_capacity: Power::from(600),
-            renewable_forecasts: vec![NormalizedForecastValue::try_new(1., 0.).unwrap()],
+            renewable_power_shape: vec![1.].into(),
             renewable_forecasts_range: 3,
         }
     }

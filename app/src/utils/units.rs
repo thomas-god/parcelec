@@ -3,24 +3,13 @@ use std::ops::{Div, Mul};
 use derive_more::{Add, Display, Div, From, Into, Mul, Neg, Sub, SubAssign};
 use serde::{Deserialize, Serialize};
 
+use crate::{constants::SETPOINT_BASE_VALUE, forecast::round_to_nearest};
+
 /// Represent a arbitrary unit of Power (like watt) in generator convetion, i.e.
 /// power < 0 : means power is leaving the system (consumers, charge of storage)
 /// power > 0 : means power is entering the system (power plant output, discharge of storage)
 #[derive(
-    Debug,
-    From,
-    Into,
-    PartialEq,
-    PartialOrd,
-    Ord,
-    Eq,
-    Mul,
-    Add,
-    Serialize,
-    Deserialize,
-    Clone,
-    Copy,
-    Neg,
+    Debug, From, Into, PartialEq, PartialOrd, Ord, Eq, Add, Serialize, Deserialize, Clone, Copy, Neg,
 )]
 pub struct Power(i32);
 
@@ -32,6 +21,22 @@ impl Mul<Time> for Power {
     }
 }
 
+impl Mul<f32> for Power {
+    type Output = Power;
+
+    fn mul(self, rhs: f32) -> Self::Output {
+        Power((self.0 as f32 * rhs) as i32)
+    }
+}
+
+impl Mul<&f32> for Power {
+    type Output = Power;
+
+    fn mul(self, rhs: &f32) -> Self::Output {
+        self * *rhs
+    }
+}
+
 impl Default for Power {
     fn default() -> Self {
         NO_POWER
@@ -39,6 +44,18 @@ impl Default for Power {
 }
 
 impl Power {
+    pub fn as_i32(&self) -> i32 {
+        self.0
+    }
+
+    pub fn as_f32(&self) -> f32 {
+        self.0 as f32
+    }
+
+    pub fn round_to_nearest(&self) -> Power {
+        Self(round_to_nearest(self.0, SETPOINT_BASE_VALUE))
+    }
+
     pub fn abs(&self) -> Self {
         Self(self.0.abs())
     }

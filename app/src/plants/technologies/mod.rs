@@ -1,7 +1,11 @@
+use rand::random_range;
+use serde::{Deserialize, Serialize};
+
 use crate::{
-    forecast::{Forecast, ForecastValue},
+    constants::SETPOINT_BASE_VALUE,
+    forecast::{Forecast, ForecastValue, round_to_nearest},
     game::delivery_period::DeliveryPeriodId,
-    utils::units::Power,
+    utils::units::{NO_POWER, Power},
 };
 
 pub mod battery;
@@ -10,21 +14,38 @@ pub mod gas_plant;
 pub mod nuclear;
 pub mod renewable;
 
-pub struct ForecastsBasedPlant {
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, PartialOrd)]
+pub struct PowerShape(Vec<f32>);
+
+impl From<Vec<f32>> for PowerShape {
+    fn from(value: Vec<f32>) -> Self {
+        Self(value)
+    }
+}
+
+impl PowerShape {
+    pub fn random(len: usize) -> PowerShape {
+        PowerShape((0..len).map(|_| random_range((0.)..=1.)).collect())
+    }
+}
+
+pub struct ShapeBasedPlant {
     period: usize,
-    base_forecasts: Vec<ForecastValue>,
+    shape: PowerShape,
+    capacity: Power,
     forecasts_range: usize,
 
     setpoint: Power,
     forecasts: Vec<Forecast>,
 }
 
-impl ForecastsBasedPlant {
-    pub fn new(base_forecasts: Vec<ForecastValue>, forecasts_range: usize) -> Self {
+impl ShapeBasedPlant {
+    pub fn new(shape: PowerShape, capacity: Power, forecasts_range: usize) -> Self {
         let mut res = Self {
             period: 0,
             forecasts_range,
-            base_forecasts,
+            shape,
+            capacity,
             setpoint: Power::from(0),
             forecasts: vec![],
         };
@@ -49,136 +70,232 @@ impl ForecastsBasedPlant {
     }
 
     fn compute_setpoint(&self) -> Power {
-        self.base_forecasts
-            .get(self.period - 1)
-            .unwrap_or(&ForecastValue::default())
-            .forecast()
+        if self.shape.0.is_empty() {
+            return NO_POWER;
+        }
+        let Some(value) = self.shape.0.get((self.period - 1) % self.shape.0.len()) else {
+            return NO_POWER;
+        };
+        (self.capacity * value).round_to_nearest()
     }
 
     fn compute_forecasts(&self) -> Vec<Forecast> {
+        // TODO: compute next forecast from previous forecast for this period ?
         let mut forecasts = vec![];
         for idx in 1..=self.forecasts_range {
-            let forecast = if self.base_forecasts.is_empty() {
-                ForecastValue::default()
+            let forecast = if self.shape.0.is_empty() {
+                NO_POWER
             } else {
-                *self
-                    .base_forecasts
-                    .get((self.period - 1 + idx) % self.base_forecasts.len())
-                    .unwrap()
+                self.capacity
+                    * self
+                        .shape
+                        .0
+                        .get((self.period - 1 + idx) % self.shape.0.len())
+                        .unwrap()
             };
             forecasts.push(Forecast {
                 period: DeliveryPeriodId::from(self.period + idx),
-                value: forecast,
+                value: ForecastValue {
+                    value: forecast.as_i32(),
+                    deviation: self.deviation(&forecast, idx),
+                },
             });
         }
         forecasts
     }
+
+    fn deviation(&self, forecast: &Power, period: usize) -> u32 {
+        let base_deviation = match period {
+            1 => 0.08,
+            2 => 0.12,
+            3 => 0.15,
+            _ => 0.20,
+        };
+        let deviation = (forecast.as_f32().abs() * base_deviation) as i32;
+        round_to_nearest(deviation, SETPOINT_BASE_VALUE) as u32
+    }
 }
 
 #[cfg(test)]
-mod test_forecasts_based_plant {
+mod test_shape_based_plant {
+
     use super::*;
 
-    fn test_forecasts() -> Vec<ForecastValue> {
-        vec![
-            ForecastValue {
-                value: 100,
-                deviation: 25,
-            },
-            ForecastValue {
-                value: 500,
-                deviation: 50,
-            },
-            ForecastValue {
-                value: 1000,
-                deviation: 50,
-            },
-            ForecastValue {
-                value: 2000,
-                deviation: 50,
-            },
-        ]
+    #[test]
+    fn test_init_plant_setpoint() {
+        let shape = PowerShape(vec![0.1, 0.25, 0.5, 1.]);
+        let capacity = Power::from(1000);
+
+        let plant = ShapeBasedPlant::new(shape.clone(), capacity, 3);
+
+        assert_eq!(plant.setpoint, capacity * shape.0.first().unwrap())
     }
 
     #[test]
-    fn test_new_plant() {
-        let forecasts_range = 2;
-        let plant = ForecastsBasedPlant::new(test_forecasts(), forecasts_range);
+    fn test_plant_setpoint_multiple_of_base_setpoint() {
+        let capacity = Power::from(1000);
 
-        assert!((75..=125).contains(&plant.setpoint.into()));
-        assert_eq!(plant.forecasts().len(), forecasts_range);
+        let plant = ShapeBasedPlant::new(PowerShape(vec![0.333333]), capacity, 3);
+        assert_eq!(plant.setpoint, Power::from(325));
+
+        let plant = ShapeBasedPlant::new(PowerShape(vec![0.999]), capacity, 3);
+        assert_eq!(plant.setpoint, Power::from(1000))
+    }
+
+    #[test]
+    fn test_init_plant_setpoint_shape_is_empty() {
+        let shape = PowerShape(vec![]);
+        let capacity = Power::from(1000);
+
+        let plant = ShapeBasedPlant::new(shape.clone(), capacity, 3);
+
+        assert_eq!(plant.setpoint, Power::from(0))
+    }
+
+    #[test]
+    fn test_plant_dispatch_update_setpoint() {
+        let shape = PowerShape(vec![0.1, 0.25, 0.5, 1.]);
+        let capacity = Power::from(1000);
+
+        let mut plant = ShapeBasedPlant::new(shape.clone(), capacity, 3);
+
+        plant.dispatch();
+        assert_eq!(plant.setpoint, capacity * shape.0.get(1).unwrap())
+    }
+
+    #[test]
+    fn test_plant_dispatch_setpoint_loop_over_shape() {
+        let shape = PowerShape(vec![0.1, 0.25, 0.5, 1.]);
+        let capacity = Power::from(1000);
+
+        let mut plant = ShapeBasedPlant::new(shape.clone(), capacity, 3);
+
+        for _ in 0..shape.0.len() {
+            plant.dispatch();
+        }
+        assert_eq!(plant.setpoint, capacity * shape.0.first().unwrap())
+    }
+
+    #[test]
+    fn test_plant_init_forecast_in_forecast_range() {
+        let shape = PowerShape(vec![0.1, 0.25, 0.5, 1.]);
+        let capacity = Power::from(1000);
+        let forecast_range = 2;
+
+        let plant = ShapeBasedPlant::new(shape.clone(), capacity, forecast_range);
+
+        assert_eq!(plant.forecasts.len(), forecast_range);
+        assert_eq!(
+            plant
+                .forecasts
+                .iter()
+                .map(|f| f.value.value)
+                .collect::<Vec<_>>(),
+            shape.0[1..=forecast_range]
+                .iter()
+                .map(|v| (capacity * v).as_i32())
+                .collect::<Vec<_>>()
+        );
+    }
+
+    #[test]
+    fn test_plant_dispatch_forecast_loop() {
+        let shape = PowerShape(vec![0.1, 0.25, 0.5, 1.]);
+        let capacity = Power::from(1000);
+        let forecast_range = 3;
+
+        let mut plant = ShapeBasedPlant::new(shape.clone(), capacity, forecast_range);
+        plant.dispatch();
+
+        assert_eq!(plant.forecasts.len(), forecast_range);
+        assert_eq!(
+            plant
+                .forecasts
+                .iter()
+                .map(|f| f.value.value)
+                .collect::<Vec<_>>(),
+            vec![500, 1000, 100] // vec[shape[2], shape[3], shape[0]]
+        );
+    }
+
+    #[test]
+    fn test_plant_forecast_empty_shape_has_proper_length() {
+        let shape = PowerShape(vec![]);
+        let capacity = Power::from(1000);
+        let forecast_range = 3;
+
+        let plant = ShapeBasedPlant::new(shape.clone(), capacity, forecast_range);
+
+        assert_eq!(plant.forecasts.len(), forecast_range);
+        assert!(
+            plant
+                .forecasts
+                .iter()
+                .all(|f| f.value.value == NO_POWER.as_i32())
+        );
+    }
+
+    #[test]
+    fn test_forecast_deviation_depends_on_distance_in_the_future() {
+        let shape = PowerShape(vec![0.5]);
+        let capacity = Power::from(1000);
+        let forecast_range = 5;
+
+        let plant = ShapeBasedPlant::new(shape.clone(), capacity, forecast_range);
+
+        assert_eq!(
+            plant
+                .forecasts
+                .iter()
+                .map(|f| f.value.deviation as i32)
+                .collect::<Vec<_>>(),
+            vec![50, 50, 75, 100, 100]
+        );
+    }
+
+    #[test]
+    fn test_forecast_deviation_with_negative_power_values() {
+        let shape = PowerShape(vec![0.5]);
+        let capacity = Power::from(-1000);
+        let forecast_range = 5;
+
+        let plant = ShapeBasedPlant::new(shape.clone(), capacity, forecast_range);
+
+        assert_eq!(
+            plant
+                .forecasts
+                .iter()
+                .map(|f| f.value.deviation as i32)
+                .collect::<Vec<_>>(),
+            vec![50, 50, 75, 100, 100]
+        );
+    }
+
+    #[test]
+    fn test_forecast_periods() {
+        let shape = PowerShape(vec![0.5]);
+        let capacity = Power::from(1000);
+        let forecast_range = 3;
+
+        let mut plant = ShapeBasedPlant::new(shape.clone(), capacity, forecast_range);
+
         assert_eq!(
             plant.forecasts.iter().map(|f| f.period).collect::<Vec<_>>(),
-            vec![DeliveryPeriodId::from(2), DeliveryPeriodId::from(3),]
+            vec![
+                DeliveryPeriodId::from(2),
+                DeliveryPeriodId::from(3),
+                DeliveryPeriodId::from(4),
+            ]
         );
-        assert!((450..=550).contains(&plant.forecasts.first().unwrap().value.value));
-        assert!((950..=1050).contains(&plant.forecasts.get(1).unwrap().value.value));
-    }
-
-    #[test]
-    fn test_plant_dispatch() {
-        let forecasts_range = 2;
-        let mut plant = ForecastsBasedPlant::new(test_forecasts(), forecasts_range);
 
         plant.dispatch();
-
-        assert!((450..=550).contains(&plant.setpoint.into()));
-        assert_eq!(plant.forecasts().len(), forecasts_range);
         assert_eq!(
             plant.forecasts.iter().map(|f| f.period).collect::<Vec<_>>(),
-            vec![DeliveryPeriodId::from(3), DeliveryPeriodId::from(4),]
-        );
-        assert!((950..=1050).contains(&plant.forecasts.first().unwrap().value.value));
-        assert!((1950..=2050).contains(&plant.forecasts.get(1).unwrap().value.value));
-    }
-
-    #[test]
-    fn test_plant_dispatch_overflow_base_forecasts_length() {
-        let forecasts_range = 2;
-        let mut plant = ForecastsBasedPlant::new(test_forecasts(), forecasts_range);
-
-        plant.dispatch();
-        plant.dispatch();
-
-        assert!((950..=1050).contains(&plant.setpoint.into()));
-        assert_eq!(plant.forecasts().len(), forecasts_range);
-        assert_eq!(
-            plant.forecasts.iter().map(|f| f.period).collect::<Vec<_>>(),
-            vec![DeliveryPeriodId::from(4), DeliveryPeriodId::from(5),]
-        );
-        assert!((1950..=2050).contains(&plant.forecasts.first().unwrap().value.value));
-        assert!((75..=125).contains(&plant.forecasts.get(1).unwrap().value.value));
-    }
-
-    #[test]
-    fn test_forecast_range_greater_than_base_forecasts_length() {
-        let forecasts_range = test_forecasts().len() + 1;
-        let mut plant = ForecastsBasedPlant::new(test_forecasts(), forecasts_range);
-
-        assert_eq!(plant.forecasts().len(), forecasts_range);
-
-        plant.dispatch();
-        assert_eq!(plant.forecasts().len(), forecasts_range);
-    }
-
-    #[test]
-    fn test_base_forecasts_empty() {
-        let forecasts_range = 2;
-        let mut plant = ForecastsBasedPlant::new(vec![], forecasts_range);
-
-        assert_eq!(plant.setpoint(), Power::from(0));
-        assert_eq!(plant.forecasts().len(), forecasts_range);
-        assert_eq!(
-            plant.forecasts().first().unwrap().value,
-            ForecastValue::default()
-        );
-
-        plant.dispatch();
-        assert_eq!(plant.forecasts().len(), forecasts_range);
-        assert_eq!(plant.setpoint(), Power::from(0));
-        assert_eq!(
-            plant.forecasts().first().unwrap().value,
-            ForecastValue::default()
+            vec![
+                DeliveryPeriodId::from(3),
+                DeliveryPeriodId::from(4),
+                DeliveryPeriodId::from(5),
+            ]
         );
     }
 }

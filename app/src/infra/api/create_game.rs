@@ -5,7 +5,6 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     constants::DEFAULT_PERIOD_DURATION_SECONDS,
-    forecast::{generate_random_forecasts, generate_random_forecasts_shape},
     game::{
         GameActor, GameId, GameName,
         infra::{
@@ -15,6 +14,7 @@ use crate::{
     },
     infra::api::state::cleanup_state,
     market::{MarketActor, bots::start_bots},
+    plants::technologies::PowerShape,
     player::infra::PlayerConnectionsService,
     utils::{
         program_actors_termination,
@@ -67,15 +67,11 @@ impl From<GameStackConfigRequest> for GameStackConfig {
                 gas_capacity: config.gas_capacity,
                 nuclear_capacity: config.nuclear_capacity,
                 battery_capacity: config.battery_capacity,
-                consumers_forecasts: generate_random_forecasts(
-                    config.consumers_forecasts_range,
-                    config.consumers_capacity,
-                ),
+                consumers_capacity: config.consumers_capacity,
+                consumers_power_shape: PowerShape::random(config.consumers_forecasts_range),
                 consumers_forecasts_range: config.consumers_forecasts_range,
-                renewable_forecasts: generate_random_forecasts(
-                    config.renewable_forecasts_range,
-                    config.renewable_capacity,
-                ),
+                renewable_capacity: config.renewable_capacity,
+                renewable_power_shape: PowerShape::random(config.renewable_forecasts_range),
                 renewable_forecasts_range: config.renewable_forecasts_range,
             }),
             GameStackConfigRequest::PerPlayer(config) => {
@@ -88,13 +84,9 @@ impl From<GameStackConfigRequest> for GameStackConfig {
                     battery_max_capacity: config.battery_max_capacity,
                     consumers_capacity: config.consumers_capacity,
                     renewable_max_capacity: config.renewable_max_capacity,
-                    consumers_forecasts: generate_random_forecasts_shape(
-                        config.consumers_forecasts_range,
-                    ),
+                    consumers_power_shape: PowerShape::random(config.consumers_forecasts_range),
                     consumers_forecasts_range: config.consumers_forecasts_range,
-                    renewable_forecasts: generate_random_forecasts_shape(
-                        config.renewable_forecasts_range,
-                    ),
+                    renewable_power_shape: PowerShape::random(config.renewable_forecasts_range),
                     renewable_forecasts_range: config.renewable_forecasts_range,
                 })
             }

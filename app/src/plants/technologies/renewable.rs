@@ -1,8 +1,11 @@
 use serde::Serialize;
 
 use crate::{
-    forecast::{Forecast, ForecastValue},
-    plants::{PlantOutput, PowerPlant, PowerPlantPublicRepr, technologies::ForecastsBasedPlant},
+    forecast::Forecast,
+    plants::{
+        PlantOutput, PowerPlant, PowerPlantPublicRepr,
+        technologies::{PowerShape, ShapeBasedPlant},
+    },
     utils::units::{Money, Power},
 };
 
@@ -11,13 +14,13 @@ pub struct RenewablePlantPublicRepr {
     pub output: PlantOutput,
 }
 pub struct RenewablePlant {
-    state: ForecastsBasedPlant,
+    state: ShapeBasedPlant,
     history: Vec<PlantOutput>,
 }
 
 impl RenewablePlant {
-    pub fn new(forecasts: Vec<ForecastValue>, forecasts_range: usize) -> RenewablePlant {
-        let plant = ForecastsBasedPlant::new(forecasts, forecasts_range);
+    pub fn new(shape: PowerShape, capacity: Power, forecasts_range: usize) -> RenewablePlant {
+        let plant = ShapeBasedPlant::new(shape, capacity, forecasts_range);
         let history = Vec::new();
 
         RenewablePlant {
@@ -76,34 +79,20 @@ impl PowerPlant for RenewablePlant {
 #[cfg(test)]
 mod tests {
     use crate::{
-        forecast::ForecastValue,
         game::delivery_period::DeliveryPeriodId,
-        plants::{PlantOutput, PowerPlant},
+        plants::{PlantOutput, PowerPlant, technologies::PowerShape},
         utils::units::{Money, Power},
     };
 
     use super::RenewablePlant;
 
-    fn get_forecasts() -> Vec<ForecastValue> {
-        vec![
-            ForecastValue {
-                value: 100,
-                deviation: 50,
-            },
-            ForecastValue {
-                value: 500,
-                deviation: 100,
-            },
-            ForecastValue {
-                value: 900,
-                deviation: 100,
-            },
-        ]
+    fn shape() -> PowerShape {
+        PowerShape(vec![0.1, 0.5, 0.9])
     }
 
     #[test]
     fn test_renewable_plant() {
-        let mut plant = RenewablePlant::new(get_forecasts(), 2);
+        let mut plant = RenewablePlant::new(shape(), Power::from(1000), 2);
 
         // Initial history is empty
         assert!(plant.get_history().is_empty());
@@ -126,7 +115,7 @@ mod tests {
 
     #[test]
     fn test_renewable_forecasts_periods() {
-        let mut plant = RenewablePlant::new(get_forecasts(), 2);
+        let mut plant = RenewablePlant::new(shape(), Power::from(1000), 2);
 
         let forecasts = plant.get_forecast().unwrap();
         assert_eq!(

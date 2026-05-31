@@ -353,7 +353,6 @@ impl Default for StackDispatchResults {
 mod test {
     use std::collections::HashMap;
 
-    use crate::forecast::ForecastValue;
     use crate::plants::technologies::battery::Battery;
     use crate::plants::technologies::consumers::Consumers;
     use crate::plants::technologies::gas_plant::GasPlant;
@@ -483,10 +482,8 @@ mod test {
     fn test_dispatch_aggregates_consumers_output() {
         let plant = Consumers::new(
             EnergyCost::from(50),
-            vec![ForecastValue {
-                value: -100,
-                deviation: 0,
-            }],
+            vec![0.1].into(),
+            Power::from(-1000),
             3,
         );
         let (mut stack, _) = make_single_plant_stack(plant, "consumers-a");
@@ -498,13 +495,7 @@ mod test {
 
     #[test]
     fn test_dispatch_aggregates_renewable_plant_output() {
-        let plant = RenewablePlant::new(
-            vec![ForecastValue {
-                value: 75,
-                deviation: 0,
-            }],
-            3,
-        );
+        let plant = RenewablePlant::new(vec![0.25].into(), Power::from(300), 3);
         let (mut stack, _) = make_single_plant_stack(plant, "renewable-a");
         let result = stack.dispatch_plants();
         let state = result.aggregated_state();
@@ -600,10 +591,8 @@ mod test {
             id_a.clone(),
             Box::new(Consumers::new(
                 EnergyCost::from(50),
-                vec![ForecastValue {
-                    value: -100,
-                    deviation: 0,
-                }],
+                vec![0.1].into(),
+                Power::from(-1000),
                 3,
             )),
         );
@@ -611,10 +600,8 @@ mod test {
             id_b.clone(),
             Box::new(Consumers::new(
                 EnergyCost::from(50),
-                vec![ForecastValue {
-                    value: -75,
-                    deviation: 0,
-                }],
+                vec![0.1].into(),
+                Power::from(-750),
                 3,
             )),
         );
@@ -633,23 +620,11 @@ mod test {
             HashMap::new();
         plants.insert(
             id_a.clone(),
-            Box::new(RenewablePlant::new(
-                vec![ForecastValue {
-                    value: 50,
-                    deviation: 0,
-                }],
-                3,
-            )),
+            Box::new(RenewablePlant::new(vec![0.25].into(), Power::from(200), 3)),
         );
         plants.insert(
             id_b.clone(),
-            Box::new(RenewablePlant::new(
-                vec![ForecastValue {
-                    value: 25,
-                    deviation: 0,
-                }],
-                3,
-            )),
+            Box::new(RenewablePlant::new(vec![0.25].into(), Power::from(100), 3)),
         );
         let mut stack = StackPlants::new(plants);
         let result = stack.dispatch_plants();
@@ -809,13 +784,7 @@ mod test {
         );
         plants.insert(
             id_renewable.clone(),
-            Box::new(RenewablePlant::new(
-                vec![ForecastValue {
-                    value: 50,
-                    deviation: 0,
-                }],
-                3,
-            )),
+            Box::new(RenewablePlant::new(vec![0.25].into(), Power::from(200), 3)),
         );
         plants.insert(
             id_battery.clone(),

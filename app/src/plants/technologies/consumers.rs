@@ -1,8 +1,11 @@
 use serde::Serialize;
 
 use crate::{
-    forecast::{Forecast, ForecastValue},
-    plants::{PlantOutput, PowerPlant, PowerPlantPublicRepr, technologies::ForecastsBasedPlant},
+    forecast::Forecast,
+    plants::{
+        PlantOutput, PowerPlant, PowerPlantPublicRepr,
+        technologies::{PowerShape, ShapeBasedPlant},
+    },
     utils::units::{EnergyCost, GENERATOR_CONVENTION_TO_MONEY, Money, Power, TIMESTEP},
 };
 
@@ -13,17 +16,18 @@ pub struct ConsumersPublicRepr {
 }
 pub struct Consumers {
     price_per_mwh: EnergyCost,
-    state: ForecastsBasedPlant,
+    state: ShapeBasedPlant,
     history: Vec<PlantOutput>,
 }
 
 impl Consumers {
     pub fn new(
         price_per_mwh: EnergyCost,
-        forecasts: Vec<ForecastValue>,
+        shape: PowerShape,
+        capacity: Power,
         forecasts_range: usize,
     ) -> Consumers {
-        let state = ForecastsBasedPlant::new(forecasts, forecasts_range);
+        let state = ShapeBasedPlant::new(shape, capacity, forecasts_range);
 
         Consumers {
             price_per_mwh,
@@ -86,36 +90,23 @@ impl PowerPlant for Consumers {
 mod tests {
 
     use crate::{
-        forecast::ForecastValue,
         game::delivery_period::DeliveryPeriodId,
-        plants::PowerPlant,
+        plants::{PowerPlant, technologies::PowerShape},
         utils::units::{EnergyCost, Power},
     };
 
     use super::Consumers;
 
-    fn get_forecasts() -> Vec<ForecastValue> {
-        vec![
-            ForecastValue {
-                value: -100,
-                deviation: 50,
-            },
-            ForecastValue {
-                value: -600,
-                deviation: 100,
-            },
-            ForecastValue {
-                value: -1000,
-                deviation: 150,
-            },
-        ]
+    fn shape() -> PowerShape {
+        PowerShape(vec![0.1, 0.6, 1.])
     }
 
     #[test]
     fn test_consumers() {
         let energy_cost = EnergyCost::from(75);
-        let forecasts = get_forecasts();
-        let mut consumers = Consumers::new(energy_cost, forecasts, 2);
+        let shape = shape();
+        let capacity = Power::from(-1000);
+        let mut consumers = Consumers::new(energy_cost, shape, capacity, 2);
 
         // Consumers cannot be programed
         let initial_setpoint = consumers.state.setpoint();
@@ -146,8 +137,9 @@ mod tests {
     #[test]
     fn test_consumers_forecasts_periods() {
         let energy_cost = EnergyCost::from(75);
-        let forecsts = get_forecasts();
-        let mut consumers = Consumers::new(energy_cost, forecsts, 2);
+        let shape = shape();
+        let capacity = Power::from(-1000);
+        let mut consumers = Consumers::new(energy_cost, shape, capacity, 2);
 
         let forecasts = consumers.get_forecast().unwrap();
         assert_eq!(

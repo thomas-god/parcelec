@@ -6,7 +6,6 @@ use tokio::sync::oneshot;
 use tower_cookies::Cookies;
 
 use crate::{
-    forecast::ForecastValue,
     game::{
         GameActor, GameId, GameMessage, GameName, RegisterPlayerResponse,
         infra::{
@@ -134,43 +133,11 @@ fn game_stack_config() -> GameStackConfig {
         gas_capacity: Power::from(500),
         nuclear_capacity: Power::from(1000),
         battery_capacity: Energy::from(300),
-        consumers_forecasts: vec![
-            ForecastValue {
-                value: -1000,
-                deviation: 25,
-            },
-            ForecastValue {
-                value: -1200,
-                deviation: 50,
-            },
-            ForecastValue {
-                value: -600,
-                deviation: 75,
-            },
-            ForecastValue {
-                value: -1800,
-                deviation: 100,
-            },
-        ],
+        consumers_capacity: Power::from(-1800),
+        consumers_power_shape: vec![1000. / 1800., 1200. / 1800., 600. / 1800., 1.].into(),
         consumers_forecasts_range: 3,
-        renewable_forecasts: vec![
-            ForecastValue {
-                value: 250,
-                deviation: 25,
-            },
-            ForecastValue {
-                value: 150,
-                deviation: 50,
-            },
-            ForecastValue {
-                value: 300,
-                deviation: 75,
-            },
-            ForecastValue {
-                value: 100,
-                deviation: 75,
-            },
-        ],
+        renewable_capacity: Power::from(300),
+        renewable_power_shape: vec![250. / 300., 150. / 300., 1., 100. / 300.].into(),
         renewable_forecasts_range: 3,
     })
 }

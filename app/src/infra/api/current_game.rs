@@ -71,14 +71,16 @@ mod tests {
     fn stack_config() -> GameStackConfig {
         GameStackConfig::Fixed(GameStackFixedConfig {
             battery_capacity: Energy::from(300),
-            consumers_forecasts: vec![],
+            consumers_capacity: Power::from(-1800),
+            consumers_power_shape: vec![].into(),
             consumers_forecasts_range: 2,
             consumers_revenues: EnergyCost::from(50),
             gas_capacity: Power::from(500),
             gas_cost: EnergyCost::from(80),
             nuclear_capacity: Power::from(1200),
             nuclear_cost: EnergyCost::from(35),
-            renewable_forecasts: vec![],
+            renewable_capacity: Power::from(300),
+            renewable_power_shape: vec![].into(),
             renewable_forecasts_range: 2,
         })
     }
