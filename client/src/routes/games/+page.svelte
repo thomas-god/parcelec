@@ -3,6 +3,7 @@
   import { PUBLIC_APP_URL } from "$env/static/public";
   import { StackConfigSchema } from "$lib/message";
   import { z } from "zod";
+  import Header from "../../components/molecules/Header.svelte";
 
   const GamesSchema = z.object({
     games: z.array(
@@ -30,39 +31,47 @@
   };
 </script>
 
-<div class="card max-w-96 mx-auto mt-6 bg-base-100 shadow-sm">
-  <div class="card-body">
-    {#await loadGames()}
-      <div class="mt-32 loading loading-ring loading-xl self-center"></div>
-    {:then}
-      {#if games.length > 0}
-        <ul class="list bg-base-100">
-          <li class="p-4 pb-2 text-sm font-semibold tracking-wide">
-            Parties ouvertes
-          </li>
+<Header />
 
-          {#each games as game (game.id)}
-            <li class="list-row items-center">
-              <div class="list-col-grow">{game.name}</div>
-              <button
-                class="btn btn-square btn-ghost text-lg"
-                onclick={() => gotoGame(game.id)}
-              >
-                ▶️
-              </button>
-            </li>
-          {/each}
-        </ul>
-      {:else}
-        <div class="flex flex-col w-full gap-5">
-          <div class="text-center text-lg">Pas de parties en cours 😞</div>
-          <a href="/game/new" class="self-center">
-            <button class="btn btn-neutral btn-lg">
-              ➕ Créer une partie
+<div class="flex flex-col items-center mt-6 px-2">
+  {#await loadGames()}
+    <div class="mt-32 loading loading-ring loading-xl self-center"></div>
+  {:then}
+    {#if games.length > 0}
+      <ul class="list w-full max-w-120 bg-base-100 shadow-sm rounded-lg">
+        <li class="p-4 pb-2 text-sm font-semibold tracking-wide">
+          Parties ouvertes
+        </li>
+
+        {#each games as game (game.id)}
+          <li class="list-row items-center">
+            <div class="list-col-grow">{game.name}</div>
+            <button
+              class="btn btn-square btn-ghost text-lg"
+              onclick={() => gotoGame(game.id)}
+            >
+              <img
+                src="/icons/arrow-next.svg"
+                alt="Arrow pointing to the right icon"
+                class="w-6 h-6 inline"
+              />
             </button>
-          </a>
-        </div>
-      {/if}
-    {/await}
-  </div>
+          </li>
+        {/each}
+      </ul>
+    {:else}
+      <div class="flex flex-col w-full gap-5">
+        <div class="text-center text-lg">Pas de parties en cours 😞</div>
+        <a href="/game/new" class="self-center">
+          <button class="btn btn-neutral btn-lg">
+            <img
+              src="/icons/plus.svg"
+              alt="Plus sign icon"
+              class="w-6 h-6 inline"
+            /> Créer une partie
+          </button>
+        </a>
+      </div>
+    {/if}
+  {/await}
 </div>

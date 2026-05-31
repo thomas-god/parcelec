@@ -2,6 +2,7 @@
   import { goto } from "$app/navigation";
   import { PUBLIC_APP_URL } from "$env/static/public";
   import { page } from "$app/state";
+  import Header from "../../../../components/molecules/Header.svelte";
   let player_name = $state("");
   let error = $state(false);
 
@@ -24,6 +25,8 @@
     }
   };
 </script>
+
+<Header />
 
 <div class="flex flex-row justify-center w-full">
   <div class="card w-86 mx-6 mt-6 bg-base-100 shadow-sm">

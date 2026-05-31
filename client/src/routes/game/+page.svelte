@@ -18,7 +18,7 @@
   import { goto } from "$app/navigation";
   import { SvelteMap } from "svelte/reactivity";
   import Scores from "../../components/organisms/ScoresSummary.svelte";
-  import Header from "../../components/molecules/Header.svelte";
+  import Header from "../../components/molecules/GameHeader.svelte";
   import PlayersReadyList from "../../components/molecules/PlayersReadyList.svelte";
   import FinalScores from "../../components/molecules/FinalScores.svelte";
   import { isSome, none, some, type Option } from "$lib/Options";
