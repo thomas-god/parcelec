@@ -66,7 +66,7 @@
       Total : {total.toLocaleString("fr-FR")} MW
     </div>
     <div class="text-right italic">
-      Puissance maximale de vos clients : {Math.abs(
+      Puissance typique de vos clients : {Math.abs(
         config.consumers_capacity,
       ).toLocaleString("fr-FR")} MW
     </div>

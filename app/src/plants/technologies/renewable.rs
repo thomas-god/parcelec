@@ -1,3 +1,4 @@
+use rand::seq::IndexedRandom;
 use serde::Serialize;
 
 use crate::{
@@ -73,6 +74,20 @@ impl PowerPlant for RenewablePlant {
 
     fn category(&self) -> crate::plants::PlantCategory {
         crate::plants::PlantCategory::RenewablePlant
+    }
+}
+
+const RENEWABLES_POWER_SHAPES: [[f32; 6]; 3] = [
+    [0., 0.1, 0.6, 0.8, 0.6, 0.1],    // Summer sun
+    [0., 0., 0.3, 0.45, 0.3, 0.],     // Winter sun
+    [0.15, 0.3, 0.55, 0.7, 0.9, 0.1], // Wind ramping
+];
+
+pub fn random_renewables_power_shape() -> PowerShape {
+    let mut rng = rand::rng();
+    match RENEWABLES_POWER_SHAPES.choose(&mut rng) {
+        None => PowerShape::random(6),
+        Some(values) => PowerShape::from(values.to_vec()),
     }
 }
 

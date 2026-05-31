@@ -8,7 +8,7 @@
   let game_name = $state("");
   let period_duration_seconds = $state(120);
   let number_of_periods = $state(6);
-  let stack_type: "fixed" | "customizable" = $state("customizable");
+  let stack_type: "fixed" | "customizable" = $state("fixed");
   let fixed_stack_payload: Option<any> = $state(none());
   let per_player_stack_payload: Option<any> = $state(none());
   let apiError = $state("");

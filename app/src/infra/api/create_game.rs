@@ -14,7 +14,9 @@ use crate::{
     },
     infra::api::state::cleanup_state,
     market::{MarketActor, bots::start_bots},
-    plants::technologies::PowerShape,
+    plants::technologies::{
+        consumers::random_consumers_power_shape, renewable::random_renewables_power_shape,
+    },
     player::infra::PlayerConnectionsService,
     utils::{
         program_actors_termination,
@@ -68,10 +70,10 @@ impl From<GameStackConfigRequest> for GameStackConfig {
                 nuclear_capacity: config.nuclear_capacity,
                 battery_capacity: config.battery_capacity,
                 consumers_capacity: config.consumers_capacity,
-                consumers_power_shape: PowerShape::random(config.consumers_forecasts_range),
+                consumers_power_shape: random_consumers_power_shape(),
                 consumers_forecasts_range: config.consumers_forecasts_range,
                 renewable_capacity: config.renewable_capacity,
-                renewable_power_shape: PowerShape::random(config.renewable_forecasts_range),
+                renewable_power_shape: random_renewables_power_shape(),
                 renewable_forecasts_range: config.renewable_forecasts_range,
             }),
             GameStackConfigRequest::PerPlayer(config) => {
@@ -84,9 +86,9 @@ impl From<GameStackConfigRequest> for GameStackConfig {
                     battery_max_capacity: config.battery_max_capacity,
                     consumers_capacity: config.consumers_capacity,
                     renewable_max_capacity: config.renewable_max_capacity,
-                    consumers_power_shape: PowerShape::random(config.consumers_forecasts_range),
+                    consumers_power_shape: random_consumers_power_shape(),
                     consumers_forecasts_range: config.consumers_forecasts_range,
-                    renewable_power_shape: PowerShape::random(config.renewable_forecasts_range),
+                    renewable_power_shape: random_renewables_power_shape(),
                     renewable_forecasts_range: config.renewable_forecasts_range,
                 })
             }

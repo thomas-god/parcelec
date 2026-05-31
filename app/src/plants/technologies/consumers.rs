@@ -1,3 +1,4 @@
+use rand::seq::IndexedRandom;
 use serde::Serialize;
 
 use crate::{
@@ -83,6 +84,20 @@ impl PowerPlant for Consumers {
 
     fn category(&self) -> crate::plants::PlantCategory {
         crate::plants::PlantCategory::Consumers
+    }
+}
+
+const CONSUMERS_POWER_SHAPES: [[f32; 6]; 3] = [
+    [0.8, 0.9, 1.05, 1., 1.2, 0.9],     // Winter high load
+    [0.75, 0.8, 0.9, 0.85, 1., 0.8],    // Winter medium load
+    [0.55, 0.65, 0.85, 0.8, 0.9, 0.65], // Summer
+];
+
+pub fn random_consumers_power_shape() -> PowerShape {
+    let mut rng = rand::rng();
+    match CONSUMERS_POWER_SHAPES.choose(&mut rng) {
+        None => PowerShape::random(6),
+        Some(values) => PowerShape::from(values.to_vec()),
     }
 }
 
