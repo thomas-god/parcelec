@@ -2,7 +2,10 @@
   import { none, some, type Option } from "$lib/Options";
   import PlantConfig from "../molecules/PlantConfig.svelte";
 
-  let { payload = $bindable() }: { payload: Option<any> } = $props();
+  let {
+    payload = $bindable(),
+    number_of_periods,
+  }: { payload: Option<any>; number_of_periods: number } = $props();
 
   let renewable_capacity = $state(300);
   let gas_capacity = $state(500);
@@ -10,7 +13,6 @@
   let nuclear_capacity = $state(1000);
   let nuclear_cost = $state(35);
   let battery_charge = $state(300);
-  let number_of_periods = $state("6");
 
   let consumers_revenues = $state(56);
   let consumers_capacity = $state(1800);
@@ -40,12 +42,6 @@
     return max_charge_valid;
   });
 
-  let isNumberOfPeriodsValid = $derived(
-    number_of_periods !== "" &&
-      !isNaN(Number(number_of_periods)) &&
-      Number(number_of_periods) > 0,
-  );
-
   let areConsumersOptionsValid = $derived.by(() => {
     const capacity_valid =
       !isNaN(Number(consumers_capacity)) && Number(consumers_capacity) > 0;
@@ -60,7 +56,6 @@
     areGasPlantOptionsValid &&
       areNuclearPlantOptionsValid &&
       areBatteryOptionsValid &&
-      isNumberOfPeriodsValid &&
       areConsumersOptionsValid,
   );
 

@@ -144,7 +144,10 @@
                 (puissances, coûts) de centrales et de clients, définies à la création
                 de la partie.
               </p>
-              <CreateFixedStack bind:payload={fixed_stack_payload} />
+              <CreateFixedStack
+                bind:payload={fixed_stack_payload}
+                {number_of_periods}
+              />
             {:else if stack_type === "customizable"}
               <p class="stack-type-legend">
                 Avec un parc <i>paramétrable</i>, les joueurs peuvent construire
