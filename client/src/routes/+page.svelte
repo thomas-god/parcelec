@@ -53,11 +53,15 @@
 <div class="hero bg-base-200">
   <div class="hero-content text-center">
     <div class="max-w-md">
-      <h1 class="text-5xl font-bold">Bienvenue dans Parcelec ⚡</h1>
+      <h1 class="text-5xl font-bold">Parcelec ⚡</h1>
       <p class="py-6">
         Parcelec vous place dans le rôle d'un producteur d'électricité. Votre
-        but ? Satisfaire la consommation de vos clients en utilisant
-        astucieusement vos centrales et les marchés de l'électricité.
+        but ? Satisfaire la consommation de vos clients en utilisant au mieux
+        vos centrales et les marchés de l'électricité pour vous équilibrer. <img
+          src="/icons/balance.svg"
+          alt="Balance icon"
+          class="w-6 h-6 inline"
+        />
       </p>
       {#await getActiveGame() then}
         {#if isSome(activeGame)}
@@ -65,15 +69,12 @@
           <div class="flex flex-row justify-center items-center gap-2">
             <div>
               {activeGame.value.name.includes("tutorial")
-                ? "tutorial"
+                ? "Tutoriel"
                 : activeGame.value.name}
-              <span class="italic">
-                ({activeGame.value.state})
-              </span>
             </div>
             <div>
               <button class="btn btn-primary" onclick={() => goto("/game")}
-                >Rejoindre</button
+                >Reprendre</button
               >
             </div>
           </div>
@@ -82,13 +83,31 @@
       <div class="divider font-semibold">Nouvelle partie</div>
       <div class="flex flex-row gap-2 justify-center">
         <a href="/tutorial">
-          <button class="btn btn-primary"> 📖 Tutoriel </button>
+          <button class="btn btn-primary flex flex-row justify-center">
+            <img
+              src="/icons/books.svg"
+              alt="Pile of books icon"
+              class="w-6 h-6 inline"
+            /> Tutoriel
+          </button>
         </a>
         <a href="/game/new">
-          <button class="btn btn-primary"> ➕ Créer </button>
+          <button class="btn btn-primary">
+            <img
+              src="/icons/plus.svg"
+              alt="Plus sign icon"
+              class="w-6 h-6 inline"
+            /> Créer
+          </button>
         </a>
         <a href="/games">
-          <button class="btn btn-primary"> ▶️ Rejoindre </button>
+          <button class="btn btn-primary">
+            <img
+              src="/icons/arrow-next.svg"
+              alt="Arrow pointing to the right icon"
+              class="w-6 h-6 inline"
+            /> Rejoindre
+          </button>
         </a>
       </div>
     </div>

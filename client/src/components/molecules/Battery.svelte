@@ -1,5 +1,4 @@
 <script lang="ts">
-  const BREAKPOINT = "450px";
   let {
     max_charge,
     charge,
@@ -125,8 +124,20 @@
           bind:checked={current_charge_state}
           oninput={debouncedUpdateSetpoint}
         />
-        <div class="swap-on">Charge 🔄</div>
-        <div class="swap-off">Décharge 🔄</div>
+        <div class="swap-on">
+          Charge <img
+            src="/icons/loop.svg"
+            alt="Loop icon"
+            class="h-6 w-6 inline"
+          />
+        </div>
+        <div class="swap-off">
+          Décharge <img
+            src="/icons/loop.svg"
+            alt="Loop icon"
+            class="h-6 w-6 inline"
+          />
+        </div>
       </label>
     </div>
   </div>
