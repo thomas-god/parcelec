@@ -13,43 +13,46 @@ async fn test_run_tutorial() {
     let res = tokio::spawn(async move {
         c.goto(&addr).await.unwrap();
 
-        let tutorial_nav = c
-            .wait()
-            .at_most(DEFAULT_WAIT_TIMEOUT)
-            .for_element(Locator::XPath("//button[text()='📖 Tutoriel']"))
-            .await
-            .unwrap();
-        tutorial_nav.click().await.unwrap();
-
-        assert_eq!(
-            c.current_url().await.unwrap().as_ref(),
-            format!("{}/tutorial", addr)
-        );
-
         let start_tutorial = c
             .wait()
             .at_most(DEFAULT_WAIT_TIMEOUT)
-            .for_element(Locator::XPath("//button[contains(text(), 'Commencer')]"))
+            .for_element(Locator::XPath("//button[contains(text(), 'Tutoriel')]"))
             .await
             .unwrap();
         start_tutorial.click().await.unwrap();
 
         assert_eq!(
             c.current_url().await.unwrap().as_ref(),
-            format!("{}/game", addr)
+            format!("{}/tutorial", addr)
         );
+
+        // Avoid depending of the navigation timing
+        assert!(
+            vec![format!("{}/tutorial", addr), format!("{}/game", addr)]
+                .contains(&c.current_url().await.unwrap().as_ref().to_string())
+        );
+
+        // Close the tutorial popup
+        c.wait()
+            .at_most(DEFAULT_WAIT_TIMEOUT)
+            .for_element(Locator::XPath(
+                "//button[contains(text(), '✕')]",
+            ))
+            .await
+            .unwrap()
+            .click()
+            .await
+            .unwrap();
 
         // Dispatch the battery and check the position updates
         let initial_position: isize = c
             .wait()
             .at_most(DEFAULT_WAIT_TIMEOUT * 5)
-            .for_element(Locator::XPath("//div[contains(text(), 'Déficit :')]"))
+            .for_element(Locator::XPath("//span[@data-testid='portfolio-position']"))
             .await
             .unwrap()
             .text()
             .await
-            .unwrap()
-            .strip_prefix("⚠️ Déficit : ")
             .unwrap()
             .strip_suffix(" MW")
             .unwrap()
@@ -73,11 +76,11 @@ async fn test_run_tutorial() {
         )
         .await
         .unwrap();
-        let expected_position = initial_position + 50;
+        let expected_position = initial_position - 50;
         c.wait()
             .at_most(DEFAULT_WAIT_TIMEOUT * 5)
             .for_element(Locator::XPath(&format!(
-                "//div[contains(text(), 'Déficit : {expected_position}')]"
+               "//span[@data-testid='portfolio-position' and contains(text(), '{expected_position} MW')]"
             )))
             .await
             .unwrap();
@@ -86,7 +89,7 @@ async fn test_run_tutorial() {
         c.wait()
             .at_most(DEFAULT_WAIT_TIMEOUT)
             .for_element(Locator::XPath(
-                "//button[contains(text(), 'Terminer la période')]",
+                "//button[contains(text(), 'Terminer')]",
             ))
             .await
             .unwrap()
@@ -98,7 +101,7 @@ async fn test_run_tutorial() {
         c.wait()
             .at_most(DEFAULT_WAIT_TIMEOUT)
             .for_element(Locator::XPath(&format!(
-                "//td[contains(text(), '{expected_position} MW')]"
+                "//th[contains(text(), '{expected_position} MW')]"
             )))
             .await
             .unwrap();

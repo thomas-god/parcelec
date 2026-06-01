@@ -36,7 +36,9 @@
         {#if position === 0}
           A l'équilibre ✅
         {:else}
-          {position.toLocaleString("fr-FR", { signDisplay: "always" })} MW
+          <span data-testid="portfolio-position">
+            {position.toLocaleString("fr-FR", { signDisplay: "always" })} MW
+          </span>
         {/if}
       </span>
     </div>
