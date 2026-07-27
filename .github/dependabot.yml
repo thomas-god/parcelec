@@ -8,9 +8,17 @@ updates:
   - package-ecosystem: "cargo" # See documentation for possible values
     directory: "/app" # Location of package manifests
     groups:
-      all:
+      major:
         patterns:
           - "*"
+        update-types:
+          - "major"
+      mainor-and-patch:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
     schedule:
       interval: "weekly"
 
@@ -19,6 +27,14 @@ updates:
     schedule:
       interval: "weekly"
     groups:
-      all:
+      major:
         patterns:
           - "*"
+        update-types:
+          - "major"
+      mainor-and-patch:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
