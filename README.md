@@ -23,11 +23,12 @@ npm run build
 geckodriver --port=4444
 ```
 
-- Finally you can rust e2e tests from `app`:
+- Finally you can rust e2e tests from `app` (use env `DISPLAY=true` to toggle
+  headless mode on and off for easier visual debugging):
 
 ```sh
 cd app
-cargo test --features e2e-tests
+DISPLAY=true cargo test --features e2e-tests
 ```
 
 ## Credits
