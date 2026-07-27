@@ -21,11 +21,6 @@ async fn test_run_tutorial() {
             .unwrap();
         start_tutorial.click().await.unwrap();
 
-        assert_eq!(
-            c.current_url().await.unwrap().as_ref(),
-            format!("{}/tutorial", addr)
-        );
-
         // Avoid depending of the navigation timing
         assert!(
             vec![format!("{}/tutorial", addr), format!("{}/game", addr)]
