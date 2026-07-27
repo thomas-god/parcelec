@@ -22,7 +22,7 @@ describe("Battery component", () => {
       updateSetpoint,
     });
 
-    expect(screen.getByText("Charge 🔄")).toBeInTheDocument();
+    expect(screen.getByText("Charge")).toBeInTheDocument();
   });
   test("Display 'Décharge' when battery is full", async () => {
     const updateSetpoint = vi.fn();
@@ -33,7 +33,7 @@ describe("Battery component", () => {
       updateSetpoint,
     });
 
-    expect(screen.getByText("Décharge 🔄")).toBeInTheDocument();
+    expect(screen.getByText("Décharge")).toBeInTheDocument();
   });
 
   test("Display 'Charge' when setpoint is negative", async () => {
@@ -45,7 +45,7 @@ describe("Battery component", () => {
       updateSetpoint,
     });
 
-    expect(screen.getByText("Charge 🔄")).toBeInTheDocument();
+    expect(screen.getByText("Charge")).toBeInTheDocument();
   });
 
   test("Display 'Décharge' when setpoint is positive", async () => {
@@ -57,7 +57,7 @@ describe("Battery component", () => {
       updateSetpoint,
     });
 
-    expect(screen.getByText("Décharge 🔄")).toBeInTheDocument();
+    expect(screen.getByText("Décharge")).toBeInTheDocument();
   });
 
   test("Toggling charge state calls updateSetpoint", async () => {
@@ -70,7 +70,7 @@ describe("Battery component", () => {
       updateSetpoint,
     });
 
-    let toggle = screen.getByText("Charge 🔄");
+    let toggle = screen.getByText("Charge");
     expect(toggle).toBeVisible();
 
     await user.click(toggle);
