@@ -35,7 +35,7 @@
   },
   "devDependencies": {
     "@sveltejs/adapter-static": "^3.0.10",
-    "@sveltejs/kit": "^2.70.1",
+    "@sveltejs/kit": "^2.70.2",
     "@sveltejs/package": "^2.5.8",
     "@sveltejs/vite-plugin-svelte": "^7.2.0",
     "@tailwindcss/vite": "^4.3.3",
@@ -45,8 +45,8 @@
     "@tsconfig/svelte": "^5.0.8",
     "@types/d3": "^7.4.3",
     "d3": "^7.9.0",
-    "daisyui": "^5.7.4",
-    "jsdom": "^30.0.0",
+    "daisyui": "^5.7.9",
+    "jsdom": "^30.0.1",
     "prettier": "^3.9.6",
     "prettier-plugin-svelte": "^4.1.1",
     "publint": "^0.3.22",
@@ -55,7 +55,7 @@
     "tailwindcss": "^4.0.3",
     "ts-pattern": "^5.9.0",
     "typescript": "^6.0.3",
-    "vite": "^8.1.5",
+    "vite": "^8.2.0",
     "vitest": "^4.1.10",
     "zod": "^4.4.3"
   },
