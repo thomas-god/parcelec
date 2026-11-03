@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { DeliveryPeriodDetailedScore } from "$lib/message";
+  import type { DeliveryPeriodDetailedScore } from "#lib/message.ts";
   import type { SvelteMap } from "svelte/reactivity";
 
   let {

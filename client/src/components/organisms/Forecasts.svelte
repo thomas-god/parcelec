@@ -4,7 +4,7 @@
     StackForecasts,
     StackHistory,
     StackSnapshot,
-  } from "$lib/message";
+  } from "#lib/message.ts";
   import ForecastsChart from "../molecules/ForecastsChart.svelte";
 
   let {

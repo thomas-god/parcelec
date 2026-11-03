@@ -1,7 +1,7 @@
 <script lang="ts">
-  import type { OrderBookEntry, OrderRequest } from "$lib/message";
-  import { isSome, type Some } from "$lib/Options";
-  import type { BBO } from "$lib/trades";
+  import type { OrderBookEntry, OrderRequest } from "#lib/message.ts";
+  import { isSome, type Some } from "#lib/Options.ts";
+  import type { BBO } from "#lib/trades.ts";
   import CloseButton from "../atoms/CloseButton.svelte";
 
   let {

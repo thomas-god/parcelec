@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { PLANT_ICONS, PLANT_NAMES, type PlantType } from "$lib/label";
+  import { PLANT_ICONS, PLANT_NAMES, type PlantType } from "#lib/label.ts";
 
   let {
     price = $bindable(),

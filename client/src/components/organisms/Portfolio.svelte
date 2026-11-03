@@ -1,11 +1,11 @@
 <script lang="ts">
-  import type { StackSnapshot, Trade } from "$lib/message";
-  import { marketPnl, plantsCosts } from "$lib/pnl";
+  import type { StackSnapshot, Trade } from "#lib/message.ts";
+  import { marketPnl, plantsCosts } from "#lib/pnl.ts";
   import {
     computePortfolio,
     marketPosition,
     plantsPosition,
-  } from "$lib/position";
+  } from "#lib/position.ts";
   import PortfolioChart from "../molecules/PortfolioChart.svelte";
 
   interface Props {

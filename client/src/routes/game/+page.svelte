@@ -13,15 +13,15 @@
     type StackHistory,
     type DeliveryPeriodDetailedScore,
     type StackConfig,
-  } from "$lib/message";
-  import { PUBLIC_APP_URL } from "$env/static/public";
+  } from "#lib/message.ts";
+  import { PUBLIC_APP_URL } from "$app/env/public";
   import { goto } from "$app/navigation";
   import { SvelteMap } from "svelte/reactivity";
   import Scores from "../../components/organisms/ScoresSummary.svelte";
   import Header from "../../components/molecules/GameHeader.svelte";
   import PlayersReadyList from "../../components/molecules/PlayersReadyList.svelte";
   import FinalScores from "../../components/molecules/FinalScores.svelte";
-  import { isSome, none, some, type Option } from "$lib/Options";
+  import { isSome, none, some, type Option } from "#lib/Options.ts";
   import RunningGame from "../../components/pages/game/RunningGame.svelte";
   import CreatePlayerStack from "../../components/organisms/CreatePlayerStack.svelte";
 
@@ -174,10 +174,7 @@
         player_is_ready={player_readiness}
         {make_player_ready}
         {delivery_period_end}
-        periods={{
-          current: delivery_period_id,
-          last: last_delivery_period_id,
-        }}
+        periods={{ current: delivery_period_id, last: last_delivery_period_id }}
       />
 
       <div class="max-w-300 mx-auto w-full pt-3">

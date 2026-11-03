@@ -1,6 +1,6 @@
 <script lang="ts">
   import { goto } from "$app/navigation";
-  import { PUBLIC_APP_URL } from "$env/static/public";
+  import { PUBLIC_APP_URL } from "$app/env/public";
   import { page } from "$app/state";
   import Header from "../../../../components/molecules/Header.svelte";
   let player_name = $state("");

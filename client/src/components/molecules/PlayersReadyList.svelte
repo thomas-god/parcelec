@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { ReadinessStatus } from "$lib/message";
+  import type { ReadinessStatus } from "#lib/message.ts";
 
   let {
     player_name,

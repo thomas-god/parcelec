@@ -1,6 +1,6 @@
 <script lang="ts">
-  import type { OrderBook, OrderRequest, Trade } from "$lib/message";
-  import { extract_bbo } from "$lib/trades";
+  import type { OrderBook, OrderRequest, Trade } from "#lib/message.ts";
+  import { extract_bbo } from "#lib/trades.ts";
   import AddOrder from "../molecules/AddOrder.svelte";
   import TradeList from "../molecules/TradeList.svelte";
 

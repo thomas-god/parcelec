@@ -1,6 +1,6 @@
 <script lang="ts">
-  import type { GameState } from "$lib/message";
-  import type { Periods } from "$lib/types";
+  import type { GameState } from "#lib/message.ts";
+  import type { Periods } from "#lib/types.ts";
 
   let {
     game_state,

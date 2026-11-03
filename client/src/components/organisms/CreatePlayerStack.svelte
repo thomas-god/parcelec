@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { PerPlayerStackConfig, StackConfig } from "$lib/message";
+  import type { PerPlayerStackConfig, StackConfig } from "#lib/message.ts";
   import Slider from "../molecules/Slider.svelte";
 
   let {

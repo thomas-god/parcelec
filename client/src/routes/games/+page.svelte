@@ -1,7 +1,7 @@
 <script lang="ts">
   import { goto } from "$app/navigation";
-  import { PUBLIC_APP_URL } from "$env/static/public";
-  import { StackConfigSchema } from "$lib/message";
+  import { PUBLIC_APP_URL } from "$app/env/public";
+  import { StackConfigSchema } from "#lib/message.ts";
   import { z } from "zod";
   import Header from "../../components/molecules/Header.svelte";
 

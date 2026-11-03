@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { Plant, StackSnapshot } from "$lib/message";
+  import type { Plant, StackSnapshot } from "#lib/message.ts";
   import Battery from "../molecules/Battery.svelte";
   import GasPlant from "../molecules/GasPlant.svelte";
   import Hydro from "../molecules/Hydro.svelte";

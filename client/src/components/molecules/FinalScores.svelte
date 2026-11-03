@@ -1,6 +1,6 @@
 <script lang="ts">
   import { goto } from "$app/navigation";
-  import type { GameResults } from "$lib/message";
+  import type { GameResults } from "#lib/message.ts";
 
   let {
     final_scores,

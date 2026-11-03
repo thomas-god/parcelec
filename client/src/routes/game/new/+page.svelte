@@ -1,7 +1,7 @@
 <script lang="ts">
   import { goto } from "$app/navigation";
-  import { PUBLIC_APP_URL } from "$env/static/public";
-  import { isNone, isSome, none, type Option } from "$lib/Options";
+  import { PUBLIC_APP_URL } from "$app/env/public";
+  import { isNone, isSome, none, type Option } from "#lib/Options.ts";
   import CreateFixedStack from "../../../components/organisms/CreateFixedStackConfigForm.svelte";
   import CreatePerPlayerStack from "../../../components/organisms/CreatePerPlayerStackConfigForm.svelte";
 
@@ -53,7 +53,7 @@
       game_name: game_name.trim(),
       period_duration_seconds: Number(period_duration_seconds),
       number_of_periods: Number(number_of_periods),
-      stack: stack,
+      stack,
     };
 
     let rest = await fetch(`${PUBLIC_APP_URL}/game`, {

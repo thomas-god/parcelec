@@ -11,7 +11,7 @@
     StackHistory,
     StackSnapshot,
     Trade,
-  } from "$lib/message";
+  } from "#lib/message.ts";
 
   interface Props {
     plants: StackSnapshot;

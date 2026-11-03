@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { Trade } from "$lib/message";
+  import type { Trade } from "#lib/message.ts";
   import CloseButton from "../atoms/CloseButton.svelte";
 
   let {

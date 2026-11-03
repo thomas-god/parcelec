@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { none, some, type Option } from "$lib/Options";
+  import { none, some, type Option } from "#lib/Options.ts";
   import HydroConfig from "../molecules/HydroConfig.svelte";
   import PlantConfig from "../molecules/PlantConfig.svelte";
 

@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { SHOW_TUTORIAL_INTRO_POPUP } from "$lib/storage/keys";
+  import { SHOW_TUTORIAL_INTRO_POPUP } from "#lib/storage/keys.ts";
   import PopupForecasts from "./PopupForecasts.svelte";
   import PopupIntro from "./PopupIntro.svelte";
   import PopupMarket from "./PopupMarket.svelte";

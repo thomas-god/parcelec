@@ -1,8 +1,8 @@
 <script lang="ts">
   import { goto } from "$app/navigation";
-  import type { GameState } from "$lib/message";
-  import { isSome, type Option } from "$lib/Options";
-  import type { Periods } from "$lib/types";
+  import type { GameState } from "#lib/message.ts";
+  import { isSome, type Option } from "#lib/Options.ts";
+  import type { Periods } from "#lib/types.ts";
   import Countdown from "../atoms/Countdown.svelte";
 
   let {

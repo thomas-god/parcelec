@@ -1,7 +1,7 @@
 <script lang="ts">
   import { goto } from "$app/navigation";
-  import { PUBLIC_APP_URL } from "$env/static/public";
-  import { isSome, none, some, type Option } from "$lib/Options";
+  import { PUBLIC_APP_URL } from "$app/env/public";
+  import { isSome, none, some, type Option } from "#lib/Options.ts";
   import { z } from "zod";
 
   const ActiveGameSchema = z.object({
@@ -66,12 +66,14 @@
       {#await getActiveGame() then}
         {#if isSome(activeGame)}
           <div class="divider font-semibold">Partie en cours</div>
+
           <div class="flex flex-row justify-center items-center gap-2">
             <div>
               {activeGame.value.name.includes("tutorial")
                 ? "Tutoriel"
                 : activeGame.value.name}
             </div>
+
             <div>
               <button class="btn btn-primary" onclick={() => goto("/game")}
                 >Reprendre</button

@@ -1,7 +1,7 @@
 <script lang="ts">
   import { goto } from "$app/navigation";
-  import { PUBLIC_APP_URL } from "$env/static/public";
-  import { SHOW_TUTORIAL_INTRO_POPUP } from "$lib/storage/keys";
+  import { PUBLIC_APP_URL } from "$app/env/public";
+  import { SHOW_TUTORIAL_INTRO_POPUP } from "#lib/storage/keys.ts";
 
   const startTutorial = async () => {
     let response = await fetch(`${PUBLIC_APP_URL}/tutorial`, {

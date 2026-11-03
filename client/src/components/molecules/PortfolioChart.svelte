@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { PortfolioType, PortfolioVolumes } from "$lib/position";
+  import type { PortfolioType, PortfolioVolumes } from "#lib/position.ts";
   import * as d3 from "d3";
 
   interface Props {

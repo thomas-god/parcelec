@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { Trade } from "$lib/message";
+  import type { Trade } from "#lib/message.ts";
 
   let { trades }: { trades: Trade[] } = $props();
 
