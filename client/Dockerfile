@@ -10,7 +10,6 @@ COPY package*.json ./
 RUN npm ci
 
 # Copy the rest of the application
-COPY svelte.config.js ./
 COPY vite.config.ts ./
 COPY tsconfig.json ./
 COPY .gitignore ./
