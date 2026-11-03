@@ -32,12 +32,14 @@
       current_detailed_score.renewables.volume +
       current_detailed_score.gas.volume +
       current_detailed_score.nuclear.volume +
+      current_detailed_score.hydro.volume +
       current_detailed_score.battery_discharge.volume +
       current_detailed_score.market_bought.volume}
     {@const production_pnl =
       current_detailed_score.renewables.pnl +
       current_detailed_score.gas.pnl +
       current_detailed_score.nuclear.pnl +
+      current_detailed_score.hydro.pnl +
       current_detailed_score.battery_discharge.pnl +
       current_detailed_score.market_bought.pnl}
     <table class="table table-sm">
@@ -131,6 +133,17 @@
           >
           <td class="value">{fmt(current_detailed_score.nuclear.volume)} MW</td>
           <td class="value">{fmt(current_detailed_score.nuclear.pnl)} €</td>
+        </tr>
+        <tr>
+          <td
+            ><img
+              src="/icons/hydro.svg"
+              alt="hydro plant icon"
+              class="icon"
+            />Centrales hydrauliques</td
+          >
+          <td class="value">{fmt(current_detailed_score.hydro.volume)} MW</td>
+          <td class="value">{fmt(current_detailed_score.hydro.pnl)} €</td>
         </tr>
         <tr>
           <td

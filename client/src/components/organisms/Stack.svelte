@@ -2,6 +2,7 @@
   import type { Plant, StackSnapshot } from "$lib/message";
   import Battery from "../molecules/Battery.svelte";
   import GasPlant from "../molecules/GasPlant.svelte";
+  import Hydro from "../molecules/Hydro.svelte";
   import NuclearPlant from "../molecules/NuclearPlant.svelte";
 
   let { plants, send }: { plants: StackSnapshot; send: (msg: string) => void } =
@@ -34,6 +35,10 @@
     let battery = _plants.find(([_, plant]) => plant.type === "Battery");
     if (battery !== undefined) {
       other_plants.set(battery[0], battery[1]);
+    }
+    let hydro = _plants.find(([_, plant]) => plant.type === "Hydro");
+    if (hydro !== undefined) {
+      other_plants.set(hydro[0], hydro[1]);
     }
 
     return other_plants;
@@ -71,6 +76,16 @@
           previous_setpoint={plant.previous_setpoint}
           max_setpoint={plant.max_setpoint}
           energy_cost={plant.energy_cost}
+          updateSetpoint={(setpoint) => programSetpoint(id, setpoint)}
+        />
+      </div>
+    {:else if plant.type === "Hydro"}
+      <div class="pl-1 pr-2 mx-auto w-full">
+        <Hydro
+          stock={plant.stock}
+          max_stock={plant.max_stock}
+          max_setpoint={plant.max_setpoint}
+          setpoint={plant.output.setpoint}
           updateSetpoint={(setpoint) => programSetpoint(id, setpoint)}
         />
       </div>

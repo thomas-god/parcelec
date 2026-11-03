@@ -5,6 +5,7 @@ export type PortfolioType =
   | "renewables"
   | "nuclear"
   | "gas"
+  | "hydro"
   | "storage"
   | "market";
 
@@ -13,6 +14,7 @@ export type PortfolioVolumes = {
   renewable: number;
   nuclear: number;
   gas: number;
+  hydro: number;
   storage: number;
   marketSold: number;
   marketBought: number;
@@ -46,6 +48,7 @@ export const computePortfolio = (
     renewable: 0,
     nuclear: 0,
     gas: 0,
+    hydro: 0,
     storage: 0,
     marketSold: 0,
     marketBought: 0,
@@ -65,6 +68,9 @@ export const computePortfolio = (
           break;
         case "GasPlant":
           portfolio.gas += plant.output.setpoint;
+          break;
+        case "Hydro":
+          portfolio.hydro += plant.output.setpoint;
           break;
         case "Battery":
           portfolio.storage += plant.output.setpoint;

@@ -14,9 +14,15 @@
   let nuclear_capacity = $state(0);
   let renewable_capacity = $state(0);
   let battery_capacity = $state(0);
+  let hydro_capacity = $state(0);
+  let hydro_stock = $state(0);
 
   let total = $derived(
-    gas_capacity + nuclear_capacity + renewable_capacity + battery_capacity,
+    gas_capacity +
+      nuclear_capacity +
+      renewable_capacity +
+      battery_capacity +
+      hydro_capacity,
   );
   let valid = $derived(total > 0);
 
@@ -27,6 +33,8 @@
           gas_capacity,
           nuclear_capacity,
           battery_capacity,
+          hydro_capacity,
+          hydro_stock,
           renewable_capacity,
         },
       }),
@@ -60,6 +68,21 @@
       setpoint={renewable_capacity}
       updateSetpoint={(v) => (renewable_capacity = v)}
       plant_type={"RenewablePlant"}
+    />
+    <Slider
+      max_setpoint={config.hydro_max_capacity}
+      setpoint={hydro_capacity}
+      updateSetpoint={(v) => (hydro_capacity = v)}
+      plant_type={"Hydro"}
+      label="Hydraulique - turbine"
+    />
+    <Slider
+      max_setpoint={config.hydro_max_stock}
+      setpoint={hydro_stock}
+      updateSetpoint={(v) => (hydro_stock = v)}
+      plant_type={"Hydro"}
+      label="Hydraulique - stock"
+      unit="MWh"
     />
 
     <div class="text-right italic">

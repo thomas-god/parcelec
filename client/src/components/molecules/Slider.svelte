@@ -6,11 +6,15 @@
     setpoint,
     updateSetpoint,
     plant_type,
+    label = undefined,
+    unit = "MW",
   }: {
     setpoint: number;
     max_setpoint: number;
     updateSetpoint: (setpoint: number) => void;
-    plant_type: "Battery" | "GasPlant" | "RenewablePlant" | "Nuclear";
+    plant_type: "Battery" | "GasPlant" | "RenewablePlant" | "Nuclear" | "Hydro";
+    label?: string;
+    unit?: string;
   } = $props();
   let current_setpoint = $state(0);
   $effect(() => {
@@ -49,7 +53,7 @@
         @max-[450px]:col-span-2
       `}
     >
-      <span class="italic pl-1.5"> {PLANT_NAMES[plant_type]}</span>
+      <span class="italic pl-1.5"> {label ?? PLANT_NAMES[plant_type]}</span>
     </div>
     <div
       class={`
@@ -75,7 +79,8 @@
         @max-[450px]:row-start-3 @max-[450px]:col-start-3
     `}
     >
-      {current_setpoint.toLocaleString("fr-FR")} MW
+      {current_setpoint.toLocaleString("fr-FR")}
+      {unit}
     </div>
   </div>
 </div>
@@ -92,5 +97,8 @@
   }
   .RenewablePlant {
     color: var(--renewable-background-color);
+  }
+  .Hydro {
+    color: var(--hydro-background-color, #61b2e4);
   }
 </style>

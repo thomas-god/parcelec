@@ -19,6 +19,7 @@
   const icons: Record<PortfolioType, string> = {
     consumers: "/icons/consumers.svg",
     gas: "/icons/gas.svg",
+    hydro: "/icons/hydro.svg",
     market: "/icons/market.svg",
     nuclear: "/icons/nuclear.svg",
     renewables: "/icons/renewable.svg",
@@ -40,6 +41,7 @@
     { sign: "positive", type: "renewables", value: volumes.renewable },
     { sign: "positive", type: "nuclear", value: volumes.nuclear },
     { sign: "positive", type: "gas", value: volumes.gas },
+    { sign: "positive", type: "hydro", value: volumes.hydro },
     {
       sign: "negative",
       type: "storage",
@@ -80,6 +82,9 @@
     }
     if (volumes.storage > 0) {
       return "storage";
+    }
+    if (volumes.hydro > 0) {
+      return "hydro";
     }
     if (volumes.gas > 0) {
       return "gas";

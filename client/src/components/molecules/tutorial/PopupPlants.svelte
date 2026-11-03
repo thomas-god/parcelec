@@ -52,6 +52,14 @@
           /> <i>batterie</i> : vous pouvez choisir de la charger ou décharger pour
           stocker de l'énergie d'une période à l'autre.
         </li>
+        <li>
+          <img
+            src="/icons/hydro.svg"
+            alt="Hydro plant icon"
+            class="h-6 w-6 inline"
+          /> <i>centrale hydraulique</i> : grande réserve d'énergie qui ne coûte rien,
+          mais attention vous ne pouvez pas la recharger.
+        </li>
       </ul>
     </div>
   </div>

@@ -1,5 +1,6 @@
 <script lang="ts">
   import { none, some, type Option } from "$lib/Options";
+  import HydroConfig from "../molecules/HydroConfig.svelte";
   import PlantConfig from "../molecules/PlantConfig.svelte";
 
   let {
@@ -15,6 +16,8 @@
   let consumers_capacity = $state(1000);
   let consumers_revenues = $state(56);
   let battery_max_charge = $state(300);
+  let hydro_max_capacity = $state(100);
+  let hydro_max_stock = $state(300);
 
   let areGasPlantOptionsValid = $derived.by(() => {
     const max_power_valid =
@@ -41,6 +44,16 @@
     return max_charge_valid;
   });
 
+  let areHydroOptionsValid = $derived.by(() => {
+    const capacity_valid =
+      !isNaN(Number(hydro_max_capacity)) && Number(hydro_max_capacity) >= 0;
+
+    const stock_valid =
+      !isNaN(Number(hydro_max_stock)) && Number(hydro_max_stock) >= 0;
+
+    return capacity_valid && stock_valid;
+  });
+
   let isNumberOfPeriodsValid = $derived(
     !isNaN(Number(number_of_periods)) && Number(number_of_periods) > 0,
   );
@@ -59,6 +72,7 @@
     areGasPlantOptionsValid &&
       areNuclearPlantOptionsValid &&
       areBatteryOptionsValid &&
+      areHydroOptionsValid &&
       isNumberOfPeriodsValid &&
       areConsumersOptionsValid,
   );
@@ -72,6 +86,8 @@
           nuclear_cost: Number(nuclear_cost),
           nuclear_max_capacity: Number(nuclear_max_capacity),
           battery_max_capacity: Number(battery_max_charge),
+          hydro_max_capacity: Number(hydro_max_capacity),
+          hydro_max_stock: Number(hydro_max_stock),
           consumers_revenues: Number(consumers_revenues),
           consumers_capacity: -Number(consumers_capacity),
           consumers_forecasts_range: Number(number_of_periods),
@@ -116,6 +132,11 @@
       bind:capacity={battery_max_charge}
       plant="Battery"
       fixedPrice={true}
+      capacity_suffix="max"
+    />
+    <HydroConfig
+      bind:capacity={hydro_max_capacity}
+      bind:stock={hydro_max_stock}
       capacity_suffix="max"
     />
   </div>

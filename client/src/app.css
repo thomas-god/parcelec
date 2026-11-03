@@ -16,6 +16,8 @@
   --nuclear-accent-color: #000000;
   --storage-background-color: #1982c4;
   --storage-accent-color: #ffffff;
+  --hydro-background-color: #61b2e4;
+  --hydro-accent-color: #ffffff;
   --market-background-color: #896bb3;
   --market-accent-color: #ffffff;
 }
@@ -38,6 +40,9 @@ html {
 }
 .storage {
   fill: var(--storage-background-color);
+}
+.hydro {
+  fill: var(--hydro-background-color);
 }
 .market {
   fill: var(--market-background-color);

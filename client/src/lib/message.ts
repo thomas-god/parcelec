@@ -49,6 +49,13 @@ const PowerPlantRepr = z.discriminatedUnion("type", [
     locked: z.boolean(),
     touched: z.boolean(),
   }),
+  z.object({
+    type: z.literal("Hydro"),
+    max_stock: z.number().int(),
+    max_setpoint: z.number().int(),
+    stock: z.number().int(),
+    output: PlantOutput,
+  }),
 ]);
 const PlayerScore = z.object({
   balance: z.number(),
@@ -60,6 +67,7 @@ const PlayerDetailedScore = z.object({
   renewables: z.object({ volume: z.number(), pnl: z.number() }),
   gas: z.object({ volume: z.number(), pnl: z.number() }),
   nuclear: z.object({ volume: z.number(), pnl: z.number() }),
+  hydro: z.object({ volume: z.number(), pnl: z.number() }),
   battery_discharge: z.object({ volume: z.number(), pnl: z.number() }),
   battery_charge: z.object({ volume: z.number(), pnl: z.number() }),
   market_bought: z.object({ volume: z.number(), pnl: z.number() }),
@@ -75,6 +83,8 @@ const FixedStackConfigSchema = z.object({
   gas_capacity: z.number(),
   nuclear_capacity: z.number(),
   battery_capacity: z.number(),
+  hydro_capacity: z.number(),
+  hydro_stock: z.number(),
   consumers_forecasts_range: z.number(),
   renewable_forecasts_range: z.number(),
 });
@@ -86,6 +96,8 @@ const PerPlayerStackConfigSchema = z.object({
   nuclear_cost: z.number(),
   nuclear_max_capacity: z.number(),
   battery_max_capacity: z.number(),
+  hydro_max_capacity: z.number(),
+  hydro_max_stock: z.number(),
   consumers_revenues: z.number(),
   consumers_capacity: z.number(),
   consumers_forecasts_range: z.number(),
@@ -267,6 +279,10 @@ export type ConsumersState = Extract<
 export type NuclearPlantState = Extract<
   StackSnapshot extends Map<any, infer I> ? I : never,
   { type: "Nuclear" }
+>;
+export type HydroPlantState = Extract<
+  StackSnapshot extends Map<any, infer I> ? I : never,
+  { type: "Hydro" }
 >;
 export type DeliveryPeriodScore = Pick<
   Extract<WSMessage, { type: "DeliveryPeriodResults" }>,

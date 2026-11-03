@@ -1,5 +1,6 @@
 <script lang="ts">
   import { none, some, type Option } from "$lib/Options";
+  import HydroConfig from "../molecules/HydroConfig.svelte";
   import PlantConfig from "../molecules/PlantConfig.svelte";
 
   let {
@@ -13,6 +14,8 @@
   let nuclear_capacity = $state(1000);
   let nuclear_cost = $state(35);
   let battery_charge = $state(300);
+  let hydro_capacity = $state(100);
+  let hydro_stock = $state(300);
 
   let consumers_revenues = $state(56);
   let consumers_capacity = $state(1800);
@@ -42,6 +45,15 @@
     return max_charge_valid;
   });
 
+  let areHydroOptionsValid = $derived.by(() => {
+    const capacity_valid =
+      !isNaN(Number(hydro_capacity)) && Number(hydro_capacity) >= 0;
+
+    const stock_valid = !isNaN(Number(hydro_stock)) && Number(hydro_stock) >= 0;
+
+    return capacity_valid && stock_valid;
+  });
+
   let areConsumersOptionsValid = $derived.by(() => {
     const capacity_valid =
       !isNaN(Number(consumers_capacity)) && Number(consumers_capacity) > 0;
@@ -56,6 +68,7 @@
     areGasPlantOptionsValid &&
       areNuclearPlantOptionsValid &&
       areBatteryOptionsValid &&
+      areHydroOptionsValid &&
       areConsumersOptionsValid,
   );
 
@@ -68,6 +81,8 @@
           nuclear_cost: Number(nuclear_cost),
           nuclear_capacity: Number(nuclear_capacity),
           battery_capacity: Number(battery_charge),
+          hydro_capacity: Number(hydro_capacity),
+          hydro_stock: Number(hydro_stock),
           consumers_capacity: -Number(consumers_capacity),
           consumers_revenues: Number(consumers_revenues),
           consumers_forecasts_range: Number(number_of_periods),
@@ -110,5 +125,6 @@
       plant="Battery"
       fixedPrice={true}
     />
+    <HydroConfig bind:capacity={hydro_capacity} bind:stock={hydro_stock} />
   </div>
 </fieldset>
