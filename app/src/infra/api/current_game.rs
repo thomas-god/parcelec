@@ -71,6 +71,8 @@ mod tests {
     fn stack_config() -> GameStackConfig {
         GameStackConfig::Fixed(GameStackFixedConfig {
             battery_capacity: Energy::from(300),
+            hydro_capacity: Power::from(0),
+            hydro_stock: Energy::from(0),
             consumers_capacity: Power::from(-1800),
             consumers_power_shape: vec![].into(),
             consumers_forecasts_range: 2,

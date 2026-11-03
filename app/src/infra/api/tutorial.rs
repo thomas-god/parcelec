@@ -133,6 +133,8 @@ fn game_stack_config() -> GameStackConfig {
         gas_capacity: Power::from(500),
         nuclear_capacity: Power::from(1000),
         battery_capacity: Energy::from(300),
+        hydro_capacity: Power::from(100),
+        hydro_stock: Energy::from(300),
         consumers_capacity: Power::from(-1800),
         consumers_power_shape: vec![1000. / 1800., 1200. / 1800., 600. / 1800., 1.].into(),
         consumers_forecasts_range: 3,

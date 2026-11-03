@@ -50,6 +50,8 @@ pub struct PlayerStackConfigRequest {
     pub nuclear_capacity: Power,
     pub battery_capacity: Energy,
     pub renewable_capacity: Power,
+    pub hydro_capacity: Power,
+    pub hydro_stock: Energy,
 }
 
 impl From<PlayerStackConfigRequest> for GameStackPerPlayerPlayerConfig {
@@ -59,6 +61,8 @@ impl From<PlayerStackConfigRequest> for GameStackPerPlayerPlayerConfig {
             nuclear_capacity: value.nuclear_capacity,
             battery_capacity: value.battery_capacity,
             renewable_capacity: value.renewable_capacity,
+            hydro_capacity: value.hydro_capacity,
+            hydro_stock: value.hydro_stock,
         }
     }
 }

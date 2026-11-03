@@ -7,7 +7,7 @@ use crate::{
         PlantId, PowerPlant, StackPlants,
         technologies::{
             PowerShape, battery::Battery, consumers::Consumers, gas_plant::GasPlant,
-            nuclear::NuclearPlant, renewable::RenewablePlant,
+            hydro::HydroPlant, nuclear::NuclearPlant, renewable::RenewablePlant,
         },
     },
     utils::units::{Energy, EnergyCost, Power},
@@ -27,6 +27,8 @@ pub struct GameStackFixedConfig {
     pub gas_capacity: Power,
     pub nuclear_capacity: Power,
     pub battery_capacity: Energy,
+    pub hydro_capacity: Power,
+    pub hydro_stock: Energy,
     pub consumers_power_shape: PowerShape,
     pub consumers_capacity: Power,
     pub consumers_forecasts_range: usize,
@@ -50,6 +52,10 @@ impl GameStackFixedConfig {
         stack.insert(
             PlantId::default(),
             Box::new(NuclearPlant::new(self.nuclear_capacity, self.nuclear_cost)),
+        );
+        stack.insert(
+            PlantId::default(),
+            Box::new(HydroPlant::new(self.hydro_stock, self.hydro_capacity)),
         );
         stack.insert(
             PlantId::default(),
@@ -81,6 +87,8 @@ pub struct GameStackPerPlayerBaseConfig {
     pub gas_max_capacity: Power,
     pub nuclear_max_capacity: Power,
     pub battery_max_capacity: Energy,
+    pub hydro_max_capacity: Power,
+    pub hydro_max_stock: Energy,
     pub consumers_capacity: Power,
     pub consumers_power_shape: PowerShape,
     pub consumers_forecasts_range: usize,
@@ -94,6 +102,8 @@ pub struct GameStackPerPlayerPlayerConfig {
     pub gas_capacity: Power,
     pub nuclear_capacity: Power,
     pub battery_capacity: Energy,
+    pub hydro_capacity: Power,
+    pub hydro_stock: Energy,
     pub renewable_capacity: Power,
 }
 
@@ -120,6 +130,13 @@ impl GameStackPerPlayerBaseConfig {
             Box::new(NuclearPlant::new(
                 min(self.nuclear_max_capacity, player_config.nuclear_capacity),
                 self.nuclear_cost,
+            )),
+        );
+        stack.insert(
+            PlantId::default(),
+            Box::new(HydroPlant::new(
+                min(self.hydro_max_stock, player_config.hydro_stock),
+                min(self.hydro_max_capacity, player_config.hydro_capacity),
             )),
         );
         let capacity = min(
@@ -164,6 +181,8 @@ mod test_fixed_config_generate_stack {
             nuclear_cost: EnergyCost::from(35),
             nuclear_capacity: Power::from(1000),
             battery_capacity: Energy::from(200),
+            hydro_capacity: Power::from(150),
+            hydro_stock: Energy::from(500),
             consumers_revenues: EnergyCost::from(60),
             consumers_capacity: Power::from(-1000),
             consumers_power_shape: vec![].into(),
@@ -176,7 +195,7 @@ mod test_fixed_config_generate_stack {
         let stack = config.generate_plants();
         let snapshot = stack.snapshot();
 
-        assert_eq!(snapshot.len(), 5);
+        assert_eq!(snapshot.len(), 6);
 
         for (_id, plant) in snapshot.iter() {
             match plant {
@@ -193,6 +212,11 @@ mod test_fixed_config_generate_stack {
                 PowerPlantPublicRepr::Nuclear(plant) => {
                     assert_eq!(plant.energy_cost, EnergyCost::from(35));
                     assert_eq!(plant.max_setpoint, Power::from(1000));
+                }
+                PowerPlantPublicRepr::Hydro(plant) => {
+                    assert_eq!(plant.max_setpoint, Power::from(150));
+                    assert_eq!(plant.max_stock, Energy::from(500));
+                    assert_eq!(plant.stock, Energy::from(500));
                 }
                 _ => {}
             }
@@ -214,6 +238,8 @@ mod test_per_player_config_generate_stack {
             gas_max_capacity: Power::from(500),
             nuclear_max_capacity: Power::from(1000),
             battery_max_capacity: Energy::from(400),
+            hydro_max_capacity: Power::from(200),
+            hydro_max_stock: Energy::from(600),
             consumers_capacity: Power::from(-800),
             consumers_power_shape: vec![1.].into(),
             consumers_forecasts_range: 3,
@@ -230,13 +256,15 @@ mod test_per_player_config_generate_stack {
             gas_capacity: Power::from(300),
             nuclear_capacity: Power::from(800),
             battery_capacity: Energy::from(200),
+            hydro_capacity: Power::from(150),
+            hydro_stock: Energy::from(500),
             renewable_capacity: Power::from(400),
         };
 
         let stack = base.generate_plants(player_config);
         let snapshot = stack.snapshot();
 
-        assert_eq!(snapshot.len(), 5);
+        assert_eq!(snapshot.len(), 6);
 
         for (_id, plant) in snapshot.iter() {
             match plant {
@@ -254,6 +282,10 @@ mod test_per_player_config_generate_stack {
                     assert_eq!(plant.energy_cost, EnergyCost::from(35));
                     assert_eq!(plant.max_setpoint, Power::from(800));
                 }
+                PowerPlantPublicRepr::Hydro(plant) => {
+                    assert_eq!(plant.max_setpoint, Power::from(150));
+                    assert_eq!(plant.max_stock, Energy::from(500));
+                }
                 _ => {}
             }
         }
@@ -266,13 +298,15 @@ mod test_per_player_config_generate_stack {
             gas_capacity: Power::from(900),
             nuclear_capacity: Power::from(2000),
             battery_capacity: Energy::from(1000),
+            hydro_capacity: Power::from(500),
+            hydro_stock: Energy::from(1000),
             renewable_capacity: Power::from(1200),
         };
 
         let stack = base.generate_plants(player_config);
         let snapshot = stack.snapshot();
 
-        assert_eq!(snapshot.len(), 5);
+        assert_eq!(snapshot.len(), 6);
 
         for (_id, plant) in snapshot.iter() {
             match plant {
@@ -286,6 +320,10 @@ mod test_per_player_config_generate_stack {
                 PowerPlantPublicRepr::Nuclear(plant) => {
                     assert_eq!(plant.energy_cost, EnergyCost::from(35));
                     assert_eq!(plant.max_setpoint, Power::from(1000));
+                }
+                PowerPlantPublicRepr::Hydro(plant) => {
+                    assert_eq!(plant.max_setpoint, Power::from(200));
+                    assert_eq!(plant.max_stock, Energy::from(600));
                 }
                 _ => {}
             }

@@ -8,6 +8,7 @@ use serde::{Deserialize, Serialize};
 use technologies::battery::BatteryPublicRepr;
 use technologies::consumers::ConsumersPublicRepr;
 use technologies::gas_plant::GasPlantPublicRepr;
+use technologies::hydro::HydroPublicRepr;
 use technologies::nuclear::NuclearPublicRepr;
 use technologies::renewable::RenewablePlantPublicRepr;
 use uuid::Uuid;
@@ -75,6 +76,7 @@ pub enum PowerPlantPublicRepr {
     RenewablePlant(RenewablePlantPublicRepr),
     Consumers(ConsumersPublicRepr),
     Nuclear(NuclearPublicRepr),
+    Hydro(HydroPublicRepr),
 }
 
 #[derive(Debug, PartialEq, Serialize, Clone, Copy)]
@@ -119,6 +121,7 @@ pub enum PlantCategory {
     RenewablePlant,
     Consumers,
     Nuclear,
+    Hydro,
 }
 
 pub struct StackPlants(HashMap<PlantId, Box<dyn PowerPlant + Send + Sync>>);
@@ -176,6 +179,9 @@ impl StackPlants {
                 }
                 PlantCategory::RenewablePlant => {
                     state.renewables = state.renewables + output;
+                }
+                PlantCategory::Hydro => {
+                    state.hydro = state.hydro + output;
                 }
                 PlantCategory::Battery if output.setpoint > Power::from(0) => {
                     state.battery_discharge = state.battery_discharge + output;
@@ -245,9 +251,11 @@ pub struct StackAggregatedState {
     nuclear: Output,
     battery_discharge: Output,
     battery_charge: Output,
+    hydro: Output,
 }
 
 impl StackAggregatedState {
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         consumers: Output,
         renewables: Output,
@@ -255,6 +263,7 @@ impl StackAggregatedState {
         nuclear: Output,
         battery_discharge: Output,
         battery_charge: Output,
+        hydro: Output,
     ) -> Self {
         Self {
             consumers,
@@ -263,6 +272,7 @@ impl StackAggregatedState {
             nuclear,
             battery_discharge,
             battery_charge,
+            hydro,
         }
     }
 
@@ -274,6 +284,7 @@ impl StackAggregatedState {
             nuclear: Output::empty(),
             battery_discharge: Output::empty(),
             battery_charge: Output::empty(),
+            hydro: Output::empty(),
         }
     }
 
@@ -295,6 +306,9 @@ impl StackAggregatedState {
     pub fn battery_charge(&self) -> &Output {
         &self.battery_charge
     }
+    pub fn hydro(&self) -> &Output {
+        &self.hydro
+    }
     pub fn position(&self) -> Energy {
         self.consumers.volume
             + self.renewables.volume
@@ -302,6 +316,7 @@ impl StackAggregatedState {
             + self.nuclear.volume
             + self.battery_discharge.volume
             + self.battery_charge.volume
+            + self.hydro.volume
     }
     pub fn pnl(&self) -> Money {
         self.consumers.money
@@ -310,6 +325,7 @@ impl StackAggregatedState {
             + self.nuclear.money
             + self.battery_discharge.money
             + self.battery_charge.money
+            + self.hydro.money
     }
 }
 
@@ -356,6 +372,7 @@ mod test {
     use crate::plants::technologies::battery::Battery;
     use crate::plants::technologies::consumers::Consumers;
     use crate::plants::technologies::gas_plant::GasPlant;
+    use crate::plants::technologies::hydro::HydroPlant;
     use crate::plants::technologies::nuclear::NuclearPlant;
     use crate::plants::technologies::renewable::RenewablePlant;
     use crate::plants::{PlantId, StackDispatchResults, StackPlants};
@@ -533,6 +550,39 @@ mod test {
         let state = result.aggregated_state();
         assert_eq!(state.battery_discharge().volume(), &Energy::from(0));
         assert_eq!(state.battery_charge().volume(), &Energy::from(0));
+    }
+
+    #[test]
+    fn test_dispatch_aggregates_hydro_plant_output() {
+        let plant = HydroPlant::new(Energy::from(500), Power::from(100));
+        let (mut stack, id) = make_single_plant_stack(plant, "hydro-a");
+        stack.program_setpoint(&id, Power::from(80));
+        let result = stack.dispatch_plants();
+        let state = result.aggregated_state();
+        assert_eq!(state.hydro().volume(), &Energy::from(80));
+        assert_eq!(state.hydro().money(), &Money::from(0));
+    }
+
+    #[test]
+    fn test_dispatch_multiple_hydro_plants_outputs_are_summed() {
+        let id_a = PlantId::from("hydro-a");
+        let id_b = PlantId::from("hydro-b");
+        let mut plants: HashMap<PlantId, Box<dyn crate::plants::PowerPlant + Send + Sync>> =
+            HashMap::new();
+        plants.insert(
+            id_a.clone(),
+            Box::new(HydroPlant::new(Energy::from(500), Power::from(100))),
+        );
+        plants.insert(
+            id_b.clone(),
+            Box::new(HydroPlant::new(Energy::from(500), Power::from(100))),
+        );
+        let mut stack = StackPlants::new(plants);
+        stack.program_setpoint(&id_a, Power::from(30));
+        stack.program_setpoint(&id_b, Power::from(40));
+        let result = stack.dispatch_plants();
+        let state = result.aggregated_state();
+        assert_eq!(state.hydro().volume(), &Energy::from(70));
     }
 
     #[test]

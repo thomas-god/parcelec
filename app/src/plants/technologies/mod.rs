@@ -11,6 +11,7 @@ use crate::{
 pub mod battery;
 pub mod consumers;
 pub mod gas_plant;
+pub mod hydro;
 pub mod nuclear;
 pub mod renewable;
 

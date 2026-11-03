@@ -95,6 +95,7 @@ pub struct PlayerDetailedScore {
     pub renewables: ScoreDetails,
     pub gas: ScoreDetails,
     pub nuclear: ScoreDetails,
+    pub hydro: ScoreDetails,
     pub battery_discharge: ScoreDetails,
     pub battery_charge: ScoreDetails,
     pub market_bought: ScoreDetails,
@@ -108,6 +109,7 @@ impl PlayerDetailedScore {
             + self.renewables.volume
             + self.gas.volume
             + self.nuclear.volume
+            + self.hydro.volume
             + self.battery_discharge.volume
             + self.battery_charge.volume
             + self.market_bought.volume
@@ -119,6 +121,7 @@ impl PlayerDetailedScore {
             + self.renewables.pnl
             + self.gas.pnl
             + self.nuclear.pnl
+            + self.hydro.pnl
             + self.battery_discharge.pnl
             + self.battery_charge.pnl
             + self.market_bought.pnl
@@ -197,6 +200,7 @@ fn compute_player_detailed_score(
         renewables: outputs.aggregated_state().renewables().into(),
         gas: outputs.aggregated_state().gas().into(),
         nuclear: outputs.aggregated_state().nuclear().into(),
+        hydro: outputs.aggregated_state().hydro().into(),
         battery_discharge: outputs.aggregated_state().battery_discharge().into(),
         battery_charge: outputs.aggregated_state().battery_charge().into(),
         market_bought: market_scores.bought,
@@ -310,47 +314,51 @@ mod test_player_score_details {
         }
     }
 
-    fn make_details(volumes: [i32; 9], pnls: [i32; 9]) -> PlayerDetailedScore {
+    fn make_details(volumes: [i32; 10], pnls: [i32; 10]) -> PlayerDetailedScore {
         PlayerDetailedScore {
             consumers: make_score(volumes[0], pnls[0]),
             renewables: make_score(volumes[1], pnls[1]),
             gas: make_score(volumes[2], pnls[2]),
             nuclear: make_score(volumes[3], pnls[3]),
-            battery_discharge: make_score(volumes[4], pnls[4]),
-            battery_charge: make_score(volumes[5], pnls[5]),
-            market_bought: make_score(volumes[6], pnls[6]),
-            market_sold: make_score(volumes[7], pnls[7]),
-            imbalance: make_score(volumes[8], pnls[8]),
+            hydro: make_score(volumes[4], pnls[4]),
+            battery_discharge: make_score(volumes[5], pnls[5]),
+            battery_charge: make_score(volumes[6], pnls[6]),
+            market_bought: make_score(volumes[7], pnls[7]),
+            market_sold: make_score(volumes[8], pnls[8]),
+            imbalance: make_score(volumes[9], pnls[9]),
         }
     }
 
     #[test]
     fn test_position_all_zeros() {
-        let details = make_details([0; 9], [0; 9]);
+        let details = make_details([0; 10], [0; 10]);
         assert_eq!(details.position(), Energy::from(0));
     }
 
     #[test]
     fn test_position_sums_all_volumes() {
-        let details = make_details([-100, 50, 30, 80, 20, -10, 40, -30, 5], [0; 9]);
+        let details = make_details([-100, 50, 30, 80, 15, 20, -10, 40, -30, 5], [0; 10]);
         assert_eq!(
             details.position(),
-            Energy::from(-100 + 50 + 30 + 80 + 20 - 10 + 40 - 30 + 5)
+            Energy::from(-100 + 50 + 30 + 80 + 15 + 20 - 10 + 40 - 30 + 5)
         );
     }
 
     #[test]
     fn test_pnl_all_zeros() {
-        let details = make_details([0; 9], [0; 9]);
+        let details = make_details([0; 10], [0; 10]);
         assert_eq!(details.pnl(), Money::from(0));
     }
 
     #[test]
     fn test_pnl_sums_all_pnls() {
-        let details = make_details([0; 9], [-500, 200, -300, 400, 100, -50, 800, -600, -150]);
+        let details = make_details(
+            [0; 10],
+            [-500, 200, -300, 400, 75, 100, -50, 800, -600, -150],
+        );
         assert_eq!(
             details.pnl(),
-            Money::from(-500 + 200 - 300 + 400 + 100 - 50 + 800 - 600 - 150)
+            Money::from(-500 + 200 - 300 + 400 + 75 + 100 - 50 + 800 - 600 - 150)
         );
     }
 }
@@ -674,6 +682,7 @@ mod tests {
                 Output::empty(),
                 Output::empty(),
                 Output::new(Energy::from(100), Money::from(500)),
+                Output::empty(),
                 Output::empty(),
                 Output::empty(),
                 Output::empty(),
