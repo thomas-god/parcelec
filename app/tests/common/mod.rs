@@ -4,7 +4,6 @@ use std::{io, time::Duration};
 use fantoccini::{Client, ClientBuilder};
 use parcelec_app::{AppConfig, new_api_state};
 use tokio::task::JoinHandle;
-use tower_http::services::ServeDir;
 
 pub const TESTRUN_SETUP_TIMEOUT: Duration = Duration::from_secs(5);
 pub const DEFAULT_WAIT_TIMEOUT: Duration = Duration::from_secs(3);
@@ -43,12 +42,10 @@ pub async fn init() -> (String, ServerTaskHandle) {
         let config = AppConfig {
             port: addr.port(),
             allow_origin: addr.to_string(),
+            static_dir: std::env::current_dir().unwrap().join("../client/build"),
         };
         let state = new_api_state(&config);
         let app = parcelec_app::build_router(state, config);
-        let app = app.fallback_service(ServeDir::new(
-            std::env::current_dir().unwrap().join("../client/build"),
-        ));
         let listener = tokio::net::TcpListener::bind(&addr).await.unwrap();
         let assigned_addr = listener.local_addr().unwrap();
         tx.send(assigned_addr).unwrap();

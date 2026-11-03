@@ -1,0 +1,8 @@
+.git
+.github
+.vscode
+adr
+**/node_modules
+**/target
+client/build
+client/.svelte-kit

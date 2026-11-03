@@ -1,0 +1,26 @@
+services:
+  parcelec:
+    image: ghcr.io/thomas-god/parcelec:main
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.services.parcelec.loadbalancer.server.port=9002"
+      - "traefik.http.routers.parcelec.rule=Host(`parcelec.org`)"
+      - "traefik.http.routers.parcelec.entrypoints=websecure"
+      - "traefik.http.routers.parcelec.tls.certresolver=myresolver"
+      - "traefik.docker.network=traefik-public"
+    networks:
+      - traefik-public
+    deploy:
+      update_config:
+        order: start-first
+      resources:
+        limits:
+          cpus: "1"
+          memory: 128M
+
+volumes:
+  letsencrypt:
+
+networks:
+  traefik-public:
+    external: true

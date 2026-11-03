@@ -106,6 +106,7 @@ mod tests {
         AppConfig {
             port: 0,
             allow_origin: "http://localhost:5173".to_string(),
+            static_dir: std::env::current_dir().unwrap().join("../client/build"),
         }
     }
 
