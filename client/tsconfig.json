@@ -16,6 +16,6 @@
     "strict": true,
     "isolatedModules": true,
     "moduleDetection": "force",
-    "types": ["@testing-library/jest-dom"]
-  }
+    "types": [],
+  },
 }

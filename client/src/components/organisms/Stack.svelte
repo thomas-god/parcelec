@@ -22,7 +22,8 @@
   let other_plants = $derived.by(() => {
     const other_plants = new Map<string, Plant>();
     /// Cannot use plants.entries().find(/.../) on WebKit...
-    const _plants = [...plants.entries()];
+    const _plants: [string, Plant][] =
+      plants === null ? [] : [...plants.entries()];
 
     let gas_plant = _plants.find(([_, plant]) => plant.type === "GasPlant");
     if (gas_plant !== undefined) {

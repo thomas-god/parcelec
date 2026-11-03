@@ -1,4 +1,4 @@
-import { type SafeParseReturnType, z } from "zod";
+import { type ZodSafeParseResult, z } from "zod";
 
 const Direction = z.enum(["Buy", "Sell"]);
 const Volume = z.number().int().positive();
@@ -251,7 +251,8 @@ export type StackSnapshot = Omit<
   Extract<WSMessage, { type: "StackSnapshot" }>,
   "type"
 >["plants"];
-export type Plant = StackSnapshot extends Map<any, infer I> ? I : never;
+export type Plants = NonNullable<StackSnapshot>;
+export type Plant = Plants extends Map<any, infer I> ? I : never;
 export type StackForecasts = Omit<
   Extract<WSMessage, { type: "StackForecasts" }>,
   "type"
@@ -260,30 +261,12 @@ export type StackHistory = Omit<
   Extract<WSMessage, { type: "StackHistory" }>,
   "type"
 >["history"];
-export type BatteryState = Extract<
-  StackSnapshot extends Map<any, infer I> ? I : never,
-  { type: "Battery" }
->;
-export type GasPlantState = Extract<
-  StackSnapshot extends Map<any, infer I> ? I : never,
-  { type: "GasPlant" }
->;
-export type RenewablePlantState = Extract<
-  StackSnapshot extends Map<any, infer I> ? I : never,
-  { type: "RenewablePlant" }
->;
-export type ConsumersState = Extract<
-  StackSnapshot extends Map<any, infer I> ? I : never,
-  { type: "Consumers" }
->;
-export type NuclearPlantState = Extract<
-  StackSnapshot extends Map<any, infer I> ? I : never,
-  { type: "Nuclear" }
->;
-export type HydroPlantState = Extract<
-  StackSnapshot extends Map<any, infer I> ? I : never,
-  { type: "Hydro" }
->;
+export type BatteryState = Extract<Plant, { type: "Battery" }>;
+export type GasPlantState = Extract<Plant, { type: "GasPlant" }>;
+export type RenewablePlantState = Extract<Plant, { type: "RenewablePlant" }>;
+export type ConsumersState = Extract<Plant, { type: "Consumers" }>;
+export type NuclearPlantState = Extract<Plant, { type: "Nuclear" }>;
+export type HydroPlantState = Extract<Plant, { type: "Hydro" }>;
 export type DeliveryPeriodScore = Pick<
   Extract<WSMessage, { type: "DeliveryPeriodResults" }>,
   "score"
@@ -309,10 +292,7 @@ export type GameState = Extract<WSMessage, { type: "GameState" }>["state"];
 
 export const parseMessage = (
   msg: string,
-): SafeParseReturnType<
-  z.infer<typeof WSMessageSchema>,
-  z.infer<typeof WSMessageSchema>
-> => {
+): ZodSafeParseResult<z.infer<typeof WSMessageSchema>> => {
   return WSMessageSchema.safeParse(JSON.parse(msg));
 };
 

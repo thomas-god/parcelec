@@ -1,5 +1,6 @@
 <script lang="ts">
   import type {
+    Plant,
     StackForecasts,
     StackHistory,
     StackSnapshot,
@@ -25,9 +26,7 @@
   export type ForecastValue = (Forecast extends Array<infer I>
     ? I
     : never)["value"];
-  type PlantType = (StackSnapshot extends Map<any, infer I>
-    ? I
-    : never)["type"];
+  type PlantType = Plant["type"];
   export type History = NonNullable<
     StackHistory extends Map<any, infer I> ? I : never
   >;
@@ -45,7 +44,7 @@
     let merged: [string, PlantType, Forecast][] = [];
     for (const [id, forecast] of plant_forecasts.entries()) {
       if (!!forecast) {
-        const plant = plant_snapshots.get(id);
+        const plant = plant_snapshots?.get(id);
         if (!!plant) {
           merged.push([id, plant.type, forecast]);
         }
@@ -58,7 +57,7 @@
     let merged: [string, PlantType, PlantOutput[]][] = [];
     for (const [id, values] of history.entries()) {
       if (!!values) {
-        const plant = plant_snapshots.get(id);
+        const plant = plant_snapshots?.get(id);
         if (!!plant) {
           merged.push([id, plant.type, values]);
         }
@@ -128,7 +127,7 @@
 
     // Get current setpoint
     let total = 0;
-    for (const [id, plant] of plant_snapshots) {
+    for (const [id, plant] of plant_snapshots ?? []) {
       if (plant.type === "Consumers") {
         total += plant.output.setpoint;
       }
@@ -151,7 +150,7 @@
 
     // Get current setpoint
     let total = 0;
-    for (const [id, plant] of plant_snapshots) {
+    for (const [id, plant] of plant_snapshots ?? []) {
       if (plant.type === "RenewablePlant") {
         total += plant.output.setpoint;
       }

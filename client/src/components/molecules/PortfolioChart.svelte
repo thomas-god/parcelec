@@ -26,11 +26,19 @@
     storage: "/icons/storage.svg",
   };
 
-  type Data = {
-    sign: "positive" | "negative";
+  type Sign = "positive" | "negative";
+  type DataPoint = {
+    sign: Sign;
     type: PortfolioType;
     value: number;
-  }[];
+  };
+  type Data = DataPoint[];
+  type StackDatum = [Sign, Map<PortfolioType, DataPoint>];
+  type BarPoint = d3.SeriesPoint<StackDatum> & {
+    key: PortfolioType;
+    empty: boolean;
+    sign: Sign;
+  };
 
   let data: Data = $derived([
     {
@@ -100,14 +108,13 @@
 
   let stackedData = $derived(
     d3
-      .stack()
+      .stack<StackDatum, PortfolioType>()
       .keys(d3.union(data.map((point) => point.type)))
       .value(([_sign, sign_values], type) => {
-        return sign_values.get(type) === undefined
-          ? 0
-          : sign_values.get(type).value;
+        const point = sign_values.get(type);
+        return point === undefined ? 0 : point.value;
       })(
-      d3.index<Data, unknown>(
+      d3.index<DataPoint, [Sign, PortfolioType]>(
         data,
         (d) => d.sign,
         (d) => d.type,
@@ -121,7 +128,7 @@
       .domain([
         0,
         Math.max(
-          d3.max(stackedData, (d) => d3.max(d, (d) => d[1])),
+          d3.max(stackedData, (d) => d3.max(d, (d) => d[1])) ?? 0,
           Math.abs(volumes.consumers * 1),
         ),
       ])
@@ -177,8 +184,8 @@
 
       // Create/update rectangles
       groups
-        .selectAll("path")
-        .data((series) => {
+        .selectAll<SVGPathElement, d3.Series<StackDatum, PortfolioType>>("path")
+        .data<BarPoint>((series) => {
           // Each series is an array of elements, with a key = Setpoint
           // series.key -> consumers | market | ...
           // series[0] -> negative datapoints
@@ -187,21 +194,20 @@
           // series[0].data[1] -> Map avec les setpoint en keys (consumers, market, etc.)
           // series[0].data[1].get("consumers") -> l'object inital des data
 
-          const values = series.map((point) => {
+          const values = series.map((point): BarPoint => {
             // Map extra information to individual points
-            const value =
-              point.data[1].get(series.key) === undefined
-                ? 0
-                : point.data[1].get(series.key).value;
-            point.key = series.key;
-            point.empty = value === 0;
-            point.sign = point.data[0];
-            return point;
+            const dataPoint = point.data[1].get(series.key);
+            const value = dataPoint === undefined ? 0 : dataPoint.value;
+            return Object.assign(point, {
+              key: series.key,
+              empty: value === 0,
+              sign: point.data[0],
+            });
           });
           // Skip empty datapoints
           return values.filter((value) => !value.empty);
         })
-        .join(
+        .join<SVGPathElement, BarPoint>(
           (enter) =>
             enter
               .append("path")
@@ -223,21 +229,26 @@
 
       // Create/update text labels (one per series)
       groups
-        .selectAll("image")
-        .data((series) => {
-          const nonEmptyPoints = series.filter((point) => {
-            const value =
-              point.data[1].get(series.key) === undefined
-                ? 0
-                : point.data[1].get(series.key).value;
-            return value !== 0;
-          });
-          return nonEmptyPoints.map((point) => ({
-            key: series.key,
-            point: point,
-          }));
-        })
-        .join(
+        .selectAll<SVGImageElement, d3.Series<StackDatum, PortfolioType>>(
+          "image",
+        )
+        .data<{ key: PortfolioType; point: d3.SeriesPoint<StackDatum> }>(
+          (series) => {
+            const nonEmptyPoints = series.filter((point) => {
+              const dataPoint = point.data[1].get(series.key);
+              const value = dataPoint === undefined ? 0 : dataPoint.value;
+              return value !== 0;
+            });
+            return nonEmptyPoints.map((point) => ({
+              key: series.key,
+              point: point,
+            }));
+          },
+        )
+        .join<
+          SVGImageElement,
+          { key: PortfolioType; point: d3.SeriesPoint<StackDatum> }
+        >(
           (enter) =>
             enter
               .append("image")
@@ -247,7 +258,8 @@
               .attr(
                 "y",
                 (d) =>
-                  y(d.point.data[0]) + (y.bandwidth() * (1 - iconSize)) / 2,
+                  (y(d.point.data[0]) ?? 0) +
+                  (y.bandwidth() * (1 - iconSize)) / 2,
               )
               .attr("x", (d) => x(d.point[0]) - y.bandwidth() * iconSize)
               .transition(d3.transition().duration(200).ease(d3.easeLinear))
@@ -269,7 +281,8 @@
               .attr(
                 "y",
                 (d) =>
-                  y(d.point.data[0]) + (y.bandwidth() * (1 - iconSize)) / 2,
+                  (y(d.point.data[0]) ?? 0) +
+                  (y.bandwidth() * (1 - iconSize)) / 2,
               )
               .attr("width", y.bandwidth() * iconSize)
               .attr("height", y.bandwidth() * iconSize),
